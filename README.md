@@ -1,4 +1,5 @@
-# TRAINS - Magic Version Control & Experiment Manager for AI
+# TRAINS
+## Magic Version Control & Experiment Manager for AI
 
 <p style="font-size:1.2rem; font-weight:700;">"Because it’s a jungle out there"</p>
 
@@ -19,7 +20,7 @@ TRAINS is an auto-magical experiment manager that you can use productively with 
 preserving your existing methods and practices. Use it on a daily basis to boost collaboration and visibility,
 or use it to automatically collect your experimentation logs, outputs, and data to one centralized server for provenance.
 
-![nice image here? Maybe collection of all the projects or main screen, this can also be an inspirational image insinuating clutter](img/woman-3441018_1920.jpg)
+![Alt Text](docs/webapp_screenshots.gif)
 
 ## Why Should I Use TRAINS?
 
@@ -88,24 +89,12 @@ You can test your code with it:
 
 1. In the Web-App, view your parameters, model and tensorboard metrics.
 
-    ![GIF screen-shot here. If the Gif looks bad, a few png screen grabs:
-        Home Page
-        Projects Page
-        Experiment Page with experiment open tab execution
-        Experiment Page with experiment open tab model
-        Experiment Page with experiment open tab results
-        Results Page
-        Comparison Page
-        Parameters
-        Graphs
-        Images
-        Experiment Models Page]
 
 ## How TRAINS Works
 
 TRAINS is composed of the following:
 
-* the [trains-server](https://github.com/allegroai/trains-server)
+* the [TRAINS-server](https://github.com/allegroai/trains-server)
 * the [Web-App](https://github.com/allegroai/trains-web) (web user interface)
 * the Python SDK (auto-magically connects your code, see [Using TRAINS (Example)](#using-trains-example)).
 
@@ -142,7 +131,7 @@ The following diagram illustrates the interaction of the TRAINS-server and a GPU
     |     +------------------|--------------+                            |
     |     |  Training        |              |    +---------------------+ |
     |     |  Code        +---+------------+ |    | TRAINS configuration| |
-    |     |              | TRAINS - SDK   | |    | ~/trains.conf       | |
+    |     |              | TRAINS         | |    | ~/trains.conf       | |
     |     |              |                +------+                     | |
     |     |              +----------------+ |    +---------------------+ |
     |     +---------------------------------+                            |

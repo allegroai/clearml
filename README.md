@@ -51,7 +51,7 @@ Choose TRAINS because...
 * Management capabilities including project management, filter-by-metric, and detailed experiment comparison.
 * Centralized server for aggregating logs, records, and general bookkeeping.
 * Automatically create a copy of models on centralized storage (TRAINS supports shared folders, S3, GS, and Azure is coming soon!).
-* Support for Jupyter notebook (see the [trains-jupyter-plugin]()) and PyCharm remote debugging (see the [trains-pycharm-plugin]()).
+* Support for Jupyter notebook (see the [trains-jupyter-plugin](https://github.com/allegroai/trains-jupyter-plugin)) and PyCharm remote debugging (see the [trains-pycharm-plugin](https://github.com/allegroai/trains-pycharm-plugin)).
 * A field-tested, feature-rich SDK for your on-the-fly customization needs.
 
 
@@ -105,8 +105,8 @@ You can test your code with it:
 
 TRAINS is composed of the following:
 
-* the [trains-server]()
-* the [Web-App]() (web user interface)
+* the [trains-server](https://github.com/allegroai/trains-server)
+* the [Web-App](https://github.com/allegroai/trains-web) (web user interface)
 * the Python SDK (auto-magically connects your code, see [Using TRAINS (Example)](#using-trains-example)).
 
 The following diagram illustrates the interaction of the TRAINS-server and a GPU machine:
@@ -151,7 +151,7 @@ The following diagram illustrates the interaction of the TRAINS-server and a GPU
 
 ## Installing and Configuring TRAINS
 
-1. Install the trains-server docker (see [Installing the TRAINS Server](../trains_server)).
+1. Install the trains-server docker (see [Installing the TRAINS Server](https://github.com/allegroai/trains-server)).
 
 1. Install the TRAINS package:
 
@@ -161,7 +161,7 @@ The following diagram illustrates the interaction of the TRAINS-server and a GPU
 
 	    trains-init
 
-After installing and configuring, your configuration is `~/trains.conf`. View a sample configuration file [here]([link to git]).
+After installing and configuring, your configuration is `~/trains.conf`. View a sample configuration file [here](https://github.com/allegroai/trains/blob/master/docs/trains.conf).
 
 ## Using TRAINS (Example)
 
@@ -173,7 +173,7 @@ Add these two lines of code to your script:
 * If no project name is provided, then the repository name is used.
 * If no task (experiment) name is provided, then the main filename is used as experiment name
 
-Executing your script prints a direct link to the currently running experiment page, for exampe:
+Executing your script prints a direct link to the currently running experiment page, for example:
 
 ```bash
 TRAINS Metrics page:
@@ -183,7 +183,7 @@ https://demoapp.trainsai.io/projects/76e5e2d45e914f52880621fe64601e85/experiment
 
 *[Add GIF screenshots here]*
 
-For more examples and use cases,  see [examples](link docs/examples/).
+For more examples and use cases, see [examples](https://github.com/allegroai/trains/tree/master/examples).
 
 ## Who Supports TRAINS?
 
@@ -208,11 +208,11 @@ Apache License, Version 2.0 (see the [LICENSE](https://www.apache.org/licenses/L
 
 ## Guidelines for Contributing
 
-See the TRAINS [Guidelines for Contributing](contributing.md).
+See the TRAINS [Guidelines for Contributing](https://github.com/allegroai/trains/blob/master/docs/contributing.md).
 
 ## FAQ
 
-See the TRAINS [FAQ](faq.md).
+See the TRAINS [FAQ](https://github.com/allegroai/trains/blob/master/docs/faq.md).
 
 <p style="font-size:0.9rem; font-weight:700; font-style:italic">May the force (and the goddess of learning rates) be with you!</p>
 

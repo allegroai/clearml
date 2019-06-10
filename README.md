@@ -94,9 +94,9 @@ You can test your code with it:
 
 TRAINS is composed of the following:
 
-* the [TRAINS-server](https://github.com/allegroai/trains-server)
-* the [Web-App](https://github.com/allegroai/trains-web) (web user interface)
-* the Python SDK (auto-magically connects your code, see [Using TRAINS (Example)](#using-trains-example)).
+* [TRAINS-server](https://github.com/allegroai/trains-server)
+* [Web-App](https://github.com/allegroai/trains-web) (web user interface)
+* Python SDK (auto-magically connects your code, see [Using TRAINS](#using-trains-example))
 
 The following diagram illustrates the interaction of the TRAINS-server and a GPU machine:
 
@@ -152,9 +152,9 @@ The following diagram illustrates the interaction of the TRAINS-server and a GPU
 
 After installing and configuring, your configuration is `~/trains.conf`. View a sample configuration file [here](https://github.com/allegroai/trains/blob/master/docs/trains.conf).
 
-## Using TRAINS (Example)
+## Using TRAINS
 
-Add these two lines of code to your script:
+Add these two lines of to your code:
 
     from trains import Task
     task = Task.init(project_name, task_name)
@@ -170,7 +170,7 @@ TRAINS Metrics page:
 https://demoapp.trainsai.io/projects/76e5e2d45e914f52880621fe64601e85/experiments/241f06ae0f5c4b27b8ce8b64890ce152/output/log
 ```
 
-*[Add GIF screenshots here]*
+![Alt Text](docs/results_screenshots.gif)
 
 For more examples and use cases, see [examples](https://github.com/allegroai/trains/tree/master/examples).
 

@@ -1,0 +1,7 @@
+from ...backend_config import EnvEntry
+
+
+ENV_HOST = EnvEntry("TRAINS_API_HOST", "ALG_API_HOST")
+ENV_ACCESS_KEY = EnvEntry("TRAINS_API_ACCESS_KEY", "ALG_API_ACCESS_KEY")
+ENV_SECRET_KEY = EnvEntry("TRAINS_API_SECRET_KEY", "ALG_API_SECRET_KEY")
+ENV_VERBOSE = EnvEntry("TRAINS_API_VERBOSE", "ALG_API_VERBOSE", type=bool, default=False)

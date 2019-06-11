@@ -25,6 +25,7 @@ TRAINS is an auto-magical experiment manager that you can use productively with 
 preserving your existing methods and practices. Use it on a daily basis to boost collaboration and visibility,
 or use it to automatically collect your experimentation logs, outputs, and data to one centralized server for provenance.
 
+(See TRAINS live at [https://demoapp.trainsai.io](https://demoapp.trainsai.io))
 ![Alt Text](docs/webapp_screenshots.gif)
 
 ## Why Should I Use TRAINS?
@@ -80,6 +81,7 @@ TRAINS magically logs the following:
 ## See for Yourself
 
 We have a demo server up and running [https://demoapp.trainsai.io](https://demoapp.trainsai.io) (it resets every 24 hours and all of the data is deleted).
+
 You can test your code with it:
 
 1. Install TRAINS
@@ -91,9 +93,12 @@ You can test your code with it:
         from trains import Task
         Task = Task.init(project_name=”my_projcet”, task_name=”my_task”)
 
-1. Run your code. When TRAINS connects to the server, a link prints.
+1. Run your code. When TRAINS connects to the server, a link prints. For example:
 
-1. In the Web-App, view your parameters, model and tensorboard metrics.
+        TRAINS Metrics page:
+        https://demoapp.trainsai.io/projects/76e5e2d45e914f52880621fe64601e85/experiments/241f06ae0f5c4b27b8ce8b64890ce152/output/log
+
+1. Open your link and view the experiment parameters, model and tensorboard metrics.
 
 
 ## How TRAINS Works

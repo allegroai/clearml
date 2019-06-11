@@ -54,7 +54,8 @@ Choose TRAINS because...
 * Track everything with two lines of code.
 * Model logging that automatically associates models with code and the parameters used to train them, including initial weights logging.
 * Multi-user process tracking and collaboration.
-* Management capabilities including project management, filter-by-metric, and detailed experiment comparison.
+* **Experiment comparison** including code commits, initial weights, hyper-parameters and metric results.
+* Management capabilities including project management, filter-by-metric.
 * Centralized server for aggregating logs, records, and general bookkeeping.
 * Automatically create a copy of models on centralized storage (TRAINS supports shared folders, S3, GS, and Azure is coming soon!).
 * Support for Jupyter notebook (see the [trains-jupyter-plugin](https://github.com/allegroai/trains-jupyter-plugin)) and PyCharm remote debugging (see the [trains-pycharm-plugin](https://github.com/allegroai/trains-pycharm-plugin)).

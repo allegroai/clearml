@@ -40,6 +40,8 @@ def main():
         if not parse_input:
             parse_input = def_host
         try:
+            if not parse_input.startswith('http://') and not parse_input.startswith('https://'):
+                parse_input = 'http://'+parse_input
             parsed_host = urlparse(parse_input)
             if parsed_host.scheme not in ('http', 'https'):
                 parsed_host = None
@@ -74,8 +76,18 @@ def main():
         api_host = parsed_host.scheme + "://" + parsed_host.netloc + parsed_host.path
         web_host = parsed_host.scheme + "://" + parsed_host.netloc.replace('api.', 'app.') + parsed_host.path
     else:
-        api_host = parsed_host.scheme + "://" + parsed_host.netloc + parsed_host.path
-        web_host = parsed_host.scheme + "://" + parsed_host.netloc + parsed_host.path
+        api_host = None
+        web_host = None
+        if not parsed_host.port:
+            print('Host port not detected, do you wish to use the default 8008 port n/[y]? ', end='')
+            replace_port = input().lower()
+            if not replace_port or replace_port == 'y' or replace_port == 'yes':
+                api_host = parsed_host.scheme + "://" + parsed_host.netloc + ':8008' + parsed_host.path
+                web_host = parsed_host.scheme + "://" + parsed_host.netloc + ':8080' + parsed_host.path
+        if not api_host:
+            api_host = parsed_host.scheme + "://" + parsed_host.netloc + parsed_host.path
+        if not web_host:
+            web_host = parsed_host.scheme + "://" + parsed_host.netloc + parsed_host.path
 
     print('Host configured to: {}'.format(api_host))
 
@@ -114,10 +126,12 @@ def main():
         with open(str(conf_file), 'wt') as f:
             header = '# TRAINS SDK configuration file\n' \
                      'api {\n' \
-                     '     host: %s\n' \
-                     '     credentials {"access_key": "%s", "secret_key": "%s"}\n' \
+                     '    # Notice: \'host\' is the api server (default port 8008), not the web server.\n' \
+                     '    host: %s\n' \
+                     '    # Credentials are generated in the webapp, %s/admin\n' \
+                     '    credentials {"access_key": "%s", "secret_key": "%s"}\n' \
                      '}\n' \
-                     'sdk ' % (api_host, credentials['access_key'], credentials['secret_key'])
+                     'sdk ' % (api_host, web_host, credentials['access_key'], credentials['secret_key'])
             f.write(header)
             f.write(default_sdk)
     except Exception:

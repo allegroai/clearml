@@ -26,7 +26,7 @@ preserving your existing methods and practices. Use it on a daily basis to boost
 or use it to automatically collect your experimentation logs, outputs, and data to one centralized server for provenance.
 
 (See TRAINS live at [https://demoapp.trainsai.io](https://demoapp.trainsai.io))
-![Alt Text](docs/webapp_screenshots.gif)
+![Alt Text](https://github.com/allegroai/trains/blob/master/docs/webapp_screenshots.gif?raw=true)
 
 ## Why Should I Use TRAINS?
 
@@ -181,7 +181,7 @@ TRAINS Metrics page:
 https://demoapp.trainsai.io/projects/76e5e2d45e914f52880621fe64601e85/experiments/241f06ae0f5c4b27b8ce8b64890ce152/output/log
 ```
 
-![Alt Text](docs/results_screenshots.gif)
+![Alt Text](https://github.com/allegroai/trains/blob/master/docs/results_screenshots.gif?raw=true)
 
 For more examples and use cases, see [examples](https://github.com/allegroai/trains/tree/master/examples).
 

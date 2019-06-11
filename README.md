@@ -3,7 +3,7 @@
 
 <p style="font-size:1.2rem; font-weight:700;">"Because it’s a jungle out there"</p>
 
-[![GitHub license](https://img.shields.io/github/license/apache/beam.svg)](https://img.shields.io/pypi/l/trains.svg)
+[![GitHub license](https://img.shields.io/github/license/allegroai/trains.svg)](https://img.shields.io/github/license/allegroai/trains.svg)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/trains.svg)](https://img.shields.io/pypi/pyversions/trains.svg)
 [![PyPI version shields.io](https://img.shields.io/pypi/v/trains.svg)](https://img.shields.io/pypi/v/trains.svg)
 [![PyPI status](https://img.shields.io/pypi/status/trains.svg)](https://pypi.python.org/pypi/trains/)

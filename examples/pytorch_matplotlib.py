@@ -59,7 +59,6 @@ import torchvision.models as models
 import copy
 from trains import Task
 
-
 task = Task.init(project_name='examples', task_name='pytorch with matplotlib example', task_type=Task.TaskTypes.testing)
 
 
@@ -96,6 +95,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 #     with name ``images`` in your current working directory.
 
 # desired size of the output image
+
+STYLE_IMAGE_PATH = "./samples/picasso.jpg"
+CONTENT_IMAGE_PATH = "./samples/dancing.jpg"
+
 imsize = 512 if torch.cuda.is_available() else 128  # use small size if no gpu
 
 loader = transforms.Compose([
@@ -110,8 +113,8 @@ def image_loader(image_name):
     return image.to(device, torch.float)
 
 
-style_img = image_loader("./samples/picasso.jpg")
-content_img = image_loader("./samples/dancing.jpg")
+style_img = image_loader(STYLE_IMAGE_PATH)
+content_img = image_loader(CONTENT_IMAGE_PATH)
 
 assert style_img.size() == content_img.size(), \
     "we need to import style and content images of the same size"

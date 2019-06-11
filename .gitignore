@@ -10,3 +10,8 @@ __pycache__
 build/
 dist/
 *.egg-info
+
+# example data
+data/
+examples/runs/
+examples/*_data

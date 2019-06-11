@@ -639,6 +639,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         parsed = urlparse(app_host)
         if parsed.port:
             parsed = parsed._replace(netloc=parsed.netloc.replace(':%d' % parsed.port, ':8081'))
+        elif parsed.netloc.startswith('demoapp.'):
+            parsed = parsed._replace(netloc=parsed.netloc.replace('demoapp.', 'demofiles.'))
         else:
             parsed = parsed._replace(netloc=parsed.netloc+':8081')
         return urlunparse(parsed)

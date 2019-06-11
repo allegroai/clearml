@@ -814,6 +814,7 @@ class Task(_Task):
             self._dev_worker.unregister()
 
         # NOTICE! This will end the entire execution tree!
+        self.__exit_hook.remote_user_aborted = True
         self._kill_all_child_processes(send_kill=False)
         time.sleep(2.0)
         self._kill_all_child_processes(send_kill=True)
@@ -908,12 +909,13 @@ class Task(_Task):
                     self._dev_worker.unregister()
                 # check if we crashed, ot the signal is not interrupt (manual break)
                 if self.__exit_hook:
-                    if self.__exit_hook.exception is not None or self.__exit_hook.signal not in (None, 2):
+                    if self.__exit_hook.exception is not None or \
+                            (not self.__exit_hook.remote_user_aborted and self.__exit_hook.signal not in (None, 2)):
                         self.mark_failed(status_reason='Exception')
                         wait_for_uploads = False
                     else:
                         self.stopped()
-                        wait_for_uploads = (self.__exit_hook.signal is None)
+                        wait_for_uploads = (self.__exit_hook.remote_user_aborted or self.__exit_hook.signal is None)
                 else:
                     self.stopped()
 
@@ -941,6 +943,7 @@ class Task(_Task):
         class ExitHooks(object):
             _orig_exit = None
             _orig_exc_handler = None
+            remote_user_aborted = False
 
             def __init__(self, callback):
                 self.exit_code = None

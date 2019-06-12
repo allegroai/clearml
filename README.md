@@ -1,5 +1,5 @@
 # TRAINS
-## Magic Version Control & Experiment Manager for AI
+## Automagical Version Control & Experiment Manager for AI
 
 <p style="font-size:1.2rem; font-weight:700;">"Because it’s a jungle out there"</p>
 

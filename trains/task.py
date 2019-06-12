@@ -3,7 +3,7 @@ import os
 import sys
 import threading
 import time
-import warnings
+import signal
 from argparse import ArgumentParser
 from collections import OrderedDict, Callable
 
@@ -951,10 +951,15 @@ class Task(_Task):
                 self.signal = None
                 self._exit_callback = callback
                 self._org_handlers = {}
+                self._signal_recursion_protection_flag = False
+                self._except_recursion_protection_flag = False
 
             def update_callback(self, callback):
-                if self._exit_callback:
-                    atexit.unregister(self._exit_callback)
+                if self._exit_callback and not six.PY2:
+                    try:
+                        atexit.unregister(self._exit_callback)
+                    except Exception:
+                        pass
                 self._exit_callback = callback
                 atexit.register(self._exit_callback)
 
@@ -966,7 +971,6 @@ class Task(_Task):
                     self._orig_exc_handler = sys.excepthook
                 sys.excepthook = self.exc_handler
                 atexit.register(self._exit_callback)
-                import signal
                 catch_signals = [signal.SIGINT, signal.SIGTERM, signal.SIGSEGV, signal.SIGABRT,
                                  signal.SIGILL, signal.SIGFPE, signal.SIGQUIT]
                 for s in catch_signals:
@@ -982,16 +986,52 @@ class Task(_Task):
                 self._orig_exit(code)
 
             def exc_handler(self, exctype, value, traceback, *args, **kwargs):
+                if self._except_recursion_protection_flag:
+                    return sys.__excepthook__(exctype, value, traceback, *args, **kwargs)
+
+                self._except_recursion_protection_flag = True
                 self.exception = value
-                return self._orig_exc_handler(exctype, value, traceback, *args, **kwargs)
+                if self._orig_exc_handler:
+                    ret = self._orig_exc_handler(exctype, value, traceback, *args, **kwargs)
+                else:
+                    ret = sys.__excepthook__(exctype, value, traceback, *args, **kwargs)
+                self._except_recursion_protection_flag = False
+
+                return ret
 
             def signal_handler(self, sig, frame):
+                if self._signal_recursion_protection_flag:
+                    # call original
+                    org_handler = self._org_handlers.get(sig)
+                    if isinstance(org_handler, Callable):
+                        org_handler = org_handler(sig, frame)
+                    return org_handler
+
+                self._signal_recursion_protection_flag = True
+                # call exit callback
                 self.signal = sig
                 if self._exit_callback:
-                    self._exit_callback()
-                org_handler = self._org_handlers[sig]
+                    # noinspection PyBroadException
+                    try:
+                        self._exit_callback()
+                    except Exception:
+                        pass
+                # call original signal handler
+                org_handler = self._org_handlers.get(sig)
                 if isinstance(org_handler, Callable):
-                    return org_handler(sig, frame)
+                    # noinspection PyBroadException
+                    try:
+                        org_handler = org_handler(sig, frame)
+                    except Exception:
+                        org_handler = signal.SIG_DFL
+                # remove stdout logger, just in case
+                # noinspection PyBroadException
+                try:
+                    Logger._remove_std_logger()
+                except Exception:
+                    pass
+                self._signal_recursion_protection_flag = False
+                # return handler result
                 return org_handler
 
         if cls.__exit_hook is None:

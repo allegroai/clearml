@@ -11,7 +11,7 @@ from .debugging.log import LoggerRoot
 from .backend_interface.task.development.worker import DevWorker
 from .backend_interface.task.log import TaskHandler
 from .storage import StorageHelper
-from .utilities.plotly import SeriesInfo
+from .utilities.plotly_reporter import SeriesInfo
 from .backend_interface import TaskStatusEnum
 from .backend_interface.task import Task as _Task
 from .config import running_remotely, get_cache_dir
@@ -82,7 +82,7 @@ class Logger(object):
             # noinspection PyBroadException
             try:
                 Logger._stdout_original_write = sys.stdout.write
-                # this will only work in python 3, but we still better guard it with try/catch
+                # this will only work in python 3, guard it with try/catch
                 sys.stdout._original_write = sys.stdout.write
                 sys.stdout.write = stdout__patched__write__
                 sys.stderr._original_write = sys.stderr.write
@@ -549,7 +549,8 @@ class Logger(object):
         :param period: The period to flush the logger in seconds. If None or 0,
             There will be no periodic flush.
         """
-        if self._task.is_main_task() and DevWorker.report_stdout and DevWorker.report_period and not running_remotely():
+        if self._task.is_main_task() and DevWorker.report_stdout and DevWorker.report_period and \
+                not running_remotely() and period is not None:
             period = min(period or DevWorker.report_period, DevWorker.report_period)
 
         if not period:
@@ -561,6 +562,19 @@ class Logger(object):
         else:
             self._flusher = _Flusher(self, period)
             self._flusher.start()
+
+    @classmethod
+    def _remove_std_logger(self):
+        if isinstance(sys.stdout, PrintPatchLogger):
+            try:
+                sys.stdout.connect(None)
+            except Exception:
+                pass
+        if isinstance(sys.stderr, PrintPatchLogger):
+            try:
+                sys.stderr.connect(None)
+            except Exception:
+                pass
 
     def _start_task_if_needed(self):
         if self._task._status == TaskStatusEnum.created:
@@ -634,6 +648,8 @@ class PrintPatchLogger(object):
                 self._terminal.write(message)
 
     def connect(self, logger):
+        if self._log:
+            self._log._flush_stdout_handler()
         self._log = logger
 
     def __getattr__(self, attr):

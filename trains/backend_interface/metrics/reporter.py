@@ -7,7 +7,7 @@ import six
 from ..base import InterfaceBase
 from ..setupuploadmixin import SetupUploadMixin
 from ...utilities.async_manager import AsyncManagerMixin
-from ...utilities.plotly import create_2d_histogram_plot, create_value_matrix, create_3d_surface, \
+from ...utilities.plotly_reporter import create_2d_histogram_plot, create_value_matrix, create_3d_surface, \
     create_2d_scatter_series, create_3d_scatter_series, create_line_plot, plotly_scatter3d_layout_dict
 from ...utilities.py3_interop import AbstractContextManager
 from .events import ScalarEvent, VectorEvent, ImageEvent, PlotEvent, ImageEventNoUpload

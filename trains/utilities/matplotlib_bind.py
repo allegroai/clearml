@@ -2,8 +2,10 @@ import sys
 
 import cv2
 import numpy as np
+import six
 from six import BytesIO
 
+from ..debugging.log import LoggerRoot
 from ..config import running_remotely
 
 
@@ -36,6 +38,9 @@ class PatchedMatplotlib:
             # we support matplotlib version 2.0.0 and above
             import matplotlib
             if int(matplotlib.__version__.split('.')[0]) < 2:
+                LoggerRoot.get_base_logger().warning(
+                    'matplotlib binding supports version 2.0 and above, found version {}'.format(
+                        matplotlib.__version__))
                 return False
 
             if running_remotely():
@@ -44,10 +49,13 @@ class PatchedMatplotlib:
                 import matplotlib.pyplot
                 sys.modules['matplotlib'].pyplot.switch_backend('agg')
             import matplotlib.pyplot as plt
-            import plotly.tools as tls
             from matplotlib import _pylab_helpers
-            PatchedMatplotlib._patched_original_plot = sys.modules['matplotlib'].pyplot.show
-            PatchedMatplotlib._patched_original_imshow = sys.modules['matplotlib'].pyplot.imshow
+            if six.PY2:
+                PatchedMatplotlib._patched_original_plot = staticmethod(sys.modules['matplotlib'].pyplot.show)
+                PatchedMatplotlib._patched_original_imshow = staticmethod(sys.modules['matplotlib'].pyplot.imshow)
+            else:
+                PatchedMatplotlib._patched_original_plot = sys.modules['matplotlib'].pyplot.show
+                PatchedMatplotlib._patched_original_imshow = sys.modules['matplotlib'].pyplot.imshow
             sys.modules['matplotlib'].pyplot.show = PatchedMatplotlib.patched_show
             # sys.modules['matplotlib'].pyplot.imshow = PatchedMatplotlib.patched_imshow
             # patch plotly so we know it failed us.
@@ -103,7 +111,6 @@ class PatchedMatplotlib:
         # noinspection PyBroadException
         try:
             import matplotlib.pyplot as plt
-            import plotly.tools as tls
             from plotly import optional_imports
             from matplotlib import _pylab_helpers
             # store the figure object we just created (if it is not already there)
@@ -136,7 +143,8 @@ class PatchedMatplotlib:
                 buffer_ = BytesIO()
                 plt.savefig(buffer_, format="png", bbox_inches='tight', pad_inches=0)
                 buffer_.seek(0)
-                image = cv2.imdecode(np.frombuffer(buffer_.getbuffer(), dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+                buffer = buffer_.getbuffer() if not six.PY2 else buffer_.getvalue()
+                image = cv2.imdecode(np.frombuffer(buffer, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
 
             # check if we need to restore the active object
             if set_active and not _pylab_helpers.Gcf.get_active():

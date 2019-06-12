@@ -4,7 +4,7 @@ import threading
 import weakref
 from collections import defaultdict
 from logging import ERROR, WARNING, getLogger
-from pathlib import Path
+from pathlib2 import Path
 
 import cv2
 import numpy as np
@@ -99,10 +99,11 @@ class PostImportHookPatching(object):
 
 def _patched_call(original_fn, patched_fn):
     def _inner_patch(*args, **kwargs):
-        ident = threading.get_ident()
+        ident = threading._get_ident() if six.PY2 else threading.get_ident()
         if ident in _recursion_guard:
             return original_fn(*args, **kwargs)
         _recursion_guard[ident] = 1
+        ret = None
         try:
             ret = patched_fn(original_fn, *args, **kwargs)
         except Exception as ex:

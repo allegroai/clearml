@@ -39,7 +39,7 @@ class TensorBoardImage(TensorBoard):
                                 encoded_image_string=image_string)
 
     def on_epoch_end(self, epoch, logs={}):
-        super().on_epoch_end(epoch, logs)
+        super(TensorBoardImage, self).on_epoch_end(epoch, logs)
         import tensorflow as tf
         images = self.validation_data[0]  # 0 - data; 1 - labels
         img = (255 * images[0].reshape(28, 28)).astype('uint8')

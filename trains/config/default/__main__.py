@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from pyhocon import ConfigFactory
 from pathlib2 import Path
 from six.moves.urllib.parse import urlparse, urlunparse

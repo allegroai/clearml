@@ -1,4 +1,7 @@
 import json
+
+import six
+
 from . import get_cache_dir
 from .defs import SESSION_CACHE_FILE
 
@@ -12,7 +15,8 @@ class SessionCache(object):
     @classmethod
     def _load_cache(cls):
         try:
-            with (get_cache_dir() / SESSION_CACHE_FILE).open("rt") as fp:
+            flag = 'rb' if six.PY2 else 'rt'
+            with (get_cache_dir() / SESSION_CACHE_FILE).open(flag) as fp:
                 return json.load(fp)
         except Exception:
             return {}
@@ -21,7 +25,8 @@ class SessionCache(object):
     def _store_cache(cls, cache):
         try:
             get_cache_dir().mkdir(parents=True, exist_ok=True)
-            with (get_cache_dir() / SESSION_CACHE_FILE).open("wt") as fp:
+            flag = 'wb' if six.PY2 else 'wt'
+            with (get_cache_dir() / SESSION_CACHE_FILE).open(flag) as fp:
                 json.dump(cache, fp)
         except Exception:
             pass

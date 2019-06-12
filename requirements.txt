@@ -29,3 +29,4 @@ urllib3>=1.22
 watchdog>=0.8.0
 pyjwt>=1.6.4
 plotly>=3.9.0
+typing>=3.6.4

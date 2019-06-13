@@ -1,8 +1,9 @@
 from __future__ import print_function
 
+import six
 from pyhocon import ConfigFactory
 from pathlib2 import Path
-from six.moves.urllib.parse import urlparse, urlunparse
+from six.moves.urllib.parse import urlparse
 
 from trains.backend_api.session.defs import ENV_HOST
 from trains.backend_config.defs import LOCAL_CONFIG_FILES
@@ -10,7 +11,8 @@ from trains.config import config_obj
 
 
 description = """
-Please create new key/secrete credentials using {}/admin
+Please create new credentials using the web app: {}/admin
+In the Admin page, press "Create new credentials", then press "Copy to clipboard"
 
 Copy/Paste credentials here: """
 
@@ -21,13 +23,16 @@ except Exception:
 
 host_description = """
 Editing configuration file: {CONFIG_FILE}
-Enter your trains-server host [{HOST}]: """.format(
+Enter the url of the trains-server's api service, example: http://localhost:8008 or default demo server [{HOST}]: """.format(
     CONFIG_FILE=LOCAL_CONFIG_FILES[0],
     HOST=def_host,
 )
 
 
 def main():
+    if six.PY2:
+        input = raw_input
+
     print('TRAINS SDK setup process')
     conf_file = Path(LOCAL_CONFIG_FILES[0]).absolute()
     if conf_file.exists() and conf_file.is_file() and conf_file.stat().st_size > 0:

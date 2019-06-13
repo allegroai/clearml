@@ -1,6 +1,6 @@
 from __future__ import print_function
 
-import six
+from six.moves import input
 from pyhocon import ConfigFactory
 from pathlib2 import Path
 from six.moves.urllib.parse import urlparse
@@ -30,9 +30,6 @@ Enter the url of the trains-server's api service, example: http://localhost:8008
 
 
 def main():
-    if six.PY2:
-        input = raw_input
-
     print('TRAINS SDK setup process')
     conf_file = Path(LOCAL_CONFIG_FILES[0]).absolute()
     if conf_file.exists() and conf_file.is_file() and conf_file.stat().st_size > 0:
@@ -46,6 +43,7 @@ def main():
         parse_input = input()
         if not parse_input:
             parse_input = def_host
+        # noinspection PyBroadException
         try:
             if not parse_input.startswith('http://') and not parse_input.startswith('https://'):
                 parse_input = 'http://'+parse_input
@@ -102,6 +100,7 @@ def main():
     parse_input = input()
     # check if these are valid credentials
     credentials = None
+    # noinspection PyBroadException
     try:
         parsed = ConfigFactory.parse_string(parse_input)
         if parsed:
@@ -120,7 +119,7 @@ def main():
 
     print('Detected credentials key=\"{}\" secret=\"{}\"'.format(credentials['access_key'],
                                                                  credentials['secret_key'], ))
-
+    # noinspection PyBroadException
     try:
         default_sdk_conf = Path(__file__).parent.absolute() / 'sdk.conf'
         with open(str(default_sdk_conf), 'rt') as f:
@@ -128,7 +127,7 @@ def main():
     except Exception:
         print('Error! Could not read default configuration file')
         return
-
+    # noinspection PyBroadException
     try:
         with open(str(conf_file), 'wt') as f:
             header = '# TRAINS SDK configuration file\n' \

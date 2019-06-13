@@ -91,8 +91,7 @@ class Session(TokenManager):
         self._logger = logger
 
         self.__access_key = api_key or ENV_ACCESS_KEY.get(
-            default=(self.config.get("api.credentials.access_key", None) or
-                     "EGRTCO8JMSIGI6S39GTP43NFWXDQOW")
+            default=self.config.get("api.credentials.access_key", None)
         )
         if not self.access_key:
             raise ValueError(
@@ -100,8 +99,7 @@ class Session(TokenManager):
             )
 
         self.__secret_key = secret_key or ENV_SECRET_KEY.get(
-            default=(self.config.get("api.credentials.secret_key", None) or
-                     "x!XTov_G-#vspE*Y(h$Anm&DIc5Ou-F)jsl$PdOyj5wG1&E!Z8")
+            default=self.config.get("api.credentials.secret_key", None)
         )
         if not self.secret_key:
             raise ValueError(

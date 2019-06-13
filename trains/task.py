@@ -925,13 +925,13 @@ class Task(_Task):
                 self.log.info('Waiting to finish uploads')
                 print_done_waiting = True
             # from here, do not send log in background thread
-            self._logger.set_flush_period(None)
             if wait_for_uploads:
                 self.flush(wait_for_uploads=True)
                 if print_done_waiting:
                     self.log.info('Finished uploading')
             else:
                 self._logger._flush_stdout_handler()
+            self._logger.set_flush_period(None)
             # this is so in theory we can close a main task and start a new one
             Task.__main_task = None
         except Exception:

@@ -1,5 +1,5 @@
 # TRAINS
-## Automagical Version Control & Experiment Manager for AI
+## Auto-Magical Experiment Manager & Version Control for AI
 
 <p style="font-size:1.2rem; font-weight:700;">"Because it’s a jungle out there"</p>
 
@@ -8,97 +8,91 @@
 [![PyPI version shields.io](https://img.shields.io/pypi/v/trains.svg)](https://img.shields.io/pypi/v/trains.svg)
 [![PyPI status](https://img.shields.io/pypi/status/trains.svg)](https://pypi.python.org/pypi/trains/)
 
-Behind every great scientist are great repeatable methods.  Sadly, this is easier said than done.
+Behind every great scientist are great repeatable methods. Sadly, this is easier said than done.
 
-When talented scientists, engineers, or developers work on their own, a mess may be unavoidable. Yet, it may still be
-manageable. However, with time and more people joining your project,
-managing the clutter takes its toll on productivity.
-As your project moves toward production,
-visibility and provenance for scaling your deep-learning efforts are a must, but both
-suffer as your team grows.
+When talented scientists, engineers, or developers work on their own, a mess may be unavoidable. 
+Yet, it may still be manageable. However, with time and more people joining your project, managing the clutter takes 
+its toll on productivity. As your project moves toward production, visibility and provenance for scaling your 
+deep-learning efforts are a must.
 
-For teams or entire companies, TRAINS logs everything in one central server and takes on the responsibilities for visibility and provenance
-so productivity does not suffer.
-TRAINS records and manages various deep learning research workloads and does so with unbelievably small integration costs.
+For teams or entire companies, TRAINS logs everything in one central server and takes on the responsibilities for 
+visibility and provenance so productivity does not suffer. TRAINS records and manages various deep learning 
+research workloads and does so with practically zero integration costs.
 
-TRAINS is an auto-magical experiment manager that you can use productively with minimal integration and while
-preserving your existing methods and practices. Use it on a daily basis to boost collaboration and visibility,
-or use it to automatically collect your experimentation logs, outputs, and data to one centralized server for provenance.
+We designed TRAINS specifically to require effortless integration so that teams can preserve their existing methods 
+and practices. Use it on a daily basis to boost collaboration and visibility, or use it to automatically collect 
+your experimentation logs, outputs, and data to one centralized server.
 
 (See TRAINS live at [https://demoapp.trainsai.io](https://demoapp.trainsai.io))
 ![Alt Text](https://github.com/allegroai/trains/blob/master/docs/webapp_screenshots.gif?raw=true)
 
-## Why Should I Use TRAINS?
-
-TRAINS is our solution to a problem we share with countless other researchers and developers in the
-machine learning/deep learning universe.
-Training production-grade deep learning models is a glorious but messy process.
-We built TRAINS to solve that problem. TRAINS tracks and controls the process by associating code version control, research projects, performance metrics, and model provenance.
-TRAINS removes the mess but leaves the glory.
-
-
-Choose TRAINS because...
-
-* Sharing experiments with the team is difficult and gets even more difficult further up the chain.
-* Like all of us, you lost a model and are left with no repeatable process.
-* You setup up a central location for TensorBoard and it exploded with a gazillion experiments.
-* You accidentally threw away important results while trying to manually clean up the clutter.
-* You do not associate the train code commit with the model or TensorBoard logs.
-* You are storing model parameters in the checkpoint filename.
-* You cannot find any other tool for comparing results, hyper-parameters and code commits.
-* TRAINS requires **only two-lines of code** for full integration.
-* TRAINS is **free**.
 
 ## Main Features
 
-* Seamless integration with leading frameworks, including: PyTorch, TensorFlow, Keras, and others coming soon!
-* Track everything with two lines of code.
-* Model logging that automatically associates models with code and the parameters used to train them, including initial weights logging.
-* Multi-user process tracking and collaboration.
-* **Experiment comparison** including code commits, initial weights, hyper-parameters and metric results.
-* Management capabilities including project management, filter-by-metric.
-* Centralized server for aggregating logs, records, and general bookkeeping.
-* Automatically create a copy of models on centralized storage (TRAINS supports shared folders, S3, GS, and Azure is coming soon!).
-* Support for Jupyter notebook (see the [trains-jupyter-plugin](https://github.com/allegroai/trains-jupyter-plugin)) and PyCharm remote debugging (see the [trains-pycharm-plugin](https://github.com/allegroai/trains-pycharm-plugin)).
-* A field-tested, feature-rich SDK for your on-the-fly customization needs.
+TRAINS is our solution to a problem we shared with countless other researchers and developers in the machine 
+learning/deep learning universe: Training production-grade deep learning models is a glorious but messy process. 
+TRAINS tracks and controls the process by associating code version control, research projects, 
+performance metrics, and model provenance. 
+
+* Start today!
+    * TRAINS is free and open-source
+    * TRAINS requires only two lines of code for full integration
+* Use it with your favorite tools
+    * Seamless integration with leading frameworks, including: *PyTorch*, *TensorFlow*, *Keras*, and others coming soon
+    * Support for *Jupyter Notebook* (see [trains-jupyter-plugin](https://github.com/allegroai/trains-jupyter-plugin)) 
+    and *PyCharm* remote debugging (see [trains-pycharm-plugin](https://github.com/allegroai/trains-pycharm-plugin))
+* Log everything. Experiments become truly repeatable
+    * Model logging with **automatic association** of **model + code + parameters + initial weights**
+    * Automatically create a copy of models on centralized storage (supports shared folders, S3, GS, and Azure is coming soon!)
+* Share and collaborate
+    * Multi-user process tracking and collaboration
+    * Centralized server for aggregating logs, records, and general bookkeeping
+* Increase productivity
+    * Comprehensive **experiment comparison**: code commits, initial weights, hyper-parameters and metric results
+* Order & Organization
+    * Manage and organize your experiments in projects
+    * Query capabilities; sort and filter experiments by results metrics
+* And more
+    * Stop an experiment on a remote machine using the web-app
+    * A field-tested, feature-rich SDK for your on-the-fly customization needs
 
 
-## TRAINS Magically Logs
+## TRAINS Automatically Logs
 
-TRAINS magically logs the following:
-
-* Git repository, branch and commit id
-* Hyper-parameters, including:
+* Git repository, branch, commit id and entry point (git diff coming soon)
+    * Hyper-parameters, including
     * ArgParser for command line parameters with currently used values
     * Tensorflow Defines (absl-py)
-    * Manually passed parameter dictionary
+* Explicit parameters dictionary
 * Initial model weights file
 * Model snapshots
 * stdout and stderr
-* TensorBoard scalars, metrics, histograms, images, and audio coming soon (also tensorboardX)
+* Tensorboard/TensorboardX scalars, metrics, histograms, images (with audio coming soon)
 * Matplotlib
+
 
 ## See for Yourself
 
-We have a demo server up and running [https://demoapp.trainsai.io](https://demoapp.trainsai.io) (it resets every 24 hours and all of the data is deleted).
+We have a demo server up and running at https://demoapp.trainsai.io. You can try out TRAINS and test your code with it. 
+Note that it resets every 24 hours and all of the data is deleted.
 
-You can test your code with it:
+Connect your code with TRAINS:
 
 1. Install TRAINS
 
         pip install trains
 
-1. Add the following to your code:
+1. Add the following lines to your code
 
         from trains import Task
-        Task = Task.init(project_name=”my_projcet”, task_name=”my_task”)
+        task = Task.init(project_name=”my project”, task_name=”my task”)
 
-1. Run your code. When TRAINS connects to the server, a link prints. For example:
+1. Run your code. When TRAINS connects to the server, a link is printed. For example
 
-        TRAINS Metrics page:
+        TRAINS Results page:
         https://demoapp.trainsai.io/projects/76e5e2d45e914f52880621fe64601e85/experiments/241f06ae0f5c4b27b8ce8b64890ce152/output/log
 
-1. Open your link and view the experiment parameters, model and tensorboard metrics.
+1. Open the link and view your experiment parameters, model and tensorboard metrics
 
 
 ## How TRAINS Works
@@ -109,98 +103,65 @@ TRAINS is composed of the following:
 * [Web-App](https://github.com/allegroai/trains-web) (web user interface)
 * Python SDK (auto-magically connects your code, see [Using TRAINS](#using-trains-example))
 
-The following diagram illustrates the interaction of the TRAINS-server and a GPU machine:
+The following diagram illustrates the interaction of the [trains-server](https://github.com/allegroai/trains-server) 
+and a GPU training machine using TRAINS
 
-<pre>
-    TRAINS-server
-    
-    +--------------------------------------------------------------------+
-    |                                                                    |
-    |   Server Docker                   Elastic Docker     Mongo Docker  |
-    |  +-------------------------+     +---------------+  +------------+ |
-    |  |     Pythonic Server     |     |               |  |            | |
-    |  |   +-----------------+   |     | ElasticSearch |  |  MongoDB   | |
-    |  |   |   WEB server    |   |     |               |  |            | |
-    |  |   |   Port 8080     |   |     |               |  |            | |
-    |  |   +--------+--------+   |     |               |  |            | |
-    |  |            |            |     |               |  |            | |
-    |  |   +--------+--------+   |     |               |  |            | |
-    |  |   |   API server    +----------------------------+            | |
-    |  |   |   Port 8008     +---------+               |  |            | |
-    |  |   +-----------------+   |     +-------+-------+  +-----+------+ |
-    |  |                         |             |                |        |
-    |  |   +-----------------+   |         +---+----------------+------+ |
-    |  |   |   File Server   +-------+     |    Host Storage           | |
-    |  |   |   Port 8081     |   |   +-----+                           | |
-    |  |   +-----------------+   |         +---------------------------+ |
-    |  +------------+------------+                                       |
-    +---------------|----------------------------------------------------+
-                    |HTTP
-                    +--------+
-    GPU Machine              |
-    +------------------------|-------------------------------------------+
-    |     +------------------|--------------+                            |
-    |     |  Training        |              |    +---------------------+ |
-    |     |  Code        +---+------------+ |    | TRAINS configuration| |
-    |     |              | TRAINS         | |    | ~/trains.conf       | |
-    |     |              |                +------+                     | |
-    |     |              +----------------+ |    +---------------------+ |
-    |     +---------------------------------+                            |
-    +--------------------------------------------------------------------+
-</pre>
+![Alt Text](https://github.com/allegroai/trains/blob/master/docs/system_diagram.png?raw=true)
+
 
 ## Installing and Configuring TRAINS
 
-1. Install the trains-server docker (see [Installing the TRAINS Server](https://github.com/allegroai/trains-server)).
+1. Install and run trains-server (see [Installing the TRAINS Server](https://github.com/allegroai/trains-server))
 
-1. Install the TRAINS package:
+2. Install TRAINS package
 
     	pip install trains
 
-1. Run the initial configuration wizard to setup the trains-server (ip:port and user credentials):
+3. Run the initial configuration wizard and follow the instructions to setup TRAINS package 
+(http://**_trains-server ip_**:__port__ and user credentials)
 
 	    trains-init
 
-After installing and configuring, your configuration is `~/trains.conf`. View a sample configuration file [here](https://github.com/allegroai/trains/blob/master/docs/trains.conf).
+After installing and configuring, you can access your configuration file at `~/trains.conf`. 
+View a sample configuration file [here](https://github.com/allegroai/trains/blob/master/docs/trains.conf).
 
 ## Using TRAINS
 
-Add these two lines of to your code:
+Add the following two lines to the beginning of your code
 
     from trains import Task
     task = Task.init(project_name, task_name)
 
-* If no project name is provided, then the repository name is used.
-* If no task (experiment) name is provided, then the main filename is used as experiment name
+* If project_name is not provided, the repository name will be used instead
+* If task_name (experiment) is not provided, the current filename will be used instead
 
-Executing your script prints a direct link to the currently running experiment page, for example:
+Executing your script prints a direct link to the experiment results page, for example:
 
 ```bash
-TRAINS Metrics page:
+TRAINS Results page:
 
 https://demoapp.trainsai.io/projects/76e5e2d45e914f52880621fe64601e85/experiments/241f06ae0f5c4b27b8ce8b64890ce152/output/log
 ```
 
 ![Alt Text](https://github.com/allegroai/trains/blob/master/docs/results_screenshots.gif?raw=true)
 
-For more examples and use cases, see [examples](https://github.com/allegroai/trains/tree/master/examples).
+For more examples and use cases, see [examples](https://github.com/allegroai/trains/blob/master/docs/trains_examples.md).
 
 ## Who Supports TRAINS?
 
-The people behind *allegro.ai*.
-We build deep learning pipelines and infrastructure for enterprise companies.
-We built TRAINS to track and control the glorious
-but messy process of training production-grade deep learning models.
-We are committed to vigorously supporting and expanding the capabilities of TRAINS,
-because it is not only our beloved creation, we also use it daily.
+TRAINS is supported by the same team behind *allegro.ai*, 
+where we build deep learning pipelines and infrastructure for enterprise companies.
+
+We built TRAINS to track and control the glorious but messy process of training production-grade deep learning models. 
+We are committed to vigorously supporting and expanding the capabilities of TRAINS. 
 
 ## Why Are We Releasing TRAINS?
 
-We believe TRAINS is ground-breaking. We wish to establish new standards of experiment management in
-machine- and deep-learning.
-Only the greater community can help us do that.
+We believe TRAINS is ground-breaking. We wish to establish new standards of experiment management in 
+deep-learning and ML. Only the greater community can help us do that.
 
-We promise to always be backwardly compatible. If you start working with TRAINS today, even though this code is still in the beta stage, your logs and data will always upgrade with you.
+We promise to always be backwardly compatible. If you start working with TRAINS today, 
+even though this project is currently in the beta stage, your logs and data will always upgrade with you.
 
 ## License
 

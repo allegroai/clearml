@@ -12,7 +12,7 @@ from torch.autograd import Variable
 from tensorboardX import SummaryWriter
 
 from trains import Task
-task = Task.init(project_name='examples', task_name='pytroch with tensorboardX')
+task = Task.init(project_name='examples', task_name='pytorch with tensorboardX')
 
 
 writer = SummaryWriter('runs')

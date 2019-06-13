@@ -7,6 +7,10 @@ You can run these examples and view their results on the TRAINS Web-App.
 
 The examples are described below, including a link for the source code
 and expected results for each run. 
+* For each example, only two lines of TRAINS integration code, were added
+
+        from trains import Task
+        task = Task.init(project_name=”examples”, task_name=”description”)
 
 ## Viewing experiment results
 

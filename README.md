@@ -101,7 +101,7 @@ TRAINS is composed of the following:
 
 * [TRAINS-server](https://github.com/allegroai/trains-server)
 * [Web-App](https://github.com/allegroai/trains-web) (web user interface)
-* Python SDK (auto-magically connects your code, see [Using TRAINS](#using-trains-example))
+* Python SDK (auto-magically connects your code, see [Using TRAINS](#using-trains))
 
 The following diagram illustrates the interaction of the [trains-server](https://github.com/allegroai/trains-server)
 and a GPU training machine using TRAINS
@@ -122,8 +122,9 @@ and a GPU training machine using TRAINS
 
 	    trains-init
 
-After installing and configuring, you can access your configuration file at `~/trains.conf`.
-View a sample configuration file [here](https://github.com/allegroai/trains/blob/master/docs/trains.conf).
+After installing and configuring, you can access your configuration file at `~/trains.conf`
+
+Sample configuration file available [here](https://github.com/allegroai/trains/blob/master/docs/trains.conf).
 
 ## Using TRAINS
 
@@ -143,9 +144,10 @@ TRAINS Results page:
 https://demoapp.trainsai.io/projects/76e5e2d45e914f52880621fe64601e85/experiments/241f06ae0f5c4b27b8ce8b64890ce152/output/log
 ```
 
+*For more examples and use cases*, see [examples](https://github.com/allegroai/trains/blob/master/docs/trains_examples.md).
+
 ![Alt Text](https://github.com/allegroai/trains/blob/master/docs/results_screenshots.gif?raw=true)
 
-For more examples and use cases, see [examples](https://github.com/allegroai/trains/blob/master/docs/trains_examples.md).
 
 ## Who Supports TRAINS?
 

@@ -28,7 +28,7 @@ requirements = (here / 'requirements.txt').read_text().splitlines()
 setup(
     name='trains',
     version=version,
-    description='TRAINS - Magic Version Control & Experiment Manager for AI',
+    description='TRAINS - Auto-Magical Experiment Manager & Version Control for AI',
     long_description=long_description,
     long_description_content_type='text/markdown',
     # The project's main homepage.

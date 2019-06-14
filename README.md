@@ -106,7 +106,10 @@ TRAINS is composed of the following:
 The following diagram illustrates the interaction of the [trains-server](https://github.com/allegroai/trains-server)
 and a GPU training machine using TRAINS
 
+<!---
 ![Alt Text](https://github.com/allegroai/trains/blob/master/docs/system_diagram.png?raw=true)
+-->
+<img src="https://github.com/allegroai/trains/blob/master/docs/system_diagram.png?raw=true" width="50%">
 
 
 ## Installing and Configuring TRAINS

@@ -98,12 +98,12 @@ class S3BucketConfigurations(BaseBucketConfigurations):
     @classmethod
     def from_config(cls, s3_configuration):
         config_list = S3BucketConfig.from_list(
-            s3_configuration.get("credentials", default=None)
+            s3_configuration.get("credentials", [])
         )
 
-        default_key = s3_configuration.get("key", default="")
-        default_secret = s3_configuration.get("secret", default="")
-        default_region = s3_configuration.get("region", default="")
+        default_key = s3_configuration.get("key", "")
+        default_secret = s3_configuration.get("secret", "")
+        default_region = s3_configuration.get("region", "")
 
         default_key = _none_to_empty_string(default_key)
         default_secret = _none_to_empty_string(default_secret)
@@ -235,11 +235,11 @@ class GSBucketConfigurations(BaseBucketConfigurations):
         if gs_configuration is None:
             return cls()
 
-        config_list = gs_configuration.get("credentials", default=list())
+        config_list = gs_configuration.get("credentials", [])
         buckets_configs = [GSBucketConfig(**entry) for entry in config_list]
 
-        default_project = gs_configuration.get("project", default=None)
-        default_credentials = gs_configuration.get("credentials_json", default=None)
+        default_project = gs_configuration.get("project", {})
+        default_credentials = gs_configuration.get("credentials_json", {})
 
         return cls(buckets_configs, default_project, default_credentials)
 

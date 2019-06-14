@@ -157,8 +157,8 @@ class StorageHelper(object):
     _async_upload_threads = set()
 
     # collect all bucket credentials that aren't empty (ignore entries with an empty key or secret)
-    _s3_configurations = S3BucketConfigurations.from_config(config.get('aws.s3'))
-    _gs_configurations = GSBucketConfigurations.from_config(config.get('google.storage', default=None))
+    _s3_configurations = S3BucketConfigurations.from_config(config.get('aws.s3', {}))
+    _gs_configurations = GSBucketConfigurations.from_config(config.get('google.storage', {}))
 
     _path_substitutions = _PathSubstitutionRule.load_list_from_config()
 

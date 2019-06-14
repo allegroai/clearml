@@ -1,40 +1,40 @@
 import atexit
 import os
+import signal
 import sys
 import threading
 import time
-import signal
 from argparse import ArgumentParser
 from collections import OrderedDict, Callable
 
 import psutil
 import six
-from .backend_api.services import tasks, projects
 from six.moves._thread import start_new_thread
 
+from .backend_api.services import tasks, projects
 from .backend_interface import TaskStatusEnum
 from .backend_interface.model import Model as BackendModel
+from .backend_interface.task import Task as _Task
 from .backend_interface.task.args import _Arguments
 from .backend_interface.task.development.stop_signal import TaskStopSignal
 from .backend_interface.task.development.worker import DevWorker
-from .backend_interface.task.repo import pip_freeze, ScriptInfo
+from .backend_interface.task.repo import ScriptInfo
 from .backend_interface.util import get_single_result, exact_match_regex, make_message
 from .config import config, PROC_MASTER_ID_ENV_VAR
-from .debugging.log import LoggerRoot
-from .errors import UsageError
-from .task_parameters import TaskParameters
-from .utilities.args import argparser_parseargs_called, get_argparser_last_args, \
-    argparser_update_currenttask
-from .utilities.matplotlib_bind import PatchedMatplotlib
-from .utilities.seed import make_deterministic
-from .utilities.absl_bind import PatchAbsl
-from .utilities.frameworks import PatchSummaryToEventTransformer, PatchModelCheckPointCallback, \
-    PatchTensorFlowEager, PatchKerasModelIO, PatchTensorflowModelIO, PatchPyTorchModelIO
-from .backend_interface.task import Task as _Task
 from .config import running_remotely, get_remote_task_id
 from .config.cache import SessionCache
+from .debugging.log import LoggerRoot
+from .errors import UsageError
 from .logger import Logger
 from .model import InputModel, OutputModel, ARCHIVED_TAG
+from .task_parameters import TaskParameters
+from .utilities.absl_bind import PatchAbsl
+from .utilities.args import argparser_parseargs_called, get_argparser_last_args, \
+    argparser_update_currenttask
+from .utilities.frameworks import PatchSummaryToEventTransformer, PatchTensorFlowEager, PatchKerasModelIO, \
+    PatchTensorflowModelIO, PatchPyTorchModelIO
+from .utilities.matplotlib_bind import PatchedMatplotlib
+from .utilities.seed import make_deterministic
 
 NotSet = object()
 
@@ -814,7 +814,8 @@ class Task(_Task):
             self._dev_worker.unregister()
 
         # NOTICE! This will end the entire execution tree!
-        self.__exit_hook.remote_user_aborted = True
+        if self.__exit_hook:
+            self.__exit_hook.remote_user_aborted = True
         self._kill_all_child_processes(send_kill=False)
         time.sleep(2.0)
         self._kill_all_child_processes(send_kill=True)
@@ -971,8 +972,12 @@ class Task(_Task):
                     self._orig_exc_handler = sys.excepthook
                 sys.excepthook = self.exc_handler
                 atexit.register(self._exit_callback)
-                catch_signals = [signal.SIGINT, signal.SIGTERM, signal.SIGSEGV, signal.SIGABRT,
-                                 signal.SIGILL, signal.SIGFPE, signal.SIGQUIT]
+                if sys.platform == 'win32':
+                    catch_signals = [signal.SIGINT, signal.SIGTERM, signal.SIGSEGV, signal.SIGABRT,
+                                     signal.SIGILL, signal.SIGFPE]
+                else:
+                    catch_signals = [signal.SIGINT, signal.SIGTERM, signal.SIGSEGV, signal.SIGABRT,
+                                     signal.SIGILL, signal.SIGFPE, signal.SIGQUIT]
                 for s in catch_signals:
                     # noinspection PyBroadException
                     try:

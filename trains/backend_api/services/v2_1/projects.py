@@ -3,14 +3,12 @@ projects service
 
 Provides support for defining Projects containing Tasks, Models and Dataset Versions.
 """
-import six
-import types
 from datetime import datetime
-import enum
 
+import six
 from dateutil.parser import parse as parse_datetime
 
-from ....backend_api.session import Request, BatchRequest, Response, DataModel, NonStrictDataModel, CompoundRequest, schema_property, StringEnum
+from ....backend_api.session import Request, Response, NonStrictDataModel, schema_property, StringEnum
 
 
 class MultiFieldPatternData(NonStrictDataModel):

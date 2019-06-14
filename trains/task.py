@@ -122,7 +122,6 @@ class Task(_Task):
         output_uri=None,
         auto_connect_arg_parser=True,
         auto_connect_frameworks=True,
-        **kwargs
     ):
         """
         Return the Task object for the main execution task (task context).
@@ -186,9 +185,7 @@ class Task(_Task):
         if task_type is None:
             # Backwards compatibility: if called from Task.current_task and task_type
             # was not specified, keep legacy default value of TaskTypes.training
-            __from_current_task = kwargs.pop("__from_current_task", False)
-            if __from_current_task:
-                task_type = cls.TaskTypes.training
+            task_type = cls.TaskTypes.training
 
         try:
             if not running_remotely():
@@ -406,6 +403,8 @@ class Task(_Task):
                 task.id,
             ),
         )
+        # make sure everything is in sync
+        task.reload()
         # make sure we see something in the UI
         threading.Thread(target=LoggerRoot.flush).start()
         return task

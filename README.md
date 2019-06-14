@@ -97,14 +97,13 @@ Connect your code with TRAINS:
 
 ## How TRAINS Works
 
-TRAINS is composed of the following:
+TRAINS is a two part solution:
 
-* [TRAINS-server](https://github.com/allegroai/trains-server)
-* [Web-App](https://github.com/allegroai/trains-web) (web user interface)
-* Python SDK (auto-magically connects your code, see [Using TRAINS](#using-trains))
+1. TRAINS [python package](https://pypi.org/project/trains/) (auto-magically connects your code, see [Using TRAINS](#using-trains))
+2. [TRAINS-server](https://github.com/allegroai/trains-server) for logging, querying, control and UI ([Web-App](https://github.com/allegroai/trains-web))
 
-The following diagram illustrates the interaction of the [trains-server](https://github.com/allegroai/trains-server)
-and a GPU training machine using TRAINS
+The following diagram illustrates the interaction of the [TRAINS-server](https://github.com/allegroai/trains-server)
+and a GPU training machine using the TRAINS python package
 
 <!---
 ![Alt Text](https://github.com/allegroai/trains/blob/master/docs/system_diagram.png?raw=true)

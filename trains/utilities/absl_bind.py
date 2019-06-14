@@ -70,7 +70,8 @@ class PatchAbsl(object):
         # noinspection PyBroadException
         try:
             if running_remotely():
-                param_dict = cls._task._arguments.copy_to_dict({}, prefix=_Arguments._prefix_tf_defines)
+                param_dict = dict((k, FLAGS[k].value) for k in FLAGS)
+                param_dict = cls._task._arguments.copy_to_dict(param_dict, prefix=_Arguments._prefix_tf_defines)
                 for k, v in param_dict.items():
                     # noinspection PyBroadException
                     try:

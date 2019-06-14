@@ -268,7 +268,8 @@ class _Arguments(object):
             v_type = type(v)
             # assume more general purpose type int -> float
             if v_type == int:
-                v_type = float
+                if int(v) != float(v):
+                    v_type = float
             elif v_type == bool:
                 # cast based on string or int
                 try:

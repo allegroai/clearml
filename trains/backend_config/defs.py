@@ -17,8 +17,8 @@ ENV_CONFIG_PATHS = [
 
 
 LOCAL_CONFIG_PATHS = [
-    '/etc/opt/trains',               # used by servers for docker-generated configuration
-    expanduser('~/.trains/config'),
+    # '/etc/opt/trains',               # used by servers for docker-generated configuration
+    # expanduser('~/.trains/config'),
 ]
 """ Local config paths, not related to environment """
 

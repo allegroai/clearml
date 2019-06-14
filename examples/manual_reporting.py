@@ -43,9 +43,9 @@ logger.report_scatter3d("example_scatter_3d", "series_xyz", iteration=1, scatter
 
 # report image
 m = np.eye(256, 256, dtype=np.uint8)*255
-logger.report_image_and_upload("fail cases", "image uint", iteration=1, matrix=m)
+logger.report_image_and_upload("test case", "image uint", iteration=1, matrix=m)
 m = np.eye(256, 256, dtype=np.float)
-logger.report_image_and_upload("fail cases", "image float", iteration=1, matrix=m)
+logger.report_image_and_upload("test case", "image float", iteration=1, matrix=m)
 
 # flush reports (otherwise it will be flushed in the background, every couple of seconds)
 logger.flush()

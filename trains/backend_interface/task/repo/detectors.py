@@ -76,7 +76,9 @@ class Detector(object):
             return get_command_output(command, path)
 
         except (CalledProcessError, UnicodeDecodeError) as ex:
-            _logger.warning(
+            _logger.warning("Can't get {} information for {} repo in {}".format(name, self.type_name, path))
+            # full details only in debug
+            _logger.debug(
                 "Can't get {} information for {} repo in {}: {}".format(
                     name, self.type_name, path, str(ex)
                 )

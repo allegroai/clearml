@@ -1,8 +1,15 @@
 import base64
 from distutils.util import strtobool
-from typing import Union, Optional, Text, Any, TypeVar, Callable, Tuple
+from typing import Union, Optional, Any, TypeVar, Callable, Tuple
 
 import six
+
+try:
+    from typing import Text
+except ImportError:
+    # windows conda-less hack
+    Text = Any
+
 
 ConverterType = TypeVar("ConverterType", bound=Callable[[Any], Any])
 

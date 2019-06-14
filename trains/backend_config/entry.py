@@ -1,9 +1,16 @@
 import abc
-from typing import Optional, Any, Tuple, Text, Callable, Dict
+from typing import Optional, Any, Tuple, Callable, Dict
 
 import six
 
 from .converters import any_to_bool
+
+try:
+    from typing import Text
+except ImportError:
+    # windows conda-less hack
+    Text = Any
+
 
 NotSet = object()
 

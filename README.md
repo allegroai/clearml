@@ -43,7 +43,8 @@ performance metrics, and model provenance.
     and *PyCharm* remote debugging (see [trains-pycharm-plugin](https://github.com/allegroai/trains-pycharm-plugin))
 * Log everything. Experiments become truly repeatable
     * Model logging with **automatic association** of **model + code + parameters + initial weights**
-    * Automatically create a copy of models on centralized storage (supports shared folders, S3, GS, and Azure is coming soon!)
+    * Automatically create a copy of models on centralized storage 
+    ([supports shared folders, S3, GS,](https://github.com/allegroai/trains/blob/master/docs/faq.md#i-read-there-is-a-feature-for-centralized-model-storage-how-do-i-use-it-) and Azure is coming soon!)
 * Share and collaborate
     * Multi-user process tracking and collaboration
     * Centralized server for aggregating logs, records, and general bookkeeping

@@ -27,11 +27,15 @@ class _Arguments(object):
 
     class _ProxyDictReadOnly(dict):
         """ Dictionary wrapper that prevents modifications to the dictionary """
-        def __init__(self, *args, **kwargs):
+        def __init__(self, arguments, *args, **kwargs):
             super(_Arguments._ProxyDictReadOnly, self).__init__(*args, **kwargs)
+            self._arguments = arguments
 
         def __setitem__(self, key, value):
-            pass
+            if self._arguments:
+                param_dict = self._arguments.copy_to_dict({key: value})
+                value = param_dict.get(key, value)
+            super(_Arguments._ProxyDictReadOnly, self).__setitem__(key, value)
 
     def __init__(self, task):
         super(_Arguments, self).__init__()
@@ -219,13 +223,16 @@ class _Arguments(object):
                         if PY2 and not current_action.nargs:
                             current_action.nargs = '?'
                     else:
-                        parent_parser.add_argument(
-                            '--%s' % k,
-                            default=v,
-                            type=type(v),
-                            required=False,
-                            help='Task parameter %s (default %s)' % (k, v),
-                        )
+                        # do not add parameters that do not exist in argparser, they might be the dict
+                        # # add new parameters to arg parser
+                        # parent_parser.add_argument(
+                        #     '--%s' % k,
+                        #     default=v,
+                        #     type=type(v),
+                        #     required=False,
+                        #     help='Task parameter %s (default %s)' % (k, v),
+                        # )
+                        pass
                 except ArgumentError:
                     pass
                 except Exception:
@@ -305,11 +312,11 @@ class _Arguments(object):
                 self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
                                        (str(k), str(param), str(k), str(v)))
                 continue
-        # add missing parameters  to dictionary
-        for k, v in parameters.items():
-            if k not in dictionary:
-                dictionary[k] = v
+        # add missing parameters to dictionary
+        # for k, v in parameters.items():
+        #     if k not in dictionary:
+        #         dictionary[k] = v
 
         if not isinstance(dictionary, self._ProxyDictReadOnly):
-            return self._ProxyDictReadOnly(**dictionary)
+            return self._ProxyDictReadOnly(self, **dictionary)
         return dictionary

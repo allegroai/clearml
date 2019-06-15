@@ -33,6 +33,12 @@ parameters = {
 }
 parameters = task.connect(parameters)
 
+# adding new parameter after connect (will be logged as well)
+parameters['new_param'] = 'this is new'
+
+# changing the value of a parameter (new value will be stored instead of previous one)
+parameters['float'] = '9.9'
+
 
 def main(_):
     print('Running under Python {0[0]}.{0[1]}.{0[2]}'.format(sys.version_info), file=sys.stderr)

@@ -22,14 +22,14 @@ class ScriptInfo(object):
 
     @classmethod
     def _get_jupyter_notebook_filename(cls):
-        if not sys.argv[0].endswith('/ipykernel_launcher.py') or len(sys.argv) < 3 or not sys.argv[2].endswith('.json'):
+        if not sys.argv[0].endswith(os.path.sep+'ipykernel_launcher.py') or len(sys.argv) < 3 or not sys.argv[2].endswith('.json'):
             return None
 
         # we can safely assume that we can import the notebook package here
         try:
             from notebook.notebookapp import list_running_servers
             import requests
-            current_kernel = sys.argv[2].split('/')[-1].replace('kernel-', '').replace('.json', '')
+            current_kernel = sys.argv[2].split(os.path.sep)[-1].replace('kernel-', '').replace('.json', '')
             server_info = next(list_running_servers())
             r = requests.get(
                 url=server_info['url'] + 'api/sessions',
@@ -44,7 +44,7 @@ class ScriptInfo(object):
                     break
 
             notebook_path = cur_notebook['notebook']['path']
-            entry_point_filename = notebook_path.split('/')[-1]
+            entry_point_filename = notebook_path.split(os.path.sep)[-1]
 
             # now we should try to find the actual file
             entry_point = (Path.cwd() / entry_point_filename).absolute()

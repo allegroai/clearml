@@ -75,7 +75,7 @@ class Logger(object):
         self._report_worker = None
         self._task_handler = None
 
-        if DevWorker.report_stdout and not PrintPatchLogger.patched:
+        if DevWorker.report_stdout and not PrintPatchLogger.patched and not running_remotely():
             Logger._stdout_proxy = PrintPatchLogger(sys.stdout, self, level=logging.INFO)
             Logger._stderr_proxy = PrintPatchLogger(sys.stderr, self, level=logging.ERROR)
             self._task_handler = TaskHandler(self._task.session, self._task.id, capacity=100)

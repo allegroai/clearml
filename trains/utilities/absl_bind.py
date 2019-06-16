@@ -5,6 +5,7 @@ from ..config import running_remotely
 
 class PatchAbsl(object):
     _original_DEFINE_flag = None
+    _original_FLAGS_parse_call = None
     _task = None
 
     @classmethod
@@ -21,12 +22,26 @@ class PatchAbsl(object):
             from absl.flags import _defines
             cls._original_DEFINE_flag = _defines.DEFINE_flag
             _defines.DEFINE_flag = cls._patched_define_flag
-            # if absl was already set, let's update our task params
-            from absl import flags
-            cls._update_current_flags(flags.FLAGS)
         except Exception:
             # there is no absl
             pass
+
+        try:
+            from absl.flags._flagvalues import FlagValues
+            cls._original_FLAGS_parse_call = FlagValues.__call__
+            FlagValues.__call__ = cls._patched_FLAGS_parse_call
+        except Exception:
+            # there is no absl
+            pass
+
+        if cls._original_DEFINE_flag:
+            try:
+                # if absl was already set, let's update our task params
+                from absl import flags
+                cls._update_current_flags(flags.FLAGS)
+            except Exception:
+                # there is no absl
+                pass
 
     @staticmethod
     def _patched_define_flag(*args, **kwargs):
@@ -61,6 +76,16 @@ class PatchAbsl(object):
                 value = flag.value
                 PatchAbsl._task.update_parameters({_Arguments._prefix_tf_defines + param_name: value})
             ret = PatchAbsl._original_DEFINE_flag(*args, **kwargs)
+        return ret
+
+    @staticmethod
+    def _patched_FLAGS_parse_call(self, *args, **kwargs):
+        ret = PatchAbsl._original_FLAGS_parse_call(self, *args, **kwargs)
+        # noinspection PyBroadException
+        try:
+            PatchAbsl._update_current_flags(self)
+        except Exception:
+            pass
         return ret
 
     @classmethod

@@ -14,7 +14,7 @@ description = """
 Please create new credentials using the web app: {}/admin
 In the Admin page, press "Create new credentials", then press "Copy to clipboard"
 
-Copy/Paste credentials here: """
+Paste credentials here: """
 
 try:
     def_host = ENV_HOST.get(default=config_obj.get("api.host"))

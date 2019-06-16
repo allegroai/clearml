@@ -168,7 +168,11 @@ class PatchedMatplotlib:
                     plotly_fig.layout.height = None
                     plotly_fig.layout.width = None
                     # send the plot event
-                    reporter.report_plot(title=title, series='plot', plot=plotly_fig.to_plotly_json(),
+                    plotly_dict = plotly_fig.to_plotly_json()
+                    if not plotly_dict.get('layout'):
+                        plotly_dict['layout'] = {}
+                    plotly_dict['layout']['title'] = title
+                    reporter.report_plot(title=title, series='plot', plot=plotly_dict,
                                          iter=PatchedMatplotlib._global_plot_counter if plot_title else 0)
                 else:
                     # send the plot as image

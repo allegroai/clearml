@@ -34,7 +34,7 @@ from tensorflow.examples.tutorials.mnist import input_data
 from trains import Task
 
 FLAGS = None
-task = Task.init(project_name='examples', task_name='Tensorflow mnist with summaries')
+task = Task.init(project_name='examples', task_name='Tensorflow mnist with summaries example')
 
 
 def train():
@@ -166,11 +166,9 @@ def train():
             print('Accuracy at step %s: %s' % (i, acc))
         else:  # Record train set summaries, and train
             if i % 100 == 99:  # Record execution stats
-                run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
                 run_metadata = tf.RunMetadata()
                 summary, _ = sess.run([merged, train_step],
                                       feed_dict=feed_dict(True),
-                                      options=run_options,
                                       run_metadata=run_metadata)
                 train_writer.add_run_metadata(run_metadata, 'step%04d' % i)
                 train_writer.add_summary(summary, i)

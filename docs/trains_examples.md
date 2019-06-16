@@ -2,7 +2,7 @@
 
 ## Introduction
 TRAINS includes usage examples for the *Keras*, *PyTorch*, and *TensorFlow* deep learning frameworks, 
-as well as custom examples.
+as well as *Jupyter Notebook* integration and custom examples for reporting metrics, configuring models.
 You can run these examples and view their results on the TRAINS Web-App.
 
 The examples are described below, including a link for the source code
@@ -32,9 +32,10 @@ OR
 ### Keras with TensorBoard - MNIST Training
 
 [keras_tensorboard.py](https://github.com/allegroai/trains/blob/master/examples/keras_tensorboard.py)
-is an example of training a simple deep NN on the MNIST DataSet.
+is an example of training a small convolutional NN on the MNIST DataSet.
 
 Relevant outputs
+
 * **EXECUTION**
     * **HYPER PARAMETERS**: Command line arguments
 * **MODEL**
@@ -54,6 +55,7 @@ Relevant outputs
 of PyTorch MNIST training integration.
 
 Relevant outputs
+
 * **EXECUTION**
     * **HYPER PARAMETERS**: Command line arguments
 * **MODEL**
@@ -74,6 +76,7 @@ reproduce it with a new artistic style. The algorithm takes three images
 to resemble the content of the content-image and the artistic style of the style-image.
 
 Relevant outputs
+
 * **EXECUTION**
     * **HYPER PARAMETERS**: Command line arguments
 * **MODEL**
@@ -100,7 +103,7 @@ Relevant outputs
     * **SCALARS**: Train and test loss scalars
     * **LOG**: Console standard output/error
 
-### PyTorch with tensorboardX
+### PyTorch with tensorboardX - MNIST Train
 
 [pytorch_tensorboardX.py](https://github.com/allegroai/trains/blob/master/examples/pytorch_tensorboardX.py)
 is an example of PyTorch MNIST training running with tensorboardX
@@ -168,13 +171,77 @@ Relevant outputs
 ##### Toy Tensorflow FLAGS logging with absl
 
 [absl_example.py](https://github.com/allegroai/trains/blob/master/examples/absl_example.py) 
-is an example of toy Tensorflow FLAGS logging with absl package (*absl-py*)
+is an example of toy Tensorflow FLAGS logging with absl package (*absl-py*) coupled with parameters dictionary
 
 Relevant outputs
+
 * **EXECUTION**
     * **HYPER PARAMETERS**: Tensorflow flags (with 'TF_DEFINE/' prefix)
 * **RESULTS**
     * **LOG**: Console standard output/error
 
+### TensorFlow MNIST Classifier with TensorBoard Reports
+
+[tensorflow_mnist_with_summaries.py](https://github.com/allegroai/trains/blob/master/examples/tensorflow_mnist_with_summaries.py)
+is an example of Tensorflow MNIST with TensorBoard summary, model storage, and logging.
+
+Relevant outputs
+
+* **EXECUTION**
+    * **HYPER PARAMETERS**: Command line arguments
+* **MODEL**
+    * Output model (a link to the output model details in the *MODELS* page)
+* **RESULTS**
+    * **SCALARS**: Network statistics across the training steps (e.g., cross entropy, dropout, and specific layer statistics) 
+    * **PLOTS**: Convolutional layer histogram
+    * **DEBUG IMAGES**: Sample of the network input images
+    * **LOG**: Console standard output/error
+
+
+# *Jupyter Notebook* Example
+
+[jupyter.ipynb](https://github.com/allegroai/trains/blob/master/examples/jupyter.ipynb)
+is an example of integrating matplotlib and training with keras on
+*Jupyter Notebook*. 
+This example connects a parameters dictionary, prints simple graphs and trains an MNIST classifier using Keras.
+ 
+Relevant Outputs
+
+* **EXECUTION**
+    * **HYPER PARAMETERS**: Parameter dictionary
+* **MODEL**
+    * Output model (a link to the output model details in the *MODELS* page)
+    * Model Configuration
+* **RESULTS**
+    * **SCALARS**: Training loss across iterations
+    * **PLOTS**: Sine and circles plots, convolution weights histogram
+    * **LOG**: Console standard output/error
+    
+    
 # Custom Examples
 
+### Manual Reporting
+
+[manual_reporting.py](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)
+is an example of manually reporting graphs and statistics.
+
+Relevant outputs
+
+* **RESULTS**
+    * **SCALARS**: Scalar graphs
+    * **PLOTS**: Confusion matrix, histogram, 2D scatter plot, 3D scatter plot
+    * **DEBUG IMAGES**: Uploaded example images
+    * **LOG**: Console standard output/error
+    
+### Manual Model Configuration
+
+[manual_model_config.py](https://github.com/allegroai/trains/blob/master/examples/manual_model_config.py)
+is an example of manually configuring a model, model storage, label enumeration values, and logging.
+
+Relevant Outputs
+
+* **MODEL**
+    * Output model (a link to the output model details in the *MODELS* page, including **label enumeration** values)
+    * Model Configuration 
+* **RESULTS**
+    * **LOG**: Console standard output/error

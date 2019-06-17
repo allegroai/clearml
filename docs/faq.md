@@ -118,7 +118,7 @@ taks = Task.init(project_name, task_name, output_uri="gs://bucket-name/folder")
 ```
 
 **NOTE:** These require configuring the storage credentials in `~/trains.conf`.
-For a more detailed example, see [here](https://github.com/allegroai/trains/blob/master/docs/trains.conf).
+For a more detailed example, see [here](https://github.com/allegroai/trains/blob/master/docs/trains.conf#L51).
 
 
 ## I am training multiple models at the same time, but I only see one of them. What happened? <a name="only-last-model-appears"></a>

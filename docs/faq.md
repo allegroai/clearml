@@ -21,7 +21,7 @@
 
 ## Can I store more information on the models? <a name="store-more-model-info"></a>
 
-####For example, can I store enumeration of classes?
+#### For example, can I store enumeration of classes?
 
 Yes! Use the `Task.set_model_label_enumeration()` method:
 
@@ -49,7 +49,7 @@ logger = Task.current_task().get_logger()
 logger.report_scalar("loss", "classification", iteration=42, value=1.337)
 ```
 
-####**TRAINS supports:**
+#### **TRAINS supports:**
 * Scalars
 * Plots
 * 2D/3D Scatter Diagrams

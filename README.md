@@ -86,7 +86,7 @@ Connect your code with TRAINS:
 1. Add the following lines to your code
 
         from trains import Task
-        task = Task.init(project_name=”my project”, task_name=”my task”)
+        task = Task.init(project_name="my project", task_name="my task")
 
 1. Run your code. When TRAINS connects to the server, a link is printed. For example
 

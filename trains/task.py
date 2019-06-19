@@ -27,12 +27,13 @@ from .errors import UsageError
 from .logger import Logger
 from .model import InputModel, OutputModel, ARCHIVED_TAG
 from .task_parameters import TaskParameters
-from .utilities.absl_bind import PatchAbsl
+from .binding.absl_bind import PatchAbsl
 from .utilities.args import argparser_parseargs_called, get_argparser_last_args, \
     argparser_update_currenttask
-from .utilities.frameworks import PatchSummaryToEventTransformer, PatchTensorFlowEager, PatchKerasModelIO, \
-    PatchTensorflowModelIO, PatchPyTorchModelIO
-from .utilities.matplotlib_bind import PatchedMatplotlib
+from .binding.frameworks.pytorch_bind import PatchPyTorchModelIO
+from .binding.frameworks.tensorflow_bind import PatchSummaryToEventTransformer, PatchTensorFlowEager, \
+    PatchKerasModelIO, PatchTensorflowModelIO
+from .binding.matplotlib_bind import PatchedMatplotlib
 from .utilities.seed import make_deterministic
 
 NotSet = object()

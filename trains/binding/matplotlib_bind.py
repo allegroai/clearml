@@ -12,6 +12,8 @@ from ..config import running_remotely
 class PatchedMatplotlib:
     _patched_original_plot = None
     __patched_original_imshow = None
+    __patched_original_draw_all = None
+    __patched_draw_all_recursion_guard = False
     _global_plot_counter = -1
     _global_image_counter = -1
     _current_task = None
@@ -45,18 +47,18 @@ class PatchedMatplotlib:
 
             if running_remotely():
                 # disable GUI backend - make headless
-                sys.modules['matplotlib'].rcParams['backend'] = 'agg'
+                matplotlib.rcParams['backend'] = 'agg'
                 import matplotlib.pyplot
-                sys.modules['matplotlib'].pyplot.switch_backend('agg')
+                matplotlib.pyplot.switch_backend('agg')
             import matplotlib.pyplot as plt
             from matplotlib import _pylab_helpers
             if six.PY2:
-                PatchedMatplotlib._patched_original_plot = staticmethod(sys.modules['matplotlib'].pyplot.show)
-                PatchedMatplotlib._patched_original_imshow = staticmethod(sys.modules['matplotlib'].pyplot.imshow)
+                PatchedMatplotlib._patched_original_plot = staticmethod(plt.show)
+                PatchedMatplotlib._patched_original_imshow = staticmethod(plt.imshow)
             else:
-                PatchedMatplotlib._patched_original_plot = sys.modules['matplotlib'].pyplot.show
-                PatchedMatplotlib._patched_original_imshow = sys.modules['matplotlib'].pyplot.imshow
-            sys.modules['matplotlib'].pyplot.show = PatchedMatplotlib.patched_show
+                PatchedMatplotlib._patched_original_plot = plt.show
+                PatchedMatplotlib._patched_original_imshow = plt.imshow
+            plt.show = PatchedMatplotlib.patched_show
             # sys.modules['matplotlib'].pyplot.imshow = PatchedMatplotlib.patched_imshow
             # patch plotly so we know it failed us.
             from plotly.matplotlylib import renderer
@@ -71,7 +73,11 @@ class PatchedMatplotlib:
                 from IPython import get_ipython
                 ip = get_ipython()
                 if ip and matplotlib.is_interactive():
-                    ip.events.register('post_execute', PatchedMatplotlib.ipython_post_execute_hook)
+                    # instead of hooking ipython, we should hook the matplotlib
+                    import matplotlib.pyplot as plt
+                    PatchedMatplotlib.__patched_original_draw_all = plt.draw_all
+                    plt.draw_all = PatchedMatplotlib.__patched_draw_all
+                    # ip.events.register('post_execute', PatchedMatplotlib.ipython_post_execute_hook)
         except Exception:
             pass
 
@@ -187,6 +193,19 @@ class PatchedMatplotlib:
             pass
 
         return
+
+    @staticmethod
+    def __patched_draw_all(*args, **kwargs):
+        recursion_guard = PatchedMatplotlib.__patched_draw_all_recursion_guard
+        if not recursion_guard:
+            PatchedMatplotlib.__patched_draw_all_recursion_guard = True
+
+        ret = PatchedMatplotlib.__patched_original_draw_all(*args, **kwargs)
+
+        if not recursion_guard:
+            PatchedMatplotlib.ipython_post_execute_hook()
+            PatchedMatplotlib.__patched_draw_all_recursion_guard = False
+        return ret
 
     @staticmethod
     def ipython_post_execute_hook():

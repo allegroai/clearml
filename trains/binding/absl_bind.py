@@ -1,5 +1,5 @@
 """ absl-py FLAGS binding utility functions """
-from trains.backend_interface.task.args import _Arguments
+from ..backend_interface.task.args import _Arguments
 from ..config import running_remotely
 
 

@@ -66,7 +66,8 @@ class _DownloadProgressReport(object):
         last_part = self.downloaded_mb - self.last_reported
 
         if self._verbose or (last_part >= self._report_chunk_size):
-            speed = last_part / (time() - self._tic)
+            time_diff = time() - self._tic
+            speed = (last_part / time_diff) if time_diff != 0 else 0
             self._tic = time()
             self.last_reported = self.downloaded_mb
             self._log.info('Downloading: %.0fMB / %.2fMb @ %.2fMbs from %s' %

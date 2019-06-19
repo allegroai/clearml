@@ -50,6 +50,8 @@ class Detector(object):
     the command used to obtain the value of the same attribute in the actual result. 
     """
 
+    _fallback = '_fallback'
+
     @attr.s
     class Commands(object):
         """" Repository information as queried by a detector """
@@ -61,6 +63,8 @@ class Detector(object):
         status = attr.ib(default=None, type=list)
         diff = attr.ib(default=None, type=list)
         modified = attr.ib(default=None, type=list)
+        # alternative commands
+        branch_fallback = attr.ib(default=None, type=list)
 
     def __init__(self, type_name, name=None):
         self.type_name = type_name
@@ -76,6 +80,13 @@ class Detector(object):
             return get_command_output(command, path)
 
         except (CalledProcessError, UnicodeDecodeError) as ex:
+            if not name.endswith(self._fallback):
+                fallback_command = attr.asdict(self._get_commands()).get(name + self._fallback)
+                if fallback_command:
+                    try:
+                        return get_command_output(fallback_command, path)
+                    except (CalledProcessError, UnicodeDecodeError):
+                        pass
             _logger.warning("Can't get {} information for {} repo in {}".format(name, self.type_name, path))
             # full details only in debug
             _logger.debug(
@@ -101,7 +112,7 @@ class Detector(object):
             **{
                 name: self._get_command_output(path, name, command)
                 for name, command in attr.asdict(commands).items()
-                if command
+                if command and not name.endswith(self._fallback)
             }
         )
 
@@ -186,6 +197,7 @@ class GitDetector(Detector):
             status=["git", "status", "-s"],
             diff=["git", "diff"],
             modified=["git", "ls-files", "-m"],
+            branch_fallback=["git", "rev-parse", "--abbrev-ref", "HEAD"],
         )
 
     def _post_process_info(self, info):

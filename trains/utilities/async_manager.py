@@ -36,7 +36,7 @@ class AsyncManagerMixin(object):
             if r.ready():
                 continue
             t = time.time()
-            r.wait(timeout=remaining or 2.0)
+            r.wait(timeout=remaining)
             count += 1
             if max_num_uploads is not None and max_num_uploads - count <= 0:
                 break

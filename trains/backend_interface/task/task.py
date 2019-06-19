@@ -74,6 +74,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :type force_create: bool
         """
         task_id = self._resolve_task_id(task_id, log=log) if not force_create else None
+        self._edit_lock = RLock()
         super(Task, self).__init__(id=task_id, session=session, log=log)
         self._storage_uri = None
         self._input_model = None
@@ -85,7 +86,6 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._parameters_allowed_types = (
                 six.string_types + six.integer_types + (six.text_type, float, list, dict, type(None))
         )
-        self._edit_lock = RLock()
 
         if not task_id:
             # generate a new task

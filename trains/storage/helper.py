@@ -965,6 +965,7 @@ class StorageHelper(object):
 
 class _HttpDriver(object):
     """ LibCloud http/https adapter (simple, enough for now) """
+    timeout = (5.0, None)
 
     class _Container(object):
         def __init__(self, name, retries=5, **kwargs):
@@ -983,7 +984,7 @@ class _HttpDriver(object):
     def upload_object_via_stream(self, iterator, container, object_name, extra=None, **kwargs):
         url = object_name[:object_name.index('/')]
         url_path = object_name[len(url)+1:]
-        res = container.session.post(container.name+url, files={url_path: iterator})
+        res = container.session.post(container.name+url, files={url_path: iterator}, timeout=self.timeout)
         if res.status_code != requests.codes.ok:
             raise ValueError('Failed uploading object %s (%d): %s' % (object_name, res.status_code, res.text))
         return res
@@ -998,7 +999,7 @@ class _HttpDriver(object):
         container = self._containers[container_name]
         # set stream flag before get request
         container.session.stream = kwargs.get('stream', True)
-        res = container.session.get(''.join((container_name, object_name.lstrip('/'))))
+        res = container.session.get(''.join((container_name, object_name.lstrip('/'))), timeout=self.timeout)
         if res.status_code != requests.codes.ok:
             raise ValueError('Failed getting object %s (%d): %s' % (object_name, res.status_code, res.text))
         return res

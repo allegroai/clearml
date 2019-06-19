@@ -89,6 +89,7 @@ class Task(_Task):
         if private is not Task.__create_protection:
             raise UsageError(
                 'Task object cannot be instantiated externally, use Task.current_task() or Task.get_task(...)')
+        self._lock = threading.RLock()
 
         super(Task, self).__init__(**kwargs)
         self._arguments = _Arguments(self)
@@ -100,7 +101,6 @@ class Task(_Task):
         self._dev_mode_periodic_flag = False
         self._connected_parameter_type = None
         self._detect_repo_async_thread = None
-        self._lock = threading.RLock()
         # register atexit, so that we mark the task as stopped
         self._at_exit_called = False
         self.__register_at_exit(self._at_exit)

@@ -1,3 +1,4 @@
+import logging
 import ssl
 import sys
 
@@ -8,6 +9,8 @@ from urllib3.util import Retry
 from urllib3 import PoolManager
 import six
 
+from .session.defs import ENV_HOST_VERIFY_CERT
+
 if six.PY3:
     from functools import lru_cache
 elif six.PY2:
@@ -15,12 +18,13 @@ elif six.PY2:
     from backports.functools_lru_cache import lru_cache
 
 
+__disable_certificate_verification_warning = 0
+
+
 @lru_cache()
 def get_config():
-    from ..backend_config import Config
-    config = Config(verbose=False)
-    config.reload()
-    return config
+    from ..config import config_obj
+    return config_obj
 
 
 class TLSv1HTTPAdapter(HTTPAdapter):
@@ -42,6 +46,7 @@ def get_http_session_with_retry(
         backoff_max=None,
         pool_connections=None,
         pool_maxsize=None):
+    global __disable_certificate_verification_warning
     if not all(isinstance(x, (int, type(None))) for x in (total, connect, read, redirect, status)):
         raise ValueError('Bad configuration. All retry count values must be null or int')
 
@@ -72,6 +77,22 @@ def get_http_session_with_retry(
     adapter = TLSv1HTTPAdapter(max_retries=retry, pool_connections=pool_connections, pool_maxsize=pool_maxsize)
     session.mount('http://', adapter)
     session.mount('https://', adapter)
+    # update verify host certiface
+    session.verify = ENV_HOST_VERIFY_CERT.get(default=get_config().get('api.verify_certificate', True))
+    if not session.verify and __disable_certificate_verification_warning < 2:
+        # show warning
+        __disable_certificate_verification_warning += 1
+        logging.getLogger('TRAINS').warning(
+            msg='InsecureRequestWarning: Certificate verification is disabled! Adding '
+                'certificate verification is strongly advised. See: '
+                'https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings')
+        # make sure we only do not see the warning
+        import urllib3
+        # noinspection PyBroadException
+        try:
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        except Exception:
+            pass
     return session
 
 

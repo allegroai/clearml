@@ -9,7 +9,6 @@ from collections import OrderedDict, Callable
 
 import psutil
 import six
-from six.moves._thread import start_new_thread
 
 from .backend_api.services import tasks, projects
 from .backend_interface import TaskStatusEnum
@@ -100,6 +99,8 @@ class Task(_Task):
         self._dev_stop_signal = None
         self._dev_mode_periodic_flag = False
         self._connected_parameter_type = None
+        self._detect_repo_async_thread = None
+        self._lock = threading.RLock()
         # register atexit, so that we mark the task as stopped
         self._at_exit_called = False
         self.__register_at_exit(self._at_exit)
@@ -391,11 +392,12 @@ class Task(_Task):
 
         # update current repository and put warning into logs
         if in_dev_mode and cls.__detect_repo_async:
-            start_new_thread(task._update_repository, tuple())
+            task._detect_repo_async_thread = threading.Thread(target=task._update_repository)
+            task._detect_repo_async_thread.start()
         else:
             task._update_repository()
 
-        # show the debug metrics page in the log, it is very convinient
+        # show the debug metrics page in the log, it is very convenient
         logger.console(
             'TRAINS results page: {}/projects/{}/experiments/{}/output/log'.format(
                 task._get_app_server(),
@@ -542,6 +544,16 @@ class Task(_Task):
         :return: True
         """
         self._dev_mode_periodic()
+
+        # wait for detection repo sync
+        if self._detect_repo_async_thread:
+            with self._lock:
+                if self._detect_repo_async_thread:
+                    try:
+                        self._detect_repo_async_thread.join()
+                        self._detect_repo_async_thread = None
+                    except Exception:
+                        pass
 
         # make sure model upload is done
         if BackendModel.get_num_results() > 0 and wait_for_uploads:
@@ -1086,7 +1098,7 @@ class Task(_Task):
 
     @classmethod
     def __get_last_used_task_id(cls, default_project_name, default_task_name, default_task_type):
-        hash_key = cls.__get_hash_key(default_project_name, default_task_name, default_task_type)
+        hash_key = cls.__get_hash_key(cls._get_api_server(), default_project_name, default_task_name, default_task_type)
 
         # check if we have a cached task_id we can reuse
         # it must be from within the last 24h and with the same project/name/type
@@ -1111,7 +1123,7 @@ class Task(_Task):
 
     @classmethod
     def __update_last_used_task_id(cls, default_project_name, default_task_name, default_task_type, task_id):
-        hash_key = cls.__get_hash_key(default_project_name, default_task_name, default_task_type)
+        hash_key = cls.__get_hash_key(cls._get_api_server(), default_project_name, default_task_name, default_task_type)
 
         task_id = str(task_id)
         # update task session cache

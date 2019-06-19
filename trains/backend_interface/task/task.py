@@ -2,11 +2,13 @@
 import collections
 import itertools
 import logging
+from threading import RLock, Thread
 from copy import copy
 from six.moves.urllib.parse import urlparse, urlunparse
 
 import six
 
+from ...backend_api.session.defs import ENV_HOST
 from ...backend_interface.task.development.worker import DevWorker
 from ...backend_api import Session
 from ...backend_api.services import tasks, models, events, projects
@@ -83,6 +85,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._parameters_allowed_types = (
                 six.string_types + six.integer_types + (six.text_type, float, list, dict, type(None))
         )
+        self._edit_lock = RLock()
 
         if not task_id:
             # generate a new task
@@ -172,6 +175,24 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return task_id
 
     def _update_repository(self):
+        def check_package_update():
+            # check latest version
+            from ...utilities.check_updates import CheckPackageUpdates
+            latest_version = CheckPackageUpdates.check_new_package_available(only_once=True)
+            if latest_version:
+                if not latest_version[1]:
+                    self.get_logger().console(
+                        'TRAINS new package available: UPGRADE to v{} is recommended!'.format(
+                            latest_version[0]),
+                    )
+                else:
+                    self.get_logger().console(
+                        'TRAINS-SERVER new version available: upgrade to v{} is recommended!'.format(
+                            latest_version[0]),
+                    )
+
+        check_package_update_thread = Thread(target=check_package_update)
+        check_package_update_thread.start()
         result = ScriptInfo.get(log=self.log)
         for msg in result.warning_messages:
             self.get_logger().console(msg)
@@ -180,6 +201,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # Since we might run asynchronously, don't use self.data (lest someone else
         # overwrite it before we have a chance to call edit)
         self._edit(script=result.script)
+        self.reload()
+        check_package_update_thread.join()
 
     def _auto_generate(self, project_name=None, task_name=None, task_type=tasks.TaskTypeEnum.training):
         created_msg = make_message('Auto-generated at %(time)s by %(user)s@%(host)s')
@@ -335,8 +358,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def _reload(self):
         """ Reload the task object from the backend """
-        res = self.send(tasks.GetByIdRequest(task=self.id))
-        return res.response.task
+        with self._edit_lock:
+            res = self.send(tasks.GetByIdRequest(task=self.id))
+            return res.response.task
 
     def reset(self, set_started_on_success=True):
         """ Reset the task. Task will be reloaded following a successful reset. """
@@ -645,8 +669,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             parsed = parsed._replace(netloc=parsed.netloc+':8081')
         return urlunparse(parsed)
 
-    def _get_app_server(self):
-        host = config_obj.get('api.host')
+    @classmethod
+    def _get_api_server(cls):
+        return ENV_HOST.get(default=config_obj.get("api.host"))
+
+    @classmethod
+    def _get_app_server(cls):
+        host = cls._get_api_server()
         if '://demoapi.' in host:
             return host.replace('://demoapi.', '://demoapp.')
         if '://api.' in host:
@@ -657,12 +686,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return host.replace(':8008', ':8080')
 
     def _edit(self, **kwargs):
-        # Since we ae using forced update, make sure he task status is valid
-        if not self._data or (self.data.status not in (TaskStatusEnum.created, TaskStatusEnum.in_progress)):
-            raise ValueError('Task object can only be updated if created or in_progress')
+        with self._edit_lock:
+            # Since we ae using forced update, make sure he task status is valid
+            if not self._data or (self.data.status not in (TaskStatusEnum.created, TaskStatusEnum.in_progress)):
+                raise ValueError('Task object can only be updated if created or in_progress')
 
-        res = self.send(tasks.EditRequest(task=self.id, force=True, **kwargs), raise_on_errors=False)
-        return res
+            res = self.send(tasks.EditRequest(task=self.id, force=True, **kwargs), raise_on_errors=False)
+            return res
 
     @classmethod
     def create_new_task(cls, session, task_entry, log=None):

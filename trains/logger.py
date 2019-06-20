@@ -193,7 +193,29 @@ class Logger(object):
         :type values: [float]
         :param iteration: Iteration number
         :type iteration: int
-        :param labels: optional label per entry in the vector (for histogram)
+        :param labels: optional, labels for each bar group.
+        :type labels: list of strings.
+        :param xlabels: optional label per entry in the vector (bucket in the histogram)
+        :type xlabels: list of strings.
+        """
+        return self.report_histogram(title, series, values, iteration, labels=labels, xlabels=xlabels)
+
+    def report_histogram(self, title, series, values, iteration, labels=None, xlabels=None):
+        """
+        Report a histogram plot
+
+        :param title: Title (AKA metric)
+        :type title: str
+        :param series: Series (AKA variant)
+        :type series: str
+        :param values: Reported values (or numpy array)
+        :type values: [float]
+        :param iteration: Iteration number
+        :type iteration: int
+        :param labels: optional, labels for each bar group.
+        :type labels: list of strings.
+        :param xlabels: optional label per entry in the vector (bucket in the histogram)
+        :type xlabels: list of strings.
         """
 
         if not isinstance(values, np.ndarray):

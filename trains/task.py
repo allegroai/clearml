@@ -33,6 +33,7 @@ from .utilities.args import argparser_parseargs_called, get_argparser_last_args,
 from .binding.frameworks.pytorch_bind import PatchPyTorchModelIO
 from .binding.frameworks.tensorflow_bind import PatchSummaryToEventTransformer, PatchTensorFlowEager, \
     PatchKerasModelIO, PatchTensorflowModelIO
+from .utilities.resource_monitor import ResourceMonitor
 from .binding.matplotlib_bind import PatchedMatplotlib
 from .utilities.seed import make_deterministic
 
@@ -102,6 +103,7 @@ class Task(_Task):
         self._dev_mode_periodic_flag = False
         self._connected_parameter_type = None
         self._detect_repo_async_thread = None
+        self._resource_monitor = None
         # register atexit, so that we mark the task as stopped
         self._at_exit_called = False
         self.__register_at_exit(self._at_exit)
@@ -124,6 +126,7 @@ class Task(_Task):
         output_uri=None,
         auto_connect_arg_parser=True,
         auto_connect_frameworks=True,
+        auto_resource_monitoring=True,
     ):
         """
         Return the Task object for the main execution task (task context).
@@ -141,6 +144,8 @@ class Task(_Task):
             if set to false, you can manually connect the ArgParser with task.connect(parser)
         :param auto_connect_frameworks: If true automatically patch MatplotLib, Keras callbacks, and TensorBoard/X to
             serialize plots, graphs and model location to trains backend (in addition to original output destination)
+        :param auto_resource_monitoring: If true, machine vitals will be sent along side the task scalars,
+            Resources graphs will appear under the title ':resource monitor:' in the scalars tab.
         :return: Task() object
         """
 
@@ -220,6 +225,9 @@ class Task(_Task):
                 PatchKerasModelIO.update_current_task(task)
                 PatchTensorflowModelIO.update_current_task(task)
                 PatchPyTorchModelIO.update_current_task(task)
+            if auto_resource_monitoring:
+                task._resource_monitor = ResourceMonitor(task)
+                task._resource_monitor.start()
             # Check if parse args already called. If so, sync task parameters with parser
             if argparser_parseargs_called():
                 parser, parsed_args = get_argparser_last_args()
@@ -409,7 +417,7 @@ class Task(_Task):
         # make sure everything is in sync
         task.reload()
         # make sure we see something in the UI
-        threading.Thread(target=LoggerRoot.flush).start()
+        threading.Thread(target=LoggerRoot.flush, daemon=True).start()
         return task
 
     @staticmethod
@@ -944,6 +952,9 @@ class Task(_Task):
                     self.log.info('Finished uploading')
             else:
                 self._logger._flush_stdout_handler()
+            # stop resource monitoring
+            if self._resource_monitor:
+                self._resource_monitor.stop()
             self._logger.set_flush_period(None)
             # this is so in theory we can close a main task and start a new one
             Task.__main_task = None

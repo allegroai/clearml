@@ -48,8 +48,8 @@ export TRAINS_API_HOST="http://localhost:8080"
 Models are associated with the experiments that created them. 
 In order to sort experiments by a specific metric, add a custom column in the experiments table,
 
-<img src="https://github.com/allegroai/trains/blob/master/docs/screenshots/set_custom_column.png?raw=true" height=40%>
-<img src="https://github.com/allegroai/trains/blob/master/docs/screenshots/custom_column.png?raw=true" height=40%>
+<img src="https://github.com/allegroai/trains/blob/master/docs/screenshots/set_custom_column.png?raw=true" width=25%>
+<img src="https://github.com/allegroai/trains/blob/master/docs/screenshots/custom_column.png?raw=true" width=25%>
 
 
 ## Can I store more information on the models? <a name="store-more-model-info"></a>

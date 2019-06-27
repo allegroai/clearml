@@ -1,8 +1,12 @@
 # TRAINS FAQ
 
+* [How to change the location of TRAINS configuration file](#change-config-path)
+* [How to override TRAINS credentials from OS environment](#credentials-os-env)
+* [How to sort models by a certain metric?](#custom-columns)
 * [Can I store more information on the models?](#store-more-model-info)
 * [Can I store the model configuration file as well?](#store-model-configuration)
 * [I want to add more graphs, not just with Tensorboard. Is this supported?](#more-graph-types)
+* [Is there a way to create a graph comparing hyper-parameters vs model accuracy?](#compare-graph-parameters)
 * [I noticed that all of my experiments appear as `Training`. Are there other options?](#other-experiment-types)
 * [I noticed I keep getting the message `warning: uncommitted code`. What does it mean?](#uncommitted-code-warning)
 * [Is there something TRAINS can do about uncommitted code running?](#help-uncommitted-code)
@@ -17,6 +21,35 @@
 * [How do I know a new version came out?](#new-version-auto-update)
 * [Sometimes I see experiments as running when in fact they are not. What's going on?](#experiment-running-but-stopped)
 * [The first log lines are missing from the experiment log tab. Where did they go?](#first-log-lines-missing)
+
+
+## How to change the location of TRAINS configuration file? <a name="change-config-path"></a>
+
+Set "TRAINS_CONFIG_FILE" OS environment variable to override the default configuration file location.  
+
+```bash
+export TRAINS_CONFIG_FILE="/home/user/mytrains.conf"
+```
+
+
+## How to override TRAINS credentials from OS environment? <a name="credentials-os-env"></a>
+
+Set the OS environment variables below, in order to override the configuration file / defaults.  
+
+```bash
+export TRAINS_API_ACCESS_KEY="key_here"
+export TRAINS_API_SECRET_KEY="secret_here"
+export TRAINS_API_HOST="http://localhost:8080"
+```
+
+
+## How to sort models by a certain metric? <a name="custom-columns"></a>
+
+Models are associated with the experiments that created them. 
+In order to sort experiments by a specific metric, add a custom column in the experiments table,
+
+<img src="https://github.com/allegroai/trains/blob/master/docs/screenshots/set_custom_column.png?raw=true" height=40%>
+<img src="https://github.com/allegroai/trains/blob/master/docs/screenshots/custom_column.png?raw=true" height=40%>
 
 
 ## Can I store more information on the models? <a name="store-more-model-info"></a>
@@ -61,6 +94,34 @@ logger.report_scalar("loss", "classification", iteration=42, value=1.337)
 
 For a more detailed example, see [here](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py).
 
+
+## Is there a way to create a graph comparing hyper-parameters vs model accuracy? <a name="compare-graph-parameters"></a>
+
+Yes, You can manually create a plot with a single point X-axis for the hyper-parameter value, 
+and Y-Axis for the accuracy. For example:
+
+```python
+number_layers = 10
+accuracy = 0.95
+Task.current_task().get_logger().report_scatter2d(
+    "performance", "accuracy", iteration=0, 
+    mode='markers', scatter=[(number_layers, accuracy)])
+```
+Assuming the hyper-parameter is "number_layers" with current value 10, and the accuracy for the trained model is 0.95.
+Then, the experiment comparison graph shows:
+
+<img src="https://github.com/allegroai/trains/blob/master/docs/screenshots/compare_plots.png?raw=true" width="50%">
+
+Another option is a histogram chart:
+```python
+number_layers = 10
+accuracy = 0.95
+Task.current_task().get_logger().report_vector(
+    "performance", "accuracy", iteration=0, labels=['accuracy'],
+    values=[accuracy], xlabels=['number_layers %d' % number_layers])
+```
+
+<img src="https://github.com/allegroai/trains/blob/master/docs/screenshots/compare_plots_hist.png?raw=true" width="50%">
 
 ## I noticed that all of my experiments appear as `Training`. Are there other options? <a name="other-experiment-types"></a>
 

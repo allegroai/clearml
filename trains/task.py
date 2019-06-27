@@ -664,6 +664,27 @@ class Task(_Task):
         """
         super(Task, self).set_model_label_enumeration(enumeration=enumeration)
 
+    def get_last_iteration(self):
+        """
+        Return the last reported iteration (i.e. the maximum iteration the task reported a metric for)
+        Notice, this is not a cached call, it will ask the backend for the answer (no local caching)
+
+        :return integer, last reported iteration number
+        """
+        self.reload()
+        return self.data.last_iteration
+
+    def set_last_iteration(self, last_iteration):
+        """
+        Forcefully set the last reported iteration
+        (i.e. the maximum iteration the task reported a metric for)
+
+        :param last_iteration: last reported iteration number
+        :type last_iteration: integer
+        """
+        self.data.last_iteration = int(last_iteration)
+        self._edit(last_iteration=self.data.last_iteration)
+
     def _connect_output_model(self, model):
         assert isinstance(model, OutputModel)
         model.connect(self)

@@ -2,6 +2,7 @@ import base64
 import sys
 import threading
 from collections import defaultdict
+from functools import partial
 from logging import ERROR, WARNING, getLogger
 from typing import Any
 
@@ -19,6 +20,23 @@ try:
     from google.protobuf.json_format import MessageToDict
 except ImportError:
     MessageToDict = None
+
+
+class IsTensorboardInit(object):
+    _tensorboard_initialized = False
+
+    @classmethod
+    def tensorboard_used(cls):
+        return cls._tensorboard_initialized
+
+    @classmethod
+    def set_tensorboard_used(cls):
+        cls._tensorboard_initialized = True
+
+    @staticmethod
+    def _patched_tb__init__(original_init, self, *args, **kwargs):
+        IsTensorboardInit._tensorboard_initialized = True
+        return original_init(self, *args, **kwargs)
 
 
 class EventTrainsWriter(object):
@@ -68,6 +86,7 @@ class EventTrainsWriter(object):
         :param max_keep_images: Maximum number of images to save before starting to reuse files (per title/metric pair)
         """
         # We are the events_writer, so that's what we'll pass
+        IsTensorboardInit.set_tensorboard_used()
         self.max_keep_images = max_keep_images
         self.report_freq = report_freq
         self.image_report_freq = image_report_freq if image_report_freq else report_freq
@@ -407,6 +426,7 @@ class EventTrainsWriter(object):
 
 class ProxyEventsWriter(object):
     def __init__(self, events):
+        IsTensorboardInit.set_tensorboard_used()
         self._events = events
 
     def _get_sentinel_event(self):
@@ -768,6 +788,10 @@ class PatchTensorFlowEager(object):
                 gen_summary_ops.write_image_summary = PatchTensorFlowEager._write_image_summary
                 PatchTensorFlowEager.__original_fn_hist = gen_summary_ops.write_histogram_summary
                 gen_summary_ops.write_histogram_summary = PatchTensorFlowEager._write_hist_summary
+                gen_summary_ops.create_summary_file_writer = partial(IsTensorboardInit._patched_tb__init__,
+                                                                     gen_summary_ops.create_summary_file_writer)
+                gen_summary_ops.create_summary_db_writer = partial(IsTensorboardInit._patched_tb__init__,
+                                                                   gen_summary_ops.create_summary_db_writer)
             except ImportError:
                 pass
             except Exception as ex:

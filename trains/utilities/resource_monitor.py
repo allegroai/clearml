@@ -4,6 +4,7 @@ from threading import Thread, Event
 import psutil
 from pathlib2 import Path
 from typing import Text
+from ..binding.frameworks.tensorflow_bind import IsTensorboardInit
 
 try:
     import gpustat
@@ -15,10 +16,13 @@ class ResourceMonitor(object):
     _title_machine = ':monitor:machine'
     _title_gpu = ':monitor:gpu'
 
-    def __init__(self, task, measure_frequency_times_per_sec=2., report_frequency_sec=30.):
+    def __init__(self, task, sample_frequency_per_sec=2., report_frequency_sec=30.,
+                 first_report_sec=None, wait_for_first_iteration_to_start_sec=180.):
         self._task = task
-        self._measure_frequency = measure_frequency_times_per_sec
+        self._sample_frequency = sample_frequency_per_sec
         self._report_frequency = report_frequency_sec
+        self._first_report_sec = first_report_sec or report_frequency_sec
+        self._wait_for_first_iteration = wait_for_first_iteration_to_start_sec
         self._num_readouts = 0
         self._readouts = {}
         self._previous_readouts = {}
@@ -41,11 +45,18 @@ class ResourceMonitor(object):
     def _daemon(self):
         logger = self._task.get_logger()
         seconds_since_started = 0
+        reported = 0
+        last_iteration = 0
+        last_iteration_ts = 0
+        last_iteration_interval = None
+        repeated_iterations = 0
+        fallback_to_sec_as_iterations = 0
         while True:
             last_report = time()
-            while (time() - last_report) < self._report_frequency:
-                # wait for self._measure_frequency seconds, if event set quit
-                if self._exit_event.wait(1.0 / self._measure_frequency):
+            current_report_frequency = self._report_frequency if reported != 0 else self._first_report_sec
+            while (time() - last_report) < current_report_frequency:
+                # wait for self._sample_frequency seconds, if event set quit
+                if self._exit_event.wait(1.0 / self._sample_frequency):
                     return
                 # noinspection PyBroadException
                 try:
@@ -53,15 +64,43 @@ class ResourceMonitor(object):
                 except Exception:
                     pass
 
+            reported += 1
             average_readouts = self._get_average_readouts()
             seconds_since_started += int(round(time() - last_report))
+            # check if we do not report any metric (so it means the last iteration will not be changed)
+            if fallback_to_sec_as_iterations is None:
+                if IsTensorboardInit.tensorboard_used():
+                    fallback_to_sec_as_iterations = False
+                elif seconds_since_started >= self._wait_for_first_iteration:
+                    fallback_to_sec_as_iterations = True
+
+            # if we do not have last_iteration, we just use seconds as iteration
+            if fallback_to_sec_as_iterations:
+                iteration = seconds_since_started
+            else:
+                iteration = self._task.get_last_iteration()
+                if iteration == last_iteration:
+                    repeated_iterations += 1
+                    if last_iteration_interval:
+                        # to be on the safe side, we don't want to pass the actual next iteration
+                        iteration += int(0.95*last_iteration_interval[0] * (seconds_since_started - last_iteration_ts)
+                                         / last_iteration_interval[1])
+                    else:
+                        iteration += 1
+                else:
+                    last_iteration_interval = (iteration - last_iteration, seconds_since_started - last_iteration_ts)
+                    last_iteration_ts = seconds_since_started
+                    last_iteration = iteration
+                    repeated_iterations = 0
+                    fallback_to_sec_as_iterations = False
+
             for k, v in average_readouts.items():
                 # noinspection PyBroadException
                 try:
                     title = self._title_gpu if k.startswith('gpu_') else self._title_machine
                     # 3 points after the dot
                     value = round(v*1000) / 1000.
-                    logger.report_scalar(title=title, series=k, iteration=seconds_since_started, value=value)
+                    logger.report_scalar(title=title, series=k, iteration=iteration, value=value)
                 except Exception:
                     pass
             self._clear_readouts()

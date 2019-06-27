@@ -810,7 +810,7 @@ class OutputModel(BaseModel):
                 framework=self.framework or framework,
                 comment=comment,
                 cb=delete_previous_weights_file if auto_delete_file else None,
-                iteration=iteration or self._task.data.last_iteration,
+                iteration=iteration or self._task.get_last_iteration(),
             )
         elif register_uri:
             register_uri = StorageHelper.conform_url(register_uri)

@@ -33,7 +33,7 @@ from .utilities.args import argparser_parseargs_called, get_argparser_last_args,
 from .binding.frameworks.pytorch_bind import PatchPyTorchModelIO
 from .binding.frameworks.tensorflow_bind import PatchSummaryToEventTransformer, PatchTensorFlowEager, \
     PatchKerasModelIO, PatchTensorflowModelIO
-from .utilities.resource_monitor import ResourceMonitor
+# from .utilities.resource_monitor import ResourceMonitor
 from .binding.matplotlib_bind import PatchedMatplotlib
 from .utilities.seed import make_deterministic
 
@@ -226,8 +226,8 @@ class Task(_Task):
                 PatchTensorflowModelIO.update_current_task(task)
                 PatchPyTorchModelIO.update_current_task(task)
             if auto_resource_monitoring:
-                task._resource_monitor = ResourceMonitor(task)
-                task._resource_monitor.start()
+                # task._resource_monitor = ResourceMonitor(task)
+                pass # task._resource_monitor.start()
             # Check if parse args already called. If so, sync task parameters with parser
             if argparser_parseargs_called():
                 parser, parsed_args = get_argparser_last_args()

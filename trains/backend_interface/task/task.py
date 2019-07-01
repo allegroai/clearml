@@ -191,7 +191,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                             latest_version[0]),
                     )
 
-        check_package_update_thread = Thread(target=check_package_update, daemon=True)
+        check_package_update_thread = Thread(target=check_package_update)
+        check_package_update_thread.daemon = True
         check_package_update_thread.start()
         result = ScriptInfo.get(log=self.log)
         for msg in result.warning_messages:

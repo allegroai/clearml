@@ -35,7 +35,8 @@ class ResourceMonitor(object):
 
     def start(self):
         self._exit_event.clear()
-        self._thread = Thread(target=self._daemon, daemon=True)
+        self._thread = Thread(target=self._daemon)
+        self._thread.daemon = True
         self._thread.start()
 
     def stop(self):

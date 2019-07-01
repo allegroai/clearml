@@ -51,7 +51,7 @@ class ResourceMonitor(object):
         last_iteration_ts = 0
         last_iteration_interval = None
         repeated_iterations = 0
-        fallback_to_sec_as_iterations = 0
+        fallback_to_sec_as_iterations = None
         while True:
             last_report = time()
             current_report_frequency = self._report_frequency if reported != 0 else self._first_report_sec
@@ -73,6 +73,8 @@ class ResourceMonitor(object):
                 if IsTensorboardInit.tensorboard_used():
                     fallback_to_sec_as_iterations = False
                 elif seconds_since_started >= self._wait_for_first_iteration:
+                    self._task.get_logger().console('TRAINS Monitor: Could not detect iteration reporting, '
+                                                    'falling back to iterations as seconds-from-start')
                     fallback_to_sec_as_iterations = True
 
             # if we do not have last_iteration, we just use seconds as iteration
@@ -95,16 +97,18 @@ class ResourceMonitor(object):
                     repeated_iterations = 0
                     fallback_to_sec_as_iterations = False
 
-            for k, v in average_readouts.items():
-                # noinspection PyBroadException
-                try:
-                    title = self._title_gpu if k.startswith('gpu_') else self._title_machine
-                    # 3 points after the dot
-                    value = round(v*1000) / 1000.
-                    logger.report_scalar(title=title, series=k, iteration=iteration, value=value)
-                except Exception:
-                    pass
-            self._clear_readouts()
+            # start reporting only when we figured out, if this is seconds based, or iterations based
+            if fallback_to_sec_as_iterations is not None:
+                for k, v in average_readouts.items():
+                    # noinspection PyBroadException
+                    try:
+                        title = self._title_gpu if k.startswith('gpu_') else self._title_machine
+                        # 3 points after the dot
+                        value = round(v*1000) / 1000.
+                        logger.report_scalar(title=title, series=k, iteration=iteration, value=value)
+                    except Exception:
+                        pass
+                self._clear_readouts()
 
     def _update_readouts(self):
         readouts = self._machine_stats()

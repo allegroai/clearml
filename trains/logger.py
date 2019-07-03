@@ -91,6 +91,12 @@ class Logger(object):
                 pass
             sys.stdout = Logger._stdout_proxy
             sys.stderr = Logger._stderr_proxy
+        elif DevWorker.report_stdout and not running_remotely():
+            self._task_handler = TaskHandler(self._task.session, self._task.id, capacity=100)
+            if Logger._stdout_proxy:
+                Logger._stdout_proxy.connect(self)
+            if Logger._stderr_proxy:
+                Logger._stderr_proxy.connect(self)
 
     def console(self, msg, level=logging.INFO, omit_console=False, *args, **kwargs):
         """

@@ -597,6 +597,7 @@ class Task(_Task):
         Should only be called if you are absolutely sure there is no need for the Task.
         """
         self._at_exit()
+        self._at_exit_called = False
 
     def is_current_task(self):
         """
@@ -819,22 +820,6 @@ class Task(_Task):
             # Feature turned off
             return
 
-        # # ToDo: Add support for back-end, currently doing nothing
-        # script = self.data.script
-        # if script and script.requirements:
-        #     # We already have predefined requirements
-        #     return
-        #
-        # script = ScriptInfo.get(check_uncommitted=True).script or {}
-        # freeze = pip_freeze()
-        #
-        # requirements = {
-        #     "diff": script.get("diff", ""),
-        #     "pip": freeze
-        # }
-        #
-        # self.send(tasks.SetRequirementsRequest(task=self.id, requirements=requirements))
-        # self.reload()
         return
 
     def _dev_mode_task_start(self, model_updated=False):

@@ -1,4 +1,6 @@
 """ absl-py FLAGS binding utility functions """
+import six
+
 from ..backend_interface.task.args import _Arguments
 from ..config import running_remotely
 
@@ -20,7 +22,10 @@ class PatchAbsl(object):
         # noinspection PyBroadException
         try:
             from absl.flags import _defines
-            cls._original_DEFINE_flag = _defines.DEFINE_flag
+            if six.PY2:
+                cls._original_DEFINE_flag = staticmethod(_defines.DEFINE_flag)
+            else:
+                cls._original_DEFINE_flag = _defines.DEFINE_flag
             _defines.DEFINE_flag = cls._patched_define_flag
         except Exception:
             # there is no absl
@@ -28,7 +33,10 @@ class PatchAbsl(object):
 
         try:
             from absl.flags._flagvalues import FlagValues
-            cls._original_FLAGS_parse_call = FlagValues.__call__
+            if six.PY2:
+                cls._original_FLAGS_parse_call = staticmethod(FlagValues.__call__)
+            else:
+                cls._original_FLAGS_parse_call = FlagValues.__call__
             FlagValues.__call__ = cls._patched_FLAGS_parse_call
         except Exception:
             # there is no absl

@@ -215,7 +215,7 @@ class EnvDetector(Detector):
         super(EnvDetector, self).__init__(type_name, "{} environment".format(type_name))
 
     def _is_repo_type(self, script_path):
-        return VCS_REPO_TYPE.get(default="").lower() == self.type_name and bool(
+        return VCS_REPO_TYPE.get().lower() == self.type_name and bool(
             VCS_REPOSITORY_URL.get()
         )
 

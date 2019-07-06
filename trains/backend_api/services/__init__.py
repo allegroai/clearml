@@ -1,22 +1,19 @@
-from .v2_1 import async_request
-from .v2_1 import auth
-from .v2_1 import debug
-from .v2_1 import events
-from .v2_1 import models
-from .v2_1 import news
-from .v2_1 import projects
-from .v2_1 import storage
-from .v2_1 import tasks
+from ..api_proxy import ApiServiceProxy
 
+
+# allow us to replace the api version after we have completed the authentication process,
+# and we know the backend server api version.
+# ApiServiceProxy will dynamically load the correct api object based on the session api_version
+auth = ApiServiceProxy('auth')
+events = ApiServiceProxy('events')
+models = ApiServiceProxy('models')
+projects = ApiServiceProxy('projects')
+tasks = ApiServiceProxy('tasks')
 
 __all__ = [
-    'async_request',
     'auth',
-    'debug',
     'events',
     'models',
-    'news',
     'projects',
-    'storage',
     'tasks',
 ]

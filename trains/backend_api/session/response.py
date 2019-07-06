@@ -1,5 +1,6 @@
 import requests
 
+import six
 import jsonmodels.models
 import jsonmodels.fields
 import jsonmodels.errors
@@ -8,14 +9,21 @@ from .apimodel import ApiModel
 from .datamodel import NonStrictDataModelMixin
 
 
+class FloatOrStringField(jsonmodels.fields.BaseField):
+
+    """String field."""
+
+    types = (float, six.string_types,)
+
+
 class Response(ApiModel, NonStrictDataModelMixin):
     pass
 
 
 class _ResponseEndpoint(jsonmodels.models.Base):
     name = jsonmodels.fields.StringField()
-    requested_version = jsonmodels.fields.FloatField()
-    actual_version = jsonmodels.fields.FloatField()
+    requested_version = FloatOrStringField()
+    actual_version = FloatOrStringField()
 
 
 class ResponseMeta(jsonmodels.models.Base):
@@ -42,8 +50,8 @@ class ResponseMeta(jsonmodels.models.Base):
 
     def __str__(self):
         if self.result_code == requests.codes.ok:
-            return "<%d: %s/v%.1f>" % (self.result_code, self.endpoint.name, self.endpoint.actual_version)
+            return "<%d: %s/v%s>" % (self.result_code, self.endpoint.name, self.endpoint.actual_version)
         elif self._is_valid:
-            return "<%d/%d: %s/v%.1f (%s)>" % (self.result_code, self.result_subcode, self.endpoint.name,
-                                               self.endpoint.actual_version, self.result_msg)
+            return "<%d/%d: %s/v%s (%s)>" % (self.result_code, self.result_subcode, self.endpoint.name,
+                                             self.endpoint.actual_version, self.result_msg)
         return "<%d/%d: %s (%s)>" % (self.result_code, self.result_subcode, self.endpoint.name, self.result_msg)

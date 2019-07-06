@@ -5,6 +5,7 @@ from socket import gethostname
 
 import requests
 import six
+import jwt
 from pyhocon import ConfigTree
 from requests.auth import HTTPBasicAuth
 
@@ -33,6 +34,8 @@ class Session(TokenManager):
     _session_requests = 0
     _session_initial_timeout = (1.0, 10)
     _session_timeout = (5.0, None)
+
+    api_version = '2.1'
 
     # TODO: add requests.codes.gateway_timeout once we support async commits
     _retry_codes = [
@@ -126,6 +129,13 @@ class Session(TokenManager):
         self.client = client or "api-{}".format(__version__)
 
         self.refresh_token()
+
+        # update api version from server response
+        try:
+            api_version = jwt.decode(self.token, verify=False).get('api_version', Session.api_version)
+            Session.api_version = str(api_version)
+        except (jwt.DecodeError, ValueError):
+            pass
 
     def _send_request(
         self,

@@ -128,11 +128,14 @@ class NonStrictDataModelMixin(object):
     :summary: supplies an __init__ method that warns about unused keywords
     """
     def __init__(self, **kwargs):
-        unexpected = [key for key in kwargs if not key.startswith('_')]
-        if unexpected:
-            message = '{}: unused keyword argument(s) {}' \
-                .format(type(self).__name__, unexpected)
-            warnings.warn(message, UnusedKwargsWarning)
+        # unexpected = [key for key in kwargs if not key.startswith('_')]
+        # if unexpected:
+        #     message = '{}: unused keyword argument(s) {}' \
+        #         .format(type(self).__name__, unexpected)
+        #     warnings.warn(message, UnusedKwargsWarning)
+
+        # ignore extra data warnings
+        pass
 
 
 class NonStrictDataModel(DataModel, NonStrictDataModelMixin):

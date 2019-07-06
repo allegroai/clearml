@@ -28,14 +28,16 @@ class _StorageUriMixin(object):
         self._upload_storage_uri = value.rstrip('/') if value else None
 
 
-class DummyModel(models.Model, _StorageUriMixin):
-    def __init__(self, upload_storage_uri=None, *args, **kwargs):
-        super(DummyModel, self).__init__(*args, **kwargs)
-        self.upload_storage_uri = upload_storage_uri
+def create_dummy_model(upload_storage_uri=None, *args, **kwargs):
+    class DummyModel(models.Model, _StorageUriMixin):
+        def __init__(self, upload_storage_uri=None, *args, **kwargs):
+            super(DummyModel, self).__init__(*args, **kwargs)
+            self.upload_storage_uri = upload_storage_uri
 
-    def update(self, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)
+        def update(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+    return DummyModel(upload_storage_uri=upload_storage_uri, *args, **kwargs)
 
 
 class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):

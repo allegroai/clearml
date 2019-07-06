@@ -12,7 +12,7 @@ from .backend_interface.task.development.worker import DevWorker
 from .backend_interface.task.log import TaskHandler
 from .storage import StorageHelper
 from .utilities.plotly_reporter import SeriesInfo
-from .backend_interface import TaskStatusEnum
+from .backend_api.services import tasks
 from .backend_interface.task import Task as _Task
 from .config import running_remotely, get_cache_dir
 
@@ -605,7 +605,7 @@ class Logger(object):
                 pass
 
     def _start_task_if_needed(self):
-        if self._task._status == TaskStatusEnum.created:
+        if self._task._status == tasks.TaskStatusEnum.created:
             self._task.mark_started()
 
         self._task._dev_mode_task_start()

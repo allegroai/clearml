@@ -1169,6 +1169,7 @@ class PatchTensorflowModelIO(object):
         except ImportError:
             # noinspection PyBroadException
             try:
+                # TODO: we might want to reverse the order, so we do not get the deprecated warning
                 # make sure we import the correct version of save
                 import tensorflow
                 from tensorflow.saved_model import save

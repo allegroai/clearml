@@ -134,7 +134,11 @@ class IdObjectBase(InterfaceBase):
     def reload(self):
         if not self.id:
             raise ValueError('Failed reloading %s: missing id' % type(self).__name__)
-        self._data = self._reload()
+        # noinspection PyBroadException
+        try:
+            self._data = self._reload()
+        except Exception:
+            pass
 
     @classmethod
     def normalize_id(cls, id):

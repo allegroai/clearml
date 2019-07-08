@@ -86,23 +86,40 @@ class ScriptRequirements(object):
     @staticmethod
     def create_requirements_txt(reqs):
         # write requirements.txt
+
+        # python version header
         requirements_txt = '# Python ' + sys.version.replace('\n', ' ').replace('\r', ' ') + '\n'
+
+        # requirement summary
+        requirements_txt += '\n'
         for k, v in reqs.sorted_items():
-            requirements_txt += '\n'
-            requirements_txt += ''.join(['# {0}\n'.format(c) for c in v.comments.sorted_items()])
+            # requirements_txt += ''.join(['# {0}\n'.format(c) for c in v.comments.sorted_items()])
             if k == '-e':
                 requirements_txt += '{0} {1}\n'.format(k, v.version)
             elif v:
                 requirements_txt += '{0} {1} {2}\n'.format(k, '==', v.version)
             else:
                 requirements_txt += '{0}\n'.format(k)
+
+        # requirements details (in comments)
+        requirements_txt += '\n' + \
+                            '# Detailed import analysis\n' \
+                            '# **************************\n'
+        for k, v in reqs.sorted_items():
+            requirements_txt += '\n'
+            if k == '-e':
+                requirements_txt += '# IMPORT PACKAGE {0} {1}\n'.format(k, v.version)
+            else:
+                requirements_txt += '# IMPORT PACKAGE {0}\n'.format(k)
+            requirements_txt += ''.join(['# {0}\n'.format(c) for c in v.comments.sorted_items()])
+
         return requirements_txt
 
 
 class _JupyterObserver(object):
     _thread = None
     _exit_event = Event()
-    _sample_frequency = 60.
+    _sample_frequency = 30.
     _first_sample_frequency = 3.
 
     @classmethod
@@ -228,7 +245,8 @@ class ScriptInfo(object):
                     break
 
             notebook_path = cur_notebook['notebook']['path']
-            entry_point_filename = notebook_path.split(os.path.sep)[-1]
+            # always slash, because this is from uri (so never backslash not even oon windows)
+            entry_point_filename = notebook_path.split('/')[-1]
 
             # now we should try to find the actual file
             entry_point = (Path.cwd() / entry_point_filename).absolute()
@@ -281,7 +299,7 @@ class ScriptInfo(object):
         return ''
 
     @classmethod
-    def _get_script_info(cls, filepath, check_uncommitted=True, log=None):
+    def _get_script_info(cls, filepath, check_uncommitted=True, create_requirements=True, log=None):
         jupyter_filepath = cls._get_jupyter_notebook_filename()
         if jupyter_filepath:
             script_path = Path(os.path.normpath(jupyter_filepath)).absolute()
@@ -319,11 +337,15 @@ class ScriptInfo(object):
         repo_root = repo_info.root or script_dir
         working_dir = cls._get_working_dir(repo_root)
         entry_point = cls._get_entry_point(repo_root, script_path)
-        diff = cls._get_script_code(script_path.as_posix()) if not plugin or not repo_info.commit else repo_info.diff
-        # if this is not jupyter, get the requirements.txt
+        if check_uncommitted:
+            diff = cls._get_script_code(script_path.as_posix()) \
+                if not plugin or not repo_info.commit else repo_info.diff
+        else:
+            diff = ''
+            # if this is not jupyter, get the requirements.txt
         requirements = ''
         # create requirements if backend supports requirements
-        if not jupyter_filepath and Session.api_version > '2.1':
+        if create_requirements and not jupyter_filepath and Session.api_version > '2.1':
             script_requirements = ScriptRequirements(Path(repo_root).as_posix())
             requirements = script_requirements.get_requirements()
 
@@ -351,11 +373,11 @@ class ScriptInfo(object):
         return ScriptInfoResult(script=script_info, warning_messages=messages)
 
     @classmethod
-    def get(cls, filepath=sys.argv[0], check_uncommitted=True, log=None):
+    def get(cls, filepath=sys.argv[0], check_uncommitted=True, create_requirements=True, log=None):
         try:
             return cls._get_script_info(
-                filepath=filepath, check_uncommitted=check_uncommitted, log=log
-            )
+                filepath=filepath, check_uncommitted=check_uncommitted,
+                create_requirements=create_requirements, log=log)
         except Exception as ex:
             if log:
                 log.warning("Failed auto-detecting task repository: {}".format(ex))

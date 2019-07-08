@@ -304,7 +304,7 @@ class Task(_Task):
     def _create_dev_task(cls, default_project_name, default_task_name, default_task_type, reuse_last_task_id):
         if not default_project_name or not default_task_name:
             # get project name and task name from repository name and entry_point
-            result = ScriptInfo.get()
+            result = ScriptInfo.get(create_requirements=False, check_uncommitted=False)
             if result:
                 if not default_project_name:
                     # noinspection PyBroadException
@@ -359,6 +359,8 @@ class Task(_Task):
                     else:
                         # reset the task, so we can update it
                         task.reset(set_started_on_success=False, force=False)
+                        # set development tags
+                        task.set_tags(['development'])
                         # clear task parameters, they are not cleared by the Task reset
                         task.set_parameters({}, __update=False)
                         # clear the comment, it is not cleared on reset
@@ -883,15 +885,6 @@ class Task(_Task):
         flush_period = logger.get_flush_period()
         if not flush_period or flush_period > self._dev_worker.report_period:
             logger.set_flush_period(self._dev_worker.report_period)
-
-        # Remove 'development' tag
-        tags = self.get_tags()
-        try:
-            tags.remove('development')
-        except ValueError:
-            pass
-        else:
-            self.set_tags(tags)
 
     def _at_exit(self):
         """

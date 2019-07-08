@@ -20,7 +20,6 @@ from pyparsing import (
     ParseSyntaxException,
 )
 from six.moves.urllib.parse import urlparse
-from watchdog.observers import Observer
 
 from .bucket_config import S3BucketConfig
 from .defs import (
@@ -36,7 +35,6 @@ from .defs import is_config_file
 from .entry import Entry, NotSet
 from .errors import ConfigurationError
 from .log import initialize as initialize_log, logger
-from .reloader import ConfigReloader
 from .utils import get_options
 
 try:
@@ -83,7 +81,6 @@ class Config(object):
         verbose=True,
         relative_to=None,
         app=None,
-        watch=False,
         is_server=False,
         **_
     ):
@@ -94,12 +91,7 @@ class Config(object):
         self._config = ConfigTree()
         self._env = env or os.environ.get("TRAINS_ENV", Environment.default)
         self.config_paths = set()
-        self.watch = watch
         self.is_server = is_server
-        if watch:
-            self.observer = Observer()
-            self.observer.start()
-            self.handler = ConfigReloader(self)
 
         if self._verbose:
             print("Config env:%s" % str(self._env))
@@ -138,9 +130,6 @@ class Config(object):
 
         self.roots = list(map(normalize, module_paths))
         self.reload()
-        if self.watch:
-            for path in self.config_paths:
-                self.observer.schedule(self.handler, str(path), recursive=True)
 
     def _reload(self):
         env = self._env
@@ -287,9 +276,6 @@ class Config(object):
             if verbose:
                 print("No config in %s" % str(conf_root))
             return conf
-
-        if self.watch:
-            self.config_paths.add(conf_root)
 
         if verbose:
             print("Loading config from %s" % str(conf_root))

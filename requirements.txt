@@ -30,4 +30,3 @@ six>=1.11.0
 tqdm>=4.19.5
 typing>=3.6.4
 urllib3>=1.22
-watchdog>=0.8.0

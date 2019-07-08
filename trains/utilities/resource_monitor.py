@@ -50,10 +50,10 @@ class ResourceMonitor(object):
         seconds_since_started = 0
         reported = 0
         last_iteration = 0
-        last_iteration_ts = 0
-        last_iteration_interval = None
-        repeated_iterations = 0
         fallback_to_sec_as_iterations = None
+        # last_iteration_interval = None
+        # last_iteration_ts = 0
+        # repeated_iterations = 0
         while True:
             last_report = time()
             current_report_frequency = self._report_frequency if reported != 0 else self._first_report_sec
@@ -67,8 +67,6 @@ class ResourceMonitor(object):
                 except Exception:
                     pass
 
-            reported += 1
-            average_readouts = self._get_average_readouts()
             seconds_since_started += int(round(time() - last_report))
             # check if we do not report any metric (so it means the last iteration will not be changed)
             if fallback_to_sec_as_iterations is None:
@@ -79,27 +77,37 @@ class ResourceMonitor(object):
                                                     'falling back to iterations as seconds-from-start')
                     fallback_to_sec_as_iterations = True
 
+            clear_readouts = True
             # if we do not have last_iteration, we just use seconds as iteration
             if fallback_to_sec_as_iterations:
                 iteration = seconds_since_started
             else:
                 iteration = self._task.get_last_iteration()
-                if iteration == last_iteration:
-                    repeated_iterations += 1
-                    if last_iteration_interval:
-                        # to be on the safe side, we don't want to pass the actual next iteration
-                        iteration += int(0.95*last_iteration_interval[0] * (seconds_since_started - last_iteration_ts)
-                                         / last_iteration_interval[1])
-                    else:
-                        iteration += 1
+                if iteration < last_iteration:
+                    # we started a new session?!
+                    # wait out
+                    clear_readouts = False
+                    iteration = last_iteration
+                elif iteration == last_iteration:
+                    # repeated_iterations += 1
+                    # if last_iteration_interval:
+                    #     # to be on the safe side, we don't want to pass the actual next iteration
+                    #     iteration += int(0.95*last_iteration_interval[0] * (seconds_since_started - last_iteration_ts)
+                    #                      / last_iteration_interval[1])
+                    # else:
+                    #     iteration += 1
+                    clear_readouts = False
+                    iteration = last_iteration
                 else:
-                    last_iteration_interval = (iteration - last_iteration, seconds_since_started - last_iteration_ts)
-                    last_iteration_ts = seconds_since_started
+                    # last_iteration_interval = (iteration - last_iteration, seconds_since_started - last_iteration_ts)
+                    # repeated_iterations = 0
+                    # last_iteration_ts = seconds_since_started
                     last_iteration = iteration
-                    repeated_iterations = 0
                     fallback_to_sec_as_iterations = False
+                    clear_readouts = True
 
             # start reporting only when we figured out, if this is seconds based, or iterations based
+            average_readouts = self._get_average_readouts()
             if fallback_to_sec_as_iterations is not None:
                 for k, v in average_readouts.items():
                     # noinspection PyBroadException
@@ -110,7 +118,12 @@ class ResourceMonitor(object):
                         logger.report_scalar(title=title, series=k, iteration=iteration, value=value)
                     except Exception:
                         pass
-                self._clear_readouts()
+                # clear readouts if this is update is not averaged
+                if clear_readouts:
+                    self._clear_readouts()
+
+            # count reported iterations
+            reported += 1
 
     def _update_readouts(self):
         readouts = self._machine_stats()

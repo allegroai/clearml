@@ -40,6 +40,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     """
 
     _anonymous_dataview_id = '__anonymous__'
+    _development_tag = 'development'
 
     class TaskTypes(Enum):
         def __str__(self):
@@ -215,7 +216,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if project_name:
             project_id = get_or_create_project(self, project_name, created_msg)
 
-        tags = ['development'] if not running_remotely() else []
+        tags = [self._development_tag] if not running_remotely() else []
 
         req = tasks.CreateRequest(
             name=task_name or make_message('Anonymous task (%(user)s@%(host)s %(time)s)'),

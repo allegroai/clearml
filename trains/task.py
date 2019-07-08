@@ -360,7 +360,7 @@ class Task(_Task):
                         # reset the task, so we can update it
                         task.reset(set_started_on_success=False, force=False)
                         # set development tags
-                        task.set_tags(['development'])
+                        task.set_tags([cls._development_tag])
                         # clear task parameters, they are not cleared by the Task reset
                         task.set_parameters({}, __update=False)
                         # clear the comment, it is not cleared on reset

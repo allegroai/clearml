@@ -100,7 +100,7 @@ Apache License, Version 2.0 (see the [LICENSE](https://www.apache.org/licenses/L
 ## Community
 
 If you have any questions, look to the TRAINS [FAQ](https://github.com/allegroai/trains/blob/master/docs/faq.md), or
-tag your questions on [stackoverflow](https://stackoverflow.com/questions/tagged/trains) with the 'trains' tag.
+tag your questions on [stackoverflow](https://stackoverflow.com/questions/tagged/trains) with '**trains**' tag.
 
 For feature requests or bug reports, please use [GitHub issues](https://github.com/allegroai/trains/issues).
 

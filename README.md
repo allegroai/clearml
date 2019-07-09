@@ -104,7 +104,7 @@ tag your questions on [stackoverflow](https://stackoverflow.com/questions/tagged
 
 For feature requests or bug reports, please use [GitHub issues](https://github.com/allegroai/trains/issues).
 
-Additionally, you can always find us at support@allegro.ai.
+Additionally, you can always find us at *trains@allegro.ai*
 
 ## Contributing
 

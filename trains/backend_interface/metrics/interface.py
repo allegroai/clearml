@@ -116,12 +116,7 @@ class Metrics(InterfaceBase):
             entry = ev.get_file_entry()
             kwargs = {}
             if entry:
-                e_storage_uri = entry.upload_uri or storage_uri
-                self._file_related_event_time = now
-                # if we have an entry (with or without a stream), we'll generate the URL and store it in the event
-                filename = entry.name
-                key = '/'.join(x for x in (self._storage_key_prefix, ev.metric, ev.variant, filename.strip('/')) if x)
-                url = '/'.join(x.strip('/') for x in (e_storage_uri, key))
+                key, url = ev.get_target_full_upload_uri(storage_uri, self.storage_key_prefix)
                 kwargs[entry.key_prop] = key
                 kwargs[entry.url_prop] = url
                 if not entry.stream:

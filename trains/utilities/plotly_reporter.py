@@ -245,6 +245,36 @@ def create_3d_surface(np_value_matrix, title="3D Surface", xlabels=None, ylabels
     return conf_matrix_plot
 
 
+def create_image_plot(image_src, title, width=640, height=480, series=None, comment=None):
+    image_plot = {
+        "data": [],
+        "layout": {
+            "xaxis": {"visible": False, "range": [0, width]},
+            "yaxis": {"visible": False, "range": [0, height]},
+            "width": width,
+            "height": height,
+            "margin": {'l': 0, 'r': 0, 't': 0, 'b': 0},
+            "images": [{
+                "sizex": width,
+                "sizey": height,
+                "xref": "x",
+                "yref": "y",
+                "opacity": 1.0,
+                "x": 0,
+                "y": int(height / 2),
+                "yanchor": "middle",
+                "sizing": "contain",
+                "layer": "below",
+                "source": image_src
+            }],
+            "showlegend": False,
+            "title": title if not comment else (title + '<br><sup>' + comment + '</sup>'),
+            "name": series,
+        }
+    }
+    return image_plot
+
+
 def _get_z_colorbar_data(z_data=None, values=None, colors=None):
     if values is None:
         values = [0, 1. / 10, 2. / 10, 6. / 10, 9. / 10]

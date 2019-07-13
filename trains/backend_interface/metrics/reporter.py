@@ -8,7 +8,8 @@ from ..base import InterfaceBase
 from ..setupuploadmixin import SetupUploadMixin
 from ...utilities.async_manager import AsyncManagerMixin
 from ...utilities.plotly_reporter import create_2d_histogram_plot, create_value_matrix, create_3d_surface, \
-    create_2d_scatter_series, create_3d_scatter_series, create_line_plot, plotly_scatter3d_layout_dict
+    create_2d_scatter_series, create_3d_scatter_series, create_line_plot, plotly_scatter3d_layout_dict, \
+    create_image_plot
 from ...utilities.py3_interop import AbstractContextManager
 from .events import ScalarEvent, VectorEvent, ImageEvent, PlotEvent, ImageEventNoUpload
 
@@ -187,9 +188,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             raise ValueError('Expected only one of [filename, matrix]')
         kwargs = dict(metric=self._normalize_name(title),
                       variant=self._normalize_name(series), iter=iter, image_file_history_size=max_image_history)
-        if matrix is None:
-            matrix = cv2.imread(path)
-        ev = ImageEvent(image_data=matrix, upload_uri=upload_uri, **kwargs)
+        ev = ImageEvent(image_data=matrix, upload_uri=upload_uri, local_image_path=path, **kwargs)
         self._report(ev)
 
     def report_histogram(self, title, series, histogram, iter, labels=None, xlabels=None, comment=None):
@@ -436,6 +435,49 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             ztitle=ztitle,
             camera=camera,
             comment=comment,
+        )
+
+        return self.report_plot(
+            title=self._normalize_name(title),
+            series=self._normalize_name(series),
+            plot=plotly_dict,
+            iter=iter,
+        )
+
+    def report_image_plot_and_upload(self, title, series, iter, path=None, matrix=None,
+                                     upload_uri=None, max_image_history=None):
+        """
+        Report an image as plot and upload its contents.
+        Image is uploaded to a preconfigured bucket (see setup_upload()) with a key (filename)
+        describing the task ID, title, series and iteration.
+        Then a plotly object is created and registered, this plotly objects points to the uploaded image
+        :param title: Title (AKA metric)
+        :type title: str
+        :param series: Series (AKA variant)
+        :type series: str
+        :param iter: Iteration number
+        :type value: int
+        :param path: A path to an image file. Required unless matrix is provided.
+        :type path: str
+        :param matrix: A 3D numpy.ndarray object containing image data (BGR). Required unless filename is provided.
+        :type matrix: str
+        :param max_image_history: maximum number of image to store per metric/variant combination
+        use negative value for unlimited. default is set in global configuration (default=5)
+        """
+        if not upload_uri and not self._storage_uri:
+            raise ValueError('Upload configuration is required (use setup_upload())')
+        if len([x for x in (path, matrix) if x is not None]) != 1:
+            raise ValueError('Expected only one of [filename, matrix]')
+        kwargs = dict(metric=self._normalize_name(title),
+                      variant=self._normalize_name(series), iter=iter, image_file_history_size=max_image_history)
+        ev = ImageEvent(image_data=matrix, upload_uri=upload_uri, local_image_path=path, **kwargs)
+        _, url = ev.get_target_full_upload_uri(upload_uri or self._storage_uri, self._metrics.storage_key_prefix)
+        self._report(ev)
+        plotly_dict = create_image_plot(
+            image_src=url,
+            title=title + '/' + series,
+            width=matrix.shape[1] if matrix is not None else 640,
+            height=matrix.shape[0] if matrix is not None else 480,
         )
 
         return self.report_plot(

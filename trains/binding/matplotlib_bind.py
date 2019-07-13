@@ -1,7 +1,7 @@
+import os
 import sys
+from tempfile import mkstemp
 
-import cv2
-import numpy as np
 import six
 from six import BytesIO
 
@@ -129,6 +129,7 @@ class PatchedMatplotlib:
             # convert to plotly
             image = None
             plotly_fig = None
+            image_format = 'svg'
             if not force_save_as_image:
                 # noinspection PyBroadException
                 try:
@@ -140,17 +141,28 @@ class PatchedMatplotlib:
                             return renderer.plotly_fig
 
                     plotly_fig = our_mpl_to_plotly(mpl_fig)
-                except Exception:
-                    pass
+                except Exception as ex:
+                    # this was an image, change format to jpeg
+                    if 'selfie' in str(ex):
+                        image_format = 'jpeg'
 
             # plotly could not serialize the plot, we should convert to image
             if not plotly_fig:
                 plotly_fig = None
-                buffer_ = BytesIO()
-                plt.savefig(buffer_, format="png", bbox_inches='tight', pad_inches=0)
-                buffer_.seek(0)
-                buffer = buffer_.getbuffer() if not six.PY2 else buffer_.getvalue()
-                image = cv2.imdecode(np.frombuffer(buffer, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
+                # noinspection PyBroadException
+                try:
+                    # first try SVG if we fail then fallback to png
+                    buffer_ = BytesIO()
+                    plt.savefig(buffer_, format=image_format, bbox_inches='tight', pad_inches=0)
+                    buffer_.seek(0)
+                except Exception:
+                    image_format = 'png'
+                    buffer_ = BytesIO()
+                    plt.savefig(buffer_, format=image_format, bbox_inches='tight', pad_inches=0)
+                    buffer_.seek(0)
+                fd, image = mkstemp(suffix='.'+image_format)
+                os.write(fd, buffer_.read())
+                os.close(fd)
 
             # check if we need to restore the active object
             if set_active and not _pylab_helpers.Gcf.get_active():
@@ -185,7 +197,14 @@ class PatchedMatplotlib:
                     PatchedMatplotlib._global_image_counter += 1
                     logger = PatchedMatplotlib._current_task.get_logger()
                     title = plot_title or 'untitled %d' % PatchedMatplotlib._global_image_counter
-                    logger.report_image_and_upload(title=title, series='plot image', matrix=image,
+                    # this is actually a failed plot, we should put it under plots:
+                    # currently disabled
+                    # if image_format == 'svg':
+                    #     logger.report_image_plot_and_upload(title=title, series='plot image', path=image,
+                    #                                         iteration=PatchedMatplotlib._global_image_counter
+                    #                                         if plot_title else 0)
+                    # else:
+                    logger.report_image_and_upload(title=title, series='plot image', path=image,
                                                    iteration=PatchedMatplotlib._global_image_counter
                                                    if plot_title else 0)
         except Exception:

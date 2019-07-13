@@ -172,11 +172,12 @@ class ImageEvent(MetricsEventAdapter):
     _metric_counters_lock = Lock()
     _image_file_history_size = int(config.get('metrics.file_history_size', 5))
 
-    def __init__(self, metric, variant, image_data, iter=0, upload_uri=None,
+    def __init__(self, metric, variant, image_data, local_image_path=None, iter=0, upload_uri=None,
                  image_file_history_size=None, **kwargs):
-        if not hasattr(image_data, 'shape'):
+        if image_data is not None and not hasattr(image_data, 'shape'):
             raise ValueError('Image must have a shape attribute')
         self._image_data = image_data
+        self._local_image_path = local_image_path
         self._url = None
         self._key = None
         self._count = self._get_metric_count(metric, variant)
@@ -187,6 +188,12 @@ class ImageEvent(MetricsEventAdapter):
         else:
             self._filename = '%s_%s_%08d' % (metric, variant, self._count % image_file_history_size)
         self._upload_uri = upload_uri
+
+        # get upload uri upfront
+        image_format = self._format.lower() if self._image_data is not None else \
+            pathlib2.Path(self._local_image_path).suffix
+        self._upload_filename = str(pathlib2.Path(self._filename).with_suffix(image_format))
+
         super(ImageEvent, self).__init__(metric, variant, iter=iter, **kwargs)
 
     @classmethod
@@ -221,7 +228,7 @@ class ImageEvent(MetricsEventAdapter):
         last_count = self._get_metric_count(self.metric, self.variant, next=False)
         if abs(self._count - last_count) > self._image_file_history_size:
             output = None
-        else:
+        elif self._image_data is not None:
             image_data = self._image_data
             if not isinstance(image_data, np.ndarray):
                 # try conversion, if it fails we'll leave it to the user.
@@ -245,14 +252,24 @@ class ImageEvent(MetricsEventAdapter):
 
             output = six.BytesIO(img_bytes.tostring())
             output.seek(0)
-
-        filename = str(pathlib2.Path(self._filename).with_suffix(self._format.lower()))
+        else:
+            with open(self._local_image_path, 'rb') as f:
+                output = six.BytesIO(f.read())
+            output.seek(0)
 
         return self.FileEntry(
             event=self,
-            name=filename,
+            name=self._upload_filename,
             stream=output,
             url_prop='url',
             key_prop='key',
             upload_uri=self._upload_uri
         )
+
+    def get_target_full_upload_uri(self, storage_uri, storage_key_prefix):
+        e_storage_uri = self._upload_uri or storage_uri
+        # if we have an entry (with or without a stream), we'll generate the URL and store it in the event
+        filename = self._upload_filename
+        key = '/'.join(x for x in (storage_key_prefix, self.metric, self.variant, filename.strip('/')) if x)
+        url = '/'.join(x.strip('/') for x in (e_storage_uri, key))
+        return key, url

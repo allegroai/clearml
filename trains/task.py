@@ -11,6 +11,7 @@ import psutil
 import six
 
 from .backend_api.services import tasks, projects
+from .backend_api.session.session import Session
 from .backend_interface.model import Model as BackendModel
 from .backend_interface.task import Task as _Task
 from .backend_interface.task.args import _Arguments
@@ -25,6 +26,7 @@ from .errors import UsageError
 from .logger import Logger
 from .model import InputModel, OutputModel, ARCHIVED_TAG
 from .task_parameters import TaskParameters
+from .binding.environ_bind import EnvironmentBind
 from .binding.absl_bind import PatchAbsl
 from .utilities.args import argparser_parseargs_called, get_argparser_last_args, \
     argparser_update_currenttask
@@ -212,6 +214,7 @@ class Task(_Task):
             Task.__main_task = task
             # Patch argparse to be aware of the current task
             argparser_update_currenttask(Task.__main_task)
+            EnvironmentBind.update_current_task(Task.__main_task)
             if auto_connect_frameworks:
                 PatchedMatplotlib.update_current_task(Task.__main_task)
                 PatchAbsl.update_current_task(Task.__main_task)
@@ -686,6 +689,26 @@ class Task(_Task):
         """
         self.data.last_iteration = int(last_iteration)
         self._edit(last_iteration=self.data.last_iteration)
+
+    @classmethod
+    def set_credentials(cls, host=None, key=None, secret=None):
+        """
+        Set new default TRAINS-server host and credentials
+        These configurations will be overridden by wither OS environment variables or trains.conf configuration file
+        Notice: credentials needs to be set prior to Task initialization
+        :param host: host url, example: host='http://localhost:8008'
+        :type  host: str
+        :param key: user key/secret pair, example: key='thisisakey123'
+        :type  key: str
+        :param secret: user key/secret pair, example: secret='thisisseceret123'
+        :type  secret: str
+        """
+        if host:
+            Session.default_host = host
+        if key:
+            Session.default_key = key
+        if secret:
+            Session.default_secret = secret
 
     def _connect_output_model(self, model):
         assert isinstance(model, OutputModel)

@@ -3,9 +3,9 @@ import sys
 import types
 from socket import gethostname
 
+import jwt
 import requests
 import six
-import jwt
 from pyhocon import ConfigTree
 from requests.auth import HTTPBasicAuth
 
@@ -36,6 +36,9 @@ class Session(TokenManager):
     _session_timeout = (5.0, None)
 
     api_version = '2.1'
+    default_host = "https://demoapi.trainsai.io"
+    default_key = "EGRTCO8JMSIGI6S39GTP43NFWXDQOW"
+    default_secret = "x!XTov_G-#vspE*Y(h$Anm&DIc5Ou-F)jsl$PdOyj5wG1&E!Z8"
 
     # TODO: add requests.codes.gateway_timeout once we support async commits
     _retry_codes = [
@@ -94,7 +97,7 @@ class Session(TokenManager):
         self._logger = logger
 
         self.__access_key = api_key or ENV_ACCESS_KEY.get(
-            default=self.config.get("api.credentials.access_key", None)
+            default=(self.config.get("api.credentials.access_key") or self.default_key)
         )
         if not self.access_key:
             raise ValueError(
@@ -102,14 +105,14 @@ class Session(TokenManager):
             )
 
         self.__secret_key = secret_key or ENV_SECRET_KEY.get(
-            default=self.config.get("api.credentials.secret_key", None)
+            default=(self.config.get("api.credentials.secret_key") or self.default_secret)
         )
         if not self.secret_key:
             raise ValueError(
                 "Missing secret_key. Please set in configuration file or pass in session init."
             )
 
-        host = host or ENV_HOST.get(default=self.config.get("api.host"))
+        host = host or self.get_api_server_host(config=self.config)
         if not host:
             raise ValueError("host is required in init or config")
 
@@ -385,6 +388,13 @@ class Session(TokenManager):
         )
 
         return call_result
+
+    @classmethod
+    def get_api_server_host(cls, config=None):
+        if not config:
+            from ...config import config_obj
+            config = config_obj
+        return ENV_HOST.get(default=(config.get("api.host") or cls.default_host))
 
     def _do_refresh_token(self, old_token, exp=None):
         """ TokenManager abstract method implementation.

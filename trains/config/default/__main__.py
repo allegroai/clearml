@@ -57,29 +57,29 @@ def main():
     if parsed_host.port == 8080:
         # this is a docker 8080 is the web address, we need the api address, it is 8008
         print('Port 8080 is the web port, we need the api port. Replacing 8080 with 8008')
-        api_host = parsed_host.scheme + "://" + parsed_host.netloc.replace(':8080', ':8008') + parsed_host.path
+        api_host = parsed_host.scheme + "://" + parsed_host.netloc.replace(':8080', ':8008', 1) + parsed_host.path
         web_host = parsed_host.scheme + "://" + parsed_host.netloc + parsed_host.path
     elif parsed_host.netloc.startswith('demoapp.'):
         print('{} is the web server, we need the api server. Replacing \'demoapp.\' with \'demoapi.\''.format(
             parsed_host.netloc))
         # this is our demo server
-        api_host = parsed_host.scheme + "://" + parsed_host.netloc.replace('demoapp.', 'demoapi.') + parsed_host.path
+        api_host = parsed_host.scheme + "://" + parsed_host.netloc.replace('demoapp.', 'demoapi.', 1) + parsed_host.path
         web_host = parsed_host.scheme + "://" + parsed_host.netloc + parsed_host.path
     elif parsed_host.netloc.startswith('app.'):
         print('{} is the web server, we need the api server. Replacing \'app.\' with \'api.\''.format(
             parsed_host.netloc))
         # this is our application server
-        api_host = parsed_host.scheme + "://" + parsed_host.netloc.replace('app.', 'api.') + parsed_host.path
+        api_host = parsed_host.scheme + "://" + parsed_host.netloc.replace('app.', 'api.', 1) + parsed_host.path
         web_host = parsed_host.scheme + "://" + parsed_host.netloc + parsed_host.path
     elif parsed_host.port == 8008:
         api_host = parsed_host.scheme + "://" + parsed_host.netloc + parsed_host.path
-        web_host = parsed_host.scheme + "://" + parsed_host.netloc.replace(':8008', ':8080') + parsed_host.path
+        web_host = parsed_host.scheme + "://" + parsed_host.netloc.replace(':8008', ':8080', 1) + parsed_host.path
     elif parsed_host.netloc.startswith('demoapi.'):
         api_host = parsed_host.scheme + "://" + parsed_host.netloc + parsed_host.path
-        web_host = parsed_host.scheme + "://" + parsed_host.netloc.replace('demoapi.', 'demoapp.') + parsed_host.path
+        web_host = parsed_host.scheme + "://" + parsed_host.netloc.replace('demoapi.', 'demoapp.', 1) + parsed_host.path
     elif parsed_host.netloc.startswith('api.'):
         api_host = parsed_host.scheme + "://" + parsed_host.netloc + parsed_host.path
-        web_host = parsed_host.scheme + "://" + parsed_host.netloc.replace('api.', 'app.') + parsed_host.path
+        web_host = parsed_host.scheme + "://" + parsed_host.netloc.replace('api.', 'app.', 1) + parsed_host.path
     else:
         api_host = None
         web_host = None

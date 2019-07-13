@@ -9,7 +9,6 @@ from six.moves.urllib.parse import urlparse, urlunparse
 
 import six
 
-from ...backend_api.session.defs import ENV_HOST
 from ...backend_interface.task.development.worker import DevWorker
 from ...backend_api import Session
 from ...backend_api.services import tasks, models, events, projects
@@ -23,7 +22,7 @@ from ..setupuploadmixin import SetupUploadMixin
 from ..util import make_message, get_or_create_project, get_single_result, \
     exact_match_regex
 from ...config import get_config_for_bucket, get_remote_task_id, TASK_ID_ENV_VAR, get_log_to_backend, \
-    running_remotely, get_cache_dir, config_obj
+    running_remotely, get_cache_dir
 from ...debugging import get_logger
 from ...debugging.log import LoggerRoot
 from ...storage import StorageHelper
@@ -205,8 +204,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # overwrite it before we have a chance to call edit)
         self._edit(script=result.script)
         self.reload()
-        if result.script.get('requirements'):
-            self._update_requirements(result.script.get('requirements'))
+        self._update_requirements(result.script.get('requirements') if result.script.get('requirements') else '')
         check_package_update_thread.join()
 
     def _auto_generate(self, project_name=None, task_name=None, task_type=TaskTypes.training):
@@ -673,28 +671,30 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         app_host = self._get_app_server()
         parsed = urlparse(app_host)
         if parsed.port:
-            parsed = parsed._replace(netloc=parsed.netloc.replace(':%d' % parsed.port, ':8081'))
+            parsed = parsed._replace(netloc=parsed.netloc.replace(':%d' % parsed.port, ':8081', 1))
         elif parsed.netloc.startswith('demoapp.'):
-            parsed = parsed._replace(netloc=parsed.netloc.replace('demoapp.', 'demofiles.'))
+            parsed = parsed._replace(netloc=parsed.netloc.replace('demoapp.', 'demofiles.', 1))
+        elif parsed.netloc.startswith('app.'):
+            parsed = parsed._replace(netloc=parsed.netloc.replace('app.', 'files.', 1))
         else:
             parsed = parsed._replace(netloc=parsed.netloc+':8081')
         return urlunparse(parsed)
 
     @classmethod
     def _get_api_server(cls):
-        return ENV_HOST.get(default=config_obj.get("api.host"))
+        return Session.get_api_server_host()
 
     @classmethod
     def _get_app_server(cls):
         host = cls._get_api_server()
         if '://demoapi.' in host:
-            return host.replace('://demoapi.', '://demoapp.')
+            return host.replace('://demoapi.', '://demoapp.', 1)
         if '://api.' in host:
-            return host.replace('://api.', '://app.')
+            return host.replace('://api.', '://app.', 1)
 
         parsed = urlparse(host)
         if parsed.port == 8008:
-            return host.replace(':8008', ':8080')
+            return host.replace(':8008', ':8080', 1)
 
     def _edit(self, **kwargs):
         with self._edit_lock:
@@ -709,8 +709,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def _update_requirements(self, requirements):
         if not isinstance(requirements, dict):
             requirements = {'pip': requirements}
-        self.data.script.requirements = requirements
-        self.send(tasks.SetRequirementsRequest(task=self.id, requirements=requirements))
+        # protection, Old API might not support it
+        try:
+            self.data.script.requirements = requirements
+            self.send(tasks.SetRequirementsRequest(task=self.id, requirements=requirements))
+        except Exception:
+            pass
 
     def _update_script(self, script):
         self.data.script = script

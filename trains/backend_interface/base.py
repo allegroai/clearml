@@ -4,9 +4,10 @@ import requests.exceptions
 import six
 from ..backend_api import Session
 from ..backend_api.session import BatchRequest
+from ..backend_api.session.defs import ENV_ACCESS_KEY, ENV_SECRET_KEY
 
 from ..config import config_obj
-from ..config.defs import LOG_LEVEL_ENV_VAR, API_ACCESS_KEY, API_SECRET_KEY
+from ..config.defs import LOG_LEVEL_ENV_VAR
 from ..debugging import get_logger
 from ..backend_api.version import __version__
 from .session import SendError, SessionInterface
@@ -78,8 +79,8 @@ class InterfaceBase(SessionInterface):
                 initialize_logging=False,
                 client='sdk-%s' % __version__,
                 config=config_obj,
-                api_key=API_ACCESS_KEY.get(),
-                secret_key=API_SECRET_KEY.get(),
+                api_key=ENV_ACCESS_KEY.get(),
+                secret_key=ENV_SECRET_KEY.get(),
             )
         return InterfaceBase._default_session
 

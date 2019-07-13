@@ -519,7 +519,7 @@ class PatchSummaryToEventTransformer(object):
                     setattr(SummaryToEventTransformer, 'trains',
                             property(PatchSummaryToEventTransformer.trains_object))
             except Exception as ex:
-                getLogger(TrainsFrameworkAdapter).warning(str(ex))
+                getLogger(TrainsFrameworkAdapter).debug(str(ex))
 
         if 'torch' in sys.modules:
             try:
@@ -533,7 +533,7 @@ class PatchSummaryToEventTransformer(object):
                 # this is a new version of TensorflowX
                 pass
             except Exception as ex:
-                getLogger(TrainsFrameworkAdapter).warning(str(ex))
+                getLogger(TrainsFrameworkAdapter).debug(str(ex))
 
         if 'tensorboardX' in sys.modules:
             try:
@@ -549,7 +549,7 @@ class PatchSummaryToEventTransformer(object):
                 # this is a new version of TensorflowX
                 pass
             except Exception as ex:
-                getLogger(TrainsFrameworkAdapter).warning(str(ex))
+                getLogger(TrainsFrameworkAdapter).debug(str(ex))
 
             if PatchSummaryToEventTransformer.__original_getattributeX is None:
                 try:
@@ -563,7 +563,7 @@ class PatchSummaryToEventTransformer(object):
                     # this is a new version of TensorflowX
                     pass
                 except Exception as ex:
-                    getLogger(TrainsFrameworkAdapter).warning(str(ex))
+                    getLogger(TrainsFrameworkAdapter).debug(str(ex))
 
     @staticmethod
     def _patched_add_eventT(self, *args, **kwargs):
@@ -795,7 +795,7 @@ class PatchTensorFlowEager(object):
             except ImportError:
                 pass
             except Exception as ex:
-                getLogger(TrainsFrameworkAdapter).warning(str(ex))
+                getLogger(TrainsFrameworkAdapter).debug(str(ex))
 
     @staticmethod
     def _get_event_writer():

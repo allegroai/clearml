@@ -241,14 +241,19 @@ class EnvDetector(Detector):
 
         if not repository_url:
             raise DetectionError("No VCS environment data")
-
+        status = VCS_STATUS.get() or ''
+        diff = VCS_DIFF.get() or ''
+        modified = bool(diff or (status and [s for s in status.split('\n') if s.strip().startswith('M ')]))
+        if modified and not diff:
+            diff = '# Repository modified, but no git diff could be extracted.'
         return Result(
             url=repository_url,
             branch=VCS_BRANCH.get(),
             commit=VCS_COMMIT_ID.get(),
             root=VCS_ROOT.get(converter=self._normalize_root),
-            status=VCS_STATUS.get(),
-            diff=VCS_DIFF.get(),
+            status=status,
+            diff=diff,
+            modified=modified,
         )
 
 

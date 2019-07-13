@@ -315,7 +315,7 @@ class CheckPackageUpdates(object):
             from ..version import __version__
             cur_version = Version(__version__)
             if not cur_version.is_devrelease and not cur_version.is_prerelease:
-                latest_version = [r for r in latest_version if not r.is_devrelease or not r.is_prerelease]
+                latest_version = [r for r in latest_version if not r.is_devrelease and not r.is_prerelease]
 
             if cur_version >= latest_version[-1]:
                 return None

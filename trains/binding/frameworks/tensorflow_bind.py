@@ -93,7 +93,7 @@ class EventTrainsWriter(object):
         self.histogram_granularity = histogram_granularity
         self.histogram_update_freq_multiplier = histogram_update_freq_multiplier
         self._logger = logger
-        self._visualization_mode = 'BGR'
+        self._visualization_mode = 'RGB'  # 'BGR'
         self._variants = defaultdict(lambda: ())
         self._scalar_report_cache = {}
         self._hist_report_cache = {}

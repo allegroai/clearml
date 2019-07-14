@@ -49,12 +49,15 @@ all_combined = tf.concat(all_distributions, 0)
 tf.summary.histogram("all_combined", all_combined)
 
 # convert to 4d [batch, col, row, RGB-channels]
-image = cv2.imread('./samples/picasso.jpg')
-image = image[:, :, 0][np.newaxis, :, :, np.newaxis]
-# image = image[np.newaxis, :, :, :]  # test greyscale image
+image = cv2.imread('./samples/picasso.jpg')[:, :, ::-1]
+image_gray = image[:, :, 0][np.newaxis, :, :, np.newaxis]
+image_rgba = np.concatenate((image, 255*np.atleast_3d(np.ones(shape=image.shape[:2], dtype=np.uint8))), axis=2)
+image_rgba = image_rgba[np.newaxis, :, :, :]
+image = image[np.newaxis, :, :, :]
 
-# un-comment to add image reporting
 tf.summary.image("test", image, max_outputs=10)
+tf.summary.image("test_gray", image_gray, max_outputs=10)
+tf.summary.image("test_rgba", image_rgba, max_outputs=10)
 
 # Setup a session and summary writer
 summaries = tf.summary.merge_all()

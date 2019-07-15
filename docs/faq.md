@@ -20,7 +20,7 @@ Models
 Experiments
 
 * [I noticed I keep getting the message `warning: uncommitted code`. What does it mean?](#uncommitted-code-warning)
-* [I do not use Argarser for hyper-parameters. Do you have a solution?](#dont-want-argparser)
+* [I do not use Argparser for hyper-parameters. Do you have a solution?](#dont-want-argparser)
 * [I noticed that all of my experiments appear as `Training`. Are there other options?](#other-experiment-types)
 * [Sometimes I see experiments as running when in fact they are not. What's going on?](#experiment-running-but-stopped)
 * [My code throws an exception, but my experiment status is not "Failed". What happened?](#exception-not-failed)
@@ -139,7 +139,7 @@ because uncommitted code means this experiment will be difficult to reproduce.
 
 If you still don't care, just ignore this message - it is merely a warning.  
 
-### I do not use Argarser for hyper-parameters. Do you have a solution? <a name="dont-want-argparser"></a>
+### I do not use Argparser for hyper-parameters. Do you have a solution? <a name="dont-want-argparser"></a>
 
 Yes! TRAINS supports using a Python dictionary for hyper-parameter logging. Just use:
 

@@ -70,9 +70,9 @@ TRAINS is a two part solution:
 We have a demo server up and running at [https://demoapp.trainsai.io](https://demoapp.trainsai.io). You can try out TRAINS and test your code with it.
 Note that it resets every 24 hours and all of the data is deleted.
 
-When you are ready to use your own TRAINS server, go ahead and [install *TRAINS-server*](#configuring-your-own-trains).
+When you are ready to use your own TRAINS server, go ahead and [install *TRAINS-server*](https://github.com/allegroai/trains-server).
 
-System diagram of [TRAINS](https://github.com/allegroai/trains-server) in action
+System diagram of TRAINS in action
 
 <img src="https://github.com/allegroai/trains/blob/master/docs/system_diagram.png?raw=true" width="30%">
 

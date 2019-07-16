@@ -91,8 +91,6 @@ After installing and configuring, you can access your configuration file at `~/t
 Sample configuration file available [here](https://github.com/allegroai/trains/blob/master/docs/trains.conf).
 
 
-*For more examples and use cases*, see [examples](https://github.com/allegroai/trains/blob/master/docs/trains_examples.md).
-
 ## Who We Are
 
 TRAINS is supported by the same team behind *allegro.ai*,
@@ -113,7 +111,9 @@ even though this project is currently in the beta stage, your logs and data will
 
 Apache License, Version 2.0 (see the [LICENSE](https://www.apache.org/licenses/LICENSE-2.0.html) for more information)
 
-## Community
+## Community & Support
+
+For more examples and use cases, check [examples](https://github.com/allegroai/trains/blob/master/docs/trains_examples.md).
 
 If you have any questions, look to the TRAINS [FAQ](https://github.com/allegroai/trains/blob/master/docs/faq.md), or
 tag your questions on [stackoverflow](https://stackoverflow.com/questions/tagged/trains) with '**trains**' tag.

@@ -31,7 +31,7 @@ import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 from trains import Task
 
-tf.enable_eager_execution()
+tf.compat.v1.enable_eager_execution()
 
 task = Task.init(project_name='examples', task_name='Tensorflow eager mode')
 
@@ -160,11 +160,11 @@ def discriminator_loss(discriminator_real_outputs, discriminator_gen_outputs):
     A scalar loss Tensor.
   """
 
-  loss_on_real = tf.losses.sigmoid_cross_entropy(
+  loss_on_real = tf.compat.v1.losses.sigmoid_cross_entropy(
       tf.ones_like(discriminator_real_outputs),
       discriminator_real_outputs,
       label_smoothing=0.25)
-  loss_on_generated = tf.losses.sigmoid_cross_entropy(
+  loss_on_generated = tf.compat.v1.losses.sigmoid_cross_entropy(
       tf.zeros_like(discriminator_gen_outputs), discriminator_gen_outputs)
   loss = loss_on_real + loss_on_generated
   tf.contrib.summary.scalar('discriminator_loss', loss)
@@ -182,7 +182,7 @@ def generator_loss(discriminator_gen_outputs):
   Returns:
     A scalar loss Tensor.
   """
-  loss = tf.losses.sigmoid_cross_entropy(
+  loss = tf.compat.v1.losses.sigmoid_cross_entropy(
       tf.ones_like(discriminator_gen_outputs), discriminator_gen_outputs)
   tf.contrib.summary.scalar('generator_loss', loss)
   return loss
@@ -208,12 +208,12 @@ def train_one_epoch(generator, discriminator, generator_optimizer,
   total_discriminator_loss = 0.0
   for (batch_index, images) in enumerate(dataset):
     with tf.device('/cpu:0'):
-      tf.assign_add(step_counter, 1)
+      tf.compat.v1.assign_add(step_counter, 1)
 
     with tf.contrib.summary.record_summaries_every_n_global_steps(
         log_interval, global_step=step_counter):
       current_batch_size = images.shape[0]
-      noise = tf.random_uniform(
+      noise = tf.random.uniform(
           shape=[current_batch_size, noise_dim],
           minval=-1.,
           maxval=1.,
@@ -271,9 +271,9 @@ def main(_):
   model_objects = {
       'generator': Generator(data_format),
       'discriminator': Discriminator(data_format),
-      'generator_optimizer': tf.train.AdamOptimizer(FLAGS.lr),
-      'discriminator_optimizer': tf.train.AdamOptimizer(FLAGS.lr),
-      'step_counter': tf.train.get_or_create_global_step(),
+      'generator_optimizer': tf.compat.v1.train.AdamOptimizer(FLAGS.lr),
+      'discriminator_optimizer': tf.compat.v1.train.AdamOptimizer(FLAGS.lr),
+      'step_counter': tf.compat.v1.train.get_or_create_global_step(),
   }
 
   # Prepare summary writer and checkpoint info
@@ -355,4 +355,4 @@ if __name__ == '__main__':
 
   FLAGS, unparsed = parser.parse_known_args()
 
-tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)
+tf.compat.v1.app.run(main=main, argv=[sys.argv[0]] + unparsed)

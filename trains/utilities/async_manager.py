@@ -28,7 +28,9 @@ class AsyncManagerMixin(object):
                     continue
                 # add result
                 if result and not result.ready():
-                    cls._async_results[pid] = cls._async_results.get(pid, []).append(result)
+                    if not cls._async_results.get(pid):
+                        cls._async_results[pid] = []
+                    cls._async_results[pid].append(result)
                 break
             finally:
                 cls._async_results_lock.release()

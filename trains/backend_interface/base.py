@@ -55,18 +55,22 @@ class InterfaceBase(SessionInterface):
                 if log:
                     log.error(error_msg)
 
-                if res.meta.result_code <= 500:
-                    # Proper backend error/bad status code - raise or return
-                    if raise_on_errors:
-                        raise SendError(res, error_msg)
-                    return res
-
             except requests.exceptions.BaseHTTPError as e:
-                log.error('failed sending %s: %s' % (str(req), str(e)))
+                res = None
+                log.error('Failed sending %s: %s' % (str(req), str(e)))
+            except Exception as e:
+                res = None
+                log.error('Failed sending %s: %s' % (str(req), str(e)))
 
-            # Infrastructure error
-            if log:
-                log.info('retrying request %s' % str(req))
+            if res and res.meta.result_code <= 500:
+                # Proper backend error/bad status code - raise or return
+                if raise_on_errors:
+                    raise SendError(res, error_msg)
+                return res
+
+            # # Infrastructure error
+            # if log:
+            #     log.info('retrying request %s' % str(req))
 
     def send(self, req, ignore_errors=False, raise_on_errors=True, async_enable=False):
         return self._send(session=self.session, req=req, ignore_errors=ignore_errors, raise_on_errors=raise_on_errors,

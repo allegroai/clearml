@@ -1,7 +1,8 @@
-# TRAINS - Example of Matplotlib integration and reporting
+# TRAINS - Example of Matplotlib and Seaborn integration and reporting
 #
 import numpy as np
 import matplotlib.pyplot as plt
+import seaborn as sns
 from trains import Task
 
 
@@ -33,4 +34,13 @@ plt.imshow(m)
 plt.title('Image Title')
 plt.show()
 
-print('This is a Matplotlib example')
+sns.set(style="darkgrid")
+# Load an example dataset with long-form data
+fmri = sns.load_dataset("fmri")
+# Plot the responses for different events and regions
+sns.lineplot(x="timepoint", y="signal",
+             hue="region", style="event",
+             data=fmri)
+plt.show()
+
+print('This is a Matplotlib & Seaborn example')

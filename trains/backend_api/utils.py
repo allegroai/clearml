@@ -27,6 +27,29 @@ def get_config():
     return config_obj
 
 
+def urllib_log_warning_setup(total_retries=10, display_warning_after=5):
+    class RetryFilter(logging.Filter):
+        last_instance = None
+
+        def __init__(self, total, warning_after=5):
+            super(RetryFilter, self).__init__()
+            self.total = total
+            self.display_warning_after = warning_after
+            self.last_instance = self
+
+        def filter(self, record):
+            if record.args and len(record.args) > 0 and isinstance(record.args[0], Retry):
+                retry_left = self.total - record.args[0].total
+                return retry_left >= self.display_warning_after
+
+            return True
+
+    urllib3_log = logging.getLogger('urllib3.connectionpool')
+    if urllib3_log:
+        urllib3_log.removeFilter(RetryFilter.last_instance)
+        urllib3_log.addFilter(RetryFilter(total_retries, display_warning_after))
+
+
 class TLSv1HTTPAdapter(HTTPAdapter):
     def init_poolmanager(self, connections, maxsize, block=False, **pool_kwargs):
         self.poolmanager = PoolManager(num_pools=connections,

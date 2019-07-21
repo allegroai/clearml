@@ -77,6 +77,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         task_id = self._resolve_task_id(task_id, log=log) if not force_create else None
         self._edit_lock = RLock()
         super(Task, self).__init__(id=task_id, session=session, log=log)
+        self._project_name = None
         self._storage_uri = None
         self._input_model = None
         self._output_model = None
@@ -87,6 +88,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._parameters_allowed_types = (
                 six.string_types + six.integer_types + (six.text_type, float, list, dict, type(None))
         )
+        self._app_server = None
+        self._files_server = None
 
         if not task_id:
             # generate a new task
@@ -656,8 +659,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if self.project is None:
             return None
 
+        if self._project_name and self._project_name[0] == self.project:
+            return self._project_name[1]
+
         res = self.send(projects.GetByIdRequest(project=self.project), raise_on_errors=False)
-        return res.response.project.name
+        self._project_name = (self.project, res.response.project.name)
+        return self._project_name[1]
 
     def get_tags(self):
         return self._get_task_property("tags")
@@ -668,33 +675,18 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._edit(tags=self.data.tags)
 
     def _get_default_report_storage_uri(self):
-        app_host = self._get_app_server()
-        parsed = urlparse(app_host)
-        if parsed.port:
-            parsed = parsed._replace(netloc=parsed.netloc.replace(':%d' % parsed.port, ':8081', 1))
-        elif parsed.netloc.startswith('demoapp.'):
-            parsed = parsed._replace(netloc=parsed.netloc.replace('demoapp.', 'demofiles.', 1))
-        elif parsed.netloc.startswith('app.'):
-            parsed = parsed._replace(netloc=parsed.netloc.replace('app.', 'files.', 1))
-        else:
-            parsed = parsed._replace(netloc=parsed.netloc+':8081')
-        return urlunparse(parsed)
+        if not self._files_server:
+            self._files_server = Session.get_files_server_host()
+        return self._files_server
 
     @classmethod
     def _get_api_server(cls):
         return Session.get_api_server_host()
 
-    @classmethod
-    def _get_app_server(cls):
-        host = cls._get_api_server()
-        if '://demoapi.' in host:
-            return host.replace('://demoapi.', '://demoapp.', 1)
-        if '://api.' in host:
-            return host.replace('://api.', '://app.', 1)
-
-        parsed = urlparse(host)
-        if parsed.port == 8008:
-            return host.replace(':8008', ':8080', 1)
+    def _get_app_server(self):
+        if not self._app_server:
+            self._app_server = Session.get_app_server_host()
+        return self._app_server
 
     def _edit(self, **kwargs):
         with self._edit_lock:

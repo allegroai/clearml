@@ -2,6 +2,7 @@ import json as json_lib
 import sys
 import types
 from socket import gethostname
+from six.moves.urllib.parse import urlparse, urlunparse
 
 import jwt
 import requests
@@ -10,11 +11,11 @@ from pyhocon import ConfigTree
 from requests.auth import HTTPBasicAuth
 
 from .callresult import CallResult
-from .defs import ENV_VERBOSE, ENV_HOST, ENV_ACCESS_KEY, ENV_SECRET_KEY
+from .defs import ENV_VERBOSE, ENV_HOST, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_WEB_HOST, ENV_FILES_HOST
 from .request import Request, BatchRequest
 from .token_manager import TokenManager
 from ..config import load
-from ..utils import get_http_session_with_retry
+from ..utils import get_http_session_with_retry, urllib_log_warning_setup
 from ..version import __version__
 
 
@@ -32,11 +33,13 @@ class Session(TokenManager):
 
     _async_status_code = 202
     _session_requests = 0
-    _session_initial_timeout = (1.0, 10)
-    _session_timeout = (5.0, None)
+    _session_initial_timeout = (3.0, 10.)
+    _session_timeout = (5.0, 300.)
 
     api_version = '2.1'
     default_host = "https://demoapi.trainsai.io"
+    default_web = "https://demoapp.trainsai.io"
+    default_files = "https://demofiles.trainsai.io"
     default_key = "EGRTCO8JMSIGI6S39GTP43NFWXDQOW"
     default_secret = "x!XTov_G-#vspE*Y(h$Anm&DIc5Ou-F)jsl$PdOyj5wG1&E!Z8"
 
@@ -97,7 +100,7 @@ class Session(TokenManager):
         self._logger = logger
 
         self.__access_key = api_key or ENV_ACCESS_KEY.get(
-            default=(self.config.get("api.credentials.access_key") or self.default_key)
+            default=(self.config.get("api.credentials.access_key", None) or self.default_key)
         )
         if not self.access_key:
             raise ValueError(
@@ -105,7 +108,7 @@ class Session(TokenManager):
             )
 
         self.__secret_key = secret_key or ENV_SECRET_KEY.get(
-            default=(self.config.get("api.credentials.secret_key") or self.default_secret)
+            default=(self.config.get("api.credentials.secret_key", None) or self.default_secret)
         )
         if not self.secret_key:
             raise ValueError(
@@ -125,7 +128,7 @@ class Session(TokenManager):
 
         self.__worker = worker or gethostname()
 
-        self.__max_req_size = self.config.get("api.http.max_req_size")
+        self.__max_req_size = self.config.get("api.http.max_req_size", None)
         if not self.__max_req_size:
             raise ValueError("missing max request size")
 
@@ -139,6 +142,11 @@ class Session(TokenManager):
             Session.api_version = str(api_version)
         except (jwt.DecodeError, ValueError):
             pass
+
+        # now setup the session reporting, so one consecutive retries will show warning
+        # we do that here, so if we have problems authenticating, we see them immediately
+        # notice: this is across the board warning omission
+        urllib_log_warning_setup(total_retries=http_retries_config.get('total', 0), display_warning_after=3)
 
     def _send_request(
         self,
@@ -394,7 +402,65 @@ class Session(TokenManager):
         if not config:
             from ...config import config_obj
             config = config_obj
-        return ENV_HOST.get(default=(config.get("api.host") or cls.default_host))
+        return ENV_HOST.get(default=(config.get("api.api_server", None) or
+                                     config.get("api.host", None) or cls.default_host))
+
+    @classmethod
+    def get_app_server_host(cls, config=None):
+        if not config:
+            from ...config import config_obj
+            config = config_obj
+
+        # get from config/environment
+        web_host = ENV_WEB_HOST.get(default=config.get("api.web_server", None))
+        if web_host:
+            return web_host
+
+        # return default
+        host = cls.get_api_server_host(config)
+        if host == cls.default_host:
+            return cls.default_web
+
+        # compose ourselves
+        if '://demoapi.' in host:
+            return host.replace('://demoapi.', '://demoapp.', 1)
+        if '://api.' in host:
+            return host.replace('://api.', '://app.', 1)
+
+        parsed = urlparse(host)
+        if parsed.port == 8008:
+            return host.replace(':8008', ':8080', 1)
+
+        raise ValueError('Could not detect TRAINS web application server')
+
+    @classmethod
+    def get_files_server_host(cls, config=None):
+        if not config:
+            from ...config import config_obj
+            config = config_obj
+        # get from config/environment
+        files_host = ENV_FILES_HOST.get(default=(config.get("api.files_server", None)))
+        if files_host:
+            return files_host
+
+        # return default
+        host = cls.get_api_server_host(config)
+        if host == cls.default_host:
+            return cls.default_files
+
+        # compose ourselves
+        app_host = cls.get_app_server_host(config)
+        parsed = urlparse(app_host)
+        if parsed.port:
+            parsed = parsed._replace(netloc=parsed.netloc.replace(':%d' % parsed.port, ':8081', 1))
+        elif parsed.netloc.startswith('demoapp.'):
+            parsed = parsed._replace(netloc=parsed.netloc.replace('demoapp.', 'demofiles.', 1))
+        elif parsed.netloc.startswith('app.'):
+            parsed = parsed._replace(netloc=parsed.netloc.replace('app.', 'files.', 1))
+        else:
+            parsed = parsed._replace(netloc=parsed.netloc + ':8081')
+
+        return urlunparse(parsed)
 
     def _do_refresh_token(self, old_token, exp=None):
         """ TokenManager abstract method implementation.

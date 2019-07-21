@@ -81,11 +81,14 @@ class Logger(object):
             self._task_handler = TaskHandler(self._task.session, self._task.id, capacity=100)
             # noinspection PyBroadException
             try:
-                Logger._stdout_original_write = sys.stdout.write
+                if Logger._stdout_original_write is None:
+                    Logger._stdout_original_write = sys.stdout.write
                 # this will only work in python 3, guard it with try/catch
-                sys.stdout._original_write = sys.stdout.write
+                if not hasattr(sys.stdout, '_original_write'):
+                    sys.stdout._original_write = sys.stdout.write
                 sys.stdout.write = stdout__patched__write__
-                sys.stderr._original_write = sys.stderr.write
+                if not hasattr(sys.stderr, '_original_write'):
+                    sys.stderr._original_write = sys.stderr.write
                 sys.stderr.write = stderr__patched__write__
             except Exception:
                 pass
@@ -113,6 +116,7 @@ class Logger(object):
                                msg='Logger failed casting log level "%s" to integer' % str(level))
             level = logging.INFO
 
+        # noinspection PyBroadException
         try:
             record = self._task.log.makeRecord(
                 "console", level=level, fn='', lno=0, func='', msg=msg, args=args, exc_info=None
@@ -128,6 +132,7 @@ class Logger(object):
         if not omit_console:
             # if we are here and we grabbed the stdout, we need to print the real thing
             if DevWorker.report_stdout:
+                # noinspection PyBroadException
                 try:
                     # make sure we are writing to the original stdout
                     Logger._stdout_original_write(str(msg)+'\n')
@@ -637,11 +642,13 @@ class Logger(object):
     @classmethod
     def _remove_std_logger(self):
         if isinstance(sys.stdout, PrintPatchLogger):
+            # noinspection PyBroadException
             try:
                 sys.stdout.connect(None)
             except Exception:
                 pass
         if isinstance(sys.stderr, PrintPatchLogger):
+            # noinspection PyBroadException
             try:
                 sys.stderr.connect(None)
             except Exception:
@@ -711,7 +718,13 @@ class PrintPatchLogger(object):
 
             if cur_line:
                 with PrintPatchLogger.recursion_protect_lock:
-                    self._log.console(cur_line, level=self._log_level, omit_console=True)
+                    # noinspection PyBroadException
+                    try:
+                        if self._log:
+                            self._log.console(cur_line, level=self._log_level, omit_console=True)
+                    except Exception:
+                        # what can we do, nothing
+                        pass
         else:
             if hasattr(self._terminal, '_original_write'):
                 self._terminal._original_write(message)
@@ -719,8 +732,7 @@ class PrintPatchLogger(object):
                 self._terminal.write(message)
 
     def connect(self, logger):
-        if self._log:
-            self._log._flush_stdout_handler()
+        self._cur_line = ''
         self._log = logger
 
     def __getattr__(self, attr):

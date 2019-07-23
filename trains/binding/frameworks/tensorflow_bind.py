@@ -154,7 +154,7 @@ class EventTrainsWriter(object):
         self.histogram_granularity = histogram_granularity
         self.histogram_update_freq_multiplier = histogram_update_freq_multiplier
         self._logger = logger
-        self._visualization_mode = 'BGR'
+        self._visualization_mode = 'RGB'  # 'BGR'
         self._variants = defaultdict(lambda: ())
         self._scalar_report_cache = {}
         self._hist_report_cache = {}
@@ -582,7 +582,7 @@ class PatchSummaryToEventTransformer(object):
                     setattr(SummaryToEventTransformer, 'trains',
                             property(PatchSummaryToEventTransformer.trains_object))
             except Exception as ex:
-                getLogger(TrainsFrameworkAdapter).warning(str(ex))
+                getLogger(TrainsFrameworkAdapter).debug(str(ex))
 
         if 'torch' in sys.modules:
             try:
@@ -596,7 +596,7 @@ class PatchSummaryToEventTransformer(object):
                 # this is a new version of TensorflowX
                 pass
             except Exception as ex:
-                getLogger(TrainsFrameworkAdapter).warning(str(ex))
+                getLogger(TrainsFrameworkAdapter).debug(str(ex))
 
         if 'tensorboardX' in sys.modules:
             try:
@@ -612,7 +612,7 @@ class PatchSummaryToEventTransformer(object):
                 # this is a new version of TensorflowX
                 pass
             except Exception as ex:
-                getLogger(TrainsFrameworkAdapter).warning(str(ex))
+                getLogger(TrainsFrameworkAdapter).debug(str(ex))
 
             if PatchSummaryToEventTransformer.__original_getattributeX is None:
                 try:
@@ -626,7 +626,7 @@ class PatchSummaryToEventTransformer(object):
                     # this is a new version of TensorflowX
                     pass
                 except Exception as ex:
-                    getLogger(TrainsFrameworkAdapter).warning(str(ex))
+                    getLogger(TrainsFrameworkAdapter).debug(str(ex))
 
     @staticmethod
     def _patched_add_eventT(self, *args, **kwargs):
@@ -871,7 +871,7 @@ class PatchTensorFlowEager(object):
             except ImportError:
                 pass
             except Exception as ex:
-                getLogger(TrainsFrameworkAdapter).warning(str(ex))
+                getLogger(TrainsFrameworkAdapter).debug(str(ex))
 
     @staticmethod
     def _get_event_writer(writer):
@@ -1244,17 +1244,17 @@ class PatchTensorflowModelIO(object):
         try:
             # make sure we import the correct version of save
             import tensorflow
-            from tf.saved_model import save
+            from tensorflow.saved_model import save
             # actual import
-            import tensorflow.saved_model.experimental as saved_model
+            from tensorflow.python.saved_model import save as saved_model
         except ImportError:
             # noinspection PyBroadException
             try:
                 # make sure we import the correct version of save
                 import tensorflow
-                from tensorflow.saved_model import save
+                from tensorflow.saved_model.experimental import save
                 # actual import
-                import tensorflow.saved_mode as saved_model
+                import tensorflow.saved_model.experimental as saved_model
             except ImportError:
                 saved_model = None
             except Exception:

@@ -66,11 +66,18 @@ def make_deterministic(seed=1337, cudnn_deterministic=False):
             try:
                 tf.compat.v1.set_random_seed(seed)
             except Exception:
-                pass
+                try:
+                    tf.set_random_seed(seed)
+                except Exception:
+                    pass
+
             try:
-                tf.compat.v1.set_random_seed(seed)
+                tf.compat.v1.random.set_random_seed(seed)
             except Exception:
-                pass
+                try:
+                    tf.random.set_random_seed(seed)
+                except Exception:
+                    pass
 
 
 make_deterministic()

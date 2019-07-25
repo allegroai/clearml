@@ -8,6 +8,7 @@ Configuration
 
 * [How can I change the location of TRAINS configuration file?](#change-config-path)
 * [How can I override TRAINS credentials from the OS environment?](#credentials-os-env)
+* [How can I track OS environment variables with experiments?](#track-env-vars)
 
 Models 
 
@@ -51,11 +52,11 @@ Jupyter and scikit-learn
 
 Starting v0.9.3 TRAINS notifies on a new version release.
 
-Example, new client version available 
+For example, when a new client version available the notification is: 
 ```bash
 TRAINS new package available: UPGRADE to vX.Y.Z is recommended!
 ```
-Example, new server version available
+For example, when new server version available the notification is:
 ```bash
 TRAINS-SERVER new version available: upgrade to vX.Y is recommended!
 ```
@@ -65,7 +66,7 @@ TRAINS-SERVER new version available: upgrade to vX.Y is recommended!
 
 ### How can I change the location of TRAINS configuration file? <a name="change-config-path"></a>
 
-Set "TRAINS_CONFIG_FILE" OS environment variable to override the default configuration file location.  
+Set `TRAINS_CONFIG_FILE` OS environment variable to override the default configuration file location.  
 
 ```bash
 export TRAINS_CONFIG_FILE="/home/user/mytrains.conf"
@@ -79,6 +80,26 @@ Set the OS environment variables below, in order to override the configuration f
 export TRAINS_API_ACCESS_KEY="key_here"
 export TRAINS_API_SECRET_KEY="secret_here"
 export TRAINS_API_HOST="http://localhost:8008"
+```
+
+### How can I track OS environment variables with experiments?  <a name="track-env-vars"></a>
+
+Set the OS environment variable `TRAINS_LOG_ENVIRONMENT` to either a list of environment variables to track, a wildcard for all environment variables,
+or unset it with no value and TRAINS does not log environment variables.
+
+For example, to log the `PWD` and `PYTHONPATH` environment variables:
+```bash
+$ export TRAINS_LOG_ENVIRONMENT="PWD,PYTHONPATH"
+```
+
+For example, to log all environment variables:
+```bash
+$ export TRAINS_LOG_ENVIRONMENT="*"
+```
+
+For example, do not log any environment variables (the default):
+```bash
+$ export TRAINS_LOG_ENVIRONMENT=
 ```
 
 ## Models

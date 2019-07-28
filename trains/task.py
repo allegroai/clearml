@@ -26,6 +26,7 @@ from .errors import UsageError
 from .logger import Logger
 from .model import InputModel, OutputModel, ARCHIVED_TAG
 from .task_parameters import TaskParameters
+from .binding.artifacts import Artifacts
 from .binding.environ_bind import EnvironmentBind, PatchOsFork
 from .binding.absl_bind import PatchAbsl
 from .utilities.args import argparser_parseargs_called, get_argparser_last_args, \
@@ -92,7 +93,7 @@ class Task(_Task):
         if private is not Task.__create_protection:
             raise UsageError(
                 'Task object cannot be instantiated externally, use Task.current_task() or Task.get_task(...)')
-        self._lock = threading.RLock()
+        self._repo_detect_lock = threading.RLock()
 
         super(Task, self).__init__(**kwargs)
         self._arguments = _Arguments(self)
@@ -103,6 +104,7 @@ class Task(_Task):
         self._connected_parameter_type = None
         self._detect_repo_async_thread = None
         self._resource_monitor = None
+        self._artifacts_manager = Artifacts(self)
         # register atexit, so that we mark the task as stopped
         self._at_exit_called = False
 
@@ -467,6 +469,14 @@ class Task(_Task):
     def output_uri(self, value):
         self.storage_uri = value
 
+    @property
+    def artifacts(self):
+        """
+        dictionary of Task artifacts (name, artifact)
+        :return: dict
+        """
+        return self._artifacts_manager.artifacts
+
     def set_comment(self, comment):
         """
         Set a comment text to the task.
@@ -579,15 +589,6 @@ class Task(_Task):
         :param wait_for_uploads: if True the flush will exit only after all outstanding uploads are completed
         :return: True
         """
-        # wait for detection repo sync
-        if self._detect_repo_async_thread:
-            with self._lock:
-                if self._detect_repo_async_thread:
-                    try:
-                        self._detect_repo_async_thread.join()
-                        self._detect_repo_async_thread = None
-                    except Exception:
-                        pass
 
         # make sure model upload is done
         if BackendModel.get_num_results() > 0 and wait_for_uploads:
@@ -624,6 +625,17 @@ class Task(_Task):
         # unregister atexit callbacks and signal hooks, if we are the main task
         if self.is_main_task():
             self.__register_at_exit(None)
+
+    def add_artifact(self, name, artifact):
+        """
+        Add artifact for the current Task, used mostly for Data Audition.
+        Currently supported artifacts object types: pandas.DataFrame
+        :param name: name of the artifacts. can override previous artifacts if name already exists
+        :type name: str
+        :param artifact: artifact object, supported artifacts object types: pandas.DataFrame
+        :type artifact: pandas.DataFrame
+        """
+        self._artifacts_manager.add_artifact(name=name, artifact=artifact)
 
     def is_current_task(self):
         """
@@ -933,6 +945,24 @@ class Task(_Task):
         if not flush_period or flush_period > self._dev_worker.report_period:
             logger.set_flush_period(self._dev_worker.report_period)
 
+    def _wait_for_repo_detection(self, timeout=None):
+        # wait for detection repo sync
+        if self._detect_repo_async_thread:
+            with self._repo_detect_lock:
+                if self._detect_repo_async_thread:
+                    try:
+                        if self._detect_repo_async_thread.is_alive():
+                            self._detect_repo_async_thread.join(timeout=timeout)
+                        self._detect_repo_async_thread = None
+                    except Exception:
+                        pass
+
+    def _summary_artifacts(self):
+        # signal artifacts upload, and stop daemon
+        self._artifacts_manager.stop(wait=True)
+        # print artifacts summary
+        self.get_logger().console(self._artifacts_manager.summary)
+
     def _at_exit(self):
         """
         Will happen automatically once we exit code, i.e. atexit
@@ -966,6 +996,13 @@ class Task(_Task):
                             task_status = ('completed', )
                         else:
                             task_status = ('stopped', )
+
+            # wait for repository detection (if we didn't crash)
+            if not is_sub_process and wait_for_uploads:
+                # we should print summary here
+                self._summary_artifacts()
+                # make sure that if we crashed the thread we are not waiting forever
+                self._wait_for_repo_detection(timeout=10.)
 
             # wait for uploads
             print_done_waiting = False
@@ -1035,7 +1072,6 @@ class Task(_Task):
                     self.hook()
                 else:
                     # un register int hook
-                    print('removing int hook', self._orig_exc_handler)
                     if self._orig_exc_handler:
                         sys.excepthook = self._orig_exc_handler
                         self._orig_exc_handler = None

@@ -23,6 +23,10 @@ class LoginError(Exception):
     pass
 
 
+class MaxRequestSizeError(Exception):
+    pass
+
+
 class Session(TokenManager):
     """ TRAINS API Session class. """
 
@@ -34,7 +38,9 @@ class Session(TokenManager):
     _async_status_code = 202
     _session_requests = 0
     _session_initial_timeout = (3.0, 10.)
-    _session_timeout = (5.0, 300.)
+    _session_timeout = (10.0, 300.)
+    _write_session_data_size = 15000
+    _write_session_timeout = (300.0, 300.)
 
     api_version = '2.1'
     default_host = "https://demoapi.trainsai.io"
@@ -181,10 +187,15 @@ class Session(TokenManager):
             else "{host}/{service}.{action}"
         ).format(**locals())
         while True:
+            if data and len(data) > self._write_session_data_size:
+                timeout = self._write_session_timeout
+            elif self._session_requests < 1:
+                timeout = self._session_initial_timeout
+            else:
+                timeout = self._session_timeout
             res = self.__http_session.request(
-                method, url, headers=headers, auth=auth, data=data, json=json,
-                timeout=self._session_initial_timeout if self._session_requests < 1 else self._session_timeout,
-            )
+                method, url, headers=headers, auth=auth, data=data, json=json, timeout=timeout)
+
             if (
                 refresh_token_if_unauthorized
                 and res.status_code == requests.codes.unauthorized
@@ -294,7 +305,7 @@ class Session(TokenManager):
         results = []
         while True:
             size = self.__max_req_size
-            slice = req_data[cur : cur + size]
+            slice = req_data[cur: cur + size]
             if not slice:
                 break
             if len(slice) < size:
@@ -304,7 +315,10 @@ class Session(TokenManager):
                 # search for the last newline in order to send a coherent request
                 size = slice.rfind("\n") + 1
                 # readjust the slice
-                slice = req_data[cur : cur + size]
+                slice = req_data[cur: cur + size]
+                if not slice:
+                    raise MaxRequestSizeError('Error: {}.{} request exceeds limit {} > {} bytes'.format(
+                        service, action, len(req_data), self.__max_req_size))
             res = self.send_request(
                 method=method,
                 service=service,

@@ -46,6 +46,9 @@ class MetricsEventAdapter(object):
 
         exception = attr.attrib(default=None)
 
+        delete_local_file = attr.attrib(default=True)
+        """ Local file path, if exists, delete the file after upload completed """
+
         def set_exception(self, exp):
             self.exception = exp
             self.event.upload_exception = exp
@@ -162,7 +165,7 @@ class ImageEventNoUpload(MetricsEventAdapter):
             **self._get_base_dict())
 
 
-class ImageEvent(MetricsEventAdapter):
+class UploadEvent(MetricsEventAdapter):
     """ Image event adapter """
     _format = '.' + str(config.get('metrics.images.format', 'JPEG')).upper().lstrip('.')
     _quality = int(config.get('metrics.images.quality', 87))
@@ -173,7 +176,7 @@ class ImageEvent(MetricsEventAdapter):
     _image_file_history_size = int(config.get('metrics.file_history_size', 5))
 
     def __init__(self, metric, variant, image_data, local_image_path=None, iter=0, upload_uri=None,
-                 image_file_history_size=None, **kwargs):
+                 image_file_history_size=None, delete_after_upload=False, **kwargs):
         if image_data is not None and not hasattr(image_data, 'shape'):
             raise ValueError('Image must have a shape attribute')
         self._image_data = image_data
@@ -188,13 +191,14 @@ class ImageEvent(MetricsEventAdapter):
         else:
             self._filename = '%s_%s_%08d' % (metric, variant, self._count % image_file_history_size)
         self._upload_uri = upload_uri
+        self._delete_after_upload = delete_after_upload
 
-        # get upload uri upfront
+        # get upload uri upfront, either predefined image format or local file extension
+        # e.g.: image.png -> .png or image.raw.gz -> .raw.gz
         image_format = self._format.lower() if self._image_data is not None else \
-            pathlib2.Path(self._local_image_path).suffix
+            '.' + '.'.join(pathlib2.Path(self._local_image_path).parts[-1].split('.')[1:])
         self._upload_filename = str(pathlib2.Path(self._filename).with_suffix(image_format))
-
-        super(ImageEvent, self).__init__(metric, variant, iter=iter, **kwargs)
+        super(UploadEvent, self).__init__(metric, variant, iter=iter, **kwargs)
 
     @classmethod
     def _get_metric_count(cls, metric, variant, next=True):
@@ -210,20 +214,19 @@ class ImageEvent(MetricsEventAdapter):
         finally:
             cls._metric_counters_lock.release()
 
+    # return No event (just the upload)
     def get_api_event(self):
-        return events.MetricsImageEvent(
-            url=self._url,
-            key=self._key,
-            **self._get_base_dict())
+        return None
 
     def update(self, url=None, key=None, **kwargs):
-        super(ImageEvent, self).update(**kwargs)
+        super(UploadEvent, self).update(**kwargs)
         if url is not None:
             self._url = url
         if key is not None:
             self._key = key
 
     def get_file_entry(self):
+        local_file = None
         # don't provide file in case this event is out of the history window
         last_count = self._get_metric_count(self.metric, self.variant, next=False)
         if abs(self._count - last_count) > self._image_file_history_size:
@@ -253,9 +256,14 @@ class ImageEvent(MetricsEventAdapter):
             output = six.BytesIO(img_bytes.tostring())
             output.seek(0)
         else:
-            with open(self._local_image_path, 'rb') as f:
-                output = six.BytesIO(f.read())
-            output.seek(0)
+            local_file = self._local_image_path
+            try:
+                output = open(local_file, 'rb')
+            except Exception as e:
+                # something happened to the file, we should skip it
+                from ...debugging.log import LoggerRoot
+                LoggerRoot.get_base_logger().warning(str(e))
+                return None
 
         return self.FileEntry(
             event=self,
@@ -263,7 +271,8 @@ class ImageEvent(MetricsEventAdapter):
             stream=output,
             url_prop='url',
             key_prop='key',
-            upload_uri=self._upload_uri
+            upload_uri=self._upload_uri,
+            delete_local_file=local_file if self._delete_after_upload else None,
         )
 
     def get_target_full_upload_uri(self, storage_uri, storage_key_prefix):
@@ -273,3 +282,18 @@ class ImageEvent(MetricsEventAdapter):
         key = '/'.join(x for x in (storage_key_prefix, self.metric, self.variant, filename.strip('/')) if x)
         url = '/'.join(x.strip('/') for x in (e_storage_uri, key))
         return key, url
+
+
+class ImageEvent(UploadEvent):
+    def __init__(self, metric, variant, image_data, local_image_path=None, iter=0, upload_uri=None,
+                 image_file_history_size=None, delete_after_upload=False, **kwargs):
+        super(ImageEvent, self).__init__(metric, variant, image_data=image_data, local_image_path=local_image_path,
+                                         iter=iter, upload_uri=upload_uri,
+                                         image_file_history_size=image_file_history_size,
+                                         delete_after_upload=delete_after_upload, **kwargs)
+
+    def get_api_event(self):
+        return events.MetricsImageEvent(
+            url=self._url,
+            key=self._key,
+            **self._get_base_dict())

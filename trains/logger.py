@@ -94,6 +94,39 @@ class Logger(object):
                 pass
             sys.stdout = Logger._stdout_proxy
             sys.stderr = Logger._stderr_proxy
+            # patch the base streams of sys (this way colorama will keep its ANSI colors)
+            # noinspection PyBroadException
+            try:
+                sys.__stderr__ = sys.stderr
+            except Exception:
+                pass
+            # noinspection PyBroadException
+            try:
+                sys.__stdout__ = sys.stdout
+            except Exception:
+                pass
+
+            # now check if we have loguru and make it re-register the handlers
+            # because it sores internally the stream.write function, which we cant patch
+            # noinspection PyBroadException
+            try:
+                from loguru import logger
+                register_stderr = None
+                register_stdout = None
+                for k, v in logger._handlers.items():
+                    if v._name == '<stderr>':
+                        register_stderr = k
+                    elif v._name == '<stdout>':
+                        register_stderr = k
+                if register_stderr is not None:
+                    logger.remove(register_stderr)
+                    logger.add(sys.stderr)
+                if register_stdout is not None:
+                    logger.remove(register_stdout)
+                    logger.add(sys.stdout)
+            except Exception:
+                pass
+
         elif DevWorker.report_stdout and not running_remotely():
             self._task_handler = TaskHandler(self._task.session, self._task.id, capacity=100)
             if Logger._stdout_proxy:
@@ -495,7 +528,8 @@ class Logger(object):
         )
 
     @_safe_names
-    def report_image_and_upload(self, title, series, iteration, path=None, matrix=None, max_image_history=None):
+    def report_image_and_upload(self, title, series, iteration, path=None, matrix=None, max_image_history=None,
+                                delete_after_upload=False):
         """
         Report an image and upload its contents.
 
@@ -515,6 +549,8 @@ class Logger(object):
         :param max_image_history: maximum number of image to store per metric/variant combination \
         use negative value for unlimited. default is set in global configuration (default=5)
         :type max_image_history: int
+        :param delete_after_upload: if True, one the file was uploaded the local copy will be deleted
+        :type delete_after_upload: boolean
         """
 
         # if task was not started, we have to start it
@@ -536,9 +572,11 @@ class Logger(object):
             iter=iteration,
             upload_uri=upload_uri,
             max_image_history=max_image_history,
+            delete_after_upload=delete_after_upload,
         )
 
-    def report_image_plot_and_upload(self, title, series, iteration, path=None, matrix=None, max_image_history=None):
+    def report_image_plot_and_upload(self, title, series, iteration, path=None, matrix=None, max_image_history=None,
+                                     delete_after_upload=False):
         """
         Report an image, upload its contents, and present in plots section using plotly
 
@@ -558,6 +596,8 @@ class Logger(object):
         :param max_image_history: maximum number of image to store per metric/variant combination \
         use negative value for unlimited. default is set in global configuration (default=5)
         :type max_image_history: int
+        :param delete_after_upload: if True, one the file was uploaded the local copy will be deleted
+        :type delete_after_upload: boolean
         """
 
         # if task was not started, we have to start it
@@ -579,6 +619,7 @@ class Logger(object):
             iter=iteration,
             upload_uri=upload_uri,
             max_image_history=max_image_history,
+            delete_after_upload=delete_after_upload,
         )
 
     def set_default_upload_destination(self, uri):

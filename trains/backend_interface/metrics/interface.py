@@ -4,6 +4,8 @@ from threading import Lock
 from time import time
 
 from humanfriendly import format_timespan
+from pathlib2 import Path
+
 from ...backend_api.services import events as api_events
 from ..base import InterfaceBase
 from ...config import config
@@ -150,12 +152,18 @@ class Metrics(InterfaceBase):
                     url = storage.upload_from_stream(e.stream, e.url)
                     e.event.update(url=url)
                 except Exception as exp:
-                    log.debug("Failed uploading to {} ({})".format(
+                    log.warning("Failed uploading to {} ({})".format(
                         upload_uri if upload_uri else "(Could not calculate upload uri)",
                         exp,
                     ))
 
                     e.set_exception(exp)
+                e.stream.close()
+                if e.delete_local_file:
+                    try:
+                        Path(e.delete_local_file).unlink()
+                    except Exception:
+                        pass
 
             res = file_upload_pool.map_async(upload, entries)
             res.wait()
@@ -180,8 +188,10 @@ class Metrics(InterfaceBase):
             ))
 
         if good_events:
-            batched_requests = [api_events.AddRequest(event=ev.get_api_event()) for ev in good_events]
-            req = api_events.AddBatchRequest(requests=batched_requests)
-            return self.send(req, raise_on_errors=False)
+            _events = [ev.get_api_event() for ev in good_events]
+            batched_requests = [api_events.AddRequest(event=ev) for ev in _events if ev]
+            if batched_requests:
+                req = api_events.AddBatchRequest(requests=batched_requests)
+                return self.send(req, raise_on_errors=False)
 
         return None

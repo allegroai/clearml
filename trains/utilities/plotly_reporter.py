@@ -71,6 +71,32 @@ def create_line_plot(title, series, xtitle, ytitle, mode='lines', reverse_xaxis=
     if reverse_xaxis:
         plotly_obj["layout"]["xaxis"]["autorange"] = "reversed"
 
+    # check maximum size of data
+    _MAX_SIZE = 800000
+    series_sizes = [s.data.size for s in series]
+    total_size = sum(series_sizes)
+    if total_size > _MAX_SIZE:
+        # we need to downscale
+        base_size = _MAX_SIZE / len(series_sizes)
+        baseused_size = sum([min(s, base_size) for s in series_sizes])
+        leftover = _MAX_SIZE - baseused_size
+        for s in series:
+            # if we need to down-sample, use low-pass average filter and sampling
+            if s.data.size >= base_size:
+                budget = int(leftover * s.data.size/(total_size-baseused_size))
+                step = int(np.ceil(s.data.size / float(budget)))
+                x = s.data[:, 0][::-step][::-1]
+                y = s.data[:, 1]
+                y_low_pass = np.convolve(y, np.ones(shape=(step,), dtype=y.dtype)/float(step), mode='same')
+                y = y_low_pass[::-step][::-1]
+                s.data = np.array([x, y], dtype=s.data.dtype).T
+
+            # decide on number of points between mean and max
+            s_max = np.max(np.abs(s.data), axis=0)
+            digits = np.maximum(np.array([1, 1]), np.array([6, 6]) - np.floor(np.abs(np.log10(s_max))))
+            s.data[:, 0] = np.round(s.data[:, 0] * (10 ** digits[0])) / (10 ** digits[0])
+            s.data[:, 1] = np.round(s.data[:, 1] * (10 ** digits[1])) / (10 ** digits[1])
+
     plotly_obj["data"].extend({
         "name": s.name,
         "x": s.data[:, 0].tolist(),
@@ -251,8 +277,8 @@ def create_image_plot(image_src, title, width=640, height=480, series=None, comm
         "layout": {
             "xaxis": {"visible": False, "range": [0, width]},
             "yaxis": {"visible": False, "range": [0, height]},
-            "width": width,
-            "height": height,
+            # "width": width,
+            # "height": height,
             "margin": {'l': 0, 'r': 0, 't': 0, 'b': 0},
             "images": [{
                 "sizex": width,

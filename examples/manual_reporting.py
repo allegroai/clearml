@@ -15,6 +15,13 @@ logging.warning('This is a warning message')
 logging.error('This is an error message')
 logging.critical('This is a critical message')
 
+# this is loguru test example
+try:
+    from loguru import logger
+    logger.debug("That's it, beautiful and simple logging! (using ANSI colors)")
+except ImportError:
+    pass
+
 # get TRAINS logger object for any metrics / reports
 logger = task.get_logger()
 

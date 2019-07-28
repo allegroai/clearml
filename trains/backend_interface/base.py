@@ -2,7 +2,10 @@ import abc
 
 import requests.exceptions
 import six
-from ..backend_api import Session
+
+from ..backend_api import Session, CallResult
+from ..backend_api.session.session import MaxRequestSizeError
+from ..backend_api.session.response import ResponseMeta
 from ..backend_api.session import BatchRequest
 from ..backend_api.session.defs import ENV_ACCESS_KEY, ENV_SECRET_KEY
 
@@ -42,6 +45,7 @@ class InterfaceBase(SessionInterface):
     def _send(cls, session, req, ignore_errors=False, raise_on_errors=True, log=None, async_enable=False):
         """ Convenience send() method providing a standardized error reporting """
         while True:
+            error_msg = ''
             try:
                 res = session.send(req, async_enable=async_enable)
                 if res.meta.result_code in (200, 202) or ignore_errors:
@@ -58,6 +62,9 @@ class InterfaceBase(SessionInterface):
             except requests.exceptions.BaseHTTPError as e:
                 res = None
                 log.error('Failed sending %s: %s' % (str(req), str(e)))
+            except MaxRequestSizeError as e:
+                res = CallResult(meta=ResponseMeta.from_raw_data(status_code=400, text=str(e)))
+                error_msg = 'Failed sending: %s' % str(e)
             except Exception as e:
                 res = None
                 log.error('Failed sending %s: %s' % (str(req), str(e)))

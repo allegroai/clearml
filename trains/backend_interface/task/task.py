@@ -180,35 +180,41 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def _update_repository(self):
         def check_package_update():
-            # check latest version
-            from ...utilities.check_updates import CheckPackageUpdates
-            latest_version = CheckPackageUpdates.check_new_package_available(only_once=True)
-            if latest_version:
-                if not latest_version[1]:
-                    self.get_logger().console(
-                        'TRAINS new package available: UPGRADE to v{} is recommended!'.format(
-                            latest_version[0]),
-                    )
-                else:
-                    self.get_logger().console(
-                        'TRAINS-SERVER new version available: upgrade to v{} is recommended!'.format(
-                            latest_version[0]),
-                    )
+            try:
+                # check latest version
+                from ...utilities.check_updates import CheckPackageUpdates
+                latest_version = CheckPackageUpdates.check_new_package_available(only_once=True)
+                if latest_version:
+                    if not latest_version[1]:
+                        self.get_logger().console(
+                            'TRAINS new package available: UPGRADE to v{} is recommended!'.format(
+                                latest_version[0]),
+                        )
+                    else:
+                        self.get_logger().console(
+                            'TRAINS-SERVER new version available: upgrade to v{} is recommended!'.format(
+                                latest_version[0]),
+                        )
+            except Exception:
+                pass
 
-        check_package_update_thread = Thread(target=check_package_update)
-        check_package_update_thread.daemon = True
-        check_package_update_thread.start()
-        result = ScriptInfo.get(log=self.log)
-        for msg in result.warning_messages:
-            self.get_logger().console(msg)
+        try:
+            check_package_update_thread = Thread(target=check_package_update)
+            check_package_update_thread.daemon = True
+            check_package_update_thread.start()
+            result = ScriptInfo.get(log=self.log)
+            for msg in result.warning_messages:
+                self.get_logger().console(msg)
 
-        self.data.script = result.script
-        # Since we might run asynchronously, don't use self.data (lest someone else
-        # overwrite it before we have a chance to call edit)
-        self._edit(script=result.script)
-        self.reload()
-        self._update_requirements(result.script.get('requirements') if result.script.get('requirements') else '')
-        check_package_update_thread.join()
+            self.data.script = result.script
+            # Since we might run asynchronously, don't use self.data (lest someone else
+            # overwrite it before we have a chance to call edit)
+            self._edit(script=result.script)
+            self.reload()
+            self._update_requirements(result.script.get('requirements') if result.script.get('requirements') else '')
+            check_package_update_thread.join()
+        except Exception as e:
+            get_logger('task').warning(str(e))
 
     def _auto_generate(self, project_name=None, task_name=None, task_type=TaskTypes.training):
         created_msg = make_message('Auto-generated at %(time)s by %(user)s@%(host)s')
@@ -663,6 +669,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return self._project_name[1]
 
         res = self.send(projects.GetByIdRequest(project=self.project), raise_on_errors=False)
+        if not res or not res.response or not res.response.project:
+            return None
         self._project_name = (self.project, res.response.project.name)
         return self._project_name[1]
 

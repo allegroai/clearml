@@ -11,7 +11,7 @@ from ...utilities.plotly_reporter import create_2d_histogram_plot, create_value_
     create_2d_scatter_series, create_3d_scatter_series, create_line_plot, plotly_scatter3d_layout_dict, \
     create_image_plot
 from ...utilities.py3_interop import AbstractContextManager
-from .events import ScalarEvent, VectorEvent, ImageEvent, PlotEvent, ImageEventNoUpload
+from .events import ScalarEvent, VectorEvent, ImageEvent, PlotEvent, ImageEventNoUpload, UploadEvent
 
 
 class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncManagerMixin):
@@ -183,7 +183,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._report(ev)
 
     def report_image_and_upload(self, title, series, iter, path=None, matrix=None, upload_uri=None,
-                                max_image_history=None):
+                                max_image_history=None, delete_after_upload=False):
         """
         Report an image and upload its contents. Image is uploaded to a preconfigured bucket (see setup_upload()) with
          a key (filename) describing the task ID, title, series and iteration.
@@ -199,6 +199,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type matrix: str
         :param max_image_history: maximum number of image to store per metric/variant combination
         use negative value for unlimited. default is set in global configuration (default=5)
+        :param delete_after_upload: if True, one the file was uploaded the local copy will be deleted
+        :type delete_after_upload: boolean
         """
         if not self._storage_uri and not upload_uri:
             raise ValueError('Upload configuration is required (use setup_upload())')
@@ -206,7 +208,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             raise ValueError('Expected only one of [filename, matrix]')
         kwargs = dict(metric=self._normalize_name(title),
                       variant=self._normalize_name(series), iter=iter, image_file_history_size=max_image_history)
-        ev = ImageEvent(image_data=matrix, upload_uri=upload_uri, local_image_path=path, **kwargs)
+        ev = ImageEvent(image_data=matrix, upload_uri=upload_uri, local_image_path=path,
+                        delete_after_upload=delete_after_upload, **kwargs)
         self._report(ev)
 
     def report_histogram(self, title, series, histogram, iter, labels=None, xlabels=None, comment=None):
@@ -463,7 +466,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         )
 
     def report_image_plot_and_upload(self, title, series, iter, path=None, matrix=None,
-                                     upload_uri=None, max_image_history=None):
+                                     upload_uri=None, max_image_history=None, delete_after_upload=False):
         """
         Report an image as plot and upload its contents.
         Image is uploaded to a preconfigured bucket (see setup_upload()) with a key (filename)
@@ -481,6 +484,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type matrix: str
         :param max_image_history: maximum number of image to store per metric/variant combination
         use negative value for unlimited. default is set in global configuration (default=5)
+        :param delete_after_upload: if True, one the file was uploaded the local copy will be deleted
+        :type delete_after_upload: boolean
         """
         if not upload_uri and not self._storage_uri:
             raise ValueError('Upload configuration is required (use setup_upload())')
@@ -488,8 +493,16 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             raise ValueError('Expected only one of [filename, matrix]')
         kwargs = dict(metric=self._normalize_name(title),
                       variant=self._normalize_name(series), iter=iter, image_file_history_size=max_image_history)
-        ev = ImageEvent(image_data=matrix, upload_uri=upload_uri, local_image_path=path, **kwargs)
+        ev = UploadEvent(image_data=matrix, upload_uri=upload_uri, local_image_path=path,
+                         delete_after_upload=delete_after_upload, **kwargs)
         _, url = ev.get_target_full_upload_uri(upload_uri or self._storage_uri, self._metrics.storage_key_prefix)
+
+        # Hack: if the url doesn't start with http/s then the plotly will not be able to show it,
+        # then we put the link under images not plots
+        if not url.startswith('http'):
+            return self.report_image_and_upload(title=title, series=series, iter=iter, path=path, matrix=matrix,
+                                                upload_uri=upload_uri, max_image_history=max_image_history)
+
         self._report(ev)
         plotly_dict = create_image_plot(
             image_src=url,

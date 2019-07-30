@@ -1,4 +1,7 @@
-import joblib
+try:
+    from sklearn.externals import joblib
+except ImportError:
+    import joblib
 
 from sklearn import datasets
 from sklearn.linear_model import LogisticRegression

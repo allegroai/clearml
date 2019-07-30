@@ -10,7 +10,7 @@ from collections import OrderedDict, Callable
 import psutil
 import six
 
-from trains.binding.joblib_bind import PatchedJoblib
+from .binding.joblib_bind import PatchedJoblib
 from .backend_api.services import tasks, projects
 from .backend_api.session.session import Session
 from .backend_interface.model import Model as BackendModel

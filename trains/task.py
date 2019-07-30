@@ -10,6 +10,7 @@ from collections import OrderedDict, Callable
 import psutil
 import six
 
+from trains.binding.joblib_bind import PatchedJoblib
 from .backend_api.services import tasks, projects
 from .backend_api.session.session import Session
 from .backend_interface.model import Model as BackendModel
@@ -34,8 +35,9 @@ from .utilities.args import argparser_parseargs_called, get_argparser_last_args,
 from .binding.frameworks.pytorch_bind import PatchPyTorchModelIO
 from .binding.frameworks.tensorflow_bind import PatchSummaryToEventTransformer, PatchTensorFlowEager, \
     PatchKerasModelIO, PatchTensorflowModelIO
-from .utilities.resource_monitor import ResourceMonitor
+from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
 from .binding.matplotlib_bind import PatchedMatplotlib
+from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
 
 NotSet = object()
@@ -118,15 +120,15 @@ class Task(_Task):
 
     @classmethod
     def init(
-        cls,
-        project_name=None,
-        task_name=None,
-        task_type=TaskTypes.training,
-        reuse_last_task_id=True,
-        output_uri=None,
-        auto_connect_arg_parser=True,
-        auto_connect_frameworks=True,
-        auto_resource_monitoring=True,
+            cls,
+            project_name=None,
+            task_name=None,
+            task_type=TaskTypes.training,
+            reuse_last_task_id=True,
+            output_uri=None,
+            auto_connect_arg_parser=True,
+            auto_connect_frameworks=True,
+            auto_resource_monitoring=True,
     ):
         """
         Return the Task object for the main execution task (task context).
@@ -239,14 +241,15 @@ class Task(_Task):
             # patch OS forking
             PatchOsFork.patch_fork()
             if auto_connect_frameworks:
+                PatchedJoblib.update_current_task(task)
                 PatchedMatplotlib.update_current_task(Task.__main_task)
                 PatchAbsl.update_current_task(Task.__main_task)
                 PatchSummaryToEventTransformer.update_current_task(task)
-                # PatchModelCheckPointCallback.update_current_task(task)
                 PatchTensorFlowEager.update_current_task(task)
                 PatchKerasModelIO.update_current_task(task)
                 PatchTensorflowModelIO.update_current_task(task)
                 PatchPyTorchModelIO.update_current_task(task)
+                PatchXGBoostModelIO.update_current_task(task)
             if auto_resource_monitoring:
                 task._resource_monitor = ResourceMonitor(task)
                 task._resource_monitor.start()
@@ -277,10 +280,10 @@ class Task(_Task):
 
     @classmethod
     def create(
-        cls,
-        task_name=None,
-        project_name=None,
-        task_type=TaskTypes.training,
+            cls,
+            task_name=None,
+            project_name=None,
+            task_type=TaskTypes.training,
     ):
         """
         Create a new Task object, regardless of the main execution task (Task.init).
@@ -345,7 +348,7 @@ class Task(_Task):
                         pass
 
         # if we force no task reuse from os environment
-        if DEV_TASK_NO_REUSE.get():
+        if DEV_TASK_NO_REUSE.get() or reuse_last_task_id:
             default_task = None
         else:
             # if we have a previous session to use, get the task id from it
@@ -364,7 +367,6 @@ class Task(_Task):
                 default_task_id = reuse_last_task_id
             elif not reuse_last_task_id or not cls.__task_is_relevant(default_task):
                 default_task_id = None
-                closed_old_task = cls.__close_timed_out_task(default_task)
             else:
                 default_task_id = default_task.get('id') if default_task else None
 
@@ -693,7 +695,7 @@ class Task(_Task):
             If `config_text` is not None, `config_dict` must not be provided.
         """
         config_text = self.get_model_config_text()
-        return  OutputModel._text_to_config_dict(config_text)
+        return OutputModel._text_to_config_dict(config_text)
 
     def set_model_label_enumeration(self, enumeration=None):
         """

@@ -144,7 +144,11 @@ class Session(TokenManager):
 
         # update api version from server response
         try:
-            api_version = jwt.decode(self.token, verify=False).get('api_version', Session.api_version)
+            token_dict = jwt.decode(self.token, verify=False)
+            api_version = token_dict.get('api_version')
+            if not api_version:
+                api_version = '2.2' if token_dict.get('env', '') == 'prod' else Session.api_version
+
             Session.api_version = str(api_version)
         except (jwt.DecodeError, ValueError):
             pass

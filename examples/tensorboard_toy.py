@@ -3,9 +3,6 @@
 import tensorflow as tf
 import numpy as np
 import cv2
-from time import sleep
-#import tensorflow.compat.v1 as tf
-#tf.disable_v2_behavior()
 
 from trains import Task
 task = Task.init(project_name='examples', task_name='tensorboard toy example')

@@ -1,0 +1,15 @@
+absl-py>=0.7.1
+Keras>=2.2.4
+joblib>=0.13.2
+matplotlib>=3.1.1
+seaborn>=0.9.0
+sklearn>=0.0
+tensorboard>=1.14.0
+tensorboardX>=1.8
+tensorflow>=1.14.0
+torch>=1.1.0
+torchvision>=0.3.0
+xgboost>=0.90
+
+# sudo apt-get install graphviz
+graphviz>=0.8

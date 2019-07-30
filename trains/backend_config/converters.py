@@ -36,7 +36,7 @@ def or_(*converters, **kwargs):
     """
     Wrapper that implements an "optional converter" pattern. Allows specifying a converter
     for which a set of exceptions is ignored (and the original value is returned)
-    :param converter: A converter callable
+    :param converters: A converter callable
     :param exceptions: A tuple of exception types to ignore
     """
     # noinspection PyUnresolvedReferences

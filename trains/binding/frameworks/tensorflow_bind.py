@@ -9,8 +9,6 @@ from typing import Any
 
 import cv2
 import numpy as np
-import six
-from pathlib2 import Path
 
 from ..frameworks import _patched_call, WeightsFileHandler, _Empty, TrainsFrameworkAdapter
 from ..import_bind import PostImportHookPatching

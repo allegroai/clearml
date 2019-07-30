@@ -1,6 +1,5 @@
 import abc
 import os
-import re
 import tarfile
 import zipfile
 from tempfile import mkdtemp, mkstemp
@@ -40,6 +39,7 @@ class Framework(Options):
     darknet = 'Darknet'
     paddlepaddle = 'PaddlePaddle'
     scikitlearn = 'ScikitLearn'
+    xgboost = 'XGBoost'
 
     __file_extensions_mapping = {
         '.pb': (tensorflow, tensorflowjs, onnx, ),
@@ -59,13 +59,13 @@ class Framework(Options):
         '.h5': (keras, ),
         '.hdf5': (keras, ),
         '.keras': (keras, ),
-        '.model': (mknet, cntk, ),
+        '.model': (mknet, cntk, xgboost),
         '-symbol.json': (mknet, ),
         '.cntk': (cntk, ),
         '.t7': (torch, ),
         '.cfg': (darknet, ),
         '__model__': (paddlepaddle, ),
-        '.pkl': (scikitlearn, keras, ),
+        '.pkl': (scikitlearn, keras, xgboost),
     }
 
     @classmethod

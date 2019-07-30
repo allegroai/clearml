@@ -1,9 +1,8 @@
-import os
 import weakref
 
 import numpy as np
 import hashlib
-from tempfile import mkstemp, mkdtemp
+from tempfile import mkdtemp
 from threading import Thread, Event
 from multiprocessing.pool import ThreadPool
 

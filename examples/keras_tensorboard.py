@@ -6,29 +6,28 @@
 # 2 seconds per epoch on a K520 GPU.
 from __future__ import print_function
 
+import io
 import numpy as np
-import tensorflow
 
 from keras.callbacks import TensorBoard, ModelCheckpoint
 from keras.datasets import mnist
-from keras.models import Sequential, Model
-from keras.layers.core import Dense, Dropout, Activation
-from keras.optimizers import SGD, Adam, RMSprop
+from keras.models import Sequential
+from keras.layers.core import Dense, Activation
+from keras.optimizers import RMSprop
 from keras.utils import np_utils
+# TODO: test these methods binding
 from keras.models import load_model, save_model, model_from_json
-
+import tensorflow as tf
 from trains import Task
 
 
 class TensorBoardImage(TensorBoard):
     @staticmethod
     def make_image(tensor):
-        import tensorflow as tf
         from PIL import Image
         tensor = np.stack((tensor, tensor, tensor), axis=2)
         height, width, channels = tensor.shape
         image = Image.fromarray(tensor)
-        import io
         output = io.BytesIO()
         image.save(output, format='PNG')
         image_string = output.getvalue()
@@ -38,9 +37,10 @@ class TensorBoardImage(TensorBoard):
                                 colorspace=channels,
                                 encoded_image_string=image_string)
 
-    def on_epoch_end(self, epoch, logs={}):
+    def on_epoch_end(self, epoch, logs=None):
+        if logs is None:
+            logs = {}
         super(TensorBoardImage, self).on_epoch_end(epoch, logs)
-        import tensorflow as tf
         images = self.validation_data[0]  # 0 - data; 1 - labels
         img = (255 * images[0].reshape(28, 28)).astype('uint8')
 

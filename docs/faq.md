@@ -38,13 +38,21 @@ GIT and Storage
 * [Is there something TRAINS can do about uncommitted code running?](#help-uncommitted-code)
 * [I read there is a feature for centralized model storage. How do I use it?](#centralized-model-storage)
 * [When using PyCharm to remotely debug a machine, the git repo is not detected. Do you have a solution?](#pycharm-remote-debug-detect-git)
-* [Git is not well supported in Jupyter, so we just gave up on committing our code. Do you have a solution?](#commit-git-in-jupyter)
+* Also see, [Git and Jupyter](#commit-git-in-jupyter)
 
-Jupyter and scikit-learn
+Jupyter 
 
 * [I am using Jupyter Notebook. Is this supported?](#jupyter-notebook)
+* [Git is not well supported in Jupyter, so we just gave up on committing our code. Do you have a solution?](#commit-git-in-jupyter)
+
+scikit-learn
+
 * [Can I use TRAINS with scikit-learn?](#use-scikit-learn)
-* Also see, [Git and Jupyter](#commit-git-in-jupyter)
+
+TRAINS API
+
+[How can I use the TRAINS API to fetch data?](#api)
+
 
 ## General Information
 
@@ -320,20 +328,106 @@ For a more detailed example, see [here](https://github.com/allegroai/trains/blob
 
 Yes! Since this is such a common occurrence, we created a PyCharm plugin that allows a remote debugger to grab your local repository / commit ID. See our [TRAINS PyCharm Plugin](https://github.com/allegroai/trains-pycharm-plugin) repository for instructions and [latest release](https://github.com/allegroai/trains-pycharm-plugin/releases).
 
+## Jupyter Notebooks
+
+### I am using Jupyter Notebook. Is this supported? <a name="jupyter-notebook"></a>
+
+Yes! You can run **TRAINS** in Jupyter Notebooks.
+
+* Option 1: Install **trains** on your Jupyter Notebook host machine
+* Option 2: Install **trains** *in* your Jupyter Notebook and connect using **trains** credentials
+
+**Option 1: Install trains on your Jupyter host machine**
+
+1. Connect to your Juypter host machine.
+
+1. Install the **trains** Python package.
+
+        pip install trains
+
+1. Run the **trains** initialize wizard.
+
+        trains-init
+                
+1. In your Jupyter Notebook, you can now use **trains**.
+        
+**Option 2: Install trains in your Jupyter Notebook**
+
+1. In the **trains** Web-App, Profile page, create credentials and copy your access key and secret key. These are required in the Step 3.
+
+1. Install the **trains** Python package.
+
+        # install trains
+        !pip install trains
+
+1. Use the `Task.set_credentials()` method to specify the host, port, access key and secret key (see step 1).
+Notice: *host* is NOT the web server (default port 8080) but the API server (default port 8008)
+
+        # Set your credentials using the **trains** apiserver URI and port, access_key, and secret_key.
+        Task.set_credentials(host='http://localhost:8008',key='<access_key>', secret='<secret_key>')
+        
+1. You can now use **trains**.
+
+        # create a task and start training
+        task = Task.init('jupyer project', 'my notebook')
+
 ### Git is not well supported in Jupyter, so we just gave up on committing our code. Do you have a solution? <a name="commit-git-in-jupyter"></a>
 
 Yes! Check our [TRAINS Jupyter Plugin](https://github.com/allegroai/trains-jupyter-plugin). This plugin allows you to commit your notebook directly from Jupyter. It also saves the Python version of your code and creates an updated `requirements.txt` so you know which packages you were using.
 
-
-## Jupyter and scikit-learn
-
-### I am using Jupyter Notebook. Is this supported? <a name="jupyter-notebook"></a>
-
-Yes! Jupyter Notebook is supported. See [TRAINS Jupyter Plugin](https://github.com/allegroai/trains-jupyter-plugin).
-
+## scikit-learn
 
 ### Can I use TRAINS with scikit-learn? <a name="use-scikit-learn"></a>
 
 Yes! `scikit-learn` is supported. Everything you do is logged.
 
 **NOTE**: Models are not automatically logged because in most cases, scikit-learn will simply pickle the object to files so there is no underlying frame we can connect to.
+
+
+## TRAINS API
+
+### How can I use the TRAINS API to fetch data? <a name="api"></a>
+
+To fetch data using the **TRAINS** API, create an authenticated session and send requests for data using **TRAINS API** services and methods.
+The responses to the requests contain your data.
+
+For example, to get the metrics for an experiment and print metrics as a histogram:
+
+1. start an authenticated session
+1. send a request for all projects named `examples` using the `projects` service `GetAllRequest` method
+1. from the response, get the Ids of all those projects named `examples` 
+1. send a request for all experiments (tasks) with those project Ids using the `tasks` service `GetAllRequest` method
+1. from the response, get the data for the experiment (task) Id `11` and print the experiment name
+1. send a request for a metrics histogram for experiment (task) Id `11` using the `events` service `ScalarMetricsIterHistogramRequest` method and print the histogram
+
+```python
+# Import Session from the trains backend_api
+from trains.backend_api import Session
+# Import the services for tasks, events, and projects
+from trains.backend_api.services import tasks, events, projects
+
+# Create an authenticated session
+session = Session()
+
+# Get projects matching the project name 'examples'
+res = session.send(projects.GetAllRequest(name='examples'))
+# Get all the project Ids matching  the project name 'examples"
+projects_id = [p.id for p in res.response.projects]
+print('project ids: {}'.format(projects_id))
+
+# Get all the experiments/tasks
+res = session.send(tasks.GetAllRequest(project=projects_id))
+
+# Do your work
+# For example, get the experiment whose Id is '11'
+task = res.response.tasks[11]
+print('task name: {}'.format(task.name))
+
+# For example, for experiment Id '11', get the experiment metric values
+res = session.send(events.ScalarMetricsIterHistogramRequest(
+    task=task.id,
+))
+scalars = res.response_data
+print('scalars {}'.format(scalars))
+```
+

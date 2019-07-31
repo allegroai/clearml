@@ -1,5 +1,6 @@
 import atexit
 import os
+import re
 import signal
 import sys
 import threading
@@ -9,6 +10,7 @@ from collections import OrderedDict, Callable
 
 import psutil
 import six
+from pathlib2 import Path
 
 from .binding.joblib_bind import PatchedJoblib
 from .backend_api.services import tasks, projects
@@ -334,21 +336,18 @@ class Task(_Task):
             result = ScriptInfo.get(create_requirements=False, check_uncommitted=False)
             if result:
                 if not default_project_name:
-                    # noinspection PyBroadException
                     try:
-                        parts = result.script['repository'].split('/')
-                        default_project_name = (parts[-1] or parts[-2]).replace('.git', '') or 'Untitled'
-                    except Exception:
+                        default_project_name = re.sub(r"\.git$", "", result.script.get('repository')) or "Untitled"
+                    except TypeError:
                         default_project_name = 'Untitled'
                 if not default_task_name:
-                    # noinspection PyBroadException
                     try:
-                        default_task_name = os.path.splitext(os.path.basename(result.script['entry_point']))[0]
-                    except Exception:
+                        default_task_name = Path(result.script.get("entry_point")).stem
+                    except TypeError:
                         pass
 
         # if we force no task reuse from os environment
-        if DEV_TASK_NO_REUSE.get() or reuse_last_task_id:
+        if DEV_TASK_NO_REUSE.get() or not reuse_last_task_id:
             default_task = None
         else:
             # if we have a previous session to use, get the task id from it

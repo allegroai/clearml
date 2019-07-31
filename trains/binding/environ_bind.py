@@ -43,14 +43,17 @@ class PatchOsFork(object):
 
     @classmethod
     def patch_fork(cls):
-        # only once
-        if cls._original_fork:
-            return
-        if six.PY2:
-            cls._original_fork = staticmethod(os.fork)
-        else:
-            cls._original_fork = os.fork
-        os.fork = cls._patched_fork
+        try:
+            # only once
+            if cls._original_fork:
+                return
+            if six.PY2:
+                cls._original_fork = staticmethod(os.fork)
+            else:
+                cls._original_fork = os.fork
+            os.fork = cls._patched_fork
+        except Exception:
+            pass
 
     @staticmethod
     def _patched_fork(*args, **kwargs):
@@ -72,7 +75,7 @@ class PatchOsFork(object):
                     return os._org_exit(*args, **kwargs)
 
                 if not hasattr(os, '_org_exit'):
-                   os._org_exit = os._exit
+                    os._org_exit = os._exit
                 os._exit = _at_exit_callback
 
         return ret

@@ -381,7 +381,12 @@ Yes! Check our [TRAINS Jupyter Plugin](https://github.com/allegroai/trains-jupyt
 
 Yes! `scikit-learn` is supported. Everything you do is logged.
 
-**NOTE**: Models are not automatically logged because in most cases, scikit-learn will simply pickle the object to files so there is no underlying frame we can connect to.
+Models are automatically logged when stored using *joblib*.
+
+    # from sklearn.externals import joblib
+    import joblib
+    joblib.dump(model, 'model.pkl')
+    loaded_model = joblib.load('model.pkl')
 
 
 ## TRAINS API

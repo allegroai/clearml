@@ -211,10 +211,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             # overwrite it before we have a chance to call edit)
             self._edit(script=result.script)
             self.reload()
-            self._update_requirements(result.script.get('requirements') if result.script.get('requirements') else '')
+            self._update_requirements(result.script.get('requirements') if result.script and
+                                                                           result.script.get('requirements') else '')
             check_package_update_thread.join()
         except Exception as e:
-            get_logger('task').warning(str(e))
+            get_logger('task').debug(str(e))
 
     def _auto_generate(self, project_name=None, task_name=None, task_type=TaskTypes.training):
         created_msg = make_message('Auto-generated at %(time)s by %(user)s@%(host)s')

@@ -24,10 +24,8 @@ your experimentation logs, outputs, and data to one centralized server.
 **With only two lines of code, this is what you are getting:**
 
 * Git repository, branch, commit id, entry point and local git diff
-* Python packages (including specific version)    
+* Python environment (including specific packages & versions)    
 * StdOut and StdErr
-* Support for *Jupyter Notebook* (see [trains-jupyter-plugin](https://github.com/allegroai/trains-jupyter-plugin))
-    and *PyCharm* remote debugging (see [trains-pycharm-plugin](https://github.com/allegroai/trains-pycharm-plugin))
 * Hyper-parameters 
     * ArgParser for command line parameters with currently used values
     * Explicit parameters dictionary
@@ -36,7 +34,9 @@ your experimentation logs, outputs, and data to one centralized server.
 * Model snapshots
 * Tensorboard/TensorboardX scalars, metrics, histograms, images (with audio coming soon)
 * Matplotlib & Seaborn
-* Tensorflow, PyTorch, Keras, XGBoost and Scikit-Learn are supported (MxNet is coming soon)
+* Supported frameworks: Tensorflow, PyTorch, Keras, XGBoost and Scikit-Learn (MxNet is coming soon)
+* Seamless integration (including version control) with **Jupyter Notebook**
+    and [*PyCharm* remote debugging](https://github.com/allegroai/trains-pycharm-plugin))
     
 **Detailed overview of TRAINS offering and system design can be found [Here](https://github.com/allegroai/trains/blob/master/docs/brief.md).**
 
@@ -78,8 +78,6 @@ We have a demo server up and running at [https://demoapp.trainsai.io](https://de
 Note that it resets every 24 hours and all of the data is deleted.
 
 When you are ready to use your own TRAINS server, go ahead and [install *TRAINS-server*](https://github.com/allegroai/trains-server).
-
-System diagram of TRAINS in action
 
 <img src="https://github.com/allegroai/trains/blob/master/docs/system_diagram.png?raw=true" width="30%">
 

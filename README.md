@@ -70,7 +70,7 @@ TRAINS is a two part solution:
 
     - Open the link and view your experiment parameters, model and tensorboard metrics
     
-    See full examples [here](https://github.com/allegroai/trains/tree/master/examples)
+    **See examples [here](https://github.com/allegroai/trains/tree/master/examples)**
 
 2. [TRAINS-server](https://github.com/allegroai/trains-server) for logging, querying, control and UI ([Web-App](https://github.com/allegroai/trains-web))
 

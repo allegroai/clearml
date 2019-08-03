@@ -24,21 +24,21 @@ your experimentation logs, outputs, and data to one centralized server.
 **With only two lines of code, this is what you are getting:**
 
 * Git repository, branch, commit id, entry point and local git diff
-* Python environment (including specific packages & versions)    
+* Python environment (including specific packages & versions)
 * StdOut and StdErr
-* Hyper-parameters 
+* Hyper-parameters
     * ArgParser for command line parameters with currently used values
     * Explicit parameters dictionary
-* Tensorflow Defines (absl-py)    
+* Tensorflow Defines (absl-py)
 * Initial model weights file
 * Model snapshots
 * Tensorboard/TensorboardX scalars, metrics, histograms, images (with audio coming soon)
 * Matplotlib & Seaborn
 * Supported frameworks: Tensorflow, PyTorch, Keras, XGBoost and Scikit-Learn (MxNet is coming soon)
 * Seamless integration (including version control) with **Jupyter Notebook**
-    and [*PyCharm* remote debugging](https://github.com/allegroai/trains-pycharm-plugin))
-    
-**Detailed overview of TRAINS offering and system design can be found [Here](https://github.com/allegroai/trains/blob/master/docs/brief.md).**
+    and [*PyCharm* remote debugging](https://github.com/allegroai/trains-pycharm-plugin)
+
+**Detailed overview of TRAINS offering and system design can be found [here](https://github.com/allegroai/trains/blob/master/docs/brief.md).**
 
 
 ## Using TRAINS
@@ -46,7 +46,7 @@ your experimentation logs, outputs, and data to one centralized server.
 TRAINS is a two part solution:
 
 1. TRAINS [python package](https://pypi.org/project/trains/) (auto-magically connects your code, see [Using TRAINS](https://github.com/allegroai/trains#using-trains))
-   
+
    **TRAINS requires only two lines of code for full integration.**
 
     To connect your code with TRAINS:
@@ -69,7 +69,7 @@ TRAINS is a two part solution:
             https://demoapp.trainsai.io/projects/76e5e2d45e914f52880621fe64601e85/experiments/241f06ae0f5c4b27b8ce8b64890ce152/output/log
 
     - Open the link and view your experiment parameters, model and tensorboard metrics
-    
+
     **See examples [here](https://github.com/allegroai/trains/tree/master/examples)**
 
 2. [TRAINS-server](https://github.com/allegroai/trains-server) for logging, querying, control and UI ([Web-App](https://github.com/allegroai/trains-web))

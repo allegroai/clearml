@@ -17,7 +17,7 @@ your experimentation logs, outputs, and data to one centralized server.
 ## Main Features
 
 * Integrate with your current work flow with minimal effort
-    * Seamless integration with leading frameworks, including: *PyTorch*, *TensorFlow*, *Keras*, and others coming soon
+    * Seamless integration with leading frameworks, including: *PyTorch*, *TensorFlow*, *Keras*, *XGBoost*, *SciKit-Learn* and others coming soon
     * Support for *Jupyter Notebook* (see [trains-jupyter-plugin](https://github.com/allegroai/trains-jupyter-plugin))
     and *PyCharm* remote debugging (see [trains-pycharm-plugin](https://github.com/allegroai/trains-pycharm-plugin))
 * Log everything. Experiments become truly repeatable
@@ -38,16 +38,17 @@ your experimentation logs, outputs, and data to one centralized server.
 
 ## TRAINS Automatically Logs
 
-* Git repository, branch, commit id and entry point (git diff coming soon)
-    * Hyper-parameters, including
+* Git repository, branch, commit id, entry point and local git diff
+* Python packages (including specific version) 
+* Hyper-parameters 
     * ArgParser for command line parameters with currently used values
-    * Tensorflow Defines (absl-py)
-* Explicit parameters dictionary
+    * Explicit parameters dictionary
+* Tensorflow Defines (absl-py)
 * Initial model weights file
 * Model snapshots
-* stdout and stderr
+* StdOut and StdErr
 * Tensorboard/TensorboardX scalars, metrics, histograms, images (with audio coming soon)
-* Matplotlib
+* Matplotlib & Seaborn
 
 ## How TRAINS Works
 

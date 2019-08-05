@@ -26,6 +26,7 @@ your experimentation logs, outputs, and data to one centralized server.
 * Git repository, branch, commit id, entry point and local git diff
 * Python environment (including specific packages & versions)
 * StdOut and StdErr
+* Resource Monitoring (CPU/GPU utilization, temperature, IO, network, etc.)
 * Hyper-parameters
     * ArgParser for command line parameters with currently used values
     * Explicit parameters dictionary

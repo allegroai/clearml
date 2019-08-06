@@ -183,7 +183,10 @@ class PatchedMatplotlib:
             plotly_fig = None
             image_format = 'jpeg'
             fig_dpi = 300
-            if not force_save_as_image:
+            if force_save_as_image:
+                # if this is an image, store as is.
+                fig_dpi = None
+            else:
                 image_format = 'svg'
                 # noinspection PyBroadException
                 try:

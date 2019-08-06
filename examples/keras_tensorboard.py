@@ -6,7 +6,9 @@
 # 2 seconds per epoch on a K520 GPU.
 from __future__ import print_function
 
-import io
+import argparse
+import tempfile
+import os
 import numpy as np
 
 from keras.callbacks import TensorBoard, ModelCheckpoint
@@ -15,8 +17,6 @@ from keras.models import Sequential
 from keras.layers.core import Dense, Activation
 from keras.optimizers import RMSprop
 from keras.utils import np_utils
-# TODO: test these methods binding
-from keras.models import load_model, save_model, model_from_json
 import tensorflow as tf
 from trains import Task
 
@@ -25,6 +25,7 @@ class TensorBoardImage(TensorBoard):
     @staticmethod
     def make_image(tensor):
         from PIL import Image
+        import io
         tensor = np.stack((tensor, tensor, tensor), axis=2)
         height, width, channels = tensor.shape
         image = Image.fromarray(tensor)
@@ -49,19 +50,17 @@ class TensorBoardImage(TensorBoard):
         self.writer.add_summary(summary, epoch)
 
 
-batch_size = 128
-nb_classes = 10
-nb_epoch = 6
+parser = argparse.ArgumentParser(description='Keras MNIST Example')
+parser.add_argument('--batch-size', type=int, default=128, help='input batch size for training (default: 64)')
+parser.add_argument('--epochs', type=int, default=6, help='number of epochs to train (default: 10)')
+args = parser.parse_args()
 
 # the data, shuffled and split between train and test sets
+nb_classes = 10
 (X_train, y_train), (X_test, y_test) = mnist.load_data()
 
-X_train = X_train.reshape(60000, 784)
-X_test = X_test.reshape(10000, 784)
-X_train = X_train.astype('float32')
-X_test = X_test.astype('float32')
-X_train /= 255.
-X_test /= 255.
+X_train = X_train.reshape(60000, 784).astype('float32')/255.
+X_test = X_test.reshape(10000, 784).astype('float32')/255.
 print(X_train.shape[0], 'train samples')
 print(X_test.shape[0], 'test samples')
 
@@ -91,21 +90,23 @@ model.compile(loss='categorical_crossentropy',
 
 # Connecting TRAINS
 task = Task.init(project_name='examples', task_name='Keras with TensorBoard example')
-# setting model outputs
+# Advanced: setting model class enumeration
 labels = dict(('digit_%d' % i, i) for i in range(10))
 task.set_model_label_enumeration(labels)
 
-board = TensorBoard(histogram_freq=1, log_dir='/tmp/histogram_example', write_images=False)
-model_store = ModelCheckpoint(filepath='/tmp/histogram_example/weight.{epoch}.hdf5')
+output_folder = os.path.join(tempfile.gettempdir(), 'keras_example')
+
+board = TensorBoard(histogram_freq=1, log_dir=output_folder, write_images=False)
+model_store = ModelCheckpoint(filepath=os.path.join(output_folder, 'weight.{epoch}.hdf5'))
 
 # load previous model, if it is there
 try:
-    model.load_weights('/tmp/histogram_example/weight.1.hdf5')
+    model.load_weights(os.path.join(output_folder, 'weight.1.hdf5'))
 except:
     pass
 
 history = model.fit(X_train, Y_train,
-                    batch_size=batch_size, epochs=nb_epoch,
+                    batch_size=args.batch_size, epochs=args.epochs,
                     callbacks=[board, model_store],
                     verbose=1, validation_data=(X_test, Y_test))
 score = model.evaluate(X_test, Y_test, verbose=0)

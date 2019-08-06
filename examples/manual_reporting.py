@@ -7,7 +7,7 @@ from trains import Task
 
 task = Task.init(project_name='examples', task_name='Manual reporting')
 
-# example python logger
+# standard python logging
 logging.getLogger().setLevel('DEBUG')
 logging.debug('This is a debug message')
 logging.info('This is an info message')
@@ -23,7 +23,7 @@ except ImportError:
     pass
 
 # get TRAINS logger object for any metrics / reports
-logger = task.get_logger()
+logger = Task.current_task().get_logger()
 
 # log text
 logger.console("hello")
@@ -34,7 +34,7 @@ logger.report_scalar("example_scalar", "series A", iteration=1, value=200)
 
 # report histogram
 histogram = np.random.randint(10, size=10)
-logger.report_vector("example_histogram", "random histogram", iteration=1, values=histogram)
+logger.report_histogram("example_histogram", "random histogram", iteration=1, values=histogram)
 
 # report confusion matrix
 confusion = np.random.randint(10, size=(10, 10))

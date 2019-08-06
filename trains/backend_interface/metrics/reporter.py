@@ -2,6 +2,7 @@ import collections
 import json
 
 import six
+import numpy as np
 from threading import Thread, Event
 
 from ..base import InterfaceBase
@@ -157,8 +158,15 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param iter: Iteration number
         :type value: int
         """
+        try:
+            def default(o):
+                if isinstance(o, np.int64):
+                    return int(o)
+        except Exception:
+            default = None
+
         if isinstance(plot, dict):
-            plot = json.dumps(plot)
+            plot = json.dumps(plot, default=default)
         elif not isinstance(plot, six.string_types):
             raise ValueError('Plot should be a string or a dict')
         ev = PlotEvent(metric=self._normalize_name(title),

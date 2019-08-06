@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os
 import sys
 from tempfile import mkstemp
@@ -41,7 +43,8 @@ class PatchedMatplotlib:
         try:
             # we support matplotlib version 2.0.0 and above
             import matplotlib
-            if int(matplotlib.__version__.split('.')[0]) < 2:
+            matplot_major_version = int(matplotlib.__version__.split('.')[0])
+            if matplot_major_version < 2:
                 LoggerRoot.get_base_logger().warning(
                     'matplotlib binding supports version 2.0 and above, found version {}'.format(
                         matplotlib.__version__))
@@ -63,6 +66,7 @@ class PatchedMatplotlib:
                 PatchedMatplotlib._patched_original_plot = plt.show
                 PatchedMatplotlib._patched_original_imshow = plt.imshow
                 PatchedMatplotlib._patched_original_figure = figure.Figure.show
+
             plt.show = PatchedMatplotlib.patched_show
             figure.Figure.show = PatchedMatplotlib.patched_figure_show
             sys.modules['matplotlib'].pyplot.imshow = PatchedMatplotlib.patched_imshow
@@ -111,13 +115,26 @@ class PatchedMatplotlib:
 
     @staticmethod
     def patched_figure_show(self, *args, **kw):
+        if hasattr(self, '_trains_show'):
+            # flag will be cleared when calling clf() (object will be replaced)
+            return PatchedMatplotlib._patched_original_figure(self, *args, **kw)
+        try:
+            self._trains_show = True
+        except Exception:
+            pass
         PatchedMatplotlib._report_figure(set_active=False, specific_fig=self)
         ret = PatchedMatplotlib._patched_original_figure(self, *args, **kw)
         return ret
 
     @staticmethod
     def patched_show(*args, **kw):
-        PatchedMatplotlib._report_figure()
+        # noinspection PyBroadException
+        try:
+            figures = PatchedMatplotlib._get_output_figures(None, all_figures=True)
+            for figure in figures:
+                PatchedMatplotlib._report_figure(stored_figure=figure)
+        except Exception:
+            pass
         ret = PatchedMatplotlib._patched_original_plot(*args, **kw)
         if PatchedMatplotlib._current_task and running_remotely():
             # clear the current plot, because no one else will
@@ -155,10 +172,17 @@ class PatchedMatplotlib:
             else:
                 mpl_fig = specific_fig
 
+            # mark as processed, so nested calls to figure.show will do nothing
+            try:
+                mpl_fig._trains_show = True
+            except Exception:
+                pass
+
             # convert to plotly
             image = None
             plotly_fig = None
             image_format = 'jpeg'
+            fig_dpi = 300
             if not force_save_as_image:
                 image_format = 'svg'
                 # noinspection PyBroadException
@@ -168,12 +192,39 @@ class PatchedMatplotlib:
                         if matplotlylib:
                             renderer = matplotlylib.PlotlyRenderer()
                             matplotlylib.Exporter(renderer, close_mpl=False).run(fig)
+                            x_ticks = list(renderer.current_mpl_ax.get_xticklabels())
+                            if x_ticks:
+                                try:
+                                    # check if all values can be cast to float
+                                    values = [float(t.get_text().replace('−', '-')) for t in x_ticks]
+                                except:
+                                    try:
+                                        renderer.plotly_fig['layout']['xaxis1'].update({
+                                            'ticktext': [t.get_text() for t in x_ticks],
+                                            'tickvals': [t.get_position()[0] for t in x_ticks],
+                                        })
+                                    except:
+                                        pass
+                            y_ticks = list(renderer.current_mpl_ax.get_yticklabels())
+                            if y_ticks:
+                                try:
+                                    # check if all values can be cast to float
+                                    values = [float(t.get_text().replace('−', '-')) for t in y_ticks]
+                                except:
+                                    try:
+                                        renderer.plotly_fig['layout']['yaxis1'].update({
+                                            'ticktext': [t.get_text() for t in y_ticks],
+                                            'tickvals': [t.get_position()[1] for t in y_ticks],
+                                        })
+                                    except:
+                                        pass
                             return renderer.plotly_fig
 
                     plotly_fig = our_mpl_to_plotly(mpl_fig)
                 except Exception as ex:
                     # this was an image, change format to png
                     image_format = 'jpeg' if 'selfie' in str(ex) else 'png'
+                    fig_dpi = 300
 
             # plotly could not serialize the plot, we should convert to image
             if not plotly_fig:
@@ -183,13 +234,13 @@ class PatchedMatplotlib:
                     # first try SVG if we fail then fallback to png
                     buffer_ = BytesIO()
                     a_plt = specific_fig if specific_fig is not None else plt
-                    a_plt.savefig(buffer_, format=image_format, bbox_inches='tight', pad_inches=0, frameon=False)
+                    a_plt.savefig(buffer_, dpi=fig_dpi, format=image_format, bbox_inches='tight', pad_inches=0, frameon=False)
                     buffer_.seek(0)
                 except Exception:
                     image_format = 'png'
                     buffer_ = BytesIO()
                     a_plt = specific_fig if specific_fig is not None else plt
-                    a_plt.savefig(buffer_, format=image_format, bbox_inches='tight', pad_inches=0, frameon=False)
+                    a_plt.savefig(buffer_, dpi=fig_dpi, format=image_format, bbox_inches='tight', pad_inches=0, frameon=False)
                     buffer_.seek(0)
                 fd, image = mkstemp(suffix='.'+image_format)
                 os.write(fd, buffer_.read())
@@ -252,6 +303,17 @@ class PatchedMatplotlib:
             pass
 
         return
+
+    @staticmethod
+    def _get_output_figures(stored_figure, all_figures):
+        try:
+            from matplotlib import _pylab_helpers
+            if all_figures:
+                return list(_pylab_helpers.Gcf.figs.values())
+            else:
+                return [stored_figure] or [_pylab_helpers.Gcf.get_active()]
+        except Exception:
+            return []
 
     @staticmethod
     def __patched_draw_all(*args, **kwargs):

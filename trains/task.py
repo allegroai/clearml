@@ -989,13 +989,14 @@ class Task(_Task):
                 # check if we crashed, ot the signal is not interrupt (manual break)
                 task_status = ('stopped', )
                 if self.__exit_hook:
-                    if self.__exit_hook.exception is not None or \
-                            (not self.__exit_hook.remote_user_aborted and self.__exit_hook.signal not in (None, 2)):
+                    if (self.__exit_hook.exception and not isinstance(self.__exit_hook.exception, KeyboardInterrupt)) \
+                            or (not self.__exit_hook.remote_user_aborted and self.__exit_hook.signal not in (None, 2)):
                         task_status = ('failed', 'Exception')
                         wait_for_uploads = False
                     else:
                         wait_for_uploads = (self.__exit_hook.remote_user_aborted or self.__exit_hook.signal is None)
-                        if not self.__exit_hook.remote_user_aborted and self.__exit_hook.signal is None:
+                        if not self.__exit_hook.remote_user_aborted and self.__exit_hook.signal is None and \
+                                not self.__exit_hook.exception:
                             task_status = ('completed', )
                         else:
                             task_status = ('stopped', )

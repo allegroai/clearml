@@ -24,6 +24,28 @@ class ScriptRequirements(object):
     def __init__(self, root_folder):
         self._root_folder = root_folder
 
+    @staticmethod
+    def get_installed_pkgs_detail(reqs):
+        """
+        HACK: bugfix of the original pigar get_installed_pkgs_detail
+
+        Get mapping for import top level name
+        and install package name with version.
+        """
+        mapping = dict()
+
+        for path in sys.path:
+            if os.path.isdir(path) and path.rstrip('/').endswith(
+                    ('site-packages', 'dist-packages')):
+                new_mapping = reqs._search_path(path)
+                # BUGFIX:
+                # override with previous, just like python resolves imports, the first match is the one used.
+                # unlike the original implementation, where the last one is used.
+                new_mapping.update(mapping)
+                mapping = new_mapping
+
+        return mapping
+
     def get_requirements(self):
         try:
             from pigar import reqs
@@ -31,7 +53,11 @@ class ScriptRequirements(object):
             from pigar.__main__ import GenerateReqs
             from pigar.log import logger
             logger.setLevel(logging.WARNING)
-            installed_pkgs = reqs.get_installed_pkgs_detail()
+            try:
+                # first try our version, if we fail revert to the internal implantation
+                installed_pkgs = self.get_installed_pkgs_detail(reqs)
+            except Exception:
+                installed_pkgs = reqs.get_installed_pkgs_detail()
             gr = GenerateReqs(save_path='', project_path=self._root_folder, installed_pkgs=installed_pkgs,
                               ignores=['.git', '.hg', '.idea', '__pycache__', '.ipynb_checkpoints'])
             reqs, try_imports, guess = gr.extract_reqs()

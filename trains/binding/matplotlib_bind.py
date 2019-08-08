@@ -6,6 +6,7 @@ from tempfile import mkstemp
 
 import six
 from six import BytesIO
+import threading
 
 from ..debugging.log import LoggerRoot
 from ..config import running_remotely
@@ -21,6 +22,7 @@ class PatchedMatplotlib:
     _global_image_counter = -1
     _current_task = None
     _support_image_plot = False
+    _recursion_guard = {}
 
     class _PatchWarnings(object):
         def __init__(self):
@@ -115,19 +117,21 @@ class PatchedMatplotlib:
 
     @staticmethod
     def patched_figure_show(self, *args, **kw):
-        if hasattr(self, '_trains_show'):
-            # flag will be cleared when calling clf() (object will be replaced)
+        tid = threading._get_ident() if six.PY2 else threading.get_ident()
+        if PatchedMatplotlib._recursion_guard.get(tid):
+            # we are inside a gaurd do nothing
             return PatchedMatplotlib._patched_original_figure(self, *args, **kw)
-        try:
-            self._trains_show = True
-        except Exception:
-            pass
+
+        PatchedMatplotlib._recursion_guard[tid] = True
         PatchedMatplotlib._report_figure(set_active=False, specific_fig=self)
         ret = PatchedMatplotlib._patched_original_figure(self, *args, **kw)
+        PatchedMatplotlib._recursion_guard[tid] = False
         return ret
 
     @staticmethod
     def patched_show(*args, **kw):
+        tid = threading._get_ident() if six.PY2 else threading.get_ident()
+        PatchedMatplotlib._recursion_guard[tid] = True
         # noinspection PyBroadException
         try:
             figures = PatchedMatplotlib._get_output_figures(None, all_figures=True)
@@ -145,6 +149,7 @@ class PatchedMatplotlib:
                     plt.clf()
             except Exception:
                 pass
+        PatchedMatplotlib._recursion_guard[tid] = False
         return ret
 
     @staticmethod
@@ -171,12 +176,6 @@ class PatchedMatplotlib:
                 mpl_fig = stored_figure.canvas.figure  # plt.gcf()
             else:
                 mpl_fig = specific_fig
-
-            # mark as processed, so nested calls to figure.show will do nothing
-            try:
-                mpl_fig._trains_show = True
-            except Exception:
-                pass
 
             # convert to plotly
             image = None

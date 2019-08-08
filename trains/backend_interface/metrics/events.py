@@ -3,13 +3,13 @@ import time
 from threading import Lock
 
 import attr
-import cv2
 import numpy as np
 import pathlib2
 import six
-from ...backend_api.services import events
+from PIL import Image
 from six.moves.urllib.parse import urlparse, urlunparse
 
+from ...backend_api.services import events
 from ...config import config
 
 
@@ -248,12 +248,10 @@ class UploadEvent(MetricsEventAdapter):
                 image_data = np.reshape(image_data, (height, width))
 
             # serialize image
-            _, img_bytes = cv2.imencode(
-                self._format, image_data,
-                params=(cv2.IMWRITE_JPEG_QUALITY, self._quality),
-            )
-
-            output = six.BytesIO(img_bytes.tostring())
+            image = Image.fromarray(image_data)
+            output = six.BytesIO()
+            image_format = Image.registered_extensions().get(self._format.lower(), 'JPEG')
+            image.save(output, format=image_format, quality=self._quality)
             output.seek(0)
         else:
             local_file = self._local_image_path

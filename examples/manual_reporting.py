@@ -48,11 +48,13 @@ logger.report_scatter2d("example_scatter", "series_xy", iteration=1, scatter=sca
 scatter3d = np.random.randint(10, size=(10, 3))
 logger.report_scatter3d("example_scatter_3d", "series_xyz", iteration=1, scatter=scatter3d)
 
-# report image
-m = np.eye(256, 256, dtype=np.uint8)*255
-logger.report_image_and_upload("test case", "image uint", iteration=1, matrix=m)
+# report images
 m = np.eye(256, 256, dtype=np.float)
 logger.report_image_and_upload("test case", "image float", iteration=1, matrix=m)
+m = np.eye(256, 256, dtype=np.uint8)*255
+logger.report_image_and_upload("test case", "image uint8", iteration=1, matrix=m)
+m = np.concatenate((np.atleast_3d(m), np.zeros((256, 256, 2), dtype=np.uint8)), axis=2)
+logger.report_image_and_upload("test case", "image color red", iteration=1, matrix=m)
 
 # flush reports (otherwise it will be flushed in the background, every couple of seconds)
 logger.flush()

@@ -2,7 +2,7 @@
 #
 import tensorflow as tf
 import numpy as np
-import cv2
+from PIL import Image
 
 from trains import Task
 task = Task.init(project_name='examples', task_name='tensorboard toy example')
@@ -46,7 +46,8 @@ all_combined = tf.concat(all_distributions, 0)
 tf.summary.histogram("all_combined", all_combined)
 
 # convert to 4d [batch, col, row, RGB-channels]
-image = cv2.imread('./samples/picasso.jpg')[:, :, ::-1]
+image_open = Image.open('./samples/picasso.jpg')
+image = np.asarray(image_open)
 image_gray = image[:, :, 0][np.newaxis, :, :, np.newaxis]
 image_rgba = np.concatenate((image, 255*np.atleast_3d(np.ones(shape=image.shape[:2], dtype=np.uint8))), axis=2)
 image_rgba = image_rgba[np.newaxis, :, :, :]

@@ -203,7 +203,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type value: int
         :param path: A path to an image file. Required unless matrix is provided.
         :type path: str
-        :param matrix: A 3D numpy.ndarray object containing image data (BGR). Required unless filename is provided.
+        :param matrix: A 3D numpy.ndarray object containing image data (RGB). Required unless filename is provided.
         :type matrix: str
         :param max_image_history: maximum number of image to store per metric/variant combination
         use negative value for unlimited. default is set in global configuration (default=5)
@@ -488,7 +488,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type value: int
         :param path: A path to an image file. Required unless matrix is provided.
         :type path: str
-        :param matrix: A 3D numpy.ndarray object containing image data (BGR). Required unless filename is provided.
+        :param matrix: A 3D numpy.ndarray object containing image data (RGB). Required unless filename is provided.
         :type matrix: str
         :param max_image_history: maximum number of image to store per metric/variant combination
         use negative value for unlimited. default is set in global configuration (default=5)

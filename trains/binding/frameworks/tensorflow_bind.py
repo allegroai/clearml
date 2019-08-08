@@ -4,11 +4,12 @@ import sys
 import threading
 from collections import defaultdict
 from functools import partial
+from io import BytesIO
 from logging import ERROR, WARNING, getLogger
 from typing import Any
 
-import cv2
 import numpy as np
+from PIL import Image
 
 from ..frameworks import _patched_call, WeightsFileHandler, _Empty, TrainsFrameworkAdapter
 from ..import_bind import PostImportHookPatching
@@ -163,8 +164,11 @@ class EventTrainsWriter(object):
     def _decode_image(self, img_str, width, height, color_channels):
         # noinspection PyBroadException
         try:
-            image_string = np.asarray(bytearray(base64.b64decode(img_str)), dtype=np.uint8)
-            image = cv2.imdecode(image_string, cv2.IMREAD_COLOR)
+            imdata = base64.b64decode(img_str)
+            output = BytesIO(imdata)
+            im = Image.open(output)
+            image = np.asarray(im)
+            output.close()
             val = image.reshape(height, width, -1).astype(np.uint8)
             if val.ndim == 3 and val.shape[2] == 3:
                 if self._visualization_mode == 'BGR':

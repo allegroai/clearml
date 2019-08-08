@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
 import collections
-import itertools
 import re
+import threading
+
 import requests
 import six
 if six.PY3:
@@ -308,7 +309,12 @@ class CheckPackageUpdates(object):
         # noinspection PyBroadException
         try:
             cls._package_version_checked = True
-            releases = requests.get('https://pypi.python.org/pypi/trains/json').json()['releases'].keys()
+            # Sending the request only for statistics
+            update_statistics = threading.Thread(target=CheckPackageUpdates.get_version_from_updates_server)
+            update_statistics.daemon = True
+            update_statistics.start()
+
+            releases = requests.get('https://pypi.python.org/pypi/trains/json', timeout=3.0).json()['releases'].keys()
 
             releases = [Version(r) for r in releases]
             latest_version = sorted(releases)
@@ -323,3 +329,10 @@ class CheckPackageUpdates(object):
             return str(latest_version[-1]), not_patch_upgrade
         except Exception:
             return None
+
+    @staticmethod
+    def get_version_from_updates_server():
+        try:
+            _ = requests.get('https://updates.trainsai.io/updates', timeout=1.0)
+        except Exception:
+            pass

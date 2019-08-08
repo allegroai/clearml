@@ -965,7 +965,7 @@ class StorageHelper(object):
 
 class _HttpDriver(object):
     """ LibCloud http/https adapter (simple, enough for now) """
-    timeout = (5.0, None)
+    timeout = (5.0, 30.)
 
     class _Container(object):
         def __init__(self, name, retries=5, **kwargs):

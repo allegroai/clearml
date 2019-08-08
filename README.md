@@ -42,11 +42,11 @@ your experimentation logs, outputs, and data to one centralized server.
 **Detailed overview of TRAINS offering and system design can be found [here](https://github.com/allegroai/trains/blob/master/docs/brief.md).**
 
 
-## Using TRAINS
+## Using TRAINS <a name="using-trains"></a>
 
 TRAINS is a two part solution:
 
-1. TRAINS [python package](https://pypi.org/project/trains/) (auto-magically connects your code, see [Using TRAINS](https://github.com/allegroai/trains#using-trains))
+1. TRAINS [python package](https://pypi.org/project/trains/) auto-magically connects with your code
 
    **TRAINS requires only two lines of code for full integration.**
 
@@ -83,7 +83,7 @@ When you are ready to use your own TRAINS server, go ahead and [install *TRAINS-
 <img src="https://github.com/allegroai/trains/blob/master/docs/system_diagram.png?raw=true" width="30%">
 
 
-## Configuring Your Own TRAINS server
+## Configuring Your Own TRAINS server <a name="configuration"></a>
 
 1. Install and run *TRAINS-server* (see [Installing the TRAINS Server](https://github.com/allegroai/trains-server))
 

@@ -80,7 +80,7 @@ Note that it resets every 24 hours and all of the data is deleted.
 
 When you are ready to use your own TRAINS server, go ahead and [install *TRAINS-server*](https://github.com/allegroai/trains-server).
 
-<img src="https://github.com/allegroai/trains/blob/master/docs/system_diagram.png?raw=true" width="30%">
+<img src="https://github.com/allegroai/trains/blob/master/docs/system_diagram.png?raw=true" width="50%">
 
 
 ## Configuring Your Own TRAINS server <a name="configuration"></a>

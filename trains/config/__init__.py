@@ -35,11 +35,11 @@ def get_config_for_bucket(base_url, extra_configurations=None):
 
 
 def get_remote_task_id():
-    return None
+    return _running_remotely_task_id
 
 
 def running_remotely():
-    return False
+    return bool(_running_remotely_task_id)
 
 
 def get_log_to_backend(default=None):

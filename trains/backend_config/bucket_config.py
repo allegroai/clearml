@@ -1,5 +1,6 @@
 import abc
 import warnings
+from copy import copy
 from operator import itemgetter
 
 import furl
@@ -289,3 +290,66 @@ class GSBucketConfigurations(BaseBucketConfigurations):
     def _get_prefix_from_bucket_config(self, config):
         prefix = furl.furl(scheme="gs", netloc=config.bucket, path=config.subdir)
         return str(prefix)
+
+
+@attrs
+class AzureContainerConfig(object):
+    account_name = attrib(type=str)
+    account_key = attrib(type=str)
+    container_name = attrib(type=str, default=None)
+
+
+class AzureContainerConfigurations(object):
+    def __init__(self, container_configs=None):
+        super(AzureContainerConfigurations, self).__init__()
+        self._container_configs = container_configs or []
+
+    @classmethod
+    def from_config(cls, configuration):
+        if configuration is None:
+            return cls()
+
+        containers = configuration.get("containers", list())
+        container_configs = [AzureContainerConfig(**entry) for entry in containers]
+
+        return cls(container_configs)
+
+    def get_config_by_uri(self, uri):
+        """
+        Get the credentials for an Azure Blob Storage container from the config
+        :param uri: URI of container or blob
+        :return: container config
+        :rtype: AzureContainerConfig
+        """
+        f = furl.furl(uri)
+        account_name = f.host.partition(".")[0]
+
+        if not f.path.segments:
+            raise ValueError(
+                "URI {} is missing a container name (expected "
+                "[https/azure]://<account-name>.../<container-name>)".format(
+                    uri
+                )
+            )
+
+        container = f.path.segments[0]
+
+        config = copy(self.get_config(account_name, container))
+
+        if config and not config.container_name:
+            config.container_name = container
+
+        return config
+
+    def get_config(self, account_name, container):
+        return next(
+            (
+                config
+                for config in self._container_configs
+                if config.account_name == account_name and (
+                    not config.container_name
+                    or config.container_name == container
+                )
+            ),
+            None
+        )

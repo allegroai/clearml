@@ -66,6 +66,8 @@ class PatchOsFork(object):
                 task = Task.init()
                 task.get_logger().flush()
 
+                # Hack: now make sure we setup the reporter thread
+                task._setup_reporter()
                 # if we got here patch the os._exit of our instance to call us
                 def _at_exit_callback(*args, **kwargs):
                     # call at exit manually

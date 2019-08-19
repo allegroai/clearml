@@ -7,6 +7,7 @@ from pathlib2 import Path
 
 from ...config import running_remotely
 from ...model import InputModel, OutputModel
+from ...backend_interface.model import Model
 
 TrainsFrameworkAdapter = 'TrainsFrameworkAdapter'
 _recursion_guard = {}
@@ -75,15 +76,28 @@ class WeightsFileHandler(object):
                     config_text = trains_in_model.config_text if trains_in_model else None
                 except Exception:
                     config_text = None
-            trains_in_model = InputModel.import_model(
-                weights_url=filepath,
-                config_dict=config_dict,
-                config_text=config_text,
-                name=task.name + ' ' + model_name_id,
-                label_enumeration=task.get_labels_enumeration(),
-                framework=framework,
-                create_as_published=False,
-            )
+
+            # check if we already have the model object:
+            model_id, model_uri = Model._local_model_to_id_uri.get(filepath, (None, None))
+            if model_id:
+                # noinspection PyBroadException
+                try:
+                    trains_in_model = InputModel(model_id)
+                except Exception:
+                    model_id = None
+
+            # if we do not, we need to import the model
+            if not model_id:
+                trains_in_model = InputModel.import_model(
+                    weights_url=filepath,
+                    config_dict=config_dict,
+                    config_text=config_text,
+                    name=task.name + ' ' + model_name_id,
+                    label_enumeration=task.get_labels_enumeration(),
+                    framework=framework,
+                    create_as_published=False,
+                )
+
             # noinspection PyBroadException
             try:
                 ref_model = weakref.ref(model)
@@ -94,7 +108,8 @@ class WeightsFileHandler(object):
             task.connect(trains_in_model)
             # if we are running remotely we should deserialize the object
             # because someone might have changed the config_dict
-            if running_remotely():
+            # Hack: disabled
+            if False and running_remotely():
                 # reload the model
                 model_config = trains_in_model.config_dict
                 # verify that this is the same model so we are not deserializing a diff model

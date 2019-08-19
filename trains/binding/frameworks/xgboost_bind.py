@@ -82,7 +82,8 @@ class PatchXGBoostModelIO(PatchBaseModelIO):
 
         # register input model
         empty = _Empty()
-        if running_remotely():
+        # Hack: disabled
+        if False and running_remotely():
             filename = WeightsFileHandler.restore_weights_file(empty, filename, Framework.xgboost,
                                                                PatchXGBoostModelIO.__main_task)
             model = original_fn(filename or f, *args, **kwargs)

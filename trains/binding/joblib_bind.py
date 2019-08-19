@@ -90,7 +90,8 @@ class PatchedJoblib(object):
 
         # register input model
         empty = _Empty()
-        if running_remotely():
+        # Hack: disabled
+        if False and running_remotely():
             # we assume scikit-learn, for the time being
             current_framework = Framework.scikitlearn
             filename = WeightsFileHandler.restore_weights_file(empty, filename, current_framework,

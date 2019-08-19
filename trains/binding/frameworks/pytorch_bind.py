@@ -47,16 +47,22 @@ class PatchPyTorchModelIO(PatchBaseModelIO):
         if not PatchPyTorchModelIO.__main_task:
             return ret
 
-        if isinstance(f, six.string_types):
-            filename = f
-        elif hasattr(f, 'name'):
-            filename = f.name
-            # noinspection PyBroadException
-            try:
-                f.flush()
-            except Exception:
-                pass
-        else:
+        # noinspection PyBroadException
+        try:
+            if isinstance(f, six.string_types):
+                filename = f
+            elif hasattr(f, 'as_posix'):
+                filename = f.as_posix()
+            elif hasattr(f, 'name'):
+                filename = f.name
+                # noinspection PyBroadException
+                try:
+                    f.flush()
+                except Exception:
+                    pass
+            else:
+                filename = None
+        except Exception:
             filename = None
 
         # give the model a descriptive name based on the file name
@@ -65,31 +71,40 @@ class PatchPyTorchModelIO(PatchBaseModelIO):
             model_name = Path(filename).stem
         except Exception:
             model_name = None
+
         WeightsFileHandler.create_output_model(obj, filename, Framework.pytorch, PatchPyTorchModelIO.__main_task,
                                                singlefile=True, model_name=model_name)
+
         return ret
 
     @staticmethod
     def _load(original_fn, f, *args, **kwargs):
-        if isinstance(f, six.string_types):
-            filename = f
-        elif hasattr(f, 'name'):
-            filename = f.name
-        else:
-            filename = None
-
         if not PatchPyTorchModelIO.__main_task:
             return original_fn(f, *args, **kwargs)
 
+        # noinspection PyBroadException
+        try:
+            if isinstance(f, six.string_types):
+                filename = f
+            elif hasattr(f, 'as_posix'):
+                filename = f.as_posix()
+            elif hasattr(f, 'name'):
+                filename = f.name
+            else:
+                filename = None
+        except Exception:
+            filename = None
+
         # register input model
         empty = _Empty()
-        if running_remotely():
+        # Hack: disabled
+        if False and running_remotely():
             filename = WeightsFileHandler.restore_weights_file(empty, filename, Framework.pytorch,
                                                                PatchPyTorchModelIO.__main_task)
             model = original_fn(filename or f, *args, **kwargs)
         else:
             # try to load model before registering, in case we fail
-            model = original_fn(filename or f, *args, **kwargs)
+            model = original_fn(f, *args, **kwargs)
             WeightsFileHandler.restore_weights_file(empty, filename, Framework.pytorch,
                                                     PatchPyTorchModelIO.__main_task)
 

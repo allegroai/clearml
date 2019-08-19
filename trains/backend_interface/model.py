@@ -1,5 +1,7 @@
+import os
 from collections import namedtuple
 from functools import partial
+from tempfile import mkstemp
 
 import six
 from pathlib2 import Path
@@ -44,6 +46,8 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
     """ Manager for backend model objects """
 
     _EMPTY_MODEL_ID = 'empty'
+
+    _local_model_to_id_uri = {}
 
     @property
     def model_id(self):
@@ -172,6 +176,9 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
                 self.upload_storage_uri = upload_storage_uri
             self._create_empty_model(self.upload_storage_uri)
 
+        if model_file and uri:
+            Model._local_model_to_id_uri[str(model_file)] = (self.model_id, uri)
+
         # upload model file if needed and get uri
         uri = uri or (self._upload_model(model_file, target_filename=target_filename) if model_file else self.data.uri)
         # update fields
@@ -213,6 +220,8 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
                 if uploaded_uri is False:
                     uploaded_uri = '{}/failed_uploading'.format(self._upload_storage_uri)
 
+                Model._local_model_to_id_uri[str(model_file)] = (self.model_id, uploaded_uri)
+
                 self.update(
                     uri=uploaded_uri,
                     task_id=task_id,
@@ -234,6 +243,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             return uri
         else:
             uri = self._upload_model(model_file, async_enable=async_enable, target_filename=target_filename)
+            Model._local_model_to_id_uri[str(model_file)] = (self.model_id, uri)
             self.update(
                 uri=uri,
                 task_id=task_id,
@@ -339,7 +349,14 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         """ Download the model weights into a local file in our cache """
         uri = self.data.uri
         helper = StorageHelper.get(uri, logger=self._log, verbose=True)
-        return helper.download_to_file(uri, force_cache=True)
+        filename = uri.split('/')[-1]
+        ext = '.'.join(filename.split('.')[1:])
+        fd, local_filename = mkstemp(suffix='.'+ext)
+        os.close(fd)
+        local_download = helper.download_to_file(uri, local_path=local_filename, overwrite_existing=True)
+        # save local model, so we can later query what was the original one
+        Model._local_model_to_id_uri[str(local_download)] = (self.model_id, uri)
+        return local_download
 
     @property
     def cache_dir(self):

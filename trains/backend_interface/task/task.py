@@ -4,8 +4,6 @@ import itertools
 import logging
 from enum import Enum
 from threading import RLock, Thread
-from copy import copy
-from six.moves.urllib.parse import urlparse, urlunparse
 
 import six
 
@@ -300,7 +298,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     @property
     def _status(self):
         """ Return the task's cached status (don't reload if we don't have to) """
-        return self.data.status
+        return str(self.data.status)
 
     @property
     def input_model(self):
@@ -349,11 +347,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Returns a simple metrics reporter instance
         """
         if self._reporter is None:
-            try:
-                storage_uri = self.get_output_destination(log_on_error=False)
-            except ValueError:
-                storage_uri = None
-            self._reporter = Reporter(self._get_metrics_manager(storage_uri=storage_uri))
+            self._setup_reporter()
         return self._reporter
 
     def _get_metrics_manager(self, storage_uri):
@@ -365,6 +359,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 storage_uri_suffix=self._get_output_destination_suffix('metrics')
             )
         return self._metrics_manager
+
+    def _setup_reporter(self):
+        try:
+            storage_uri = self.get_output_destination(log_on_error=False)
+        except ValueError:
+            storage_uri = None
+        self._reporter = Reporter(self._get_metrics_manager(storage_uri=storage_uri))
+        return self._reporter
 
     def _get_output_destination_suffix(self, extra_path=None):
         return '/'.join(x for x in ('task_%s' % self.data.id, extra_path) if x)
@@ -403,7 +405,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def publish(self, ignore_errors=True):
         """ Signal that this task will be published """
-        if self.status != tasks.TaskStatusEnum.stopped:
+        if str(self.status) != str(tasks.TaskStatusEnum.stopped):
             raise ValueError("Can't publish, Task is not stopped")
         resp = self.send(tasks.PublishRequest(self.id), ignore_errors=ignore_errors)
         assert isinstance(resp.response, tasks.PublishResponse)
@@ -471,7 +473,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return uri
 
     def _conditionally_start_task(self):
-        if self.status == tasks.TaskStatusEnum.created:
+        if str(self.status) == str(tasks.TaskStatusEnum.created):
             self.started()
 
     @property
@@ -700,8 +702,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def _edit(self, **kwargs):
         with self._edit_lock:
             # Since we ae using forced update, make sure he task status is valid
-            if not self._data or (self.data.status not in (tasks.TaskStatusEnum.created,
-                                                           tasks.TaskStatusEnum.in_progress)):
+            if not self._data or (str(self.data.status) not in (str(tasks.TaskStatusEnum.created),
+                                                                str(tasks.TaskStatusEnum.in_progress))):
                 raise ValueError('Task object can only be updated if created or in_progress')
 
             res = self.send(tasks.EditRequest(task=self.id, force=True, **kwargs), raise_on_errors=False)

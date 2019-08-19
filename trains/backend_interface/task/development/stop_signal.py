@@ -30,22 +30,22 @@ class TaskStopSignal(object):
     def test(self):
         # noinspection PyBroadException
         try:
-            status = self.task.status
+            status = str(self.task.status)
             message = self.task.data.status_message
 
-            if status == tasks.TaskStatusEnum.in_progress and "stopping" in message:
+            if status == str(tasks.TaskStatusEnum.in_progress) and "stopping" in message:
                 return TaskStopReason.stopped
 
             _expected_statuses = (
-                tasks.TaskStatusEnum.created,
-                tasks.TaskStatusEnum.queued,
-                tasks.TaskStatusEnum.in_progress,
+                str(tasks.TaskStatusEnum.created),
+                str(tasks.TaskStatusEnum.queued),
+                str(tasks.TaskStatusEnum.in_progress),
             )
 
             if status not in _expected_statuses and "worker" not in message:
                 return TaskStopReason.status_changed
 
-            if status == tasks.TaskStatusEnum.created:
+            if status == str(tasks.TaskStatusEnum.created):
                 self._task_reset_state_counter += 1
 
                 if self._task_reset_state_counter >= self._number_of_consecutive_reset_tests:

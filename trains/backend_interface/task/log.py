@@ -1,6 +1,7 @@
 import time
 from logging import LogRecord, getLogger, basicConfig
 from logging.handlers import BufferingHandler
+from multiprocessing.pool import ThreadPool
 
 from ...backend_api.services import events
 from ...config import config
@@ -27,6 +28,7 @@ class TaskHandler(BufferingHandler):
         self.last_timestamp = 0
         self.counter = 1
         self._last_event = None
+        self._thread_pool = ThreadPool(processes=1)
 
     def shouldFlush(self, record):
         """
@@ -92,6 +94,7 @@ class TaskHandler(BufferingHandler):
     def flush(self):
         if not self.buffer:
             return
+
         self.acquire()
         buffer = self.buffer
         try:
@@ -100,11 +103,20 @@ class TaskHandler(BufferingHandler):
             self.buffer = []
             record_events = [self._record_to_event(record) for record in buffer]
             self._last_event = None
-            requests = [events.AddRequest(e) for e in record_events if e]
-            res = self.session.send(events.AddBatchRequest(requests=requests))
-            if not res.ok():
-                print("Failed logging task to backend ({:d} lines, {})".format(len(buffer), str(res.meta)))
+            batch_requests = events.AddBatchRequest(requests=[events.AddRequest(e) for e in record_events if e])
         except Exception:
+            batch_requests = None
             print("Failed logging task to backend ({:d} lines)".format(len(buffer)))
         finally:
             self.release()
+
+        if batch_requests:
+            self._thread_pool.apply_async(self._send_events, args=(batch_requests, ))
+
+    def _send_events(self, a_request):
+        try:
+            res = self.session.send(a_request)
+            if not res.ok():
+                print("Failed logging task to backend ({:d} lines, {})".format(len(a_request.requests), str(res.meta)))
+        except Exception:
+            print("Failed logging task to backend ({:d} lines)".format(len(a_request.requests)))

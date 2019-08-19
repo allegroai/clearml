@@ -1,5 +1,3 @@
-from socket import gethostname
-
 import attr
 from threading import Thread, Event
 
@@ -13,9 +11,9 @@ from ....backend_api.services import tasks
 class DevWorker(object):
     prefix = attr.ib(type=str, default="MANUAL:")
 
-    report_period = float(config.get('development.worker.report_period_sec', 30.))
+    report_period = float(max(config.get('development.worker.report_period_sec', 30.), 1.))
     report_stdout = bool(config.get('development.worker.log_stdout', True))
-    ping_period = 30.
+    ping_period = float(max(config.get('development.worker.ping_period_sec', 30.), 1.))
 
     def __init__(self):
         self._dev_stop_signal = None
@@ -51,20 +49,23 @@ class DevWorker(object):
     def _daemon(self):
         last_ping = time()
         while self._task is not None:
-            if self._exit_event.wait(min(self.ping_period, self.report_period)):
-                return
-            # send ping request
-            if self._support_ping and (time() - last_ping) >= self.ping_period:
-                self.ping()
-                last_ping = time()
-            if self._dev_stop_signal:
-                stop_reason = self._dev_stop_signal.test()
-                if stop_reason and self._task:
-                    self._task._dev_mode_stop_task(stop_reason)
+            try:
+                if self._exit_event.wait(min(self.ping_period, self.report_period)):
+                    return
+                # send ping request
+                if self._support_ping and (time() - last_ping) >= self.ping_period:
+                    self.ping()
+                    last_ping = time()
+                if self._dev_stop_signal:
+                    stop_reason = self._dev_stop_signal.test()
+                    if stop_reason and self._task:
+                        self._task._dev_mode_stop_task(stop_reason)
+            except Exception:
+                pass
 
     def unregister(self):
-        self._exit_event.set()
         self._dev_stop_signal = None
-        self._thread = None
         self._task = None
+        self._thread = None
+        self._exit_event.set()
         return True

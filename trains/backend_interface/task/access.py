@@ -18,14 +18,14 @@ class AccessMixin(object):
         obj = self.data
         props = prop_path.split('.')
         for i in range(len(props)):
-            obj = getattr(obj, props[i], None)
-            if obj is None:
+            if not hasattr(obj, props[i]):
                 msg = 'Task has no %s section defined' % '.'.join(props[:i + 1])
                 if log_on_error:
                     self.log.info(msg)
                 if raise_on_error:
                     raise ValueError(msg)
                 return default
+            obj = getattr(obj, props[i], None)
         return obj
 
     def _set_task_property(self, prop_path, value, raise_on_error=True, log_on_error=True):

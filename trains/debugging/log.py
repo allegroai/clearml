@@ -6,7 +6,6 @@ import os
 import sys
 from platform import system
 
-from ..config import config, get_log_redirect_level
 from pathlib2 import Path
 from six import BytesIO
 from tqdm import tqdm
@@ -55,6 +54,9 @@ class LoggerRoot(object):
     def get_base_logger(cls, level=None, stream=sys.stdout, colored=False):
         if LoggerRoot.__base_logger:
             return LoggerRoot.__base_logger
+        # avoid nested imports
+        from ..config import get_log_redirect_level
+
         LoggerRoot.__base_logger = logging.getLogger('trains')
         level = level if level is not None else default_level
         LoggerRoot.__base_logger.setLevel(level)
@@ -152,6 +154,9 @@ def get_null_logger(name=None):
     """ Get a logger with a null handler """
     log = logging.getLogger(name if name else 'null')
     if not log.handlers:
+        # avoid nested imports
+        from ..config import config
+
         log.addHandler(logging.NullHandler())
         log.propagate = config.get("log.null_log_propagate", False)
     return log

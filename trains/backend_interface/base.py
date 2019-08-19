@@ -61,23 +61,28 @@ class InterfaceBase(SessionInterface):
 
             except requests.exceptions.BaseHTTPError as e:
                 res = None
-                log.error('Failed sending %s: %s' % (str(req), str(e)))
+                if log:
+                    log.warning('Failed sending %s: %s' % (str(type(req)), str(e)))
             except MaxRequestSizeError as e:
                 res = CallResult(meta=ResponseMeta.from_raw_data(status_code=400, text=str(e)))
                 error_msg = 'Failed sending: %s' % str(e)
+            except requests.exceptions.ConnectionError:
+                # We couldn't send the request for more than the retries times configure in the api configuration file,
+                # so we will end the loop and raise the exception to the upper level.
+                # Notice: this is a connectivity error and not a backend error.
+                if raise_on_errors:
+                    raise
+                res = None
             except Exception as e:
                 res = None
-                log.error('Failed sending %s: %s' % (str(req), str(e)))
+                if log:
+                    log.warning('Failed sending %s: %s' % (str(type(req)), str(e)))
 
             if res and res.meta.result_code <= 500:
                 # Proper backend error/bad status code - raise or return
                 if raise_on_errors:
                     raise SendError(res, error_msg)
                 return res
-
-            # # Infrastructure error
-            # if log:
-            #     log.info('retrying request %s' % str(req))
 
     def send(self, req, ignore_errors=False, raise_on_errors=True, async_enable=False):
         return self._send(session=self.session, req=req, ignore_errors=ignore_errors, raise_on_errors=raise_on_errors,
@@ -128,7 +133,7 @@ class IdObjectBase(InterfaceBase):
 
     @id.setter
     def id(self, value):
-        should_reload = value is not None and value != self._id
+        should_reload = value is not None and self._id is not None and value != self._id
         self._id = value
         if should_reload:
             self.reload()

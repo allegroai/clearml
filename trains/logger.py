@@ -64,10 +64,10 @@ class Logger(object):
         """
         **Do not construct Logger manually!**
 
-        please use Task.get_logger()
+        please use Logger.current_logger()
         """
         assert isinstance(private_task, _Task), \
-            'Logger object cannot be instantiated externally, use Task.get_logger()'
+            'Logger object cannot be instantiated externally, use Logger.current_logger()'
         super(Logger, self).__init__()
         self._task = private_task
         self._default_upload_destination = None
@@ -134,6 +134,19 @@ class Logger(object):
             if Logger._stderr_proxy:
                 Logger._stderr_proxy.connect(self)
 
+    @classmethod
+    def current_logger(cls):
+        """
+        Return a logger object for the current task. Can be called from anywhere in the code
+
+        :return Singleton Logger object for the current running task
+        """
+        from .task import Task
+        task = Task.current_task()
+        if not task:
+            return None
+        return task.get_logger()
+
     def console(self, msg, level=logging.INFO, omit_console=False, *args, **kwargs):
         """
         print text to log (same as print to console, and also prints to console)
@@ -149,22 +162,24 @@ class Logger(object):
                                msg='Logger failed casting log level "%s" to integer' % str(level))
             level = logging.INFO
 
-        # noinspection PyBroadException
-        try:
-            record = self._task.log.makeRecord(
-                "console", level=level, fn='', lno=0, func='', msg=msg, args=args, exc_info=None
-            )
-            # find the task handler
-            if not self._task_handler:
-                self._task_handler = [h for h in LoggerRoot.get_base_logger().handlers if isinstance(h, TaskHandler)][0]
-            self._task_handler.emit(record)
-        except Exception:
-            self._task.log.log(level=logging.ERROR,
-                               msg='Logger failed sending log: [level %s]: "%s"' % (str(level), str(msg)))
+        if not running_remotely():
+            # noinspection PyBroadException
+            try:
+                record = self._task.log.makeRecord(
+                    "console", level=level, fn='', lno=0, func='', msg=msg, args=args, exc_info=None
+                )
+                # find the task handler that matches our task
+                if not self._task_handler:
+                    self._task_handler = [h for h in LoggerRoot.get_base_logger().handlers
+                                          if isinstance(h, TaskHandler) and h.task_id == self._task.id][0]
+                self._task_handler.emit(record)
+            except Exception:
+                LoggerRoot.get_base_logger().warning(msg='Logger failed sending log: [level %s]: "%s"'
+                                                         % (str(level), str(msg)))
 
         if not omit_console:
             # if we are here and we grabbed the stdout, we need to print the real thing
-            if DevWorker.report_stdout:
+            if DevWorker.report_stdout and not running_remotely():
                 # noinspection PyBroadException
                 try:
                     # make sure we are writing to the original stdout
@@ -462,7 +477,7 @@ class Logger(object):
         return self.report_confusion_matrix(title, series, matrix, iteration, xlabels=xlabels, ylabels=ylabels)
 
     def report_surface(self, title, series, matrix, iteration, xlabels=None, ylabels=None,
-                       xtitle=None, ytitle=None, camera=None, comment=None):
+                       xtitle=None, ytitle=None, ztitle=None, camera=None, comment=None):
         """
         Report a 3d surface (same data as heat-map matrix, only presented differently)
 
@@ -478,6 +493,7 @@ class Logger(object):
         :param ylabels: optional label per row of the matrix
         :param xtitle: optional x-axis title
         :param ytitle: optional y-axis title
+        :param ztitle: optional z-axis title
         :param camera: X,Y,Z camera position. def: (1,1,1)
         :param comment: comment underneath the title
         """
@@ -497,6 +513,7 @@ class Logger(object):
             ylabels=ylabels,
             xtitle=xtitle,
             ytitle=ytitle,
+            ztitle=ztitle,
             camera=camera,
             comment=comment,
         )
@@ -622,6 +639,51 @@ class Logger(object):
             delete_after_upload=delete_after_upload,
         )
 
+    def report_file_and_upload(self, title, series, iteration, path=None, max_file_history=None,
+                                delete_after_upload=False):
+        """
+        Upload a file and report it as link in the debug images section.
+
+        File is uploaded to a preconfigured storage (see setup_upload()) with a key (filename)
+        describing the task ID, title, series and iteration.
+
+        :param title: Title (AKA metric)
+        :type title: str
+        :param series: Series (AKA variant)
+        :type series: str
+        :param iteration: Iteration number
+        :type iteration: int
+        :param path: A path to file to be uploaded
+        :type path: str
+        :param max_file_history: maximum number of files to store per metric/variant combination \
+        use negative value for unlimited. default is set in global configuration (default=5)
+        :type max_file_history: int
+        :param delete_after_upload: if True, one the file was uploaded the local copy will be deleted
+        :type delete_after_upload: boolean
+        """
+
+        # if task was not started, we have to start it
+        self._start_task_if_needed()
+        upload_uri = self._default_upload_destination or self._task._get_default_report_storage_uri()
+        if not upload_uri:
+            upload_uri = Path(get_cache_dir()) / 'debug_images'
+            upload_uri.mkdir(parents=True, exist_ok=True)
+            # Verify that we can upload to this destination
+            upload_uri = str(upload_uri)
+            storage = StorageHelper.get(upload_uri)
+            upload_uri = storage.verify_upload(folder_uri=upload_uri)
+
+        self._task.reporter.report_image_and_upload(
+            title=title,
+            series=series,
+            path=path,
+            matrix=None,
+            iter=iteration,
+            upload_uri=upload_uri,
+            max_image_history=max_file_history,
+            delete_after_upload=delete_after_upload,
+        )
+
     def set_default_upload_destination(self, uri):
         """
         Set the uri to upload all the debug images to.
@@ -696,7 +758,8 @@ class Logger(object):
                 pass
 
     def _start_task_if_needed(self):
-        if self._task._status == tasks.TaskStatusEnum.created:
+        # do not refresh the task status read from cached variable _status
+        if str(self._task._status) == str(tasks.TaskStatusEnum.created):
             self._task.mark_started()
 
         self._task._dev_mode_task_start()

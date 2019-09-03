@@ -370,6 +370,8 @@ class InputModel(BaseModel):
         """
         config_text = cls._resolve_config(config_text=config_text, config_dict=config_dict)
         weights_url = StorageHelper.conform_url(weights_url)
+        if not weights_url:
+            raise ValueError("Please provide a valid weights_url parameter")
         result = _Model._get_default_session().send(models.GetAllRequest(
             uri=[weights_url],
             only_fields=["id", "name"],

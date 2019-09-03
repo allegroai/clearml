@@ -459,7 +459,7 @@ class Task(_Task):
         Returns Task object based on either, task_id (system uuid) or task name
 
         :param task_id: unique task id string (if exists other parameters are ignored)
-        :param project_name: project name (str) the task belogs to
+        :param project_name: project name (str) the task belongs to
         :param task_name: task name (str) in within the selected project
         :return: Task object
         """

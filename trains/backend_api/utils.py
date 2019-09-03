@@ -99,7 +99,7 @@ def get_http_session_with_retry(
     adapter = TLSv1HTTPAdapter(max_retries=retry, pool_connections=pool_connections, pool_maxsize=pool_maxsize)
     session.mount('http://', adapter)
     session.mount('https://', adapter)
-    # update verify host certiface
+    # update verify host certificate
     session.verify = ENV_HOST_VERIFY_CERT.get(default=get_config().get('api.verify_certificate', True))
     if not session.verify and __disable_certificate_verification_warning < 2:
         # show warning

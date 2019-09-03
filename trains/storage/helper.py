@@ -1,5 +1,4 @@
 import getpass
-import io
 import json
 import os
 import threading
@@ -20,6 +19,7 @@ from libcloud.common.types import ProviderError, LibcloudError
 from libcloud.storage.providers import get_driver
 from libcloud.storage.types import Provider
 from pathlib2 import Path
+from requests.exceptions import ConnectionError
 from six import binary_type
 from six.moves.queue import Queue, Empty
 from six.moves.urllib.parse import urlparse
@@ -44,6 +44,10 @@ upload_pool = ThreadPool(processes=1)
 
 
 class StorageError(Exception):
+    pass
+
+
+class DownloadError(Exception):
     pass
 
 
@@ -700,6 +704,8 @@ class StorageHelper(object):
                 self._log.info(
                     'Downloaded %.2f MB successfully from %s , saved to %s' % (dl_total_mb, remote_path, local_path))
             return local_path
+        except DownloadError as e:
+            raise
         except Exception as e:
             self._log.error("Could not download %s , err: %s " % (remote_path, str(e)))
             if delete_on_failure:
@@ -715,6 +721,8 @@ class StorageHelper(object):
         try:
             obj = self._get_object(remote_path)
             return self._driver.download_object_as_stream(obj, chunk_size=chunk_size)
+        except DownloadError as e:
+            raise
         except Exception as e:
             self._log.error("Could not download file : %s, err:%s " % (remote_path, str(e)))
             return None
@@ -902,6 +910,8 @@ class StorageHelper(object):
             return self._driver.get_object(container_name=self._container.name, object_name=object_name)
         except ProviderError:
             raise
+        except ConnectionError as ex:
+            raise DownloadError
         except Exception as e:
             self.log.exception('Storage helper problem for {}'.format(str(object_name)))
             return None
@@ -912,9 +922,19 @@ class _HttpDriver(object):
     timeout = (5.0, 30.)
 
     class _Container(object):
+        _default_backend_session = None
+
         def __init__(self, name, retries=5, **kwargs):
             self.name = name
             self.session = get_http_session_with_retry(total=retries)
+
+        def get_headers(self, url):
+            if not self._default_backend_session:
+                from ..backend_interface.base import InterfaceBase
+                self._default_backend_session = InterfaceBase._get_default_session()
+            if url.startswith(self._default_backend_session.get_files_server_host()):
+                return self._default_backend_session.add_auth_headers({})
+            return None
 
     def __init__(self, retries=5):
         self._retries = retries
@@ -928,7 +948,9 @@ class _HttpDriver(object):
     def upload_object_via_stream(self, iterator, container, object_name, extra=None, **kwargs):
         url = object_name[:object_name.index('/')]
         url_path = object_name[len(url)+1:]
-        res = container.session.post(container.name+url, files={url_path: iterator}, timeout=self.timeout)
+        full_url = container.name+url
+        res = container.session.post(full_url, files={url_path: iterator}, timeout=self.timeout,
+                                     headers=container.get_headers(full_url))
         if res.status_code != requests.codes.ok:
             raise ValueError('Failed uploading object %s (%d): %s' % (object_name, res.status_code, res.text))
         return res
@@ -943,7 +965,8 @@ class _HttpDriver(object):
         container = self._containers[container_name]
         # set stream flag before get request
         container.session.stream = kwargs.get('stream', True)
-        res = container.session.get(''.join((container_name, object_name.lstrip('/'))), timeout=self.timeout)
+        url = ''.join((container_name, object_name.lstrip('/')))
+        res = container.session.get(url, timeout=self.timeout, headers=container.get_headers(url))
         if res.status_code != requests.codes.ok:
             raise ValueError('Failed getting object %s (%d): %s' % (object_name, res.status_code, res.text))
         return res
@@ -1138,7 +1161,7 @@ class _Boto3Driver(object):
         return self._containers[container_name]
 
     def upload_object_via_stream(self, iterator, container, object_name, extra=None, **kwargs):
-        import boto3
+        import boto3.s3.transfer
         stream = _Stream(iterator)
         try:
             container.bucket.upload_fileobj(stream, object_name, Config=boto3.s3.transfer.TransferConfig(
@@ -1151,7 +1174,7 @@ class _Boto3Driver(object):
         return True
 
     def upload_object(self, file_path, container, object_name, extra=None, **kwargs):
-        import boto3
+        import boto3.s3.transfer
         try:
             container.bucket.upload_file(file_path, object_name, Config=boto3.s3.transfer.TransferConfig(
                 use_threads=container.config.multipart,
@@ -1188,7 +1211,7 @@ class _Boto3Driver(object):
                 log.error('Failed downloading: %s' % ex)
             a_stream.close()
 
-        import boto3
+        import boto3.s3.transfer
         # return iterable object
         stream = _Stream()
         container = self._containers[obj.container_name]
@@ -1201,7 +1224,7 @@ class _Boto3Driver(object):
         return stream
 
     def download_object(self, obj, local_path, overwrite_existing=True, delete_on_failure=True, callback=None):
-        import boto3
+        import boto3.s3.transfer
         p = Path(local_path)
         if not overwrite_existing and p.is_file():
             log.warn('failed saving after download: overwrite=False and file exists (%s)' % str(p))
@@ -1613,6 +1636,6 @@ class _AzureBlobServiceStorageDriver(object):
                     name,
                 )
 
-            return f.path.segments[0], join(*f.path.segments[1:])
+            return f.path.segments[0], os.path.join(*f.path.segments[1:])
 
         return name

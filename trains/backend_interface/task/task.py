@@ -724,31 +724,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._edit(script=script)
 
     @classmethod
-    def create_new_task(cls, session, task_entry, log=None):
-        """
-        Create a new task
-        :param session: Session object used for sending requests to the API
-        :type session: Session
-        :param task_entry: A task entry instance
-        :type task_entry: tasks.CreateRequest
-        :param log: Optional log
-        :type log: logging.Logger
-        :return: A new Task instance
-        """
-        if isinstance(task_entry, dict):
-            task_entry = tasks.CreateRequest(**task_entry)
-
-        assert isinstance(task_entry, tasks.CreateRequest)
-        res = cls._send(session=session, req=task_entry, log=log)
-        return cls(session, task_id=res.response.id)
-
-    @classmethod
-    def clone_task(cls, cloned_task_id, name, comment=None, execution_overrides=None,
+    def clone_task(cls, cloned_task_id, name=None, comment=None, execution_overrides=None,
                    tags=None, parent=None, project=None, log=None, session=None):
         """
         Clone a task
-        :param session: Session object used for sending requests to the API
-        :type session: Session
         :param cloned_task_id: Task ID for the task to be cloned
         :type cloned_task_id: str
         :param name: New for the new task
@@ -760,13 +739,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :type execution_overrides: dict
         :param tags: Optional updated model tags
         :type tags: [str]
-        :param parent: Optional parent ID of the new task.
+        :param parent: Optional parent Task ID of the new task.
         :type parent: str
         :param project: Optional project ID of the new task.
             If None, the new task will inherit the cloned task's project.
-        :type parent: str
+        :type project: str
         :param log: Log object used by the infrastructure.
         :type log: logging.Logger
+        :param session: Session object used for sending requests to the API
+        :type session: Session
         :return: The new tasks's ID
         """
 
@@ -781,7 +762,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         execution = ConfigTree.merge_configs(ConfigFactory.from_dict(execution),
                                              ConfigFactory.from_dict(execution_overrides or {}))
         req = tasks.CreateRequest(
-            name=name,
+            name=name or task.name,
             type=task.type,
             input=task.input,
             tags=tags if tags is not None else task.tags,
@@ -796,27 +777,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return res.response.id
 
     @classmethod
-    def enqueue_task(cls, task_id, session=None, queue_id=None, log=None):
-        """
-        Enqueue a task for execution
-        :param session: Session object used for sending requests to the API
-        :type session: Session
-        :param task_id: ID of the task to be enqueued
-        :type task_id: str
-        :param queue_id: ID of the queue in which to enqueue the task. If not provided, the default queue will be used.
-        :type queue_id: str
-        :param log: Log object
-        :type log: logging.Logger
-        :return: enqueue response
-        """
-        assert isinstance(task_id, six.string_types)
-        req = tasks.EnqueueRequest(task=task_id, queue=queue_id)
-        res = cls._send(session=session, req=req, log=log)
-        resp = res.response
-        return resp
-
-    @classmethod
-    def get_all(cls, session, log=None, **kwargs):
+    def get_all(cls, session=None, log=None, **kwargs):
         """
         Get all tasks
         :param session: Session object used for sending requests to the API
@@ -827,6 +788,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :type kwargs: dict
         :return: API response
         """
+        session = session if session else cls._get_default_session()
         req = tasks.GetAllRequest(**kwargs)
         res = cls._send(session=session, req=req, log=log)
         return res

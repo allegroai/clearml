@@ -16,7 +16,7 @@ from .request import Request, BatchRequest
 from .token_manager import TokenManager
 from ..config import load
 from ..utils import get_http_session_with_retry, urllib_log_warning_setup
-from ..version import __version__
+from ...version import __version__
 
 
 class LoginError(Exception):
@@ -225,6 +225,10 @@ class Session(TokenManager):
         self._session_requests += 1
         return res
 
+    def add_auth_headers(self, headers):
+        headers[self._AUTHORIZATION_HEADER] = "Bearer {}".format(self.token)
+        return headers
+
     def send_request(
         self,
         service,
@@ -249,8 +253,9 @@ class Session(TokenManager):
         :param async_enable: whether request is asynchronous
         :return: requests Response instance
         """
-        headers = headers.copy() if headers else {}
-        headers[self._AUTHORIZATION_HEADER] = "Bearer {}".format(self.token)
+        headers = self.add_auth_headers(
+            headers.copy() if headers else {}
+        )
         if async_enable:
             headers[self._ASYNC_HEADER] = "1"
         return self._send_request(
@@ -493,6 +498,7 @@ class Session(TokenManager):
             )
 
         auth = HTTPBasicAuth(self.access_key, self.secret_key)
+        res = None
         try:
             data = {"expiration_sec": exp} if exp else {}
             res = self._send_request(
@@ -518,8 +524,16 @@ class Session(TokenManager):
             return resp["data"]["token"]
         except LoginError:
             six.reraise(*sys.exc_info())
+        except KeyError as ex:
+            # check if this is a misconfigured api server (getting 200 without the data section)
+            if res and res.status_code == 200:
+                raise ValueError('It seems *api_server* is misconfigured. '
+                                 'Is this the TRAINS API server {} ?'.format(self.get_api_server_host()))
+            else:
+                raise LoginError("Response data mismatch: No 'token' in 'data' value from res, receive : {}, "
+                                 "exception: {}".format(res, ex))
         except Exception as ex:
-            raise LoginError(str(ex))
+            raise LoginError('Unrecognized Authentication Error: {} {}'.format(type(ex), ex))
 
     def __str__(self):
         return "{self.__class__.__name__}[{self.host}, {self.access_key}/{secret_key}]".format(

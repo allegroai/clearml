@@ -107,20 +107,24 @@ class PatchedMatplotlib:
         except Exception:
             pass
 
-        return True
-
-    @staticmethod
-    def update_current_task(task):
-        if PatchedMatplotlib.patch_matplotlib():
-            PatchedMatplotlib._current_task = task
+        # update api version
         from ..backend_api import Session
         PatchedMatplotlib._support_image_plot = Session.api_version > '2.1'
+
+        # create plotly renderer
         try:
             from plotly import optional_imports
             PatchedMatplotlib._matplotlylib = optional_imports.get_module('plotly.matplotlylib')
             PatchedMatplotlib._plotly_renderer = PatchedMatplotlib._matplotlylib.PlotlyRenderer()
         except Exception:
             pass
+
+        return True
+
+    @staticmethod
+    def update_current_task(task):
+        if PatchedMatplotlib.patch_matplotlib():
+            PatchedMatplotlib._current_task = task
 
     @staticmethod
     def patched_imshow(*args, **kw):

@@ -24,6 +24,9 @@ _Version = collections.namedtuple(
 
 
 class _BaseVersion(object):
+    def __init__(self, key):
+        self._key = key
+
     def __hash__(self):
         return hash(self._key)
 
@@ -105,7 +108,7 @@ class Version(_BaseVersion):
         )
 
         # Generate a key which will be used for sorting
-        self._key = self._cmpkey(
+        key = self._cmpkey(
             self._version.epoch,
             self._version.release,
             self._version.pre,
@@ -113,6 +116,8 @@ class Version(_BaseVersion):
             self._version.dev,
             self._version.local,
         )
+
+        super(Version, self).__init__(key)
 
     def __repr__(self):
         return "<Version({0})>".format(repr(str(self)))

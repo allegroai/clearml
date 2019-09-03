@@ -348,6 +348,9 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
     def download_model_weights(self):
         """ Download the model weights into a local file in our cache """
         uri = self.data.uri
+        if not uri or not uri.strip():
+            return None
+
         helper = StorageHelper.get(uri, logger=self._log, verbose=True)
         filename = uri.split('/')[-1]
         ext = '.'.join(filename.split('.')[1:])

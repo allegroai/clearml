@@ -62,7 +62,7 @@ class PostImportHookPatching(object):
     @staticmethod
     def add_on_import(name, func):
         PostImportHookPatching._init_hook()
-        if not name in PostImportHookPatching._post_import_hooks or \
+        if name not in PostImportHookPatching._post_import_hooks or \
                 func not in PostImportHookPatching._post_import_hooks[name]:
             PostImportHookPatching._post_import_hooks[name].append(func)
 

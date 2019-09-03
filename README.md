@@ -18,7 +18,7 @@ and practices. Use it on a daily basis to boost collaboration and visibility, or
 your experimentation logs, outputs, and data to one centralized server.
 
 (Experience TRAINS live at [https://demoapp.trainsai.io](https://demoapp.trainsai.io))
-![Alt Text](https://github.com/allegroai/trains/blob/master/docs/webapp_screenshots.gif?raw=true)
+<a href="https://demoapp.trainsai.io"><img src="https://github.com/allegroai/trains/blob/master/docs/webapp_screenshots.gif?raw=true" width="100%"></a>
 
 ## TRAINS Automatically Logs Everything
 **With only two lines of code, this is what you are getting:**

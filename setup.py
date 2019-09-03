@@ -62,6 +62,20 @@ setup(
              'deeplearning deep-learning experiment-manager experimentmanager',
     packages=find_packages(exclude=['contrib', 'docs', 'data', 'examples', 'tests']),
     install_requires=requirements,
+    extras_require={
+        's3': [
+            'boto3>=1.9',
+        ],
+        'azure': [
+            'azure.storage.blob>=2.0.1',
+        ],
+        'gs': [
+            'google-cloud-storage>=1.13.2',
+        ],
+        'gpu': [
+            'gpustat',
+        ],
+    },
     package_data={
         'trains': ['config/default/*.conf', 'backend_api/config/default/*.conf']
     },

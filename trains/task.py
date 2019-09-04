@@ -90,9 +90,8 @@ class Task(_Task):
 
     def __init__(self, private=None, **kwargs):
         """
-        **Do not construct Task manually!**
-
-        please use Task.current_task() or Task.get_task(id=, project=, name=)
+        Do not construct Task manually!
+            **Please use Task.init() or Task.get_task(id=, project=, name=)**
         """
         if private is not Task.__create_protection:
             raise UsageError(
@@ -461,7 +460,7 @@ class Task(_Task):
         :param task_id: unique task id string (if exists other parameters are ignored)
         :param project_name: project name (str) the task belongs to
         :param task_name: task name (str) in within the selected project
-        :return: Task object
+        :return: Task() object
         """
         return Task.__get_task(task_id=task_id, project_name=project_name, task_name=task_name)
 
@@ -552,7 +551,7 @@ class Task(_Task):
             If a logger was created before, this will be the new period and
             the old one will be discarded.
 
-        :return: .Logger object
+        :return: Logger object
         """
         if not self._logger:
             # force update of base logger to this current task (this is the main logger task)
@@ -596,7 +595,6 @@ class Task(_Task):
         flush any outstanding reports or console logs
 
         :param wait_for_uploads: if True the flush will exit only after all outstanding uploads are completed
-        :return: True
         """
 
         # make sure model upload is done
@@ -639,6 +637,7 @@ class Task(_Task):
         """
         Add artifact for the current Task, used mostly for Data Audition.
         Currently supported artifacts object types: pandas.DataFrame
+
         :param name: name of the artifacts. can override previous artifacts if name already exists
         :type name: str
         :param artifact: artifact object, supported artifacts object types: pandas.DataFrame
@@ -688,7 +687,7 @@ class Task(_Task):
         Get Task model configuration text (before creating an output model)
         When an output model is created it will inherit these properties
 
-        :return model config_text (unconstrained text string). usually the content of a configuration file.
+        :return: model config_text (unconstrained text string). usually the content of a configuration file.
             If `config_text` is not None, `config_dict` must not be provided.
         """
         return super(Task, self).get_model_design()
@@ -698,7 +697,7 @@ class Task(_Task):
         Get Task model configuration dictionary (before creating an output model)
         When an output model is created it will inherit these properties
 
-        :return model config_text (unconstrained text string). usually the content of a configuration file.
+        :return: model config_text (unconstrained text string). usually the content of a configuration file.
             If `config_text` is not None, `config_dict` must not be provided.
         """
         config_text = self.get_model_config_text()
@@ -719,7 +718,7 @@ class Task(_Task):
         Return the last reported iteration (i.e. the maximum iteration the task reported a metric for)
         Notice, this is not a cached call, it will ask the backend for the answer (no local caching)
 
-        :return integer, last reported iteration number
+        :return: last reported iteration number (integer)
         """
         self.reload()
         return self.data.last_iteration
@@ -740,7 +739,9 @@ class Task(_Task):
         """
         Set new default TRAINS-server host and credentials
         These configurations will be overridden by wither OS environment variables or trains.conf configuration file
-        Notice: credentials needs to be set prior to Task initialization
+
+        Notice! credentials needs to be set *prior* to Task initialization
+
         :param host: host url, example: host='http://localhost:8008'
         :type  host: str
         :param key: user key/secret pair, example: key='thisisakey123'

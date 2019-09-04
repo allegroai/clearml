@@ -493,6 +493,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def set_input_model(self, model_id=None, model_name=None, update_task_design=True, update_task_labels=True):
         """
         Set a new input model for this task. Model must be 'ready' in order to be used as the Task's input model.
+
         :param model_id: ID for a model that exists in the backend. Required if model_name is not provided.
         :param model_name: Model name. Required if model_id is not provided. If provided, this name will be used to
             locate an existing model in the backend.
@@ -543,8 +544,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         Set parameters for this task. This allows setting a complete set of key/value parameters, but does not support
         parameter descriptions (as the input is a dictionary or key/value pairs.
+
         :param args: Positional arguments (one or more dictionary or (key, value) iterable). These will be merged into
-         a single key/value dictionary.
+            a single key/value dictionary.
         :param kwargs: Key/value pairs, merged into the parameters dictionary created from `args`.
         """
         if not all(isinstance(x, (dict, collections.Iterable)) for x in args):
@@ -581,6 +583,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def set_parameter(self, name, value, description=None):
         """
         Set a single task parameter. This overrides any previous value for this parameter.
+
         :param name: Parameter name
         :param value: Parameter value
         :param description: Parameter description (unused for now)
@@ -592,6 +595,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def get_parameter(self, name, default=None):
         """
         Get a value for a parameter.
+
         :param name: Parameter name
         :param default: Default value
         :return: Parameter value (or default value if parameter is not defined)
@@ -607,12 +611,17 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         parameter descriptions (as the input is a dictionary or key/value pairs.
 
         :param args: Positional arguments (one or more dictionary or (key, value) iterable). These will be merged into
-         a single key/value dictionary.
+            a single key/value dictionary.
         :param kwargs: Key/value pairs, merged into the parameters dictionary created from `args`.
         """
         self.set_parameters(__update=True, *args, **kwargs)
 
     def set_model_label_enumeration(self, enumeration=None):
+        """
+        Set a dictionary of labels (text) to ids (integers) {str(label): integer(id)}
+
+        :param dict enumeration: For example: {str(label): integer(id)}
+        """
         enumeration = enumeration or {}
         execution = self.data.execution
         if enumeration is None:
@@ -633,7 +642,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def get_labels_enumeration(self):
         """
         Return a dictionary of labels (text) to ids (integers) {str(label): integer(id)}
-        :return:
+        :return: dict
         """
         if not self.data or not self.data.execution:
             return {}
@@ -728,6 +737,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                    tags=None, parent=None, project=None, log=None, session=None):
         """
         Clone a task
+
         :param cloned_task_id: Task ID for the task to be cloned
         :type cloned_task_id: str
         :param name: New for the new task
@@ -779,12 +789,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     @classmethod
     def get_all(cls, session=None, log=None, **kwargs):
         """
-        Get all tasks
+        List all tasks based on specific projection
+
         :param session: Session object used for sending requests to the API
         :type session: Session
         :param log: Log object
         :type log: logging.Logger
         :param kwargs: Keyword args passed to the GetAllRequest (see .backend_api.services.tasks.GetAllRequest)
+            Example: status='completed', 'search_text'='specific_word', 'user'='user_id', 'project'='project_id'
         :type kwargs: dict
         :return: API response
         """

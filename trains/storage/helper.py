@@ -184,7 +184,11 @@ class StorageHelper(object):
 
     @classmethod
     def get(cls, url, logger=None, **kwargs):
-        """ Get a storage helper instance for the given URL """
+        """
+        Get a storage helper instance for the given URL
+
+        :return: StorageHelper instance
+        """
 
         # Handle URL substitution etc before locating the correct storage driver
         url = cls._canonize_url(url)
@@ -506,8 +510,8 @@ class StorageHelper(object):
         Verify that this helper can upload files to a folder.
 
         An upload is possible iff:
-        1. the destination folder is under the base uri of the url used to create the helper
-        2. the helper has credentials to write to the destination folder
+            1. the destination folder is under the base uri of the url used to create the helper
+            2. the helper has credentials to write to the destination folder
 
         :param folder_uri: The destination folder to test. Must be an absolute
             url that begins with the base uri of the url used to create the helper.
@@ -923,6 +927,7 @@ class _HttpDriver(object):
 
     class _Container(object):
         _default_backend_session = None
+        _default_files_server_host = None
 
         def __init__(self, name, retries=5, **kwargs):
             self.name = name
@@ -932,7 +937,10 @@ class _HttpDriver(object):
             if not self._default_backend_session:
                 from ..backend_interface.base import InterfaceBase
                 self._default_backend_session = InterfaceBase._get_default_session()
-            if url.startswith(self._default_backend_session.get_files_server_host()):
+            if self._default_files_server_host is None:
+                self._default_files_server_host = self._default_backend_session.get_files_server_host()
+
+            if url.startswith(self._default_files_server_host):
                 return self._default_backend_session.add_auth_headers({})
             return None
 

@@ -25,12 +25,12 @@ your experimentation logs, outputs, and data to one centralized server.
 
 * Git repository, branch, commit id, entry point and local git diff
 * Python environment (including specific packages & versions)
-* StdOut and StdErr
+* stdout and stderr
 * Resource Monitoring (CPU/GPU utilization, temperature, IO, network, etc.)
 * Hyper-parameters
     * ArgParser for command line parameters with currently used values
     * Explicit parameters dictionary
-* Tensorflow Defines (absl-py)
+    * Tensorflow Defines (absl-py)
 * Initial model weights file
 * Model snapshots
 * Tensorboard/TensorboardX scalars, metrics, histograms, images (with audio coming soon)
@@ -39,8 +39,7 @@ your experimentation logs, outputs, and data to one centralized server.
 * Seamless integration (including version control) with **Jupyter Notebook**
     and [*PyCharm* remote debugging](https://github.com/allegroai/trains-pycharm-plugin)
 
-**Detailed overview of TRAINS offering and system design can be found [here](https://github.com/allegroai/trains/blob/master/docs/brief.md).**
-
+**Additionally, log data explicitly using [TRAINS Explicit Logging](https://github.com/allegroai/trains/blob/master/docs/logger.md).**
 
 ## Using TRAINS <a name="using-trains"></a>
 

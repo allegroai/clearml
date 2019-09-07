@@ -51,8 +51,7 @@ scikit-learn
 
 TRAINS API
 
-[How can I use the TRAINS API to fetch data?](#api)
-
+* [How can I use the TRAINS API to fetch data?](#api)
 
 ## General Information
 
@@ -92,23 +91,7 @@ export TRAINS_API_HOST="http://localhost:8008"
 
 ### How can I track OS environment variables with experiments?  <a name="track-env-vars"></a>
 
-Set the OS environment variable `TRAINS_LOG_ENVIRONMENT` to either a list of environment variables to track, a wildcard for all environment variables,
-or unset it with no value and TRAINS does not log environment variables.
-
-For example, to log the `PWD` and `PYTHONPATH` environment variables:
-```bash
-$ export TRAINS_LOG_ENVIRONMENT="PWD,PYTHONPATH"
-```
-
-For example, to log all environment variables:
-```bash
-$ export TRAINS_LOG_ENVIRONMENT="*"
-```
-
-For example, do not log any environment variables (the default):
-```bash
-$ export TRAINS_LOG_ENVIRONMENT=
-```
+​Set the OS environment variable `TRAINS_LOG_ENVIRONMENT` with the variables you need track. See [Specifying Environment Variables to Track](https://github.com/allegroai/trains/blob/master/docs/logger.md#specifying-environment-variables-to-track).
 
 ## Models
 
@@ -132,10 +115,10 @@ Task.current_task().set_model_label_enumeration( {"label": int(0), } )
 
 ### Can I store the model configuration file as well?  <a name="store-model-configuration"></a>
 
-Yes! Use the `Task.set_model_design()` method:
+Yes! Use the `Task.set_model_config()` method:
 
 ```python
-Task.current_task().set_model_design("a very long text with the configuration file's content")
+Task.current_task().set_model_config("a very long text with the configuration file's content")
 ```
 
 ### I am training multiple models at the same time, but I only see one of them. What happened? <a name="only-last-model-appears"></a>
@@ -170,13 +153,7 @@ If you still don't care, just ignore this message - it is merely a warning.
 
 ### I do not use Argparser for hyper-parameters. Do you have a solution? <a name="dont-want-argparser"></a>
 
-Yes! TRAINS supports using a Python dictionary for hyper-parameter logging. Just use:
-
-```python
-parameters_dict = Task.current_task().connect(parameters_dict)
-```
-
-From this point onward, not only are the dictionary key/value pairs stored as part of the experiment, but any changes to the dictionary will be automatically updated in the task's information.
+Yes! TRAINS supports [logging an experiment parameter dictionary](https://github.com/allegroai/trains/blob/master/docs/logger.md#logging-an-experiment-parameter-dictionary).
 
 
 ### I noticed that all of my experiments appear as `Training`. Are there other options? <a name="other-experiment-types"></a>
@@ -260,28 +237,7 @@ Task.current_task().get_logger().report_vector(
 
 ### I want to add more graphs, not just with Tensorboard. Is this supported? <a name="more-graph-types"></a>
 
-Yes! Use a [Logger](https://github.com/allegroai/trains/blob/master/trains/logger.py) object. An instance can be always be retrieved using the `Task.current_task().get_logger()` method:
-
-```python
-# Get a logger object
-logger = Task.current_task().get_logger()
-
-# Report some scalar 
-logger.report_scalar("loss", "classification", iteration=42, value=1.337)
-```
-
-#### **TRAINS supports:**
-
-* Scalars
-* Plots
-* 2D/3D Scatter Diagrams
-* Histograms
-* Surface Diagrams
-* Confusion Matrices
-* Images
-* Text logs
-
-For a more detailed example, see [here](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py).
+Yes! Use the [Logger](https://github.com/allegroai/trains/blob/master/trains/logger.py) module. For more information, see [TRAINS Explicit Logging](https://github.com/allegroai/trains/blob/master/docs/logger.md).
 
 ## Git and Storage
 

@@ -50,20 +50,20 @@ class Task(_Task):
     Task (experiment) object represents the current running experiments and connects all the different parts into \
     a fully reproducible experiment
 
-    Common usage is calling Task.init() to initialize the main task.
+    Common usage is calling :func:`Task.init` to initialize the main task.
     The main task is development / remote execution mode-aware, and supports connecting various SDK objects
-    such as Models etc. In development mode, the main task supports task reuse (see Task.init() for more
+    such as Models etc. In development mode, the main task supports task reuse (see :func:`Task.init` for more
     information in development mode features).
-    Any subsequent call to Task.init() will return the already-initialized main task
+    Any subsequent call to :func:`Task.init` will return the already-initialized main task
     and will not create a new main task.
 
     Sub-tasks, meaning tasks which are not the main task and are not development / remote execution mode aware, can be
-    created using Task.create(). These tasks do no support task reuse and any call
-    to Task.create() will always create a new task.
+    created using :func:`Task.create`. These tasks do no support task reuse and any call
+    to :func:`Task.create` will always create a new task.
 
-    You can also query existing tasks in the system by calling Task.get_task().
+    You can also query existing tasks in the system by calling :func:`Task.get_task`.
 
-    **Usage: Task.init(...), Task.create() or Task.get_task(...)**
+    **Usage:** :func:`Task.init` or :func:`Task.get_task`
     """
 
     TaskTypes = _Task.TaskTypes
@@ -142,8 +142,14 @@ class Task(_Task):
             Notice! The reused task will be reset. (when running remotely, the usual behaviour applies)
             If reuse_last_task_id is of type string, it will assume this is the task_id to reuse!
             Note: A closed or published task will not be reused, and a new task will be created.
-        :param output_uri: Default location for output models (currently support folder/S3/GS/ ).
+        :param output_uri: Default location for output models (currently support folder/S3/GS/Azure ).
             notice: sub-folders (task_id) is created in the destination folder for all outputs.
+
+            Usage example: /mnt/share/folder, s3://bucket/folder , gs://bucket-name/folder,
+            azure://company.blob.core.windows.net/folder/
+
+            Note: When using cloud storage, make sure you install the accompany packages.
+            For example: trains[s3], trains[gs], trains[azure]
         :param auto_connect_arg_parser: Automatically grab the ArgParser and connect it with the task.
             if set to false, you can manually connect the ArgParser with task.connect(parser)
         :param auto_connect_frameworks: If true automatically patch MatplotLib, Keras callbacks, and TensorBoard/X to
@@ -633,17 +639,39 @@ class Task(_Task):
         if self.is_main_task():
             self.__register_at_exit(None)
 
-    def add_artifact(self, name, artifact):
+    def register_artifact(self, name, artifact, metadata=None):
         """
         Add artifact for the current Task, used mostly for Data Audition.
         Currently supported artifacts object types: pandas.DataFrame
 
-        :param name: name of the artifacts. can override previous artifacts if name already exists
-        :type name: str
-        :param artifact: artifact object, supported artifacts object types: pandas.DataFrame
-        :type artifact: pandas.DataFrame
+        :param str name: name of the artifacts. Notice! it will override previous artifacts if name already exists.
+        :param pandas.DataFrame artifact: artifact object, supported artifacts object types: pandas.DataFrame
+        :param dict metadata: dictionary of key value to store with the artifact (visible in the UI)
         """
-        self._artifacts_manager.add_artifact(name=name, artifact=artifact)
+        self._artifacts_manager.register_artifact(name=name, artifact=artifact, metadata=metadata)
+
+    def unregister_artifact(self, name):
+        """
+        Remove artifact from the watch list. Notice this will not remove the artifacts from the Task.
+        It will only stop monitoring the artifact,
+        the last snapshot of the artifact will be taken immediately in the background.
+        """
+        self._artifacts_manager.unregister_artifact(name=name)
+
+    def upload_artifact(self, name, artifact_object=None, artifact_file=None, metadata=None):
+        """
+        Add static artifact to Task. Artifact file/object will be uploaded in the background
+
+        :param str name: Artifact name. Notice! it will override previous artifact if name already exists
+        :param object artifact_object: Artifact object to upload. Currently supports Numpy, PIL.Image.
+            Numpy will be stored as .npz, and Image as .png file.
+            Use None if uploading a file directly with 'artifact_file'.
+        :param str artifact_file: path to artifact file to upload. None means not applicable.
+            Notice you wither artifact object or artifact_file
+        :param dict metadata: Simple key/value dictionary to store on the artifact
+        :return: True if artifact is supported
+        """
+        raise ValueError("Not implemented yet")
 
     def is_current_task(self):
         """

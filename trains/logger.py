@@ -53,7 +53,7 @@ class Logger(object):
 
     This is how we send graphs/plots/text to the system, later we can compare the performance of different tasks.
 
-    **Usage: Task.get_logger()**
+    **Usage:** :func:`Logger.current_logger` or :func:`Task.get_logger`
     """
     SeriesInfo = SeriesInfo
     _stdout_proxy = None
@@ -64,7 +64,7 @@ class Logger(object):
         """
         **Do not construct Logger manually!**
 
-        please use Logger.current_logger()
+        please use :func:`Logger.current_logger`
         """
         assert isinstance(private_task, _Task), \
             'Logger object cannot be instantiated externally, use Logger.current_logger()'
@@ -139,7 +139,7 @@ class Logger(object):
         """
         Return a logger object for the current task. Can be called from anywhere in the code
 
-        :return Singleton Logger object for the current running task
+        :return: Singleton Logger object for the current running task
         """
         from .task import Task
         task = Task.current_task()

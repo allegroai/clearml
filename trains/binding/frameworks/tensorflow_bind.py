@@ -1004,16 +1004,16 @@ class PatchKerasModelIO(object):
                 Sequential._updated_config = _patched_call(Sequential._updated_config,
                                                            PatchKerasModelIO._updated_config)
                 if hasattr(Sequential.from_config, '__func__'):
-                    Sequential.from_config.__func__ = _patched_call(Sequential.from_config.__func__,
-                                                                    PatchKerasModelIO._from_config)
+                    Sequential.from_config = classmethod(_patched_call(Sequential.from_config.__func__,
+                                                         PatchKerasModelIO._from_config))
                 else:
                     Sequential.from_config = _patched_call(Sequential.from_config, PatchKerasModelIO._from_config)
 
             if Network is not None:
                 Network._updated_config = _patched_call(Network._updated_config, PatchKerasModelIO._updated_config)
                 if hasattr(Sequential.from_config, '__func__'):
-                    Network.from_config.__func__ = _patched_call(Network.from_config.__func__,
-                                                                 PatchKerasModelIO._from_config)
+                    Network.from_config = classmethod(_patched_call(Network.from_config.__func__,
+                                                                    PatchKerasModelIO._from_config))
                 else:
                     Network.from_config = _patched_call(Network.from_config, PatchKerasModelIO._from_config)
                 Network.save = _patched_call(Network.save, PatchKerasModelIO._save)

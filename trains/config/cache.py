@@ -2,7 +2,7 @@ import json
 
 import six
 
-from . import get_cache_dir
+from . import get_cache_dir, running_remotely
 from .defs import SESSION_CACHE_FILE
 
 
@@ -34,6 +34,9 @@ class SessionCache(object):
     @classmethod
     def store_dict(cls, unique_cache_name, dict_object):
         # type: (str, dict) -> None
+        # disable session cache when running in remote execution mode
+        if running_remotely():
+            return
         cache = cls._load_cache()
         cache[unique_cache_name] = dict_object
         cls._store_cache(cache)
@@ -41,5 +44,8 @@ class SessionCache(object):
     @classmethod
     def load_dict(cls, unique_cache_name):
         # type: (str) -> dict
+        # disable session cache when running in remote execution mode
+        if running_remotely():
+            return {}
         cache = cls._load_cache()
         return cache.get(unique_cache_name, {}) if cache else {}

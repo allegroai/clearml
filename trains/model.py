@@ -678,7 +678,8 @@ class OutputModel(BaseModel):
         elif self._floating_data is not None:
             # we copy configuration / labels if they exist, obviously someone wants them as the output base model
             if _Model._unwrap_design(self._floating_data.design):
-                task.set_model_config(config_text=self._floating_data.design)
+                if not task.get_model_config_text():
+                    task.set_model_config(config_text=self._floating_data.design)
             else:
                 self._floating_data.design = _Model._wrap_design(self._task.get_model_config_text())
 
@@ -904,7 +905,7 @@ class OutputModel(BaseModel):
 
         config_text = self._resolve_config(config_text=config_text, config_dict=config_dict)
 
-        if self._task:
+        if self._task and not self._task.get_model_config_text():
             self._task.set_model_config(config_text=config_text)
 
         if self.id:
@@ -965,8 +966,8 @@ class OutputModel(BaseModel):
         config_text = self._task.get_model_config_text()
         parent = self._task.output_model_id or self._task.input_model_id
         self._base_model.update(
-            labels=labels,
-            design=config_text,
+            labels=self._floating_data.labels or labels,
+            design=self._floating_data.design or config_text,
             task_id=self._task.id,
             project_id=self._task.project,
             parent_id=parent,

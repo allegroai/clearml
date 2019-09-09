@@ -1,13 +1,12 @@
-import weakref
-from copy import deepcopy
-
-import numpy as np
 import hashlib
+from copy import deepcopy
+from multiprocessing.pool import ThreadPool
 from tempfile import mkdtemp
 from threading import Thread, Event
-from multiprocessing.pool import ThreadPool
 
+import numpy as np
 from pathlib2 import Path
+
 from ..debugging.log import LoggerRoot
 
 try:
@@ -76,6 +75,8 @@ class Artifacts(object):
 
     def register_artifact(self, name, artifact, metadata=None):
         # currently we support pandas.DataFrame (which we will upload as csv.gz)
+        if name in self._artifacts_dict:
+            LoggerRoot.get_base_logger().info('Register artifact, overwriting existing artifact \"{}\"'.format(name))
         self._artifacts_dict[name] = artifact
         if metadata:
             self._artifacts_dict.add_metadata(name, metadata)

@@ -41,9 +41,11 @@ def get_single_result(entity, query, results, log=None, show_results=10, raise_o
         if sort_by_date:
             # sort results based on timestamp and return the newest one
             if hasattr(results[0], 'last_update'):
-                results = sorted(results, key=lambda x: int(x.last_update.strftime('%s')), reverse=True)
+                results = sorted(results, key=lambda x: int(x.last_update.strftime('%s')
+                                                            if x.last_update else 0), reverse=True)
             elif hasattr(results[0], 'created'):
-                results = sorted(results, key=lambda x: int(x.created.strftime('%s')), reverse=True)
+                results = sorted(results, key=lambda x: int(x.created.strftime('%s')
+                                                            if x.created else 0), reverse=True)
 
         for obj in (o if isinstance(o, dict) else o.to_dict() for o in results[:show_results]):
             log.warn('Found {entity} `{obj[name]}` (id={obj[id]})'.format(**locals()))

@@ -381,7 +381,7 @@ class InputModel(BaseModel):
             if Session.check_min_api_version('2.3') else {'tags': ["-" + ARCHIVED_TAG]}
         result = _Model._get_default_session().send(models.GetAllRequest(
             uri=[weights_url],
-            only_fields=["id", "name"],
+            only_fields=["id", "name", "created"],
             **extra
         ))
 

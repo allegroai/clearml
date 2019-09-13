@@ -518,7 +518,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     page=0,
                     page_size=10,
                     order_by='-created',
-                    only_fields=['id']
+                    only_fields=['id', 'created']
                 )
             )
             model = get_single_result(entity='model', query=model_name, results=res.response.models, log=self.log)

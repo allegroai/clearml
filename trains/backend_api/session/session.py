@@ -485,6 +485,16 @@ class Session(TokenManager):
 
         return urlunparse(parsed)
 
+    @classmethod
+    def check_min_api_version(cls, min_api_version):
+        """
+        Return True if Session.api_version is greater or equal >= to min_api_version
+        """
+        def version_tuple(v):
+            v = tuple(map(int, (v.split("."))))
+            return v + (0,) * max(0, 3 - len(v))
+        return version_tuple(cls.api_version) >= version_tuple(str(min_api_version))
+
     def _do_refresh_token(self, old_token, exp=None):
         """ TokenManager abstract method implementation.
             Here we ignore the old token and simply obtain a new token.

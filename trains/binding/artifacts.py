@@ -1,18 +1,31 @@
 import hashlib
+import json
+import logging
+import mimetypes
+import os
 from copy import deepcopy
 from multiprocessing.pool import ThreadPool
-from tempfile import mkdtemp
-from threading import Thread, Event
+from tempfile import mkdtemp, mkstemp
+from threading import Thread, Event, RLock
+from time import time
 
-import numpy as np
+import six
 from pathlib2 import Path
+from PIL import Image
 
+from ..backend_interface.metrics.events import UploadEvent
+from ..backend_api import Session
 from ..debugging.log import LoggerRoot
+from ..backend_api.services import tasks
 
 try:
     import pandas as pd
 except ImportError:
     pd = None
+try:
+    import numpy as np
+except ImportError:
+    np = None
 
 
 class Artifacts(object):
@@ -22,6 +35,7 @@ class Artifacts(object):
     _compression = 'gzip'
     # hashing constants
     _hash_block_size = 65536
+    _pd_artifact_type = 'data-audit-table'
 
     class _ProxyDictWrite(dict):
         """ Dictionary wrapper that updates an arguments instance on any item set in the dictionary """
@@ -33,7 +47,7 @@ class Artifacts(object):
 
         def __setitem__(self, key, value):
             # check that value is of type pandas
-            if isinstance(value, np.ndarray) or (pd and isinstance(value, pd.DataFrame)):
+            if pd and isinstance(value, pd.DataFrame):
                 super(Artifacts._ProxyDictWrite, self).__setitem__(key, value)
 
                 if self._artifacts_manager:
@@ -72,6 +86,9 @@ class Artifacts(object):
         self._thread_pool = ThreadPool()
         self._summary = ''
         self._temp_folder = []
+        self._task_artifact_list = []
+        self._task_edit_lock = RLock()
+        self._storage_prefix = None
 
     def register_artifact(self, name, artifact, metadata=None):
         # currently we support pandas.DataFrame (which we will upload as csv.gz)
@@ -85,6 +102,94 @@ class Artifacts(object):
         # Remove artifact from the watch list
         self._unregister_request.add(name)
         self.flush()
+
+    def upload_artifact(self, name, artifact_object=None, metadata=None, delete_after_upload=False):
+        if not Session.check_min_api_version('2.3'):
+            LoggerRoot.get_base_logger().warning('Artifacts not supported by your TRAINS-server version, '
+                                                 'please upgrade to the latest server version')
+            return False
+
+        if name in self._artifacts_dict:
+            raise ValueError("Artifact by the name of {} is already registered, use register_artifact".format(name))
+
+        artifact_type_data = tasks.ArtifactTypeData()
+        use_filename_in_uri = True
+        if np and isinstance(artifact_object, np.ndarray):
+            artifact_type = 'numpy'
+            artifact_type_data.content_type = 'application/numpy'
+            artifact_type_data.preview = str(artifact_object.__repr__())
+            fd, local_filename = mkstemp(suffix='.npz')
+            os.close(fd)
+            np.savez_compressed(local_filename, **{name: artifact_object})
+            delete_after_upload = True
+            use_filename_in_uri = False
+        elif isinstance(artifact_object, Image.Image):
+            artifact_type = 'image'
+            artifact_type_data.content_type = 'image/png'
+            desc = str(artifact_object.__repr__())
+            artifact_type_data.preview = desc[1:desc.find(' at ')]
+            fd, local_filename = mkstemp(suffix='.png')
+            os.close(fd)
+            artifact_object.save(local_filename)
+            delete_after_upload = True
+            use_filename_in_uri = False
+        elif isinstance(artifact_object, dict):
+            artifact_type = 'JSON'
+            artifact_type_data.content_type = 'application/json'
+            preview = json.dumps(artifact_object, sort_keys=True, indent=4)
+            fd, local_filename = mkstemp(suffix='.json')
+            os.write(fd, bytes(preview.encode()))
+            os.close(fd)
+            artifact_type_data.preview = preview
+            delete_after_upload = True
+            use_filename_in_uri = False
+        elif isinstance(artifact_object, six.string_types) or isinstance(artifact_object, Path):
+            if isinstance(artifact_object, Path):
+                artifact_object = artifact_object.as_posix()
+            artifact_type = 'custom'
+            artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
+            local_filename = artifact_object
+        else:
+            raise ValueError("Artifact type {} not supported".format(type(artifact_object)))
+
+        # remove from existing list, if exists
+        for artifact in self._task_artifact_list:
+            if artifact.key == name:
+                if artifact.type == self._pd_artifact_type:
+                    raise ValueError("Artifact of name {} already registered, "
+                                     "use register_artifact instead".format(name))
+
+                self._task_artifact_list.remove(artifact)
+                break
+
+        # check that the file to upload exists
+        local_filename = Path(local_filename).absolute()
+        if not local_filename.exists() or not local_filename.is_file():
+            LoggerRoot.get_base_logger().warning('Artifact upload failed, cannot find file {}'.format(
+                local_filename.as_posix()))
+            return False
+
+        file_hash, _ = self.sha256sum(local_filename.as_posix())
+        timestamp = int(time())
+        file_size = local_filename.stat().st_size
+
+        uri = self._upload_local_file(local_filename, name,
+                                      delete_after_upload=delete_after_upload, use_filename=use_filename_in_uri)
+
+        artifact = tasks.Artifact(key=name, type=artifact_type,
+                                  uri=uri,
+                                  content_size=file_size,
+                                  hash=file_hash,
+                                  timestamp=timestamp,
+                                  type_data=artifact_type_data,
+                                  display_data=[(str(k), str(v)) for k, v in metadata.items()] if metadata else None)
+
+        # update task artifacts
+        with self._task_edit_lock:
+            self._task_artifact_list.append(artifact)
+            self._task.set_artifacts(self._task_artifact_list)
+
+        return True
 
     def flush(self):
         # start the thread if it hasn't already:
@@ -119,19 +224,20 @@ class Artifacts(object):
         while not self._exit_flag:
             self._flush_event.wait(self._flush_frequency_sec)
             self._flush_event.clear()
-            try:
-                artifact_keys = list(self._artifacts_dict.keys())
-                for name in artifact_keys:
-                    self._upload_artifacts(name)
-            except Exception as e:
-                LoggerRoot.get_base_logger().warning(str(e))
+            artifact_keys = list(self._artifacts_dict.keys())
+            for name in artifact_keys:
+                try:
+                    self._upload_data_audit_artifacts(name)
+                except Exception as e:
+                    LoggerRoot.get_base_logger().warning(str(e))
 
         # create summary
         self._summary = self._get_statistics()
 
-    def _upload_artifacts(self, name):
+    def _upload_data_audit_artifacts(self, name):
         logger = self._task.get_logger()
-        artifact = self._artifacts_dict.get(name)
+        pd_artifact = self._artifacts_dict.get(name)
+        pd_metadata = self._artifacts_dict.get_metadata(name)
 
         # remove from artifacts watch list
         if name in self._unregister_request:
@@ -141,15 +247,15 @@ class Artifacts(object):
                 pass
             self._artifacts_dict.unregister_artifact(name)
 
-        if artifact is None:
+        if pd_artifact is None:
             return
 
         local_csv = (Path(self._get_temp_folder()) / (name + self._save_format)).absolute()
         if local_csv.exists():
             # we are still uploading... get another temp folder
             local_csv = (Path(self._get_temp_folder(force_new=True)) / (name + self._save_format)).absolute()
-        artifact.to_csv(local_csv.as_posix(), index=False, compression=self._compression)
-        current_sha2 = self.sha256sum(local_csv.as_posix(), skip_header=32)
+        pd_artifact.to_csv(local_csv.as_posix(), index=False, compression=self._compression)
+        current_sha2, file_sha2 = self.sha256sum(local_csv.as_posix(), skip_header=32)
         if name in self._last_artifacts_upload:
             previous_sha2 = self._last_artifacts_upload[name]
             if previous_sha2 == current_sha2:
@@ -157,19 +263,75 @@ class Artifacts(object):
                 local_csv.unlink()
                 return
         self._last_artifacts_upload[name] = current_sha2
-        # now upload and delete at the end.
-        logger.report_image_and_upload(title='artifacts', series=name, path=local_csv.as_posix(),
-                                       delete_after_upload=True, iteration=self._task.get_last_iteration(),
-                                       max_image_history=2)
 
-    def _get_statistics(self):
+        # If old trains-server, upload as debug image
+        if not Session.check_min_api_version('2.3'):
+            logger.report_image_and_upload(title='artifacts', series=name, path=local_csv.as_posix(),
+                                           delete_after_upload=True, iteration=self._task.get_last_iteration(),
+                                           max_image_history=2)
+            return
+
+        # Find our artifact
+        artifact = None
+        for an_artifact in self._task_artifact_list:
+            if an_artifact.key == name:
+                artifact = an_artifact
+                break
+
+        file_size = local_csv.stat().st_size
+
+        # upload file
+        uri = self._upload_local_file(local_csv, name, delete_after_upload=True)
+
+        # update task artifacts
+        with self._task_edit_lock:
+            if not artifact:
+                artifact = tasks.Artifact(key=name, type=self._pd_artifact_type)
+                self._task_artifact_list.append(artifact)
+            artifact_type_data = tasks.ArtifactTypeData()
+
+            artifact_type_data.data_hash = current_sha2
+            artifact_type_data.content_type = "text/csv"
+            artifact_type_data.preview = str(pd_artifact.__repr__())+'\n\n'+self._get_statistics({name: pd_artifact})
+
+            artifact.type_data = artifact_type_data
+            artifact.uri = uri
+            artifact.content_size = file_size
+            artifact.hash = file_sha2
+            artifact.timestamp = int(time())
+            artifact.display_data = [(str(k), str(v)) for k, v in pd_metadata.items()] if pd_metadata else None
+
+            self._task.set_artifacts(self._task_artifact_list)
+
+    def _upload_local_file(self, local_file, name, delete_after_upload=False, use_filename=True):
+        """
+        Upload local file and return uri of the uploaded file (uploading in the background)
+        """
+        upload_uri = self._task.get_logger().get_default_upload_destination()
+        if not isinstance(local_file, Path):
+            local_file = Path(local_file)
+        ev = UploadEvent(metric='artifacts', variant=name,
+                         image_data=None, upload_uri=upload_uri,
+                         local_image_path=local_file.as_posix(),
+                         delete_after_upload=delete_after_upload,
+                         override_filename=os.path.splitext(local_file.name)[0] if use_filename else None,
+                         override_storage_key_prefix=self._get_storage_uri_prefix())
+        _, uri = ev.get_target_full_upload_uri(upload_uri)
+
+        # send for upload
+        self._task.reporter._report(ev)
+
+        return uri
+
+    def _get_statistics(self, artifacts_dict=None):
         summary = ''
+        artifacts_dict = artifacts_dict or self._artifacts_dict
         thread_pool = ThreadPool()
 
         try:
             # build hash row sets
             artifacts_summary = []
-            for a_name, a_df in self._artifacts_dict.items():
+            for a_name, a_df in artifacts_dict.items():
                 if not pd or not isinstance(a_df, pd.DataFrame):
                     continue
 
@@ -206,16 +368,30 @@ class Artifacts(object):
             return new_temp
         return self._temp_folder[0]
 
+    def _get_storage_uri_prefix(self):
+        if not self._storage_prefix:
+            self._storage_prefix = self._task._get_output_destination_suffix()
+        return self._storage_prefix
+
     @staticmethod
     def sha256sum(filename, skip_header=0):
         # create sha2 of the file, notice we skip the header of the file (32 bytes)
         # because sometimes that is the only change
         h = hashlib.sha256()
+        file_hash = hashlib.sha256()
         b = bytearray(Artifacts._hash_block_size)
         mv = memoryview(b)
-        with open(filename, 'rb', buffering=0) as f:
-            # skip header
-            f.read(skip_header)
-            for n in iter(lambda: f.readinto(mv), 0):
-                h.update(mv[:n])
-        return h.hexdigest()
+        try:
+            with open(filename, 'rb', buffering=0) as f:
+                # skip header
+                if skip_header:
+                    file_hash.update(f.read(skip_header))
+                for n in iter(lambda: f.readinto(mv), 0):
+                    h.update(mv[:n])
+                    if skip_header:
+                        file_hash.update(mv[:n])
+        except Exception as e:
+            LoggerRoot.get_base_logger().warning(str(e))
+            return None, None
+
+        return h.hexdigest(), file_hash.hexdigest() if skip_header else None

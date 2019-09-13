@@ -109,7 +109,7 @@ class PatchedMatplotlib:
 
         # update api version
         from ..backend_api import Session
-        PatchedMatplotlib._support_image_plot = Session.api_version > '2.1'
+        PatchedMatplotlib._support_image_plot = Session.check_min_api_version('2.2')
 
         # create plotly renderer
         try:

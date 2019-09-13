@@ -309,7 +309,7 @@ class Task(_Task):
             If project is None, and the main execution task is initialized (Task.init), its project will be used.
             If project is provided but doesn't exist, it will be created.
         :param task_type: Task type to be created. (default: "training")
-        Optional Task types are: "training" / "testing" / "dataset_import" / "annotation" / "annotation_manual"
+            Optional Task types are: "training" / "testing" / "dataset_import" / "annotation" / "annotation_manual"
         :return: Task() object
         """
         if not project_name:
@@ -390,8 +390,10 @@ class Task(_Task):
                         task_id=default_task_id,
                         log_to_backend=True,
                     )
+                    task_tags = task.data.system_tags if hasattr(task.data, 'system_tags') else task.data.tags
                     if ((str(task.status) in (str(tasks.TaskStatusEnum.published), str(tasks.TaskStatusEnum.closed)))
-                            or (ARCHIVED_TAG in task.data.tags) or task.output_model_id):
+                            or task.output_model_id or (ARCHIVED_TAG in task_tags)
+                            or (cls._development_tag not in task_tags)):
                         # If the task is published or closed, we shouldn't reset it so we can't use it in dev mode
                         # If the task is archived, or already has an output model,
                         #  we shouldn't use it in development mode either
@@ -401,7 +403,7 @@ class Task(_Task):
                         # reset the task, so we can update it
                         task.reset(set_started_on_success=False, force=False)
                         # set development tags
-                        task.set_tags([cls._development_tag])
+                        task.set_system_tags([cls._development_tag])
                         # clear task parameters, they are not cleared by the Task reset
                         task.set_parameters({}, __update=False)
                         # clear the comment, it is not cleared on reset
@@ -410,6 +412,7 @@ class Task(_Task):
                         task.set_input_model(model_id='', update_task_design=False, update_task_labels=False)
                         task.set_model_config(config_text='')
                         task.set_model_label_enumeration({})
+                        task.set_artifacts([])
 
                 except (Exception, ValueError):
                     # we failed reusing task, create a new one
@@ -480,7 +483,7 @@ class Task(_Task):
         if value and value != self.storage_uri:
             from .storage.helper import StorageHelper
             helper = StorageHelper.get(value)
-            helper.check_write_permissions()
+            helper.check_write_permissions(value)
         self.storage_uri = value
 
     @property
@@ -658,20 +661,24 @@ class Task(_Task):
         """
         self._artifacts_manager.unregister_artifact(name=name)
 
-    def upload_artifact(self, name, artifact_object=None, artifact_file=None, metadata=None):
+    def upload_artifact(self, name, artifact_object, metadata=None, delete_after_upload=False):
         """
         Add static artifact to Task. Artifact file/object will be uploaded in the background
+        Raise ValueError if artifact_object is not supported
 
         :param str name: Artifact name. Notice! it will override previous artifact if name already exists
-        :param object artifact_object: Artifact object to upload. Currently supports Numpy, PIL.Image.
-            Numpy will be stored as .npz, and Image as .png file.
-            Use None if uploading a file directly with 'artifact_file'.
-        :param str artifact_file: path to artifact file to upload. None means not applicable.
-            Notice you wither artifact object or artifact_file
+        :param object artifact_object: Artifact object to upload. Currently supports:
+            - string / pathlib2.Path are treated as path to artifact file to upload
+            - dict will be stored as .json,
+            - numpy.ndarray will be stored as .npz,
+            - PIL.Image will be stored to .png file and uploaded
         :param dict metadata: Simple key/value dictionary to store on the artifact
-        :return: True if artifact is supported
+        :param bool delete_after_upload: If True local artifact will be deleted
+            (only applies if artifact_object is a local file)
+        :return: True if artifact will be uploaded
         """
-        raise ValueError("Not implemented yet")
+        return self._artifacts_manager.upload_artifact(name=name, artifact_object=artifact_object,
+                                                       metadata=metadata, delete_after_upload=delete_after_upload)
 
     def is_current_task(self):
         """

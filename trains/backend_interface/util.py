@@ -25,7 +25,7 @@ def get_or_create_project(session, project_name, description=None):
     return res.response.id
 
 
-def get_single_result(entity, query, results, log=None, show_results=10, raise_on_error=True):
+def get_single_result(entity, query, results, log=None, show_results=10, raise_on_error=True, sort_by_date=True):
     if not results:
         if not raise_on_error:
             return None
@@ -38,6 +38,13 @@ def get_single_result(entity, query, results, log=None, show_results=10, raise_o
     if len(results) > 1:
         log.warn('More than one {entity} found when searching for `{query}`'
                  ' (showing first {show_results} {entity}s follow)'.format(**locals()))
+        if sort_by_date:
+            # sort results based on timestamp and return the newest one
+            if hasattr(results[0], 'last_update'):
+                results = sorted(results, key=lambda x: int(x.last_update.strftime('%s')), reverse=True)
+            elif hasattr(results[0], 'created'):
+                results = sorted(results, key=lambda x: int(x.created.strftime('%s')), reverse=True)
+
         for obj in (o if isinstance(o, dict) else o.to_dict() for o in results[:show_results]):
             log.warn('Found {entity} `{obj[name]}` (id={obj[id]})'.format(**locals()))
 

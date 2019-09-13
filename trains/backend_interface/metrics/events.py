@@ -186,10 +186,12 @@ class UploadEvent(MetricsEventAdapter):
         self._count = self._get_metric_count(metric, variant)
         if not image_file_history_size:
             image_file_history_size = self._image_file_history_size
-        if image_file_history_size < 1:
-            self._filename = '%s_%s_%08d' % (metric, variant, self._count)
-        else:
-            self._filename = '%s_%s_%08d' % (metric, variant, self._count % image_file_history_size)
+        self._filename = kwargs.pop('override_filename', None)
+        if not self._filename:
+            if image_file_history_size < 1:
+                self._filename = '%s_%s_%08d' % (metric, variant, self._count)
+            else:
+                self._filename = '%s_%s_%08d' % (metric, variant, self._count % image_file_history_size)
         self._upload_uri = upload_uri
         self._delete_after_upload = delete_after_upload
 
@@ -198,6 +200,9 @@ class UploadEvent(MetricsEventAdapter):
         image_format = self._format.lower() if self._image_data is not None else \
             '.' + '.'.join(pathlib2.Path(self._local_image_path).parts[-1].split('.')[1:])
         self._upload_filename = str(pathlib2.Path(self._filename).with_suffix(image_format))
+
+        self._override_storage_key_prefix = kwargs.pop('override_storage_key_prefix', None)
+
         super(UploadEvent, self).__init__(metric, variant, iter=iter, **kwargs)
 
     @classmethod
@@ -273,10 +278,12 @@ class UploadEvent(MetricsEventAdapter):
             delete_local_file=local_file if self._delete_after_upload else None,
         )
 
-    def get_target_full_upload_uri(self, storage_uri, storage_key_prefix):
+    def get_target_full_upload_uri(self, storage_uri, storage_key_prefix=None):
         e_storage_uri = self._upload_uri or storage_uri
         # if we have an entry (with or without a stream), we'll generate the URL and store it in the event
         filename = self._upload_filename
+        if self._override_storage_key_prefix or not storage_key_prefix:
+            storage_key_prefix = self._override_storage_key_prefix
         key = '/'.join(x for x in (storage_key_prefix, self.metric, self.variant, filename.strip('/')) if x)
         url = '/'.join(x.strip('/') for x in (e_storage_uri, key))
         return key, url

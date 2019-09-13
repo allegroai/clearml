@@ -572,7 +572,7 @@ class Logger(object):
 
         # if task was not started, we have to start it
         self._start_task_if_needed()
-        upload_uri = self._default_upload_destination or self._task._get_default_report_storage_uri()
+        upload_uri = self.get_default_upload_destination()
         if not upload_uri:
             upload_uri = Path(get_cache_dir()) / 'debug_images'
             upload_uri.mkdir(parents=True, exist_ok=True)
@@ -619,7 +619,7 @@ class Logger(object):
 
         # if task was not started, we have to start it
         self._start_task_if_needed()
-        upload_uri = self._default_upload_destination or self._task._get_default_report_storage_uri()
+        upload_uri = self.get_default_upload_destination()
         if not upload_uri:
             upload_uri = Path(get_cache_dir()) / 'debug_images'
             upload_uri.mkdir(parents=True, exist_ok=True)
@@ -664,7 +664,7 @@ class Logger(object):
 
         # if task was not started, we have to start it
         self._start_task_if_needed()
-        upload_uri = self._default_upload_destination or self._task._get_default_report_storage_uri()
+        upload_uri = self.get_default_upload_destination()
         if not upload_uri:
             upload_uri = Path(get_cache_dir()) / 'debug_images'
             upload_uri.mkdir(parents=True, exist_ok=True)
@@ -704,6 +704,19 @@ class Logger(object):
         uri = storage.verify_upload(folder_uri=uri)
 
         self._default_upload_destination = uri
+
+    def get_default_upload_destination(self):
+        """
+        Get the uri to upload all the debug images to.
+
+        Images are uploaded separately to the destination storage (e.g. s3,gc,file) and then
+        a link to the uploaded image is sent in the report
+        Notice: credentials for the upload destination will be pooled from the
+        global configuration file (i.e. ~/trains.conf)
+
+        :return: Uri (str)  example: 's3://bucket/directory/' or 'file:///tmp/debug/' etc...
+        """
+        return self._default_upload_destination or self._task._get_default_report_storage_uri()
 
     def flush(self):
         """

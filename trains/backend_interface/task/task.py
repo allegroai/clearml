@@ -6,6 +6,7 @@ from enum import Enum
 from threading import RLock, Thread
 
 import six
+from six.moves.urllib.parse import quote
 
 from ...backend_interface.task.development.worker import DevWorker
 from ...backend_api import Session
@@ -95,6 +96,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         else:
             # this is an existing task, let's try to verify stuff
             self._validate()
+
+        self._project_name = (self.project, project_name)
 
         if running_remotely() or DevWorker.report_stdout:
             log_to_backend = False
@@ -223,14 +226,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             project_id = get_or_create_project(self, project_name, created_msg)
 
         tags = [self._development_tag] if not running_remotely() else []
-
+        extra_properties = {'system_tags': tags} if Session.check_min_api_version('2.3') else {'tags': tags}
         req = tasks.CreateRequest(
             name=task_name or make_message('Anonymous task (%(user)s@%(host)s %(time)s)'),
             type=tasks.TaskTypeEnum(task_type.value),
             comment=created_msg,
             project=project_id,
             input={'view': {}},
-            tags=tags,
+            **extra_properties
         )
         res = self.send(req)
 
@@ -369,7 +372,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return self._reporter
 
     def _get_output_destination_suffix(self, extra_path=None):
-        return '/'.join(x for x in ('task_%s' % self.data.id, extra_path) if x)
+        return '/'.join(quote(x, safe='[]{}()$^,.; -_+-=') for x in
+                        (self.get_project_name(), '%s.%s' % (self.name, self.data.id), extra_path) if x)
 
     def _reload(self):
         """ Reload the task object from the backend """
@@ -427,9 +431,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def update_output_model(self, model_uri, name=None, comment=None, tags=None):
         """
         Update the task's output model.
-         Note that this method only updates the model's metadata using the API and does not upload any data. Use this
-         method to update the output model when you have a local model URI (e.g. storing the weights file locally and
-         providing a file://path/to/file URI)
+        Note that this method only updates the model's metadata using the API and does not upload any data. Use this
+        method to update the output model when you have a local model URI (e.g. storing the weights file locally and
+        providing a file://path/to/file URI)
+
         :param model_uri: URI for the updated model weights file
         :type model_uri: str
         :param name: Optional updated model name
@@ -446,8 +451,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self, model_file, name=None, comment=None, tags=None, async_enable=False, cb=None, iteration=None):
         """
         Update the task's output model weights file. File is first uploaded to the preconfigured output destination (see
-         task's output.destination property or call setup_upload()), than the model object associated with the task is
-         updated using an API call with the URI of the uploaded file (and other values provided by additional arguments)
+        task's output.destination property or call setup_upload()), than the model object associated with the task is
+        updated using an API call with the URI of the uploaded file (and other values provided by additional arguments)
+
         :param model_file: Path to the updated model weights file
         :type model_file: str
         :param name: Optional updated model name
@@ -632,6 +638,21 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         execution.model_labels = enumeration
         self._edit(execution=execution)
 
+    def set_artifacts(self, artifacts_list=None):
+        """
+        List of artifacts (tasks.Artifact) to update the task
+
+        :param list artifacts_list: list of artifacts (type tasks.Artifact)
+        """
+        if not Session.check_min_api_version('2.3'):
+            return False
+        if not (isinstance(artifacts_list, (list, tuple))
+                and all(isinstance(a, tasks.Artifact) for a in artifacts_list)):
+            raise ValueError('Expected artifacts to [tasks.Artifacts]')
+        execution = self.data.execution
+        execution.artifacts = artifacts_list
+        self._edit(execution=execution)
+
     def _set_model_design(self, design=None):
         execution = self.data.execution
         if design is not None:
@@ -677,7 +698,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if self.project is None:
             return None
 
-        if self._project_name and self._project_name[0] == self.project:
+        if self._project_name and self._project_name[1] is not None and self._project_name[0] == self.project:
             return self._project_name[1]
 
         res = self.send(projects.GetByIdRequest(project=self.project), raise_on_errors=False)
@@ -689,8 +710,20 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def get_tags(self):
         return self._get_task_property("tags")
 
+    def set_system_tags(self, tags):
+        assert isinstance(tags, (list, tuple))
+        if Session.check_min_api_version('2.3'):
+            self._set_task_property("system_tags", tags)
+            self._edit(system_tags=self.data.system_tags)
+        else:
+            self._set_task_property("tags", tags)
+            self._edit(tags=self.data.tags)
+
     def set_tags(self, tags):
         assert isinstance(tags, (list, tuple))
+        if not Session.check_min_api_version('2.3'):
+            # not supported
+            return
         self._set_task_property("tags", tags)
         self._edit(tags=self.data.tags)
 

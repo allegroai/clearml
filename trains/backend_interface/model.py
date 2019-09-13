@@ -6,6 +6,7 @@ from tempfile import mkstemp
 import six
 from pathlib2 import Path
 
+from ..backend_api import Session
 from ..backend_api.services import models
 from .base import IdObjectBase
 from .util import make_message
@@ -185,18 +186,21 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         design = self._wrap_design(design) if design else self.data.design
         name = name or self.data.name
         comment = comment or self.data.comment
-        tags = tags or self.data.tags
         labels = labels or self.data.labels
         task = task_id or self.data.task
         project = project_id or self.data.project
         parent = parent_id or self.data.parent
+        if tags:
+            extra = {'system_tags': tags or self.data.system_tags} \
+                if hasattr(self.data, 'system_tags') else {'tags': tags or self.data.tags}
+        else:
+            extra = {}
 
         self.send(models.EditRequest(
             model=self.id,
             uri=uri,
             name=name,
             comment=comment,
-            tags=tags,
             labels=labels,
             design=design,
             task=task,
@@ -204,6 +208,27 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             parent=parent,
             framework=framework or self.data.framework,
             iteration=iteration,
+            **extra
+        ))
+        self.reload()
+
+    def edit(self,  design=None, labels=None, name=None, comment=None, tags=None,
+             uri=None, framework=None, iteration=None):
+        if tags:
+            extra = {'system_tags': tags or self.data.system_tags} \
+                if hasattr(self.data, 'system_tags') else {'tags': tags or self.data.tags}
+        else:
+            extra = {}
+        self.send(models.EditRequest(
+            model=self.id,
+            uri=uri,
+            name=name,
+            comment=comment,
+            labels=labels,
+            design=self._wrap_design(design) if design else None,
+            framework=framework,
+            iteration=iteration,
+            **extra
         ))
         self.reload()
 
@@ -239,7 +264,8 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
                 if cb:
                     cb(model_file)
 
-            uri = self._upload_model(model_file, async_enable=async_enable, target_filename=target_filename, cb=callback)
+            uri = self._upload_model(model_file, async_enable=async_enable, target_filename=target_filename,
+                                     cb=callback)
             return uri
         else:
             uri = self._upload_model(model_file, async_enable=async_enable, target_filename=target_filename)
@@ -264,12 +290,16 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         if self._data:
             name = name or self.data.name
             comment = comment or self.data.comment
-            tags = tags or self.data.tags
+            tags = tags or (self.data.system_tags if hasattr(self.data, 'system_tags') else self.data.tags)
             uri = (uri or self.data.uri) if not override_model_id else None
 
+        if tags:
+            extra = {'system_tags': tags} if Session.check_min_api_version('2.3') else {'tags': tags}
+        else:
+            extra = {}
         res = self.send(
-            models.UpdateForTaskRequest(task=task_id, uri=uri, name=name, comment=comment, tags=tags,
-                                        override_model_id=override_model_id))
+            models.UpdateForTaskRequest(task=task_id, uri=uri, name=name, comment=comment,
+                                        override_model_id=override_model_id, **extra))
         if self.id is None:
             # update the model id. in case it was just created, this will trigger a reload of the model object
             self.id = res.response.id
@@ -295,8 +325,13 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         else:
             uri = self._upload_model(model_file, target_filename=target_filename, async_enable=async_enable)
             self._complete_update_for_task(uri, task_id, name, comment, tags, override_model_id)
-            _ = self.send(models.UpdateForTaskRequest(task=task_id, uri=uri, name=name, comment=comment, tags=tags,
-                                                      override_model_id=override_model_id, iteration=iteration))
+            if tags:
+                extra = {'system_tags': tags} if Session.check_min_api_version('2.3') else {'tags': tags}
+            else:
+                extra = {}
+            _ = self.send(models.UpdateForTaskRequest(task=task_id, uri=uri, name=name, comment=comment,
+                                                      override_model_id=override_model_id, iteration=iteration,
+                                                      **extra))
             return uri
 
     def update_for_task(self, task_id, uri=None, name=None, comment=None, tags=None, override_model_id=None):
@@ -337,7 +372,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
 
     @property
     def tags(self):
-        return self.data.tags
+        return self.data.system_tags if hasattr(self.data, 'system_tags') else self.data.tags
 
     @property
     def locked(self):
@@ -402,18 +437,20 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         data = self.data
         assert isinstance(data, models.Model)
         parent = self.id if child else None
+        extra = {'system_tags': tags or data.system_tags} \
+            if Session.check_min_api_version('2.3') else {'tags': tags or data.tags}
         req = models.CreateRequest(
             uri=data.uri,
             name=name,
             labels=data.labels,
             comment=comment or data.comment,
-            tags=tags or data.tags,
             framework=data.framework,
             design=data.design,
             ready=ready,
             project=data.project,
             parent=parent,
             task=task,
+            **extra
         )
         res = self.send(req)
         return res.response.id

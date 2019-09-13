@@ -108,6 +108,26 @@ class ScriptRequirements(object):
                     modules |= fmodules
                     try_imports |= try_ipts
 
+        # hack: forcefully insert storage modules if we have them
+        # noinspection PyBroadException
+        try:
+            import boto3
+            modules.add('boto3', 'trains.storage', 0)
+        except Exception:
+            pass
+        # noinspection PyBroadException
+        try:
+            from google.cloud import storage
+            modules.add('google_cloud_storage', 'trains.storage', 0)
+        except Exception:
+            pass
+        # noinspection PyBroadException
+        try:
+            from azure.storage.blob import ContentSettings
+            modules.add('azure_storage_blob', 'trains.storage', 0)
+        except Exception:
+            pass
+
         return modules, try_imports, local_mods
 
     @staticmethod
@@ -247,7 +267,7 @@ class _JupyterObserver(object):
                 requirements_txt = ''
                 # parse jupyter python script and prepare pip requirements (pigar)
                 # if backend supports requirements
-                if file_import_modules and Session.api_version > '2.1':
+                if file_import_modules and Session.check_min_api_version('2.2'):
                     fmodules, _ = file_import_modules(notebook.parts[-1], script_code)
                     installed_pkgs = get_installed_pkgs_detail()
                     reqs = ReqsModules()
@@ -435,7 +455,7 @@ class ScriptInfo(object):
             # if this is not jupyter, get the requirements.txt
         requirements = ''
         # create requirements if backend supports requirements
-        if create_requirements and not jupyter_filepath and Session.api_version > '2.1':
+        if create_requirements and not jupyter_filepath and Session.check_min_api_version('2.2'):
             script_requirements = ScriptRequirements(Path(repo_root).as_posix())
             requirements = script_requirements.get_requirements()
 

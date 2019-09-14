@@ -434,7 +434,7 @@ class ScriptInfo(object):
         plugin = next((p for p in cls.plugins if p.exists(script_dir)), None)
         repo_info = DetectionResult()
         if not plugin:
-            _log("expected one of: {}", ", ".join((p.name for p in cls.plugins)))
+            log.info("No repository found, storing script code instead")
         else:
             try:
                 repo_info = plugin.get_info(str(script_dir), include_diff=check_uncommitted)

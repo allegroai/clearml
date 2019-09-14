@@ -413,6 +413,7 @@ class Task(_Task):
                         task.set_model_config(config_text='')
                         task.set_model_label_enumeration({})
                         task.set_artifacts([])
+                        task._set_storage_uri(None)
 
                 except (Exception, ValueError):
                     # we failed reusing task, create a new one

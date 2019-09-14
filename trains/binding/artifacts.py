@@ -307,7 +307,7 @@ class Artifacts(object):
         """
         Upload local file and return uri of the uploaded file (uploading in the background)
         """
-        upload_uri = self._task.get_logger().get_default_upload_destination()
+        upload_uri = self._task.output_uri or self._task.get_logger().get_default_upload_destination()
         if not isinstance(local_file, Path):
             local_file = Path(local_file)
         ev = UploadEvent(metric='artifacts', variant=name,

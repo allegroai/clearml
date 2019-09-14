@@ -286,6 +286,9 @@ class UploadEvent(MetricsEventAdapter):
             storage_key_prefix = self._override_storage_key_prefix
         key = '/'.join(x for x in (storage_key_prefix, self.metric, self.variant, filename.strip('/')) if x)
         url = '/'.join(x.strip('/') for x in (e_storage_uri, key))
+        # make sure we preserve local path root
+        if e_storage_uri.startswith('/'):
+            url = '/'+url
         return key, url
 
 

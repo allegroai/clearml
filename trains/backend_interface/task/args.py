@@ -188,7 +188,7 @@ class _Arguments(object):
                     task_arguments[k] = const_value
                 elif current_action and current_action.nargs == '+':
                     try:
-                        v = yaml.load(v.strip())
+                        v = yaml.load(v.strip(), Loader=yaml.SafeLoader)
                         if current_action.type:
                             v = [current_action.type(a) for a in v]
                         elif current_action.default:
@@ -291,7 +291,7 @@ class _Arguments(object):
             elif v_type == list:
                 try:
                     p = str(param).strip()
-                    param = yaml.load(p)
+                    param = yaml.load(p, Loader=yaml.SafeLoader)
                 except Exception:
                     self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
                                            (str(k), str(param), str(k), str(v)))
@@ -299,7 +299,7 @@ class _Arguments(object):
             elif v_type == dict:
                 try:
                     p = str(param).strip()
-                    param = yaml.load(p)
+                    param = yaml.load(p, Loader=yaml.SafeLoader)
                 except Exception:
                     self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
                                            (str(k), str(param), str(k), str(v)))

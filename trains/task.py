@@ -615,7 +615,8 @@ class Task(_Task):
         if self._logger:
             # noinspection PyProtectedMember
             self._logger._flush_stdout_handler()
-        self.reporter.flush()
+        if self._reporter:
+            self.reporter.flush()
         LoggerRoot.flush()
 
         return True
@@ -1045,7 +1046,7 @@ class Task(_Task):
                             task_status = ('stopped', )
 
             # wait for repository detection (if we didn't crash)
-            if not is_sub_process and wait_for_uploads:
+            if not is_sub_process and wait_for_uploads and self._logger:
                 # we should print summary here
                 self._summary_artifacts()
                 # make sure that if we crashed the thread we are not waiting forever
@@ -1053,17 +1054,19 @@ class Task(_Task):
 
             # wait for uploads
             print_done_waiting = False
-            if wait_for_uploads and (BackendModel.get_num_results() > 0 or self.reporter.get_num_results() > 0):
+            if wait_for_uploads and (BackendModel.get_num_results() > 0 or
+                                     (self._reporter and self.reporter.get_num_results() > 0)):
                 self.log.info('Waiting to finish uploads')
                 print_done_waiting = True
             # from here, do not send log in background thread
             if wait_for_uploads:
                 self.flush(wait_for_uploads=True)
                 # wait until the reporter flush everything
-                self.reporter.stop()
+                if self._reporter:
+                    self.reporter.stop()
                 if print_done_waiting:
                     self.log.info('Finished uploading')
-            else:
+            elif self._logger:
                 self._logger._flush_stdout_handler()
 
             if not is_sub_process:
@@ -1085,9 +1088,11 @@ class Task(_Task):
             if self._resource_monitor:
                 self._resource_monitor.stop()
 
-            self._logger.set_flush_period(None)
+            if self._logger:
+                self._logger.set_flush_period(None)
             # this is so in theory we can close a main task and start a new one
-            Task.__main_task = None
+            if self.is_main_task():
+                Task.__main_task = None
         except Exception:
             # make sure we do not interrupt the exit process
             pass

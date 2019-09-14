@@ -805,11 +805,17 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         execution = task.execution.to_dict() if task.execution else {}
         execution = ConfigTree.merge_configs(ConfigFactory.from_dict(execution),
                                              ConfigFactory.from_dict(execution_overrides or {}))
+        # clear all artifacts
+        execution['artifacts'] = [e for e in execution['artifacts'] if e.get('mode') != 'output']
+
+        if not tags and task.tags:
+            tags = [t for t in task.tags if t != cls._development_tag]
+
         req = tasks.CreateRequest(
             name=name or task.name,
             type=task.type,
-            input=task.input,
-            tags=tags if tags is not None else task.tags,
+            input=task.input if hasattr(task, 'input') else {'view': {}},
+            tags=tags,
             comment=comment or task.comment,
             parent=parent,
             project=project if project else task.project,

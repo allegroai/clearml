@@ -1705,6 +1705,7 @@ class CreateRequest(Request):
 
         self.assert_isinstance(value, "project", six.string_types)
         self._property_project = value
+
     @schema_property('input')
     def input(self):
         return self._property_input

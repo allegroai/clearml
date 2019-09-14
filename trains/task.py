@@ -1252,7 +1252,7 @@ class Task(_Task):
             tasks.GetAllRequest(
                 project=[project.id],
                 name=exact_match_regex(task_name),
-                only_fields=['id', 'name']
+                only_fields=['id', 'name', 'last_update']
             )
         )
         task = get_single_result(entity='task', query=task_name, results=res.response.tasks)

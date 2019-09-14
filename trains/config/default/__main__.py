@@ -93,29 +93,42 @@ def main():
     print('\nTRAINS Hosts configuration:\nAPI: {}\nWeb App: {}\nFile Store: {}\n'.format(
         api_host, web_host, files_host))
 
-    print(description.format(web_host), end='')
-    parse_input = input()
-    # check if these are valid credentials
-    credentials = None
-    # noinspection PyBroadException
-    try:
-        parsed = ConfigFactory.parse_string(parse_input)
-        if parsed:
-            credentials = parsed.get("credentials", None)
-    except Exception:
+    while True:
+        print(description.format(web_host), end='')
+        parse_input = input()
+        # check if these are valid credentials
         credentials = None
+        # noinspection PyBroadException
+        try:
+            parsed = ConfigFactory.parse_string(parse_input)
+            if parsed:
+                credentials = parsed.get("credentials", None)
+        except Exception:
+            credentials = None
 
-    if not credentials or set(credentials) != {"access_key", "secret_key"}:
-        print('Could not parse user credentials, try again one after the other.')
-        credentials = {}
-        # parse individual
-        print('Enter user access key: ', end='')
-        credentials['access_key'] = input()
-        print('Enter user secret: ', end='')
-        credentials['secret_key'] = input()
+        if not credentials or set(credentials) != {"access_key", "secret_key"}:
+            print('Could not parse user credentials, try again one after the other.')
+            credentials = {}
+            # parse individual
+            print('Enter user access key: ', end='')
+            credentials['access_key'] = input()
+            print('Enter user secret: ', end='')
+            credentials['secret_key'] = input()
 
-    print('Detected credentials key=\"{}\" secret=\"{}\"'.format(credentials['access_key'],
-                                                                 credentials['secret_key'], ))
+        print('Detected credentials key=\"{}\" secret=\"{}\"'.format(credentials['access_key'],
+                                                                     credentials['secret_key'], ))
+
+        from trains.backend_api.session import Session
+        # noinspection PyBroadException
+        try:
+            print('Verifying credentials ...')
+            Session(api_key=credentials['access_key'], secret_key=credentials['secret_key'], host=api_host)
+            print('Credentials verified!')
+            break
+        except Exception:
+            print('Error: could not verify credentials: host={} access={} secret={}'.format(
+                api_host, credentials['access_key'], credentials['secret_key']))
+
     # noinspection PyBroadException
     try:
         default_sdk_conf = Path(__file__).parent.absolute() / 'sdk.conf'

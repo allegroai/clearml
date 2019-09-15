@@ -243,7 +243,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         value = value.rstrip('/') if value else None
         self._storage_uri = StorageHelper.conform_url(value)
         self.data.output.destination = self._storage_uri
-        self._edit(output_dest=self._storage_uri or '')
+        self._edit(output_dest=self._storage_uri or ('' if Session.check_min_api_version('2.3') else None))
         if self._storage_uri or self._output_model:
             self.output_model.upload_storage_uri = self._storage_uri
 

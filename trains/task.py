@@ -672,6 +672,7 @@ class Task(_Task):
         :param object artifact_object: Artifact object to upload. Currently supports:
             - string / pathlib2.Path are treated as path to artifact file to upload
             - dict will be stored as .json,
+            - pandas.DataFrame will be stored as .csv.gz (compressed CSV file),
             - numpy.ndarray will be stored as .npz,
             - PIL.Image will be stored to .png file and uploaded
         :param dict metadata: Simple key/value dictionary to store on the artifact
@@ -1260,7 +1261,7 @@ class Task(_Task):
                 only_fields=['id', 'name', 'last_update']
             )
         )
-        task = get_single_result(entity='task', query=task_name, results=res.response.tasks)
+        task = get_single_result(entity='task', query=task_name, results=res.response.tasks, raise_on_error=False)
 
         return cls(
             private=cls.__create_protection,

@@ -47,8 +47,9 @@ def get_single_result(entity, query, results, log=None, show_results=10, raise_o
                 results = sorted(results, key=lambda x: int(x.created.strftime('%s')
                                                             if x.created else 0), reverse=True)
 
-        for obj in (o if isinstance(o, dict) else o.to_dict() for o in results[:show_results]):
-            log.warn('Found {entity} `{obj[name]}` (id={obj[id]})'.format(**locals()))
+        for i, obj in enumerate(o if isinstance(o, dict) else o.to_dict() for o in results[:show_results]):
+            selected = 'Selected' if i == 0 else 'Additionally found'
+            log.warn('{selected} {entity} `{obj[name]}` (id={obj[id]})'.format(**locals()))
 
         if raise_on_error:
             raise ValueError('More than one {entity}s found when searching for ``{query}`'.format(**locals()))

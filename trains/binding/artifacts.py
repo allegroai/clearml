@@ -123,6 +123,15 @@ class Artifacts(object):
             np.savez_compressed(local_filename, **{name: artifact_object})
             delete_after_upload = True
             use_filename_in_uri = False
+        elif pd and isinstance(artifact_object, pd.DataFrame):
+            artifact_type = 'pandas'
+            artifact_type_data.content_type = 'text/csv'
+            artifact_type_data.preview = str(artifact_object.__repr__())
+            fd, local_filename = mkstemp(suffix=self._save_format)
+            os.close(fd)
+            artifact_object.to_csv(local_filename, compression=self._compression)
+            delete_after_upload = True
+            use_filename_in_uri = False
         elif isinstance(artifact_object, Image.Image):
             artifact_type = 'image'
             artifact_type_data.content_type = 'image/png'

@@ -12,7 +12,7 @@ df = pd.DataFrame({'num_legs': [2, 4, 8, 0],
                    'num_specimen_seen': [10, 2, 1, 8]},
                   index=['falcon', 'dog', 'spider', 'fish'])
 
-# register Pandas object as artifact to watch
+# Register Pandas object as artifact to watch
 # (it will be monitored in the background and automatically synced and uploaded)
 task.register_artifact('train', df, metadata={'counting': 'legs', 'max legs': 69})
 # change the artifact object
@@ -20,6 +20,8 @@ df.sample(frac=0.5, replace=True, random_state=1)
 # or access it from anywhere using the Task
 Task.current_task().artifacts['train'].sample(frac=0.5, replace=True, random_state=1)
 
+# add and upload pandas.DataFrame (onetime snapshot of the object)
+task.upload_artifact('Pandas', artifact_object=df)
 # add and upload local file artifact
 task.upload_artifact('local file', artifact_object='samples/dancing.jpg')
 # add and upload dictionary stored as JSON)

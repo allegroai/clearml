@@ -17,8 +17,8 @@ df = pd.DataFrame({'num_legs': [2, 4, 8, 0],
 task.register_artifact('train', df, metadata={'counting': 'legs', 'max legs': 69})
 # change the artifact object
 df.sample(frac=0.5, replace=True, random_state=1)
-# or access it from anywhere using the Task
-Task.current_task().artifacts['train'].sample(frac=0.5, replace=True, random_state=1)
+# or access it from anywhere using the Task's get_registered_artifacts()
+Task.current_task().get_registered_artifacts()['train'].sample(frac=0.5, replace=True, random_state=1)
 
 # add and upload pandas.DataFrame (onetime snapshot of the object)
 task.upload_artifact('Pandas', artifact_object=df)
@@ -31,6 +31,7 @@ task.upload_artifact('Numpy Eye', np.eye(100, 100))
 # add and upload Image (stored as .png file)
 im = Image.open('samples/dancing.jpg')
 task.upload_artifact('pillow_image', im)
+
 
 # do something
 sleep(1.)

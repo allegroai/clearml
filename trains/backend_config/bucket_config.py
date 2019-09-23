@@ -50,7 +50,7 @@ class S3BucketConfig(object):
         configs = [cls(**entry) for entry in dict_list]
         valid_configs = [conf for conf in configs if conf.is_valid()]
         if log and len(valid_configs) < len(configs):
-            log.warn(
+            log.warning(
                 "Invalid bucket configurations detected for {}".format(
                     ", ".join(
                         "/".join((config.host, config.bucket))

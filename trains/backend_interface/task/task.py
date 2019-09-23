@@ -160,7 +160,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 conf = get_config_for_bucket(base_url=output_dest)
                 if not conf:
                     msg = 'Failed resolving output destination (no credentials found for %s)' % output_dest
-                    self.log.warn(msg)
+                    self.log.warning(msg)
                     if raise_errors:
                         raise Exception(msg)
                 else:
@@ -187,12 +187,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 latest_version = CheckPackageUpdates.check_new_package_available(only_once=True)
                 if latest_version:
                     if not latest_version[1]:
-                        self.get_logger().console(
+                        self.get_logger().report_text(
                             'TRAINS new package available: UPGRADE to v{} is recommended!'.format(
                                 latest_version[0]),
                         )
                     else:
-                        self.get_logger().console(
+                        self.get_logger().report_text(
                             'TRAINS-SERVER new version available: upgrade to v{} is recommended!'.format(
                                 latest_version[0]),
                         )
@@ -205,7 +205,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             check_package_update_thread.start()
             result = ScriptInfo.get(log=self.log)
             for msg in result.warning_messages:
-                self.get_logger().console(msg)
+                self.get_logger().report_text(msg)
 
             self.data.script = result.script
             # Since we might run asynchronously, don't use self.data (lest someone else
@@ -418,16 +418,17 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def update_model_desc(self, new_model_desc_file=None):
         """ Change the task's model_desc """
-        execution = self._get_task_property('execution')
-        p = Path(new_model_desc_file)
-        if not p.is_file():
-            raise IOError('mode_desc file %s cannot be found' % new_model_desc_file)
-        new_model_desc = p.read_text()
-        model_desc_key = list(execution.model_desc.keys())[0] if execution.model_desc else 'design'
-        execution.model_desc[model_desc_key] = new_model_desc
+        with self._edit_lock:
+            execution = self._get_task_property('execution')
+            p = Path(new_model_desc_file)
+            if not p.is_file():
+                raise IOError('mode_desc file %s cannot be found' % new_model_desc_file)
+            new_model_desc = p.read_text()
+            model_desc_key = list(execution.model_desc.keys())[0] if execution.model_desc else 'design'
+            execution.model_desc[model_desc_key] = new_model_desc
 
-        res = self._edit(execution=execution)
-        return res.response
+            res = self._edit(execution=execution)
+            return res.response
 
     def update_output_model(self, model_uri, name=None, comment=None, tags=None):
         """
@@ -536,16 +537,17 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             model = None
             model_id = ''
 
-        # store model id
-        self.data.execution.model = model_id
+        with self._edit_lock:
+            # store model id
+            self.data.execution.model = model_id
 
-        # Auto populate input field from model, if they are empty
-        if update_task_design and not self.data.execution.model_desc:
-            self.data.execution.model_desc = model.design if model else ''
-        if update_task_labels and not self.data.execution.model_labels:
-            self.data.execution.model_labels = model.labels if model else {}
+            # Auto populate input field from model, if they are empty
+            if update_task_design and not self.data.execution.model_desc:
+                self.data.execution.model_desc = model.design if model else ''
+            if update_task_labels and not self.data.execution.model_labels:
+                self.data.execution.model_labels = model.labels if model else {}
 
-        self._edit(execution=self.data.execution)
+            self._edit(execution=self.data.execution)
 
     def set_parameters(self, *args, **kwargs):
         """
@@ -580,12 +582,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # force cast all variables to strings (so that we can later edit them in UI)
         parameters = {k: str(v) if v is not None else "" for k, v in parameters.items()}
 
-        execution = self.data.execution
-        if execution is None:
-            execution = tasks.Execution(parameters=parameters)
-        else:
-            execution.parameters = parameters
-        self._edit(execution=execution)
+        with self._edit_lock:
+            execution = self.data.execution
+            if execution is None:
+                execution = tasks.Execution(parameters=parameters)
+            else:
+                execution.parameters = parameters
+            self._edit(execution=execution)
 
     def set_parameter(self, name, value, description=None):
         """
@@ -630,14 +633,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param dict enumeration: For example: {str(label): integer(id)}
         """
         enumeration = enumeration or {}
-        execution = self.data.execution
-        if enumeration is None:
-            return
-        if not (isinstance(enumeration, dict)
-                and all(isinstance(k, six.string_types) and isinstance(v, int) for k, v in enumeration.items())):
-            raise ValueError('Expected label to be a dict[str => int]')
-        execution.model_labels = enumeration
-        self._edit(execution=execution)
+        with self._edit_lock:
+            execution = self.data.execution
+            if enumeration is None:
+                return
+            if not (isinstance(enumeration, dict)
+                    and all(isinstance(k, six.string_types) and isinstance(v, int) for k, v in enumeration.items())):
+                raise ValueError('Expected label to be a dict[str => int]')
+            execution.model_labels = enumeration
+            self._edit(execution=execution)
 
     def set_artifacts(self, artifacts_list=None):
         """
@@ -650,16 +654,18 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not (isinstance(artifacts_list, (list, tuple))
                 and all(isinstance(a, tasks.Artifact) for a in artifacts_list)):
             raise ValueError('Expected artifacts to [tasks.Artifacts]')
-        execution = self.data.execution
-        execution.artifacts = artifacts_list
-        self._edit(execution=execution)
+        with self._edit_lock:
+            execution = self.data.execution
+            execution.artifacts = artifacts_list
+            self._edit(execution=execution)
 
     def _set_model_design(self, design=None):
-        execution = self.data.execution
-        if design is not None:
-            execution.model_desc = Model._wrap_design(design)
+        with self._edit_lock:
+            execution = self.data.execution
+            if design is not None:
+                execution.model_desc = Model._wrap_design(design)
 
-        self._edit(execution=execution)
+            self._edit(execution=execution)
 
     def get_labels_enumeration(self):
         """

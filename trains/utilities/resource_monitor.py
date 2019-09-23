@@ -1,3 +1,5 @@
+import logging
+import warnings
 from time import time
 from threading import Thread, Event
 
@@ -32,8 +34,8 @@ class ResourceMonitor(object):
         self._gpustat_fail = 0
         self._gpustat = gpustat
         if not self._gpustat:
-            self._task.get_logger().console('TRAINS Monitor: GPU monitoring is not available, '
-                                            'run \"pip install gpustat\"')
+            self._task.get_logger().report_text('TRAINS Monitor: GPU monitoring is not available, '
+                                                'run \"pip install gpustat\"')
 
     def start(self):
         self._exit_event.clear()
@@ -73,8 +75,8 @@ class ResourceMonitor(object):
                 if IsTensorboardInit.tensorboard_used():
                     fallback_to_sec_as_iterations = False
                 elif seconds_since_started >= self._wait_for_first_iteration:
-                    self._task.get_logger().console('TRAINS Monitor: Could not detect iteration reporting, '
-                                                    'falling back to iterations as seconds-from-start')
+                    self._task.get_logger().report_text('TRAINS Monitor: Could not detect iteration reporting, '
+                                                        'falling back to iterations as seconds-from-start')
                     fallback_to_sec_as_iterations = True
 
             clear_readouts = True
@@ -168,9 +170,11 @@ class ResourceMonitor(object):
         stats["memory_free_gb"] = bytes_to_megabytes(virtual_memory.available) / 1024
         disk_use_percentage = psutil.disk_usage(Text(Path.home())).percent
         stats["disk_free_percent"] = 100.0-disk_use_percentage
-        sensor_stat = (
-            psutil.sensors_temperatures() if hasattr(psutil, "sensors_temperatures") else {}
-        )
+        with warnings.catch_warnings():
+            if logging.root.level > logging.DEBUG:  # If the logging level is bigger than debug, ignore
+                # psutil.sensors_temperatures warnings
+                warnings.simplefilter("ignore", category=RuntimeWarning)
+            sensor_stat = (psutil.sensors_temperatures() if hasattr(psutil, "sensors_temperatures") else {})
         if "coretemp" in sensor_stat and len(sensor_stat["coretemp"]):
             stats["cpu_temperature"] = max([float(t.current) for t in sensor_stat["coretemp"]])
 
@@ -197,8 +201,8 @@ class ResourceMonitor(object):
                 # something happened and we can't use gpu stats,
                 self._gpustat_fail += 1
                 if self._gpustat_fail >= 3:
-                    self._task.get_logger().console('TRAINS Monitor: GPU monitoring failed getting GPU reading, '
-                                                    'switching off GPU monitoring')
+                    self._task.get_logger().report_text('TRAINS Monitor: GPU monitoring failed getting GPU reading, '
+                                                        'switching off GPU monitoring')
                     self._gpustat = None
 
         return stats

@@ -18,7 +18,7 @@ def get_cache_dir():
     cache_base_dir = Path(
         expandvars(
             expanduser(
-                config.get("storage.cache.default_base_dir") or DEFAULT_CACHE_DIR
+                TRAINS_CACHE_DIR.get() or config.get("storage.cache.default_base_dir") or DEFAULT_CACHE_DIR
             )
         )
     )

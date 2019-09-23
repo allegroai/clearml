@@ -5,13 +5,13 @@ import threading
 from collections import defaultdict
 from functools import partial
 from io import BytesIO
-from logging import ERROR, WARNING, getLogger
 from typing import Any
 
 import numpy as np
 from PIL import Image
 
-from ..frameworks import _patched_call, WeightsFileHandler, _Empty, TrainsFrameworkAdapter
+from ...debugging.log import LoggerRoot
+from ..frameworks import _patched_call, WeightsFileHandler, _Empty
 from ..import_bind import PostImportHookPatching
 from ...config import running_remotely
 from ...model import InputModel, OutputModel, Framework
@@ -187,7 +187,8 @@ class EventTrainsWriter(object):
                 else:
                     val = val[:, :, [0, 1, 2]]
         except Exception:
-            self._logger.warning('Failed decoding debug image [%d, %d, %d]' % (width, height, color_channels))
+            LoggerRoot.get_base_logger().warning('Failed decoding debug image [%d, %d, %d]'
+                                                 % (width, height, color_channels))
             val = None
         return val
 
@@ -213,7 +214,7 @@ class EventTrainsWriter(object):
             tile_size = res.shape[0] * res.shape[1]
             img_data_np = res.reshape(tile_size, tile_size, -1)
 
-        self._logger.report_image_and_upload(
+        self._logger.report_image(
             title=title,
             series=series,
             iteration=step,
@@ -419,7 +420,7 @@ class EventTrainsWriter(object):
                 msg_dict.pop('wallTime', None)
                 keys_list = [key for key in msg_dict.keys() if len(key) > 0]
                 keys_list = ', '.join(keys_list)
-                self._logger.debug('event summary not found, message type unsupported: %s' % keys_list)
+                LoggerRoot.get_base_logger().debug('event summary not found, message type unsupported: %s' % keys_list)
                 return
             value_dicts = summary.get('value')
             walltime = walltime or msg_dict.get('step')
@@ -431,19 +432,20 @@ class EventTrainsWriter(object):
                     step = int(event.step)
                 else:
                     step = 0
-                    self._logger.debug('Recieved event without step, assuming step = {}'.format(step), WARNING)
+                    LoggerRoot.get_base_logger().debug('Received event without step, assuming step = {}'.format(step))
             else:
                 step = int(step)
             self._max_step = max(self._max_step, step)
             if value_dicts is None:
-                self._logger.debug("Summary with arrived without 'value'", ERROR)
+                LoggerRoot.get_base_logger().debug("Summary arrived without 'value'")
                 return
 
             for vdict in value_dicts:
                 tag = vdict.pop('tag', None)
                 if tag is None:
                     # we should not get here
-                    self._logger.debug('No tag for \'value\' existing keys %s' % ', '.join(vdict.keys()))
+                    LoggerRoot.get_base_logger().debug('No tag for \'value\' existing keys %s'
+                                                       % ', '.join(vdict.keys()))
                     continue
                 metric, values = get_data(vdict, supported_metrics)
                 if metric == 'simpleValue':
@@ -459,7 +461,8 @@ class EventTrainsWriter(object):
                 elif metric == 'tensor' and values.get('dtype') == 'DT_FLOAT':
                     self._add_plot(tag, step, values, vdict)
                 else:
-                    self._logger.debug('Event unsupported. tag = %s, vdict keys [%s]' % (tag, ', '.join(vdict.keys)))
+                    LoggerRoot.get_base_logger().debug('Event unsupported. tag = %s, vdict keys [%s]'
+                                                       % (tag, ', '.join(vdict.keys)))
                     continue
 
     def get_logdir(self):
@@ -589,7 +592,7 @@ class PatchSummaryToEventTransformer(object):
                     setattr(SummaryToEventTransformer, 'trains',
                             property(PatchSummaryToEventTransformer.trains_object))
             except Exception as ex:
-                getLogger(TrainsFrameworkAdapter).debug(str(ex))
+                LoggerRoot.get_base_logger().debug(str(ex))
 
         if 'torch' in sys.modules:
             try:
@@ -603,7 +606,7 @@ class PatchSummaryToEventTransformer(object):
                 # this is a new version of TensorflowX
                 pass
             except Exception as ex:
-                getLogger(TrainsFrameworkAdapter).debug(str(ex))
+                LoggerRoot.get_base_logger().debug(str(ex))
 
         if 'tensorboardX' in sys.modules:
             try:
@@ -619,7 +622,7 @@ class PatchSummaryToEventTransformer(object):
                 # this is a new version of TensorflowX
                 pass
             except Exception as ex:
-                getLogger(TrainsFrameworkAdapter).debug(str(ex))
+                LoggerRoot.get_base_logger().debug(str(ex))
 
             if PatchSummaryToEventTransformer.__original_getattributeX is None:
                 try:
@@ -633,7 +636,7 @@ class PatchSummaryToEventTransformer(object):
                     # this is a new version of TensorflowX
                     pass
                 except Exception as ex:
-                    getLogger(TrainsFrameworkAdapter).debug(str(ex))
+                    LoggerRoot.get_base_logger().debug(str(ex))
 
     @staticmethod
     def _patched_add_eventT(self, *args, **kwargs):
@@ -717,7 +720,7 @@ class _ModelAdapter(object):
         super(_ModelAdapter, self).__init__()
         super(_ModelAdapter, self).__setattr__('_model', model)
         super(_ModelAdapter, self).__setattr__('_output_model', output_model)
-        super(_ModelAdapter, self).__setattr__('_logger', getLogger('TrainsModelAdapter'))
+        super(_ModelAdapter, self).__setattr__('_logger', LoggerRoot.get_base_logger())
 
     def __getattr__(self, attr):
         return getattr(self._model, attr)
@@ -800,7 +803,7 @@ class PatchModelCheckPointCallback(object):
                         property(PatchModelCheckPointCallback.trains_object))
 
         except Exception as ex:
-            getLogger(TrainsFrameworkAdapter).warning(str(ex))
+            LoggerRoot.get_base_logger().warning(str(ex))
 
     @staticmethod
     def _patched_getattribute(self, attr):
@@ -878,7 +881,7 @@ class PatchTensorFlowEager(object):
             except ImportError:
                 pass
             except Exception as ex:
-                getLogger(TrainsFrameworkAdapter).debug(str(ex))
+                LoggerRoot.get_base_logger().debug(str(ex))
 
     @staticmethod
     def _get_event_writer(writer):
@@ -905,7 +908,7 @@ class PatchTensorFlowEager(object):
             try:
                 event_writer._add_scalar(tag=str(tag), step=int(step.numpy()), scalar_data=value.numpy())
             except Exception as ex:
-                getLogger(TrainsFrameworkAdapter).warning(str(ex))
+                LoggerRoot.get_base_logger().warning(str(ex))
         return PatchTensorFlowEager.__original_fn_scalar(writer, step, tag, value, name, **kwargs)
 
     @staticmethod
@@ -915,7 +918,7 @@ class PatchTensorFlowEager(object):
             try:
                 event_writer._add_histogram(tag=str(tag), step=int(step.numpy()), histo_data=values.numpy())
             except Exception as ex:
-                getLogger(TrainsFrameworkAdapter).warning(str(ex))
+                LoggerRoot.get_base_logger().warning(str(ex))
         return PatchTensorFlowEager.__original_fn_hist(writer, step, tag, values, name, **kwargs)
 
     @staticmethod
@@ -926,7 +929,7 @@ class PatchTensorFlowEager(object):
                 event_writer._add_image_numpy(tag=str(tag), step=int(step.numpy()), img_data_np=tensor.numpy(),
                                               max_keep_images=max_images)
             except Exception as ex:
-                getLogger(TrainsFrameworkAdapter).warning(str(ex))
+                LoggerRoot.get_base_logger().warning(str(ex))
         return PatchTensorFlowEager.__original_fn_image(writer, step, tag, tensor, bad_color, max_images, name,
                                                         **kwargs)
 
@@ -1024,7 +1027,7 @@ class PatchKerasModelIO(object):
                 keras_saving.save_model = _patched_call(keras_saving.save_model, PatchKerasModelIO._save_model)
                 keras_saving.load_model = _patched_call(keras_saving.load_model, PatchKerasModelIO._load_model)
         except Exception as ex:
-            getLogger(TrainsFrameworkAdapter).warning(str(ex))
+            LoggerRoot.get_base_logger().warning(str(ex))
 
     @staticmethod
     def _updated_config(original_fn, self):
@@ -1052,7 +1055,7 @@ class PatchKerasModelIO(object):
                     framework=Framework.keras,
                 )
         except Exception as ex:
-            getLogger(TrainsFrameworkAdapter).warning(str(ex))
+            LoggerRoot.get_base_logger().warning(str(ex))
 
         return config
 
@@ -1102,7 +1105,7 @@ class PatchKerasModelIO(object):
                     return model
 
         except Exception as ex:
-            getLogger(TrainsFrameworkAdapter).warning(str(ex))
+            LoggerRoot.get_base_logger().warning(str(ex))
 
         return self
 
@@ -1184,7 +1187,7 @@ class PatchKerasModelIO(object):
             # if anyone asks, we were here
             self.trains_out_model._processed = True
         except Exception as ex:
-            getLogger(TrainsFrameworkAdapter).warning(str(ex))
+            LoggerRoot.get_base_logger().warning(str(ex))
 
     @staticmethod
     def _save_model(original_fn, model, filepath, *args, **kwargs):

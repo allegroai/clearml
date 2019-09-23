@@ -329,19 +329,19 @@ class PatchedMatplotlib:
                         PatchedMatplotlib._global_image_counter += 1
                         title = plot_title or 'untitled %d' % PatchedMatplotlib._global_image_counter
 
-                        logger.report_image_and_upload(title=title, series='plot image', path=image,
-                                                       delete_after_upload=True,
-                                                       iteration=PatchedMatplotlib._global_image_counter
-                                                       if plot_title else 0)
+                        logger.report_image(title=title, series='plot image', local_path=image,
+                                            delete_after_upload=True,
+                                            iteration=PatchedMatplotlib._global_image_counter
+                                            if plot_title else 0)
                     else:
                         # send the plot as plotly with embedded image
                         PatchedMatplotlib._global_plot_counter += 1
                         title = plot_title or 'untitled %d' % PatchedMatplotlib._global_plot_counter
 
-                        logger.report_image_plot_and_upload(title=title, series='plot image', path=image,
-                                                            delete_after_upload=True,
-                                                            iteration=PatchedMatplotlib._global_plot_counter
-                                                            if plot_title else 0)
+                        logger._report_image_plot_and_upload(title=title, series='plot image', path=image,
+                                                             delete_after_upload=True,
+                                                             iteration=PatchedMatplotlib._global_plot_counter
+                                                             if plot_title else 0)
 
         except Exception:
             # plotly failed

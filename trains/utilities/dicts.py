@@ -3,6 +3,19 @@
 _epsilon = 0.00001
 
 
+class ReadOnlyDict(dict):
+    def __readonly__(self, *args, **kwargs):
+        raise ValueError("This is a read only dictionary")
+    __setitem__ = __readonly__
+    __delitem__ = __readonly__
+    pop = __readonly__
+    popitem = __readonly__
+    clear = __readonly__
+    update = __readonly__
+    setdefault = __readonly__
+    del __readonly__
+
+
 class Logs:
     _logs_instances = []
 

@@ -81,7 +81,7 @@ class CallResult(object):
                 # response.validate()
         except Exception as e:
             if logger:
-                logger.warn('Failed parsing response: %s' % str(e))
+                logger.warning('Failed parsing response: %s' % str(e))
         return cls(meta=meta, response=response, response_data=response_data, request_cls=request_cls, session=session)
 
     def ok(self):

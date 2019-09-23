@@ -80,6 +80,6 @@ class AccessMixin(object):
             expected_num_of_classes += 1 if int(index) > 0 else 0
         num_of_classes = int(max(model_labels.values()))
         if num_of_classes != expected_num_of_classes:
-            self.log.warn('The highest label index is %d, while there are %d non-bg labels' %
-                          (num_of_classes, expected_num_of_classes))
+            self.log.warning('The highest label index is %d, while there are %d non-bg labels' %
+                             (num_of_classes, expected_num_of_classes))
         return num_of_classes + 1  # +1 is meant for bg!

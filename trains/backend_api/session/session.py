@@ -215,7 +215,7 @@ class Session(TokenManager):
                 res.status_code == requests.codes.service_unavailable
                 and self.config.get("api.http.wait_on_maintenance_forever", True)
             ):
-                self._logger.warn(
+                self._logger.warning(
                     "Service unavailable: {} is undergoing maintenance, retrying...".format(
                         host
                     )

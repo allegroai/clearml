@@ -177,6 +177,8 @@ class UploadEvent(MetricsEventAdapter):
 
     def __init__(self, metric, variant, image_data, local_image_path=None, iter=0, upload_uri=None,
                  image_file_history_size=None, delete_after_upload=False, **kwargs):
+        # param override_filename: override uploaded file name (notice extension will be added from local path
+        # param override_filename_ext: override uploaded file extension
         if image_data is not None and not hasattr(image_data, 'shape'):
             raise ValueError('Image must have a shape attribute')
         self._image_data = image_data
@@ -197,8 +199,10 @@ class UploadEvent(MetricsEventAdapter):
 
         # get upload uri upfront, either predefined image format or local file extension
         # e.g.: image.png -> .png or image.raw.gz -> .raw.gz
-        image_format = self._format.lower() if self._image_data is not None else \
-            '.' + '.'.join(pathlib2.Path(self._local_image_path).parts[-1].split('.')[1:])
+        image_format = kwargs.pop('override_filename_ext', None)
+        if image_format is None:
+            image_format = self._format.lower() if self._image_data is not None else \
+                '.' + '.'.join(pathlib2.Path(self._local_image_path).parts[-1].split('.')[1:])
         self._upload_filename = str(pathlib2.Path(self._filename).with_suffix(image_format))
 
         self._override_storage_key_prefix = kwargs.pop('override_storage_key_prefix', None)

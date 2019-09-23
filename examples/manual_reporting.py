@@ -21,7 +21,7 @@ except ImportError:
 logger = Task.current_task().get_logger()
 
 # log text
-logger.console("hello")
+logger.report_text("hello")
 
 # report scalar values
 logger.report_scalar("example_scalar", "series A", iteration=0, value=100)
@@ -49,11 +49,11 @@ logger.report_scatter3d("example_scatter_3d", "series_xyz", iteration=1, scatter
 
 # reporting images
 m = np.eye(256, 256, dtype=np.float)
-logger.report_image_and_upload("test case", "image float", iteration=1, matrix=m)
+logger.report_image("test case", "image float", iteration=1, matrix=m)
 m = np.eye(256, 256, dtype=np.uint8)*255
-logger.report_image_and_upload("test case", "image uint8", iteration=1, matrix=m)
+logger.report_image("test case", "image uint8", iteration=1, matrix=m)
 m = np.concatenate((np.atleast_3d(m), np.zeros((256, 256, 2), dtype=np.uint8)), axis=2)
-logger.report_image_and_upload("test case", "image color red", iteration=1, matrix=m)
+logger.report_image("test case", "image color red", iteration=1, matrix=m)
 
 # flush reports (otherwise it will be flushed in the background, every couple of seconds)
 logger.flush()

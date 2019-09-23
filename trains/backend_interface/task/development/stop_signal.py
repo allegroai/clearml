@@ -51,7 +51,7 @@ class TaskStopSignal(object):
                 if self._task_reset_state_counter >= self._number_of_consecutive_reset_tests:
                     return TaskStopReason.reset
 
-                self.task.get_logger().warning(
+                self.task.log.warning(
                     "Task {} was reset! if state is consistent we shall terminate.".format(self.task.id),
                 )
             else:

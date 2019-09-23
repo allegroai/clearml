@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 import collections
+import json
 import re
 import threading
 
@@ -313,9 +314,11 @@ class CheckPackageUpdates(object):
 
         # noinspection PyBroadException
         try:
+            from ..version import __version__
             cls._package_version_checked = True
             # Sending the request only for statistics
-            update_statistics = threading.Thread(target=CheckPackageUpdates.get_version_from_updates_server)
+            update_statistics = threading.Thread(target=CheckPackageUpdates.get_version_from_updates_server,
+                                                 args=(__version__,))
             update_statistics.daemon = True
             update_statistics.start()
 
@@ -323,7 +326,6 @@ class CheckPackageUpdates(object):
 
             releases = [Version(r) for r in releases]
             latest_version = sorted(releases)
-            from ..version import __version__
             cur_version = Version(__version__)
             if not cur_version.is_devrelease and not cur_version.is_prerelease:
                 latest_version = [r for r in latest_version if not r.is_devrelease and not r.is_prerelease]
@@ -336,8 +338,9 @@ class CheckPackageUpdates(object):
             return None
 
     @staticmethod
-    def get_version_from_updates_server():
+    def get_version_from_updates_server(cur_version):
         try:
-            _ = requests.get('https://updates.trainsai.io/updates', timeout=1.0)
+            _ = requests.get('https://updates.trainsai.io/updates',
+                             params=json.dumps({'versions': {'trains': str(cur_version)}}), timeout=1.0)
         except Exception:
             pass

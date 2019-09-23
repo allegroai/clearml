@@ -1,16 +1,15 @@
 import atexit
 import os
-import re
 import signal
 import sys
 import threading
 import time
 from argparse import ArgumentParser
 from collections import OrderedDict, Callable
+from typing import Optional
 
 import psutil
 import six
-from pathlib2 import Path
 
 from .binding.joblib_bind import PatchedJoblib
 from .backend_api.services import tasks, projects
@@ -29,7 +28,7 @@ from .errors import UsageError
 from .logger import Logger
 from .model import InputModel, OutputModel, ARCHIVED_TAG
 from .task_parameters import TaskParameters
-from .binding.artifacts import Artifacts
+from .binding.artifacts import Artifacts, Artifact
 from .binding.environ_bind import EnvironmentBind, PatchOsFork
 from .binding.absl_bind import PatchAbsl
 from .utilities.args import argparser_parseargs_called, get_argparser_last_args, \
@@ -41,6 +40,7 @@ from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
 from .binding.matplotlib_bind import PatchedMatplotlib
 from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
+from .utilities.dicts import ReadOnlyDict
 
 NotSet = object()
 
@@ -113,6 +113,7 @@ class Task(_Task):
 
     @classmethod
     def current_task(cls):
+        # type: () -> Task
         """
         Return the Current Task object for the main execution task (task context).
         :return: Task() object or None
@@ -279,7 +280,7 @@ class Task(_Task):
         # The logger will automatically take care of all patching (we just need to make sure to initialize it)
         logger = task.get_logger()
         # show the debug metrics page in the log, it is very convenient
-        logger.console(
+        logger.report_text(
             'TRAINS results page: {}/projects/{}/experiments/{}/output/log'.format(
                 task._get_app_server(),
                 task.project if task.project is not None else '*',
@@ -439,12 +440,12 @@ class Task(_Task):
         task._setup_log(replace_existing=True)
         logger = task.get_logger()
         if closed_old_task:
-            logger.console('TRAINS Task: Closing old development task id={}'.format(default_task.get('id')))
+            logger.report_text('TRAINS Task: Closing old development task id={}'.format(default_task.get('id')))
         # print warning, reusing/creating a task
         if default_task_id:
-            logger.console('TRAINS Task: overwriting (reusing) task id=%s' % task.id)
+            logger.report_text('TRAINS Task: overwriting (reusing) task id=%s' % task.id)
         else:
-            logger.console('TRAINS Task: created new task id=%s' % task.id)
+            logger.report_text('TRAINS Task: created new task id=%s' % task.id)
 
         # update current repository and put warning into logs
         if in_dev_mode and cls.__detect_repo_async:
@@ -462,8 +463,8 @@ class Task(_Task):
         thread.start()
         return task
 
-    @staticmethod
-    def get_task(task_id=None, project_name=None, task_name=None):
+    @classmethod
+    def get_task(cls, task_id=None, project_name=None, task_name=None):
         """
         Returns Task object based on either, task_id (system uuid) or task name
 
@@ -472,7 +473,7 @@ class Task(_Task):
         :param task_name: task name (str) in within the selected project
         :return: Task() object
         """
-        return Task.__get_task(task_id=task_id, project_name=project_name, task_name=task_name)
+        return cls.__get_task(task_id=task_id, project_name=project_name, task_name=task_name)
 
     @property
     def output_uri(self):
@@ -490,10 +491,14 @@ class Task(_Task):
     @property
     def artifacts(self):
         """
-        dictionary of Task artifacts (name, artifact)
+        read-only dictionary of Task artifacts (name, artifact)
         :return: dict
         """
-        return self._artifacts_manager.artifacts
+        if not Session.check_min_api_version('2.3'):
+            return ReadOnlyDict()
+        if not self.data.execution or not self.data.execution.artifacts:
+            return ReadOnlyDict()
+        return ReadOnlyDict([(a.key, Artifact(a)) for a in self.data.execution.artifacts])
 
     def set_comment(self, comment):
         """
@@ -553,6 +558,7 @@ class Task(_Task):
         raise Exception('Unsupported mutable type %s: no connect function found' % type(mutable).__name__)
 
     def get_logger(self, flush_period=NotSet):
+        # type: (Optional[float]) -> Logger
         """
         get a logger object for reporting based on the task
 
@@ -663,6 +669,15 @@ class Task(_Task):
         """
         self._artifacts_manager.unregister_artifact(name=name)
 
+    def get_registered_artifacts(self):
+        """
+        dictionary of Task registered artifacts (name, artifact object)
+        Notice these objects can be modified, changes will be uploaded automatically
+
+        :return: dict
+        """
+        return self._artifacts_manager.registered_artifacts
+
     def upload_artifact(self, name, artifact_object, metadata=None, delete_after_upload=False):
         """
         Add static artifact to Task. Artifact file/object will be uploaded in the background
@@ -671,6 +686,7 @@ class Task(_Task):
         :param str name: Artifact name. Notice! it will override previous artifact if name already exists
         :param object artifact_object: Artifact object to upload. Currently supports:
             - string / pathlib2.Path are treated as path to artifact file to upload
+                If wildcard or a folder is passed, zip file containing the local files will be created and uploaded.
             - dict will be stored as .json,
             - pandas.DataFrame will be stored as .csv.gz (compressed CSV file),
             - numpy.ndarray will be stored as .npz,
@@ -937,7 +953,7 @@ class Task(_Task):
         if self._at_exit_called:
             return
 
-        self.get_logger().warn(
+        self.log.warning(
             "### TASK STOPPED - USER ABORTED - {} ###".format(
                 stop_reason.upper().replace('_', ' ')
             )
@@ -1009,7 +1025,7 @@ class Task(_Task):
         # signal artifacts upload, and stop daemon
         self._artifacts_manager.stop(wait=True)
         # print artifacts summary
-        self.get_logger().console(self._artifacts_manager.summary)
+        self.get_logger().report_text(self._artifacts_manager.summary)
 
     def _at_exit(self):
         """

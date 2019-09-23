@@ -340,7 +340,6 @@ class InputModel(BaseModel):
         name=None,
         tags=None,
         comment=None,
-        logger=None,
         is_package=False,
         create_as_published=False,
         framework=None,
@@ -367,7 +366,6 @@ class InputModel(BaseModel):
         :param name: optional, name for the newly imported model
         :param tags: optional, list of strings as tags
         :param comment: optional, string description for the model
-        :param logger: The logger to use. If None, use the default logger
         :param is_package: Boolean. Indicates that the imported weights file is a package.
             If True, and a new model was created, a package tag will be added.
         :param create_as_published: Boolean. If True, and a new model is created, it will be published.
@@ -386,8 +384,7 @@ class InputModel(BaseModel):
         ))
 
         if result.response.models:
-            if not logger:
-                logger = get_logger()
+            logger = get_logger()
 
             logger.debug('A model with uri "{}" already exists. Selecting it'.format(weights_url))
 

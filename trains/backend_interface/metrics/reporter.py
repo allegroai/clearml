@@ -86,6 +86,10 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             # wait for all reports
             if self.get_num_results() > 0:
                 self.wait_for_results()
+        # make sure we flushed everything
+        self._write()
+        if self.get_num_results() > 0:
+            self.wait_for_results()
 
     def _report(self, ev):
         self._events.append(ev)

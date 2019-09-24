@@ -32,7 +32,8 @@ your experimentation logs, outputs, and data to one centralized server.
     * Explicit parameters dictionary
     * Tensorflow Defines (absl-py)
 * Initial model weights file
-* Model snapshots
+* Model snapshots (With optional automatic upload to central storage: Shared folder, S3, GS, Azure, Http)
+* Artifacts log & store (Shared folder, S3, GS, Azure, Http)
 * Tensorboard/TensorboardX scalars, metrics, histograms, images (with audio coming soon)
 * Matplotlib & Seaborn
 * Supported frameworks: Tensorflow, PyTorch, Keras, XGBoost and Scikit-Learn (MxNet is coming soon)

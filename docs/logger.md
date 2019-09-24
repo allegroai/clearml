@@ -11,20 +11,12 @@ Using the **TRAINS** [Logger](https://github.com/allegroai/trains/blob/master/tr
   * [Confusion matrices](#confusion-matrices)
   * [Surface diagrams](#surface-diagrams)
   * [Images](#images)
-  * [Files](#files)
   
 * Track hyper-parameters and OS environment variables
   * Logging experiment parameter [dictionaries](#logging-experiment-parameter-dictionaries)
   * Specifying [environment variables](#specifying-environment-variables-to-track) to track
 
 * Message logging
-  * [Debugging messages](#debugging-messages)
-  * [Informational messages](#informational-messages)
-  * [Warnings](#warnings) 
-  * [General errors](#general-errors)
-  * [Critial errors](#critical-errors)
-  * [Fatal errors](#fatal-errors)
-  * [Console and logger messages](#console-and-logger-messages)
   * [Reporting text without formatting](#reporting-text-without-formatting) 
   
 Additionally, the **TRAINS** Logger module provides methods that allow you to do the following:
@@ -834,7 +826,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 **Method**:
 
 ```python
-def report_image_and_upload(self, title, series, iteration, path=None, matrix=None, max_image_history=None, delete_after_upload=False)
+def report_image(self, title, series, iteration, local_path=None, matrix=None, max_image_history=None, delete_after_upload=False)
 ```
 
 **Arguments**:
@@ -921,111 +913,11 @@ def report_image_and_upload(self, title, series, iteration, path=None, matrix=No
             </td>
         </tr>
         <tr>
-            <td>path
+            <td>local_path
             </td>
             <td>string
             </td>
             <td>The path of the image file. If <code>matrix</code> is not specified, then <code>path</code> is required. The default values is <code>None</code>. 
-            </td>
-            <td>No
-            </td>
-        </tr>
-    </tbody>
-</table>
-
-### Files
-
-Use to upload a file and report a link to it. The file contents is uploaded to the bucket specified in the **TRAINS** configuration file,
-or a [a default upload destination](#set-default-upload-destination), if you set a default. 
-
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
-
-**Method**:
-
-```python
-def report_file_and_upload(self, title, series, iteration, path=None, max_file_history=None,
-                                delete_after_upload=False)
-```
-
-**Arguments**:
-
-<table width="100%">
-    <thead>
-        <tr>
-            <th width="15%">Parameter
-            </th>
-            <th width="25%">Type
-            </th>
-            <th width="55%">Description
-            </th>
-            <th width="5%">Mandatory
-            </th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>iteration
-            </td>
-            <td>integer
-            </td>
-            <td>The iteration number.
-            </td>
-            <td>Yes
-            </td>
-        </tr>
-        <tr>
-            <td>series
-            </td>
-            <td>string
-            </td>
-            <td>The label of the series.
-            </td>
-            <td>Yes
-            </td>
-        </tr>
-        <tr>
-            <td>title
-            </td>
-            <td>string
-            </td>
-            <td>The title of the image.
-            </td>
-            <td>Yes
-            </td>
-        </tr>
-        <tr>
-            <td>delete_after_upload
-            </td>
-            <td>boolean
-            </td>
-            <td>Indicates whether to delete the local copy of the file after uploading it. The values are:
-                <ul>
-                    <li><code>True</code> - delete
-                    </li>
-                    <li><code>False</code> - do not delete (default)
-                    </li>
-                </ul>
-            </td>
-            <td>No
-            </td>
-        </tr>
-        <tr>
-            <td>max_file_history
-            </td>
-            <td>integer
-            </td>
-            <td>The maximum number of images to store per metric / variant combination. For an unlimited number of files to store, specify a negative number.
-            The default value which is set in the global configuration is <code>5</code>.
-            </td>
-            <td>No
-            </td>
-        </tr>
-        <tr>
-            <td>path
-            </td>
-            <td>string
-            </td>
-            <td>The path of the file to upload. 
             </td>
             <td>No
             </td>

@@ -569,6 +569,8 @@ class StorageHelper(object):
             # we won't think we have the entire file
             temp_local_path = '{}_{}{}'.format(local_path, time(), self._temp_download_suffix)
             obj = self._get_object(remote_path)
+            if not obj:
+                return None
 
             # object size in bytes
             total_size_mb = -1

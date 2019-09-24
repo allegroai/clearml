@@ -114,17 +114,36 @@ class Artifact(object):
         self._metadata = dict(artifact_api_object.display_data) if artifact_api_object.display_data else {}
         self._preview = artifact_api_object.type_data.preview if artifact_api_object.type_data else None
 
-    def get_local_copy(self):
+    def get_local_copy(self, extract_archive=True):
         """
+        :param bool extract_archive: If True and artifact is of type 'archive' (compressed folder)
+            The returned path will be a temporary folder containing the archive content
         :return: a local path to a downloaded copy of the artifact
         """
         from trains.storage.helper import StorageHelper
-        return StorageHelper.get_local_copy(self.url)
+        local_path = StorageHelper.get_local_copy(self.url)
+        if local_path and extract_archive and self.type == 'archive':
+            try:
+                temp_folder = mkdtemp(prefix='artifact_', suffix='.archive_'+self.name)
+                ZipFile(local_path).extractall(path=temp_folder)
+            except Exception:
+                try:
+                    Path(temp_folder).rmdir()
+                except Exception:
+                    pass
+                return local_path
+            try:
+                Path(local_path).unlink()
+            except Exception:
+                pass
+            return temp_folder
+
+        return local_path
 
     def __repr__(self):
         return str({'name': self.name, 'size': self.size, 'type': self.type, 'mode': self.mode, 'url': self.url,
                     'hash': self.hash, 'timestamp': self.timestamp,
-                    'metadata': self.metadata, 'preview': self.preview,})
+                    'metadata': self.metadata, 'preview': self.preview, })
 
 
 class Artifacts(object):
@@ -294,7 +313,7 @@ class Artifacts(object):
                     os.close(fd)
 
                 artifact_object = zip_file
-                artifact_type = 'zip'
+                artifact_type = 'archive'
                 artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
                 local_filename = artifact_object
                 delete_after_upload = True

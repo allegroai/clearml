@@ -31,7 +31,8 @@ task.upload_artifact('Numpy Eye', np.eye(100, 100))
 # add and upload Image (stored as .png file)
 im = Image.open('samples/dancing.jpg')
 task.upload_artifact('pillow_image', im)
-
+# add and upload a folder, artifact_object should be the folder path
+task.upload_artifact('local folder', artifact_object='samples/')
 
 # do something
 sleep(1.)

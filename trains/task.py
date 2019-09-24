@@ -686,10 +686,10 @@ class Task(_Task):
         :param str name: Artifact name. Notice! it will override previous artifact if name already exists
         :param object artifact_object: Artifact object to upload. Currently supports:
             - string / pathlib2.Path are treated as path to artifact file to upload
-                If wildcard or a folder is passed, zip file containing the local files will be created and uploaded.
-            - dict will be stored as .json,
-            - pandas.DataFrame will be stored as .csv.gz (compressed CSV file),
-            - numpy.ndarray will be stored as .npz,
+                If wildcard or a folder is passed, zip file containing the local files will be created and uploaded
+            - dict will be stored as .json file and uploaded
+            - pandas.DataFrame will be stored as .csv.gz (compressed CSV file) and uploaded
+            - numpy.ndarray will be stored as .npz and uploaded
             - PIL.Image will be stored to .png file and uploaded
         :param dict metadata: Simple key/value dictionary to store on the artifact
         :param bool delete_after_upload: If True local artifact will be deleted

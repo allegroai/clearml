@@ -23,6 +23,7 @@ class Logger(object):
     **Usage:** :func:`Logger.current_logger` or :func:`Task.get_logger`
     """
     SeriesInfo = SeriesInfo
+    _tensorboard_logging_auto_group_scalars = False
 
     def __init__(self, private_task):
         """
@@ -445,6 +446,15 @@ class Logger(object):
                           max_image_history=max_image_history, delete_after_upload=delete_after_upload)
 
     @classmethod
+    def tensorboard_auto_group_scalars(cls, group_scalars=False):
+        """
+        If `group_scalars` set to True, we preserve backward compatible Tensorboard auto-magic behaviour,
+        i.e. Scalars without specific title will be grouped under the "Scalars" graph.
+        Default is False: Tensorboard scalars without title will have title/series with the same tag
+        """
+        cls._tensorboard_logging_auto_group_scalars = group_scalars
+
+    @classmethod
     def _remove_std_logger(cls):
         StdStreamPatch.remove_std_logger()
 
@@ -595,3 +605,12 @@ class Logger(object):
     def _flush_stdout_handler(self):
         if self._task_handler and DevWorker.report_stdout:
             self._task_handler.flush()
+
+    @classmethod
+    def _get_tensorboard_auto_group_scalars(cls):
+        """
+        :return: return True if we preserve Tensorboard backward compatibility behaviour,
+            i.e. Scalars without specific title will be under the "Scalars" graph
+            default is False: Tensorboard scalars without title will have title/series with the same tag
+        """
+        return cls._tensorboard_logging_auto_group_scalars

@@ -238,7 +238,9 @@ class EventTrainsWriter(object):
         return self._add_image_numpy(tag=tag, step=step, img_data_np=matrix)
 
     def _add_scalar(self, tag, step, scalar_data):
-        title, series = self.tag_splitter(tag, num_split_parts=1, default_title='Scalars', logdir_header='series_last')
+        default_title = tag if not self._logger._get_tensorboard_auto_group_scalars() else 'Scalars'
+        title, series = self.tag_splitter(tag, num_split_parts=1,
+                                          default_title=default_title, logdir_header='series_last')
 
         # update scalar cache
         num, value = self._scalar_report_cache.get((title, series), (0, 0))

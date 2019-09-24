@@ -596,6 +596,5 @@ response_mapping = {
     CreateCredentialsRequest: CreateCredentialsResponse,
     GetCredentialsRequest: GetCredentialsResponse,
     RevokeCredentialsRequest: RevokeCredentialsResponse,
-    DeleteUserRequest: DeleteUserResponse,
     EditUserRequest: EditUserResponse,
 }

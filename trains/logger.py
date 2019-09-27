@@ -39,6 +39,7 @@ class Logger(object):
         self._flusher = None
         self._report_worker = None
         self._task_handler = None
+        self._graph_titles = {}
 
         StdStreamPatch.patch_std_streams(self)
 
@@ -78,7 +79,7 @@ class Logger(object):
 
         # if task was not started, we have to start it
         self._start_task_if_needed()
-
+        self._touch_title_series(title, series)
         return self._task.reporter.report_scalar(title=title, series=series, value=float(value), iter=iteration)
 
     def report_vector(self, title, series, values, iteration, labels=None, xlabels=None):
@@ -92,6 +93,7 @@ class Logger(object):
         :param list(str) labels: optional, labels for each bar group.
         :param list(str) xlabels: optional label per entry in the vector (bucket in the histogram)
         """
+        self._touch_title_series(title, series)
         return self.report_histogram(title, series, values, iteration, labels=labels, xlabels=xlabels)
 
     def report_histogram(self, title, series, values, iteration, labels=None, xlabels=None):
@@ -111,7 +113,7 @@ class Logger(object):
 
         # if task was not started, we have to start it
         self._start_task_if_needed()
-
+        self._touch_title_series(title, series)
         return self._task.reporter.report_histogram(
             title=title,
             series=series,
@@ -140,7 +142,7 @@ class Logger(object):
 
         # if task was not started, we have to start it
         self._start_task_if_needed()
-
+        self._touch_title_series(title, series[0].name if series else '')
         return self._task.reporter.report_line_plot(
             title=title,
             series=series,
@@ -175,7 +177,7 @@ class Logger(object):
 
         # if task was not started, we have to start it
         self._start_task_if_needed()
-
+        self._touch_title_series(title, series)
         return self._task.reporter.report_2d_scatter(
             title=title,
             series=series,
@@ -228,7 +230,7 @@ class Logger(object):
 
         # if task was not started, we have to start it
         self._start_task_if_needed()
-
+        self._touch_title_series(title, series)
         return self._task.reporter.report_3d_scatter(
             title=title,
             series=series,
@@ -258,7 +260,7 @@ class Logger(object):
 
         # if task was not started, we have to start it
         self._start_task_if_needed()
-
+        self._touch_title_series(title, series)
         return self._task.reporter.report_value_matrix(
             title=title,
             series=series,
@@ -281,6 +283,7 @@ class Logger(object):
         :param list(str) xlabels: optional label per column of the matrix
         :param list(str) ylabels: optional label per row of the matrix
         """
+        self._touch_title_series(title, series)
         return self.report_confusion_matrix(title, series, matrix, iteration, xlabels=xlabels, ylabels=ylabels)
 
     def report_surface(self, title, series, matrix, iteration, xlabels=None, ylabels=None,
@@ -306,7 +309,7 @@ class Logger(object):
 
         # if task was not started, we have to start it
         self._start_task_if_needed()
-
+        self._touch_title_series(title, series)
         return self._task.reporter.report_value_surface(
             title=title,
             series=series,
@@ -351,7 +354,7 @@ class Logger(object):
             upload_uri = str(upload_uri)
             storage = StorageHelper.get(upload_uri)
             upload_uri = storage.verify_upload(folder_uri=upload_uri)
-
+        self._touch_title_series(title, series)
         self._task.reporter.report_image_and_upload(
             title=title,
             series=series,
@@ -605,6 +608,14 @@ class Logger(object):
     def _flush_stdout_handler(self):
         if self._task_handler and DevWorker.report_stdout:
             self._task_handler.flush()
+
+    def _touch_title_series(self, title, series):
+        if title not in self._graph_titles:
+            self._graph_titles[title] = set()
+        self._graph_titles[title].add(series)
+
+    def _get_used_title_series(self):
+        return self._graph_titles
 
     @classmethod
     def _get_tensorboard_auto_group_scalars(cls):

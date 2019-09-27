@@ -19,12 +19,14 @@ class ResourceMonitor(object):
     _title_gpu = ':monitor:gpu'
 
     def __init__(self, task, sample_frequency_per_sec=2., report_frequency_sec=30.,
-                 first_report_sec=None, wait_for_first_iteration_to_start_sec=180.):
+                 first_report_sec=None, wait_for_first_iteration_to_start_sec=180.0,
+                 max_wait_for_first_iteration_to_start_sec=1800.):
         self._task = task
         self._sample_frequency = sample_frequency_per_sec
         self._report_frequency = report_frequency_sec
         self._first_report_sec = first_report_sec or report_frequency_sec
         self._wait_for_first_iteration = wait_for_first_iteration_to_start_sec
+        self._max_check_first_iteration = max_wait_for_first_iteration_to_start_sec
         self._num_readouts = 0
         self._readouts = {}
         self._previous_readouts = {}
@@ -78,6 +80,11 @@ class ResourceMonitor(object):
                     self._task.get_logger().report_text('TRAINS Monitor: Could not detect iteration reporting, '
                                                         'falling back to iterations as seconds-from-start')
                     fallback_to_sec_as_iterations = True
+            elif fallback_to_sec_as_iterations is True and seconds_since_started <= self._max_check_first_iteration:
+                if self._check_logger_reported():
+                    fallback_to_sec_as_iterations = False
+                    self._task.get_logger().report_text('TRAINS Monitor: Reporting detected, '
+                                                        'reverting back to iteration based reporting')
 
             clear_readouts = True
             # if we do not have last_iteration, we just use seconds as iteration
@@ -206,3 +213,15 @@ class ResourceMonitor(object):
                     self._gpustat = None
 
         return stats
+
+    def _check_logger_reported(self):
+        titles = list(self._task.get_logger()._get_used_title_series().keys())
+        try:
+            titles.remove(self._title_machine)
+        except ValueError:
+            pass
+        try:
+            titles.remove(self._title_gpu)
+        except ValueError:
+            pass
+        return len(titles) > 0

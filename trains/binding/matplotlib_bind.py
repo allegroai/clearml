@@ -134,7 +134,8 @@ class PatchedMatplotlib:
             # store on the plot that this is an imshow plot
             stored_figure = _pylab_helpers.Gcf.get_active()
             if stored_figure:
-                stored_figure._trains_is_imshow = True
+                stored_figure._trains_is_imshow = 1 if not hasattr(stored_figure, '_trains_is_imshow') \
+                    else stored_figure._trains_is_imshow + 1
         except Exception:
             pass
         return ret
@@ -160,7 +161,9 @@ class PatchedMatplotlib:
         try:
             figures = PatchedMatplotlib._get_output_figures(None, all_figures=True)
             for figure in figures:
-                PatchedMatplotlib._report_figure(stored_figure=figure)
+                # if this is a stale figure (just updated) we should send it, the rest will not be stale
+                if figure.canvas.figure.stale or (hasattr(figure, '_trains_is_imshow') and figure._trains_is_imshow):
+                    PatchedMatplotlib._report_figure(stored_figure=figure)
         except Exception:
             pass
         ret = PatchedMatplotlib._patched_original_plot(*args, **kw)
@@ -193,9 +196,10 @@ class PatchedMatplotlib:
                     # nothing for us to do
                     return
                 # check if this is an imshow
-                if hasattr(stored_figure, '_trains_is_imshow') and stored_figure._trains_is_imshow:
-                    force_save_as_image = True
+                if hasattr(stored_figure, '_trains_is_imshow'):
                     # flag will be cleared when calling clf() (object will be replaced)
+                    stored_figure._trains_is_imshow = max(0, stored_figure._trains_is_imshow-1)
+                    force_save_as_image = True
                 # get current figure
                 mpl_fig = stored_figure.canvas.figure  # plt.gcf()
             else:

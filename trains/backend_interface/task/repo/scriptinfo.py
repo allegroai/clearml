@@ -455,9 +455,13 @@ class ScriptInfo(object):
             # if this is not jupyter, get the requirements.txt
         requirements = ''
         # create requirements if backend supports requirements
-        if create_requirements and not jupyter_filepath and Session.check_min_api_version('2.2'):
+        # if jupyter is present, requirements will be created in the background, when saving a snapshot
+        if not jupyter_filepath and Session.check_min_api_version('2.2'):
             script_requirements = ScriptRequirements(Path(repo_root).as_posix())
-            requirements = script_requirements.get_requirements()
+            if create_requirements:
+                requirements = script_requirements.get_requirements()
+        else:
+            script_requirements = None
 
         script_info = dict(
             repository=furl(repo_info.url).remove(username=True, password=True).tostr(),
@@ -480,7 +484,8 @@ class ScriptInfo(object):
         if not any(script_info.values()):
             script_info = None
 
-        return ScriptInfoResult(script=script_info, warning_messages=messages)
+        return (ScriptInfoResult(script=script_info, warning_messages=messages),
+                script_requirements)
 
     @classmethod
     def get(cls, filepath=sys.argv[0], check_uncommitted=True, create_requirements=True, log=None):
@@ -491,7 +496,7 @@ class ScriptInfo(object):
         except Exception as ex:
             if log:
                 log.warning("Failed auto-detecting task repository: {}".format(ex))
-        return ScriptInfoResult()
+        return ScriptInfoResult(), None
 
 
 @attr.s

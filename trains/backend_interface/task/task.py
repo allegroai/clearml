@@ -8,6 +8,7 @@ from threading import RLock, Thread
 import six
 from six.moves.urllib.parse import quote
 
+from ...backend_interface.task.repo.scriptinfo import ScriptRequirements
 from ...backend_interface.task.development.worker import DevWorker
 from ...backend_api import Session
 from ...backend_api.services import tasks, models, events, projects
@@ -199,11 +200,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             except Exception:
                 pass
 
+        # get repository and create requirements.txt from code base
         try:
             check_package_update_thread = Thread(target=check_package_update)
             check_package_update_thread.daemon = True
             check_package_update_thread.start()
-            result = ScriptInfo.get(log=self.log)
+            # do not request requirements, because it might be a long process, and we first want to update the git repo
+            result, script_requirements = ScriptInfo.get(log=self.log, create_requirements=False)
             for msg in result.warning_messages:
                 self.get_logger().report_text(msg)
 
@@ -212,9 +215,19 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             # overwrite it before we have a chance to call edit)
             self._edit(script=result.script)
             self.reload()
-            self._update_requirements(result.script.get('requirements') if result.script and
-                                                                           result.script.get('requirements') else '')
-            check_package_update_thread.join()
+            # if jupyter is present, requirements will be created in the background, when saving a snapshot
+            if result.script and script_requirements:
+                requirements = script_requirements.get_requirements()
+                if requirements:
+                    if not result.script['requirements']:
+                        result.script['requirements'] = {}
+                    result.script['requirements']['pip'] = requirements
+
+                self._update_requirements(result.script.get('requirements') or '')
+                self.reload()
+
+            # we do not want to wait for the check version thread,
+            # because someone might wait for us to finish the repo detection update
         except Exception as e:
             get_logger('task').debug(str(e))
 

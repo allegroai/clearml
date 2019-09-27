@@ -34,8 +34,7 @@ from .binding.absl_bind import PatchAbsl
 from .utilities.args import argparser_parseargs_called, get_argparser_last_args, \
     argparser_update_currenttask
 from .binding.frameworks.pytorch_bind import PatchPyTorchModelIO
-from .binding.frameworks.tensorflow_bind import PatchSummaryToEventTransformer, PatchTensorFlowEager, \
-    PatchKerasModelIO, PatchTensorflowModelIO
+from .binding.frameworks.tensorflow_bind import TensorflowBinding
 from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
 from .binding.matplotlib_bind import PatchedMatplotlib
 from .utilities.resource_monitor import ResourceMonitor
@@ -252,10 +251,7 @@ class Task(_Task):
                 PatchedJoblib.update_current_task(task)
                 PatchedMatplotlib.update_current_task(Task.__main_task)
                 PatchAbsl.update_current_task(Task.__main_task)
-                PatchSummaryToEventTransformer.update_current_task(task)
-                PatchTensorFlowEager.update_current_task(task)
-                PatchKerasModelIO.update_current_task(task)
-                PatchTensorflowModelIO.update_current_task(task)
+                TensorflowBinding.update_current_task(task)
                 PatchPyTorchModelIO.update_current_task(task)
                 PatchXGBoostModelIO.update_current_task(task)
             if auto_resource_monitoring:
@@ -346,7 +342,7 @@ class Task(_Task):
     def _create_dev_task(cls, default_project_name, default_task_name, default_task_type, reuse_last_task_id):
         if not default_project_name or not default_task_name:
             # get project name and task name from repository name and entry_point
-            result = ScriptInfo.get(create_requirements=False, check_uncommitted=False)
+            result, _ = ScriptInfo.get(create_requirements=False, check_uncommitted=False)
             if not default_project_name:
                 # noinspection PyBroadException
                 try:
@@ -1016,7 +1012,14 @@ class Task(_Task):
                 if self._detect_repo_async_thread:
                     try:
                         if self._detect_repo_async_thread.is_alive():
+                            self.log.info('Waiting for repository detection and full package requirement analysis')
                             self._detect_repo_async_thread.join(timeout=timeout)
+                            # because join has no return value
+                            if self._detect_repo_async_thread.is_alive():
+                                self.log.info('Repository and package analysis timed out ({} sec), '
+                                              'giving up'.format(timeout))
+                            else:
+                                self.log.info('Finished repository detection and package analysis')
                         self._detect_repo_async_thread = None
                     except Exception:
                         pass

@@ -688,7 +688,7 @@ class StorageHelper(object):
         if dest_path.startswith('http'):
             return True
         try:
-            self.upload_from_stream(stream=iter(b'trains'), dest_path=dest_path)
+            self.upload_from_stream(stream=six.BytesIO(b'trains'), dest_path=dest_path)
             self.delete(path=dest_path)
         except Exception:
             raise ValueError('Insufficient permissions for {}'.format(base_url))
@@ -861,7 +861,7 @@ class StorageHelper(object):
         except ConnectionError as ex:
             raise DownloadError
         except Exception as e:
-            self.log.exception('Storage helper problem for {}'.format(str(object_name)))
+            self.log.warning('Storage helper problem for {}: {}'.format(str(object_name), str(e)))
             return None
 
 

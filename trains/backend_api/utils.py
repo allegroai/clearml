@@ -26,27 +26,31 @@ def get_config():
     return config_obj
 
 
+class _RetryFilter(logging.Filter):
+    last_instance = None
+
+    def __init__(self, total, warning_after=5):
+        super(_RetryFilter, self).__init__()
+        self.total = total
+        self.display_warning_after = warning_after
+        _RetryFilter.last_instance = self
+
+    def filter(self, record):
+        if record.args and len(record.args) > 0 and isinstance(record.args[0], Retry):
+            left = (record.args[0].total, record.args[0].connect, record.args[0].read,
+                    record.args[0].redirect, record.args[0].status)
+            retry_left = max(left) - min(left)
+            return retry_left >= self.display_warning_after
+
+        return True
+
+
 def urllib_log_warning_setup(total_retries=10, display_warning_after=5):
-    class RetryFilter(logging.Filter):
-        last_instance = None
-
-        def __init__(self, total, warning_after=5):
-            super(RetryFilter, self).__init__()
-            self.total = total
-            self.display_warning_after = warning_after
-            self.last_instance = self
-
-        def filter(self, record):
-            if record.args and len(record.args) > 0 and isinstance(record.args[0], Retry):
-                retry_left = self.total - record.args[0].total
-                return retry_left >= self.display_warning_after
-
-            return True
-
-    urllib3_log = logging.getLogger('urllib3.connectionpool')
-    if urllib3_log:
-        urllib3_log.removeFilter(RetryFilter.last_instance)
-        urllib3_log.addFilter(RetryFilter(total_retries, display_warning_after))
+    for l in ('urllib3.connectionpool', 'requests.packages.urllib3.connectionpool'):
+        urllib3_log = logging.getLogger(l)
+        if urllib3_log:
+            urllib3_log.removeFilter(_RetryFilter.last_instance)
+            urllib3_log.addFilter(_RetryFilter(total_retries, display_warning_after))
 
 
 class TLSv1HTTPAdapter(HTTPAdapter):

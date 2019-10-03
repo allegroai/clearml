@@ -1,6 +1,6 @@
 import abc
 import time
-from threading import Lock
+from multiprocessing import Lock
 
 import attr
 import numpy as np

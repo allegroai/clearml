@@ -7,7 +7,8 @@ from copy import deepcopy
 from datetime import datetime
 from multiprocessing.pool import ThreadPool
 from tempfile import mkdtemp, mkstemp
-from threading import Thread, Event, RLock
+from threading import Thread, Event
+from multiprocessing import RLock
 from time import time
 
 import humanfriendly

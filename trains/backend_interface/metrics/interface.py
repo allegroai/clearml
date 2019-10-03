@@ -1,6 +1,6 @@
 from functools import partial
 from multiprocessing.pool import ThreadPool
-from threading import Lock
+from multiprocessing import Lock
 from time import time
 
 from humanfriendly import format_timespan

@@ -1,6 +1,6 @@
 import os
 import time
-from threading import Lock
+from multiprocessing import Lock
 
 import six
 

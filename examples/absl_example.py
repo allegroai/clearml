@@ -27,6 +27,7 @@ flags.DEFINE_string('echo5', '5', 'Text to echo.', module_name='test')
 parameters = {
     'list': [1, 2, 3],
     'dict': {'a': 1, 'b': 2},
+    'tuple': (1, 2, 3),
     'int': 3,
     'float': 2.2,
     'string': 'my string',
@@ -38,7 +39,7 @@ parameters['new_param'] = 'this is new'
 
 # changing the value of a parameter (new value will be stored instead of previous one)
 parameters['float'] = '9.9'
-
+print(parameters)
 
 def main(_):
     print('Running under Python {0[0]}.{0[1]}.{0[2]}'.format(sys.version_info), file=sys.stderr)

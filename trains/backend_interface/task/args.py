@@ -296,6 +296,14 @@ class _Arguments(object):
                     self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
                                            (str(k), str(param), str(k), str(v)))
                     continue
+            elif v_type == tuple:
+                try:
+                    p = str(param).strip().replace('(', '[', 1)[::-1].replace(')', ']', 1)[::-1]
+                    param = tuple(yaml.load(p, Loader=yaml.SafeLoader))
+                except Exception:
+                    self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
+                                           (str(k), str(param), str(k), str(v)))
+                    continue
             elif v_type == dict:
                 try:
                     p = str(param).strip()

@@ -63,7 +63,7 @@ class PatchOsFork(object):
             from ..task import Task
             if Task.current_task() is not None:
                 # bind sub-process logger
-                task = Task.init()
+                task = Task.init(project_name=None, task_name=None, task_type=None)
                 task.get_logger().flush()
 
                 # Hack: now make sure we setup the reporter thread

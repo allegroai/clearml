@@ -39,8 +39,10 @@ class _RetryFilter(logging.Filter):
         if record.args and len(record.args) > 0 and isinstance(record.args[0], Retry):
             left = (record.args[0].total, record.args[0].connect, record.args[0].read,
                     record.args[0].redirect, record.args[0].status)
-            retry_left = max(left) - min(left)
-            return retry_left >= self.display_warning_after
+            left = [l for l in left if isinstance(l, int)]
+            if left:
+                retry_left = max(left) - min(left)
+                return retry_left >= self.display_warning_after
 
         return True
 

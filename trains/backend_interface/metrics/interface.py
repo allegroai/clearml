@@ -25,6 +25,7 @@ class Metrics(InterfaceBase):
     """ Metrics manager and batch writer """
     _storage_lock = Lock()
     _file_upload_starvation_warning_sec = config.get('network.metrics.file_upload_starvation_warning_sec', None)
+    _file_upload_retries = 3
 
     @property
     def storage_key_prefix(self):
@@ -149,7 +150,7 @@ class Metrics(InterfaceBase):
                 
                 try:
                     storage = self._get_storage(upload_uri)
-                    url = storage.upload_from_stream(e.stream, e.url)
+                    url = storage.upload_from_stream(e.stream, e.url, retries=self._file_upload_retries)
                     e.event.update(url=url)
                 except Exception as exp:
                     log.warning("Failed uploading to {} ({})".format(

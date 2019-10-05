@@ -9,7 +9,7 @@ from typing import Text
 from ..binding.frameworks.tensorflow_bind import IsTensorboardInit
 
 try:
-    import gpustat
+    from .gpu import gpustat
 except ImportError:
     gpustat = None
 
@@ -36,8 +36,7 @@ class ResourceMonitor(object):
         self._gpustat_fail = 0
         self._gpustat = gpustat
         if not self._gpustat:
-            self._task.get_logger().report_text('TRAINS Monitor: GPU monitoring is not available, '
-                                                'run \"pip install gpustat\"')
+            self._task.get_logger().report_text('TRAINS Monitor: GPU monitoring is not available')
 
     def start(self):
         self._exit_event.clear()

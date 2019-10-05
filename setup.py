@@ -72,9 +72,6 @@ setup(
         'gs': [
             'google-cloud-storage>=1.13.2',
         ],
-        'gpu': [
-            'gpustat',
-        ],
     },
     package_data={
         'trains': ['config/default/*.conf', 'backend_api/config/default/*.conf']

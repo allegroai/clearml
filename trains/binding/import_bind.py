@@ -46,16 +46,16 @@ class PostImportHookPatching(object):
 
     @staticmethod
     def _patched_import3(name, globals=None, locals=None, fromlist=(), level=0):
-        already_imported = name in sys.modules
+        base_name = name.split('.')[0]
+        already_imported = (not base_name) or (base_name in sys.modules)
         mod = builtins.__org_import__(
             name,
             globals=globals,
             locals=locals,
             fromlist=fromlist,
             level=level)
-
-        if not already_imported and name in PostImportHookPatching._post_import_hooks:
-            for hook in PostImportHookPatching._post_import_hooks[name]:
+        if not already_imported and base_name in PostImportHookPatching._post_import_hooks:
+            for hook in PostImportHookPatching._post_import_hooks[base_name]:
                 hook()
         return mod
 

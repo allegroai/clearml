@@ -1,7 +1,7 @@
 import getpass
 import re
 from _socket import gethostname
-from datetime import datetime
+from datetime import datetime, timezone
 
 from ..backend_api.services import projects
 from ..debugging.log import get_logger
@@ -25,6 +25,11 @@ def get_or_create_project(session, project_name, description=None):
     return res.response.id
 
 
+# Hack for supporting windows
+def get_epoch_beginning_of_time(tzinfo=None):
+    return datetime(1970, 1, 1, tzinfo=tzinfo if tzinfo else timezone.utc)
+
+
 def get_single_result(entity, query, results, log=None, show_results=10, raise_on_error=True, sort_by_date=True):
     if not results:
         if not raise_on_error:
@@ -39,12 +44,13 @@ def get_single_result(entity, query, results, log=None, show_results=10, raise_o
         log.warning('More than one {entity} found when searching for `{query}`'
                     ' (showing first {show_results} {entity}s follow)'.format(**locals()))
         if sort_by_date:
+            relative_time = get_epoch_beginning_of_time()
             # sort results based on timestamp and return the newest one
             if hasattr(results[0], 'last_update'):
-                results = sorted(results, key=lambda x: int(x.last_update.strftime('%s')
+                results = sorted(results, key=lambda x: int((x.last_update - relative_time).total_seconds()
                                                             if x.last_update else 0), reverse=True)
             elif hasattr(results[0], 'created'):
-                results = sorted(results, key=lambda x: int(x.created.strftime('%s')
+                results = sorted(results, key=lambda x: int((x.created - relative_time).total_seconds()
                                                             if x.created else 0), reverse=True)
 
         for i, obj in enumerate(o if isinstance(o, dict) else o.to_dict() for o in results[:show_results]):

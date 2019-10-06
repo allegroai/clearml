@@ -1,5 +1,8 @@
 # TRAINS - Example of manual model configuration
 #
+import os
+from tempfile import gettempdir
+
 import torch
 from trains import Task
 
@@ -25,5 +28,6 @@ task.set_model_label_enumeration({'background': 0, 'cat': 1, 'dog': 2})
 print('Any model stored from this point onwards, will contain both model_config and label_enumeration')
 
 # storing the model, it will have the task network configuration and label enumeration
-torch.save(model, '/tmp/model')
+
+torch.save(model, os.path.join(gettempdir(), "model"))
 print('Model saved')

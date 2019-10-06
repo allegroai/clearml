@@ -491,6 +491,9 @@ class Task(_Task):
         if value and value != self.storage_uri:
             from .storage.helper import StorageHelper
             helper = StorageHelper.get(value)
+            if not helper:
+                raise ValueError("Could not get access credentials for '{}' "
+                                 ", check configuration file ~/trains.conf".format(value))
             helper.check_write_permissions(value)
         self.storage_uri = value
 

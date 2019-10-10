@@ -2,6 +2,9 @@
 #
 from __future__ import print_function
 import argparse
+import os
+from tempfile import gettempdir
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -117,7 +120,7 @@ def main():
         test(args, model, device, test_loader)
 
     if (args.save_model):
-        torch.save(model.state_dict(), "/tmp/mnist_cnn.pt")
+        torch.save(model.state_dict(), os.path.join(gettempdir(), "mnist_cnn.pt"))
 
 
 if __name__ == '__main__':

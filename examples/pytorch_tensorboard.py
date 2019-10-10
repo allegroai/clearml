@@ -3,6 +3,9 @@
 from __future__ import print_function
 
 import argparse
+import os
+from tempfile import gettempdir
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -122,5 +125,5 @@ def test():
 
 for epoch in range(1, args.epochs + 1):
     train(epoch)
-    torch.save(model, '/tmp/model{}'.format(epoch))
+    torch.save(model, os.path.join(gettempdir(), 'model{}'.format(epoch)))
 test()

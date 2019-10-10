@@ -30,6 +30,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os.path
+from tempfile import gettempdir
 
 from absl import app
 from absl import flags
@@ -42,8 +43,8 @@ task = Task.init(project_name='examples', task_name='tensorboard pr_curve')
 
 tf.compat.v1.disable_v2_behavior()
 FLAGS = flags.FLAGS
-
-flags.DEFINE_string('logdir', '/tmp/pr_curve_demo', 'Directory into which to write TensorBoard data.')
+flags.DEFINE_string('logdir', os.path.join(gettempdir(), "pr_curve_demo"),
+                    "Directory into which to write TensorBoard data.")
 
 flags.DEFINE_integer('steps', 10,
                      'Number of steps to generate for each PR curve.')

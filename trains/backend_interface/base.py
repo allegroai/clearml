@@ -19,6 +19,7 @@ from .session import SendError, SessionInterface
 class InterfaceBase(SessionInterface):
     """ Base class for a backend manager class """
     _default_session = None
+    _num_retry_warning_display = 1
 
     @property
     def session(self):
@@ -44,6 +45,7 @@ class InterfaceBase(SessionInterface):
     @classmethod
     def _send(cls, session, req, ignore_errors=False, raise_on_errors=True, log=None, async_enable=False):
         """ Convenience send() method providing a standardized error reporting """
+        num_retries = 0
         while True:
             error_msg = ''
             try:
@@ -61,8 +63,8 @@ class InterfaceBase(SessionInterface):
 
             except requests.exceptions.BaseHTTPError as e:
                 res = None
-                if log:
-                    log.warning('Failed sending %s: %s' % (str(type(req)), str(e)))
+                if log and num_retries >= cls._num_retry_warning_display:
+                    log.warning('Retrying, previous request failed %s: %s' % (str(type(req)), str(e)))
             except MaxRequestSizeError as e:
                 res = CallResult(meta=ResponseMeta.from_raw_data(status_code=400, text=str(e)))
                 error_msg = 'Failed sending: %s' % str(e)
@@ -75,14 +77,16 @@ class InterfaceBase(SessionInterface):
                 res = None
             except Exception as e:
                 res = None
-                if log:
-                    log.warning('Failed sending %s: %s' % (str(type(req)), str(e)))
+                if log and num_retries >= cls._num_retry_warning_display:
+                    log.warning('Retrying, previous request failed %s: %s' % (str(type(req)), str(e)))
 
             if res and res.meta.result_code <= 500:
                 # Proper backend error/bad status code - raise or return
                 if raise_on_errors:
                     raise SendError(res, error_msg)
                 return res
+
+            num_retries += 1
 
     def send(self, req, ignore_errors=False, raise_on_errors=True, async_enable=False):
         return self._send(session=self.session, req=req, ignore_errors=ignore_errors, raise_on_errors=raise_on_errors,

@@ -316,24 +316,21 @@ class CheckPackageUpdates(object):
         try:
             from ..version import __version__
             cls._package_version_checked = True
-            # Sending the request only for statistics
-            update_statistics = threading.Thread(target=CheckPackageUpdates.get_version_from_updates_server,
-                                                 args=(__version__,))
-            update_statistics.daemon = True
-            update_statistics.start()
-
-            releases = requests.get('https://pypi.python.org/pypi/trains/json', timeout=3.0).json()['releases'].keys()
-
-            releases = [Version(r) for r in releases]
-            latest_version = sorted(releases)
             cur_version = Version(__version__)
-            if not cur_version.is_devrelease and not cur_version.is_prerelease:
-                latest_version = [r for r in latest_version if not r.is_devrelease and not r.is_prerelease]
-
-            if cur_version >= latest_version[-1]:
+            update_server_releases = requests.get('https://updates.trainsai.io/updates',
+                                                  data=json.dumps({"versions": {"trains": str(cur_version)}}),
+                                                  timeout=3.0)
+            if update_server_releases.ok:
+                update_server_releases = update_server_releases.json()
+            else:
                 return None
-            not_patch_upgrade = latest_version[-1].release[:2] != cur_version.release[:2]
-            return str(latest_version[-1]), not_patch_upgrade
+            trains_answer = update_server_releases.get("trains", {})
+            latest_version = Version(trains_answer.get("version"))
+
+            if cur_version >= latest_version:
+                return None
+            not_patch_upgrade = latest_version.release[:2] == cur_version.release[:2]
+            return str(latest_version), not_patch_upgrade, trains_answer.get("description").split("\r\n")
         except Exception:
             return None
 
@@ -341,6 +338,8 @@ class CheckPackageUpdates(object):
     def get_version_from_updates_server(cur_version):
         try:
             _ = requests.get('https://updates.trainsai.io/updates',
-                             params=json.dumps({'versions': {'trains': str(cur_version)}}), timeout=1.0)
+                             data=json.dumps({"versions": {"trains": str(cur_version)}}),
+                             timeout=1.0)
+            return
         except Exception:
             pass

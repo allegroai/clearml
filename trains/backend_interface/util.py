@@ -1,7 +1,23 @@
 import getpass
 import re
 from _socket import gethostname
-from datetime import datetime, timezone
+from datetime import datetime
+try:
+    from datetime import timezone
+    utc_timezone = timezone.utc
+except ImportError:
+    from datetime import tzinfo, timedelta
+
+    class UTC(tzinfo):
+        def utcoffset(self, dt):
+            return timedelta(0)
+
+        def tzname(self, dt):
+            return "UTC"
+
+        def dst(self, dt):
+            return timedelta(0)
+    utc_timezone = UTC()
 
 from ..backend_api.services import projects
 from ..debugging.log import get_logger
@@ -26,8 +42,8 @@ def get_or_create_project(session, project_name, description=None):
 
 
 # Hack for supporting windows
-def get_epoch_beginning_of_time(tzinfo=None):
-    return datetime(1970, 1, 1, tzinfo=tzinfo if tzinfo else timezone.utc)
+def get_epoch_beginning_of_time(timezone_info=None):
+    return datetime(1970, 1, 1).replace(tzinfo=timezone_info if timezone_info else utc_timezone)
 
 
 def get_single_result(entity, query, results, log=None, show_results=10, raise_on_error=True, sort_by_date=True):

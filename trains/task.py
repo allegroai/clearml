@@ -41,8 +41,6 @@ from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
 from .utilities.dicts import ReadOnlyDict
 
-NotSet = object()
-
 
 class Task(_Task):
     """
@@ -66,6 +64,8 @@ class Task(_Task):
     """
 
     TaskTypes = _Task.TaskTypes
+
+    NotSet = object()
 
     __create_protection = object()
     __main_task = None
@@ -566,37 +566,15 @@ class Task(_Task):
 
         raise Exception('Unsupported mutable type %s: no connect function found' % type(mutable).__name__)
 
-    def get_logger(self, flush_period=NotSet):
-        # type: (Optional[float]) -> Logger
+    def get_logger(self):
+        # type: () -> Logger
         """
-        get a logger object for reporting based on the task
-
-        :param flush_period: The period of the logger flush.
-            If None of any other False value, will not flush periodically.
-            If a logger was created before, this will be the new period and
-            the old one will be discarded.
+        get a logger object for reporting, for this task context.
+        All reports (metrics, text etc.) related to this task are accessible in the web UI
 
         :return: Logger object
         """
-        if not self._logger:
-            # force update of base logger to this current task (this is the main logger task)
-            self._setup_log(replace_existing=self.is_main_task())
-            # Get a logger object
-            self._logger = Logger(private_task=self)
-            # make sure we set our reported to async mode
-            # we make sure we flush it in self._at_exit
-            self.reporter.async_enable = True
-            # if we just created the logger, set default flush period
-            if not flush_period or flush_period is NotSet:
-                flush_period = DevWorker.report_period
-
-        if isinstance(flush_period, (int, float)):
-            flush_period = int(abs(flush_period))
-
-        if flush_period is None or isinstance(flush_period, int):
-            self._logger.set_flush_period(flush_period)
-
-        return self._logger
+        return self._get_logger()
 
     def mark_started(self):
         """
@@ -818,6 +796,40 @@ class Task(_Task):
             Session.default_key = key
         if secret:
             Session.default_secret = secret
+
+    def _get_logger(self, flush_period=NotSet):
+        # type: (Optional[float]) -> Logger
+        """
+        get a logger object for reporting based on the task
+
+        :param flush_period: The period of the logger flush.
+            If None of any other False value, will not flush periodically.
+            If a logger was created before, this will be the new period and
+            the old one will be discarded.
+
+        :return: Logger object
+        """
+        pass
+
+        if not self._logger:
+            # force update of base logger to this current task (this is the main logger task)
+            self._setup_log(replace_existing=self.is_main_task())
+            # Get a logger object
+            self._logger = Logger(private_task=self)
+            # make sure we set our reported to async mode
+            # we make sure we flush it in self._at_exit
+            self.reporter.async_enable = True
+            # if we just created the logger, set default flush period
+            if not flush_period or flush_period is self.NotSet:
+                flush_period = DevWorker.report_period
+
+        if isinstance(flush_period, (int, float)):
+            flush_period = int(abs(flush_period))
+
+        if flush_period is None or isinstance(flush_period, int):
+            self._logger.set_flush_period(flush_period)
+
+        return self._logger
 
     def _connect_output_model(self, model):
         assert isinstance(model, OutputModel)

@@ -2,6 +2,7 @@
 import collections
 import itertools
 import logging
+import os
 from enum import Enum
 from threading import Thread
 from multiprocessing import RLock
@@ -189,9 +190,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 latest_version = CheckPackageUpdates.check_new_package_available(only_once=True)
                 if latest_version:
                     if not latest_version[1]:
+                        sep = os.linesep
                         self.get_logger().report_text(
-                            'TRAINS new package available: UPGRADE to v{} is recommended!'.format(
-                                latest_version[0]),
+                            'TRAINS new package available: UPGRADE to v{} is recommended! '
+                            '{}'.format(
+                                latest_version[0], sep.join(latest_version[2])),
                         )
                     else:
                         self.get_logger().report_text(

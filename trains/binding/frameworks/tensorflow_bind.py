@@ -236,7 +236,7 @@ class EventTrainsWriter(object):
             title=title,
             series=series,
             iteration=step,
-            matrix=img_data_np,
+            image=img_data_np,
             max_image_history=self.max_keep_images if max_keep_images is None else max_keep_images,
         )
 

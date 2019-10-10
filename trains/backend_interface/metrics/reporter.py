@@ -194,7 +194,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
                                 variant=self._normalize_name(series), iter=iter, src=src)
         self._report(ev)
 
-    def report_image_and_upload(self, title, series, iter, path=None, matrix=None, upload_uri=None,
+    def report_image_and_upload(self, title, series, iter, path=None, image=None, upload_uri=None,
                                 max_image_history=None, delete_after_upload=False):
         """
         Report an image and upload its contents. Image is uploaded to a preconfigured bucket (see setup_upload()) with
@@ -204,11 +204,11 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param series: Series (AKA variant)
         :type series: str
         :param iter: Iteration number
-        :type value: int
+        :type iter: int
         :param path: A path to an image file. Required unless matrix is provided.
         :type path: str
-        :param matrix: A 3D numpy.ndarray object containing image data (RGB). Required unless filename is provided.
-        :type matrix: str
+        :param image: Image data. Required unless filename is provided.
+        :type image: A PIL.Image.Image object or a 3D numpy.ndarray object
         :param max_image_history: maximum number of image to store per metric/variant combination
         use negative value for unlimited. default is set in global configuration (default=5)
         :param delete_after_upload: if True, one the file was uploaded the local copy will be deleted
@@ -216,11 +216,11 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         """
         if not self._storage_uri and not upload_uri:
             raise ValueError('Upload configuration is required (use setup_upload())')
-        if len([x for x in (path, matrix) if x is not None]) != 1:
-            raise ValueError('Expected only one of [filename, matrix]')
+        if len([x for x in (path, image) if x is not None]) != 1:
+            raise ValueError('Expected only one of [filename, image]')
         kwargs = dict(metric=self._normalize_name(title),
                       variant=self._normalize_name(series), iter=iter, image_file_history_size=max_image_history)
-        ev = ImageEvent(image_data=matrix, upload_uri=upload_uri, local_image_path=path,
+        ev = ImageEvent(image_data=image, upload_uri=upload_uri, local_image_path=path,
                         delete_after_upload=delete_after_upload, **kwargs)
         self._report(ev)
 
@@ -512,7 +512,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         # Hack: if the url doesn't start with http/s then the plotly will not be able to show it,
         # then we put the link under images not plots
         if not url.startswith('http'):
-            return self.report_image_and_upload(title=title, series=series, iter=iter, path=path, matrix=matrix,
+            return self.report_image_and_upload(title=title, series=series, iter=iter, path=path, image=matrix,
                                                 upload_uri=upload_uri, max_image_history=max_image_history)
 
         self._report(ev)

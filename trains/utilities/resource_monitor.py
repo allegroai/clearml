@@ -1,4 +1,5 @@
 import logging
+import os
 import warnings
 from time import time
 from threading import Thread, Event
@@ -35,8 +36,17 @@ class ResourceMonitor(object):
         self._exit_event = Event()
         self._gpustat_fail = 0
         self._gpustat = gpustat
+        self._active_gpus = None
         if not self._gpustat:
             self._task.get_logger().report_text('TRAINS Monitor: GPU monitoring is not available')
+        else:  # if running_remotely():
+            try:
+                active_gpus = os.environ.get('NVIDIA_VISIBLE_DEVICES', '') or \
+                              os.environ.get('CUDA_VISIBLE_DEVICES', '')
+                if active_gpus:
+                    self._active_gpus = [int(g.strip()) for g in active_gpus.split(',')]
+            except Exception:
+                pass
 
     def start(self):
         self._exit_event.clear()
@@ -54,6 +64,16 @@ class ResourceMonitor(object):
         reported = 0
         last_iteration = 0
         fallback_to_sec_as_iterations = None
+
+        # get max GPU ID, and make sure our active list is within range
+        if self._active_gpus:
+            try:
+                gpu_stat = self._gpustat.new_query()
+                if max(self._active_gpus) > len(gpu_stat.gpus) - 1:
+                    self._active_gpus = None
+            except Exception:
+                pass
+
         # last_iteration_interval = None
         # last_iteration_ts = 0
         # repeated_iterations = 0
@@ -197,6 +217,9 @@ class ResourceMonitor(object):
             try:
                 gpu_stat = self._gpustat.new_query()
                 for i, g in enumerate(gpu_stat.gpus):
+                    # only monitor the active gpu's, if none were selected, monitor everything
+                    if self._active_gpus and i not in self._active_gpus:
+                        continue
                     stats["gpu_%d_temperature" % i] = float(g["temperature.gpu"])
                     stats["gpu_%d_utilization" % i] = float(g["utilization.gpu"])
                     stats["gpu_%d_mem_usage" % i] = 100. * float(g["memory.used"]) / float(g["memory.total"])

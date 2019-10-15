@@ -392,6 +392,12 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         fd, local_filename = mkstemp(suffix='.'+ext)
         os.close(fd)
         local_download = helper.download_to_file(uri, local_path=local_filename, overwrite_existing=True, verbose=True)
+        # if we ended up without any local copy, delete the temp file
+        if local_download != local_filename:
+            try:
+                Path(local_filename).unlink()
+            except Exception:
+                pass
         # save local model, so we can later query what was the original one
         Model._local_model_to_id_uri[str(local_download)] = (self.model_id, uri)
         return local_download

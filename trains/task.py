@@ -694,7 +694,7 @@ class Task(_Task):
 
         If Task.init() was never called, this method will *not* create
         it, making this test cheaper than Task.init() == task
-        
+
         :return: True if this task is the current task
         """
         return self.is_main_task()
@@ -774,6 +774,21 @@ class Task(_Task):
         """
         self.data.last_iteration = int(last_iteration)
         self._edit(last_iteration=self.data.last_iteration)
+
+    def get_last_scalar_metrics(self):
+        """
+        Extract the last scalar metrics, ordered by title & series in a nested dictionary
+
+        :return: dict. Example: {'title': {'series': {'last': 0.5, 'min': 0.1, 'max': 0.9}}}
+        """
+        self.reload()
+        metrics = self.data.last_metrics
+        scalar_metrics = dict()
+        for i in metrics.values():
+            for j in i.values():
+                scalar_metrics.setdefault(j['metric'], {}).setdefault(
+                    j['variant'], {'last': j['value'], 'min': j['min_value'], 'max': j['max_value']})
+        return scalar_metrics
 
     @classmethod
     def set_credentials(cls, host=None, key=None, secret=None):
@@ -866,7 +881,7 @@ class Task(_Task):
         comment += 'Using model id: {}'.format(model.id)
         self.set_comment(comment)
         if self._last_input_model_id and self._last_input_model_id != model.id:
-            self.log.warning('Task connect, second input model is not supported, adding into comment section')
+            self.log.info('Task connect, second input model is not supported, adding into comment section')
             return
         self._last_input_model_id = model.id
         model.connect(self)
@@ -1331,7 +1346,7 @@ class Task(_Task):
         task_data = task_sessions.get(hash_key)
         if task_data is None:
             return None
-        
+
         try:
             task_data['type'] = cls.TaskTypes(task_data['type'])
         except (ValueError, KeyError):
@@ -1393,15 +1408,15 @@ class Task(_Task):
     def __task_is_relevant(cls, task_data):
         """
         Check that a cached task is relevant for reuse.
-        
+
         A task is relevant for reuse if:
             1. It is not timed out i.e it was last use in the previous 24 hours.
             2. It's name, project and type match the data in the server, so not
                to override user changes made by using the UI.
-               
+
         :param task_data: A mapping from 'id', 'name', 'project', 'type' keys
             to the task's values, as saved in the cache.
-            
+
         :return: True if the task is relevant for reuse, False if not.
         """
         if not task_data:

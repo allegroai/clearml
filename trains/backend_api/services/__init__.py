@@ -9,6 +9,8 @@ events = ApiServiceProxy('events')
 models = ApiServiceProxy('models')
 projects = ApiServiceProxy('projects')
 tasks = ApiServiceProxy('tasks')
+workers = ApiServiceProxy('workers')
+queues = ApiServiceProxy('queues')
 
 __all__ = [
     'auth',
@@ -16,4 +18,6 @@ __all__ = [
     'models',
     'projects',
     'tasks',
+    'workers',
+    'queues',
 ]

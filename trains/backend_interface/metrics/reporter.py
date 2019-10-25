@@ -224,7 +224,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
                         delete_after_upload=delete_after_upload, **kwargs)
         self._report(ev)
 
-    def report_histogram(self, title, series, histogram, iter, labels=None, xlabels=None, comment=None):
+    def report_histogram(self, title, series, histogram, iter, labels=None, xlabels=None,
+                         xtitle=None, ytitle=None, comment=None):
         """
         Report an histogram bar plot
         :param title: Title (AKA metric)
@@ -240,12 +241,16 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type labels: list of strings.
         :param xlabels: The labels of the x axis.
         :type xlabels: List of strings.
+        :param str xtitle: optional x-axis title
+        :param str ytitle: optional y-axis title
         :param comment: comment underneath the title
         :type comment: str
         """
         plotly_dict = create_2d_histogram_plot(
             np_row_wise=histogram,
             title=title,
+            xtitle=xtitle,
+            ytitle=ytitle,
             labels=labels,
             series=series,
             xlabels=xlabels,

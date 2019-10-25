@@ -87,7 +87,8 @@ class Logger(object):
         self._touch_title_series(title, series)
         return self._task.reporter.report_scalar(title=title, series=series, value=float(value), iter=iteration)
 
-    def report_vector(self, title, series, values, iteration, labels=None, xlabels=None):
+    def report_vector(self, title, series, values, iteration, labels=None, xlabels=None,
+                      xaxis=None, yaxis=None):
         """
         Report a histogram plot
 
@@ -97,11 +98,15 @@ class Logger(object):
         :param int iteration: Iteration number
         :param list(str) labels: optional, labels for each bar group.
         :param list(str) xlabels: optional label per entry in the vector (bucket in the histogram)
+        :param str xaxis: optional x-axis title
+        :param str yaxis: optional y-axis title
         """
         self._touch_title_series(title, series)
-        return self.report_histogram(title, series, values, iteration, labels=labels, xlabels=xlabels)
+        return self.report_histogram(title, series, values, iteration, labels=labels, xlabels=xlabels,
+                                     xaxis=xaxis, yaxis=yaxis)
 
-    def report_histogram(self, title, series, values, iteration, labels=None, xlabels=None):
+    def report_histogram(self, title, series, values, iteration, labels=None, xlabels=None,
+                         xaxis=None, yaxis=None):
         """
         Report a histogram plot
 
@@ -111,6 +116,8 @@ class Logger(object):
         :param int iteration: Iteration number
         :param list(str) labels: optional, labels for each bar group.
         :param list(str) xlabels: optional label per entry in the vector (bucket in the histogram)
+        :param str xaxis: optional x-axis title
+        :param str yaxis: optional y-axis title
         """
 
         if not isinstance(values, np.ndarray):
@@ -126,6 +133,8 @@ class Logger(object):
             iter=iteration,
             labels=labels,
             xlabels=xlabels,
+            xtitle=xaxis,
+            ytitle=yaxis,
         )
 
     def report_line_plot(self, title, series, iteration, xaxis, yaxis, mode='lines',
@@ -195,8 +204,8 @@ class Logger(object):
             comment=comment,
         )
 
-    def report_scatter3d(self, title, series, scatter, iteration, labels=None, mode='markers',
-                         fill=False, comment=None):
+    def report_scatter3d(self, title, series, scatter, iteration, xaxis=None, yaxis=None, zaxis=None,
+                         labels=None, mode='markers', fill=False, comment=None):
         """
         Report a 3d scatter graph (with markers)
 
@@ -205,6 +214,9 @@ class Logger(object):
         :param np.ndarray scatter: A scattered data: list of (pairs of x,y,z) (or numpy array)
             or list of series [[(x1,y1,z1)...]]
         :param int iteration: Iteration number
+        :param str xaxis: optional x-axis title
+        :param str yaxis: optional y-axis title
+        :param str zaxis: optional z-axis title
         :param list(str) labels: label (text) per point in the scatter (in the same order)
         :param str mode: scatter plot with 'lines'/'markers'/'lines+markers'
         :param bool fill: fill area under the curve
@@ -245,6 +257,9 @@ class Logger(object):
             mode=mode,
             fill=fill,
             comment=comment,
+            xtitle=xaxis,
+            ytitle=yaxis,
+            ztitle=zaxis,
         )
 
     def report_confusion_matrix(self, title, series, matrix, iteration, xlabels=None, ylabels=None, comment=None):

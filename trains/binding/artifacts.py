@@ -282,13 +282,21 @@ class Artifacts(object):
                 artifact_object = Path(artifact_object)
 
             artifact_object.expanduser().absolute()
-            create_zip_file = not artifact_object.is_file()
-            if artifact_object.is_dir():
-                # change to wildcard
-                artifact_object = artifact_object / '*'
+            try:
+                create_zip_file = not artifact_object.is_file()
+            except Exception:  # Hack for windows pathlib2 bug, is_file isn't valid.
+                create_zip_file = True
+            else:  # We assume that this is not Windows os
+                if artifact_object.is_dir():
+                    # change to wildcard
+                    artifact_object /= '*'
 
             if create_zip_file:
                 folder = Path('').joinpath(*artifact_object.parts[:-1])
+                if not folder.is_dir():
+                    raise ValueError("Artifact file/folder '{}' could not be found".format(
+                        artifact_object.as_posix()))
+
                 wildcard = artifact_object.parts[-1]
                 files = list(Path(folder).rglob(wildcard))
                 override_filename_ext_in_uri = '.zip'
@@ -319,6 +327,9 @@ class Artifacts(object):
                 local_filename = artifact_object
                 delete_after_upload = True
             else:
+                if not artifact_object.is_file():
+                    raise ValueError("Artifact file '{}' could not be found".format(artifact_object.as_posix()))
+
                 override_filename_in_uri = artifact_object.parts[-1]
                 artifact_object = artifact_object.as_posix()
                 artifact_type = 'custom'

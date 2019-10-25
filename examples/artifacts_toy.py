@@ -33,6 +33,8 @@ im = Image.open('samples/dancing.jpg')
 task.upload_artifact('pillow_image', im)
 # add and upload a folder, artifact_object should be the folder path
 task.upload_artifact('local folder', artifact_object='samples/')
+# add and upload a wildcard
+task.upload_artifact('local folder', artifact_object='samples/*.jpg')
 
 # do something
 sleep(1.)

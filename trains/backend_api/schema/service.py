@@ -4,8 +4,7 @@ import re
 import attr
 import six
 
-import pyhocon
-
+from ...utilities.pyhocon import ConfigTree
 from .action import Action
 
 
@@ -56,7 +55,7 @@ class Service(object):
 
     def parse(self, service_config):
         self._default = service_config.get(
-            "_default", pyhocon.ConfigTree()
+            "_default", ConfigTree()
         ).as_plain_ordered_dict()
 
         self._doc = '{} service'.format(self.name)
@@ -64,7 +63,7 @@ class Service(object):
         if description:
             self._doc += '\n\n{}'.format(description)
         self._definitions = service_config.get(
-            "_definitions", pyhocon.ConfigTree()
+            "_definitions", ConfigTree()
         ).as_plain_ordered_dict()
         self._definitions_refs = {
             k: self._get_schema_references(v) for k, v in self._definitions.items()

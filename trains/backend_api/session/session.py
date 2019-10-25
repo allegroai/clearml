@@ -7,7 +7,7 @@ from six.moves.urllib.parse import urlparse, urlunparse
 import jwt
 import requests
 import six
-from pyhocon import ConfigTree
+from ...utilities.pyhocon import ConfigTree
 from requests.auth import HTTPBasicAuth
 
 from .callresult import CallResult

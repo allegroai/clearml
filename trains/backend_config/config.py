@@ -9,10 +9,9 @@ from fnmatch import fnmatch
 from os.path import expanduser
 from typing import Any
 
-import pyhocon
 import six
 from pathlib2 import Path
-from pyhocon import ConfigTree
+from ..utilities.pyhocon import ConfigTree, ConfigFactory
 from pyparsing import (
     ParseFatalException,
     ParseException,
@@ -310,7 +309,7 @@ class Config(object):
             print("Loading config from file %s" % file_path)
 
         try:
-            return pyhocon.ConfigFactory.parse_file(file_path)
+            return ConfigFactory.parse_file(file_path)
         except ParseSyntaxException as ex:
             msg = "Failed parsing {0} ({1.__class__.__name__}): (at char {1.loc}, line:{1.lineno}, col:{1.column})".format(
                 file_path, ex

@@ -10,7 +10,7 @@ import six
 from .backend_api import Session
 from .backend_api.services import models
 from pathlib2 import Path
-from pyhocon import ConfigFactory, HOCONConverter
+from .utilities.pyhocon import ConfigFactory, HOCONConverter
 
 from .backend_interface.util import validate_dict, get_single_result, mutually_exclusive
 from .debugging.log import get_logger
@@ -288,14 +288,15 @@ class BaseModel(object):
         if not isinstance(config, dict):
             raise ValueError("Model configuration only supports dictionary objects")
         try:
-            # hack, pyhocon is not very good with dict conversion so we pass through json
             try:
+                text = HOCONConverter.to_hocon(ConfigFactory.from_dict(config))
+            except Exception:
+                # fallback json+pyhocon
+                # hack, pyhocon is not very good with dict conversion so we pass through json
                 import json
                 text = json.dumps(config)
-                text = HOCONConverter.convert(ConfigFactory.parse_string(text), 'hocon')
-            except Exception:
-                # fallback pyhocon
-                text = HOCONConverter.convert(ConfigFactory.from_dict(config), 'hocon')
+                text = HOCONConverter.to_hocon(ConfigFactory.parse_string(text))
+
         except Exception:
             raise ValueError("Could not serialize configuration dictionary:\n", config)
         return text

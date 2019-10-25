@@ -1,7 +1,7 @@
 from __future__ import print_function
 
 from six.moves import input
-from pyhocon import ConfigFactory
+from ...utilities.pyhocon import ConfigFactory
 from pathlib2 import Path
 from six.moves.urllib.parse import urlparse
 

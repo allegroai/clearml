@@ -15,7 +15,7 @@ from ...backend_interface.task.development.worker import DevWorker
 from ...backend_api import Session
 from ...backend_api.services import tasks, models, events, projects
 from pathlib2 import Path
-from pyhocon import ConfigTree, ConfigFactory
+from ...utilities.pyhocon import ConfigTree, ConfigFactory
 
 from ..base import IdObjectBase
 from ..metrics import Metrics, Reporter
@@ -192,8 +192,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     if not latest_version[1]:
                         sep = os.linesep
                         self.get_logger().report_text(
-                            'TRAINS new package available: UPGRADE to v{} is recommended! '
-                            '{}'.format(
+                            'TRAINS new package available: UPGRADE to v{} is recommended!\nRelease Notes:\n{}'.format(
                                 latest_version[0], sep.join(latest_version[2])),
                         )
                     else:
@@ -790,8 +789,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._edit(script=script)
 
     @classmethod
-    def clone_task(cls, cloned_task_id, name=None, comment=None, execution_overrides=None,
-                   tags=None, parent=None, project=None, log=None, session=None):
+    def _clone_task(cls, cloned_task_id, name=None, comment=None, execution_overrides=None,
+                    tags=None, parent=None, project=None, log=None, session=None):
         """
         Clone a task
 
@@ -847,7 +846,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             script=task.script
         )
         res = cls._send(session=session, log=log, req=req)
-        return res.response.id
+        cloned_task_id = res.response.id
+
+        if task.script and task.script.requirements:
+            cls._send(session=session, log=log, req=tasks.SetRequirementsRequest(
+                task=cloned_task_id, requirements=task.script.requirements))
+        return cloned_task_id
 
     @classmethod
     def get_all(cls, session=None, log=None, **kwargs):

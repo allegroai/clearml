@@ -694,7 +694,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 **Method**:
 
 ```python
-def report_surface(self, title, series, matrix, iteration, xlabels=None, ylabels=None, xtitle=None, ytitle=None, camera=None, comment=None)
+def report_surface(self, title, series, matrix, iteration, xlabels=None, ylabels=None, xaxis=None, yaxis=None, camera=None, comment=None)
 ```
 
 **Arguments**:
@@ -784,7 +784,7 @@ def report_surface(self, title, series, matrix, iteration, xlabels=None, ylabels
             </td>
         </tr>
         <tr>
-            <td>xtitle
+            <td>xaxis
             </td>
             <td>string
             </td>
@@ -804,7 +804,7 @@ def report_surface(self, title, series, matrix, iteration, xlabels=None, ylabels
             </td>
         </tr>
         <tr>
-            <td>ytitle
+            <td>yaxis
             </td>
             <td>string
             </td>

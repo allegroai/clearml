@@ -262,7 +262,8 @@ class Logger(object):
             ztitle=zaxis,
         )
 
-    def report_confusion_matrix(self, title, series, matrix, iteration, xlabels=None, ylabels=None, comment=None):
+    def report_confusion_matrix(self, title, series, matrix, iteration, xaxis=None, yaxis=None,
+                                xlabels=None, ylabels=None, comment=None):
         """
         Report a heat-map matrix
 
@@ -270,6 +271,8 @@ class Logger(object):
         :param str series: Series (AKA variant)
         :param np.ndarray matrix: A heat-map matrix (example: confusion matrix)
         :param int iteration: Iteration number
+        :param str xaxis: optional x-axis title
+        :param str yaxis: optional y-axis title
         :param list(str) xlabels: optional label per column of the matrix
         :param list(str) ylabels: optional label per row of the matrix
         :param str comment: comment underneath the title
@@ -286,12 +289,14 @@ class Logger(object):
             series=series,
             data=matrix.astype(np.float32),
             iter=iteration,
+            xtitle=xaxis,
+            ytitle=yaxis,
             xlabels=xlabels,
             ylabels=ylabels,
             comment=comment,
         )
 
-    def report_matrix(self, title, series, matrix, iteration, xlabels=None, ylabels=None):
+    def report_matrix(self, title, series, matrix, iteration, xaxis=None, yaxis=None, xlabels=None, ylabels=None):
         """
         Same as report_confusion_matrix
         Report a heat-map matrix
@@ -300,14 +305,17 @@ class Logger(object):
         :param str series: Series (AKA variant)
         :param np.ndarray matrix: A heat-map matrix (example: confusion matrix)
         :param int iteration: Iteration number
+        :param str xaxis: optional x-axis title
+        :param str yaxis: optional y-axis title
         :param list(str) xlabels: optional label per column of the matrix
         :param list(str) ylabels: optional label per row of the matrix
         """
         self._touch_title_series(title, series)
-        return self.report_confusion_matrix(title, series, matrix, iteration, xlabels=xlabels, ylabels=ylabels)
+        return self.report_confusion_matrix(title, series, matrix, iteration,
+                                            xaxis=xaxis, yaxis=yaxis, xlabels=xlabels, ylabels=ylabels)
 
-    def report_surface(self, title, series, matrix, iteration, xlabels=None, ylabels=None,
-                       xtitle=None, ytitle=None, ztitle=None, camera=None, comment=None):
+    def report_surface(self, title, series, matrix, iteration, xaxis=None, yaxis=None, zaxis=None,
+                       xlabels=None, ylabels=None, camera=None, comment=None):
         """
         Report a 3d surface (same data as heat-map matrix, only presented differently)
 
@@ -315,11 +323,11 @@ class Logger(object):
         :param str series: Series (AKA variant)
         :param np.ndarray matrix: A heat-map matrix (example: confusion matrix)
         :param int iteration: Iteration number
+        :param str xaxis: optional x-axis title
+        :param str yaxis: optional y-axis title
+        :param str zaxis: optional z-axis title
         :param list(str) xlabels: optional label per column of the matrix
         :param list(str) ylabels: optional label per row of the matrix
-        :param str xtitle: optional x-axis title
-        :param str ytitle: optional y-axis title
-        :param str ztitle: optional z-axis title
         :param list(float) camera: X,Y,Z camera position. def: (1,1,1)
         :param str comment: comment underneath the title
         """
@@ -337,9 +345,9 @@ class Logger(object):
             iter=iteration,
             xlabels=xlabels,
             ylabels=ylabels,
-            xtitle=xtitle,
-            ytitle=ytitle,
-            ztitle=ztitle,
+            xtitle=xaxis,
+            ytitle=yaxis,
+            ztitle=zaxis,
             camera=camera,
             comment=comment,
         )

@@ -36,11 +36,11 @@ logger.report_histogram("example_histogram", "random histogram", iteration=1, va
 
 # report confusion matrix
 confusion = np.random.randint(10, size=(10, 10))
-logger.report_matrix("example_confusion", "ignored", iteration=1, matrix=confusion)
+logger.report_matrix("example_confusion", "ignored", iteration=1, matrix=confusion, xaxis="title X", yaxis="title Y")
 
 # report 3d surface
 logger.report_surface("example_surface", "series1", iteration=1, matrix=confusion,
-                      xtitle="title X", ytitle="title Y", ztitle="title Z")
+                      xaxis="title X", yaxis="title Y", zaxis="title Z")
 
 # report 2d scatter plot
 scatter2d = np.hstack((np.atleast_2d(np.arange(0, 10)).T, np.random.randint(10, size=(10, 1))))

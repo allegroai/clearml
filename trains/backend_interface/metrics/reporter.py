@@ -407,7 +407,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             iter=iter,
         )
 
-    def report_value_matrix(self, title, series, data, iter, xlabels=None, ylabels=None, comment=None):
+    def report_value_matrix(self, title, series, data, iter, xtitle=None, ytitle=None, xlabels=None, ylabels=None, comment=None):
         """
         Report a heat-map matrix
 
@@ -419,6 +419,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type data: ndarray
         :param iter: Iteration number
         :type iter: int
+        :param str xtitle: optional x-axis title
+        :param str ytitle: optional y-axis title
         :param xlabels: optional label per column of the matrix
         :param ylabels: optional label per row of the matrix
         :param comment: comment underneath the title
@@ -431,6 +433,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             ylabels=ylabels,
             series=series,
             comment=comment,
+            xtitle=xtitle,
+            ytitle=ytitle,
         )
 
         return self.report_plot(

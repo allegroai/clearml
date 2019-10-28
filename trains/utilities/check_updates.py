@@ -317,7 +317,7 @@ class CheckPackageUpdates(object):
             from ..version import __version__
             cls._package_version_checked = True
             cur_version = Version(__version__)
-            update_server_releases = requests.get('https://updates.trainsai.io/updates',
+            update_server_releases = requests.get('https://updates.trains.allegro.ai/updates',
                                                   data=json.dumps({"versions": {"trains": str(cur_version)}}),
                                                   timeout=3.0)
             if update_server_releases.ok:
@@ -337,7 +337,7 @@ class CheckPackageUpdates(object):
     @staticmethod
     def get_version_from_updates_server(cur_version):
         try:
-            _ = requests.get('https://updates.trainsai.io/updates',
+            _ = requests.get('https://updates.trains.allegro.ai/updates',
                              data=json.dumps({"versions": {"trains": str(cur_version)}}),
                              timeout=1.0)
             return

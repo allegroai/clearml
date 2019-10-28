@@ -43,9 +43,9 @@ class Session(TokenManager):
     _write_session_timeout = (300.0, 300.)
 
     api_version = '2.1'
-    default_host = "https://demoapi.trainsai.io"
-    default_web = "https://demoapp.trainsai.io"
-    default_files = "https://demofiles.trainsai.io"
+    default_host = "https://demoapi.trains.allegro.ai"
+    default_web = "https://demoapp.trains.allegro.ai"
+    default_files = "https://demofiles.trains.allegro.ai"
     default_key = "EGRTCO8JMSIGI6S39GTP43NFWXDQOW"
     default_secret = "x!XTov_G-#vspE*Y(h$Anm&DIc5Ou-F)jsl$PdOyj5wG1&E!Z8"
 

@@ -17,8 +17,8 @@ We designed TRAINS specifically to require effortless integration so that teams 
 and practices. Use it on a daily basis to boost collaboration and visibility, or use it to automatically collect
 your experimentation logs, outputs, and data to one centralized server.
 
-(Experience TRAINS live at [https://demoapp.trainsai.io](https://demoapp.trainsai.io))
-<a href="https://demoapp.trainsai.io"><img src="https://github.com/allegroai/trains/blob/master/docs/webapp_screenshots.gif?raw=true" width="100%"></a>
+(Experience TRAINS live at [https://demoapp.trains.allegro.ai](https://demoapp.trains.allegro.ai))
+<a href="https://demoapp.trains.allegro.ai"><img src="https://github.com/allegroai/trains/blob/master/docs/webapp_screenshots.gif?raw=true" width="100%"></a>
 
 ## TRAINS Automatically Logs Everything
 **With only two lines of code, this is what you are getting:**
@@ -67,7 +67,7 @@ TRAINS is a two part solution:
     - Run your code. When TRAINS connects to the server, a link is printed. For example
 
             TRAINS Results page:
-            https://demoapp.trainsai.io/projects/76e5e2d45e914f52880621fe64601e85/experiments/241f06ae0f5c4b27b8ce8b64890ce152/output/log
+            https://demoapp.trains.allegro.ai/projects/76e5e2d45e914f52880621fe64601e85/experiments/241f06ae0f5c4b27b8ce8b64890ce152/output/log
 
     - Open the link and view your experiment parameters, model and tensorboard metrics
 
@@ -75,7 +75,7 @@ TRAINS is a two part solution:
 
 2. [TRAINS-server](https://github.com/allegroai/trains-server) for logging, querying, control and UI ([Web-App](https://github.com/allegroai/trains-web))
 
-We have a demo server up and running at [https://demoapp.trainsai.io](https://demoapp.trainsai.io). You can try out TRAINS and test your code with it.
+We have a demo server up and running at [https://demoapp.trains.allegro.ai](https://demoapp.trains.allegro.ai). You can try out TRAINS and test your code with it.
 Note that it resets every 24 hours and all of the data is deleted.
 
 When you are ready to use your own TRAINS server, go ahead and [install *TRAINS-server*](https://github.com/allegroai/trains-server).

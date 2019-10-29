@@ -57,6 +57,18 @@ TRAINS is a two part solution:
     - Install TRAINS
 
             pip install trains
+    		
+		<details>
+		<summary>Add optional cloud storage support (S3/GoogleStorage/Azure):</summary>
+
+		```bash
+		pip install trains[s3]
+		pip install trains[gs]
+		pip install trains[azure]
+		```
+		
+		</details>
+
 
     - Add the following lines to your code
 

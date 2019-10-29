@@ -1392,15 +1392,26 @@ class Task(_Task):
         )
         project = get_single_result(entity='project', query=project_name, results=res.response.projects)
 
+        system_tags = 'system_tags' if hasattr(tasks.Task, 'system_tags') else 'tags'
         res = cls._send(
             cls._get_default_session(),
             tasks.GetAllRequest(
                 project=[project.id],
                 name=exact_match_regex(task_name),
-                only_fields=['id', 'name', 'last_update']
+                only_fields=['id', 'name', 'last_update', system_tags]
             )
         )
-        task = get_single_result(entity='task', query=task_name, results=res.response.tasks, raise_on_error=False)
+        res_tasks = res.response.tasks
+        # if we have more than one result, first filter 'archived' results:
+        if len(res_tasks) > 1:
+            filtered_tasks = [t for t in res_tasks if not getattr(t, system_tags, None) or
+                              'archived' not in getattr(t, system_tags, None)]
+            if filtered_tasks:
+                res_tasks = filtered_tasks
+
+        task = get_single_result(entity='task', query=task_name, results=res_tasks, raise_on_error=False)
+        if not task:
+            return None
 
         return cls(
             private=cls.__create_protection,

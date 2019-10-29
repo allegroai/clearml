@@ -1,6 +1,8 @@
 # TRAINS
 ## Auto-Magical Experiment Manager & Version Control for AI
 
+## :tada: Now with Full DevOps :confetti_ball: checkout the new addition [TRAINS AGENT](https://github.com/allegroai/trains-agent)
+
 "Because it’s a jungle out there"
 
 [![GitHub license](https://img.shields.io/github/license/allegroai/trains.svg)](https://img.shields.io/github/license/allegroai/trains.svg)

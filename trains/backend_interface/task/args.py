@@ -211,6 +211,22 @@ class _Arguments(object):
                         task_arguments[k] = v
                     except Exception:
                         pass
+                elif current_action and current_action.type == bool:
+                    # parser.set_defaults cannot cast string `False`/`True` to boolean properly,
+                    # so we have to do it manually here
+                    strip_v = str(v).lower().strip()
+                    if strip_v == 'false' or not strip_v:
+                        v = False
+                    elif strip_v == 'true':
+                        v = True
+                    else:
+                        # else, try to cast to integer
+                        try:
+                            v = int(strip_v)
+                        except ValueError:
+                            pass
+                    task_arguments[k] = v
+
                 # add as default
                 try:
                     if current_action and isinstance(current_action, _SubParsersAction):

@@ -389,7 +389,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return self._reporter
 
     def _get_output_destination_suffix(self, extra_path=None):
-        return '/'.join(quote(x, safe='[]{}()$^,.; -_+-=') for x in
+        return '/'.join(quote(x, safe="'[]{}()$^,.; -_+-=") for x in
                         (self.get_project_name(), '%s.%s' % (self.name, self.data.id), extra_path) if x)
 
     def _reload(self):

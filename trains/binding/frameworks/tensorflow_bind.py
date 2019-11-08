@@ -66,6 +66,15 @@ class EventTrainsWriter(object):
     _title_series_writers_lookup = {}
     _event_writers_id_to_logdir = {}
 
+    # Protect against step (iteration) reuse, for example,
+    # steps counter inside an epoch, but wrapping around when epoch ends
+    # i.e. step = 0..100 then epoch ends and again step = 0..100
+    # We store the first report per title/series combination, and if wraparound occurs
+    # we synthetically continue to increase the step/iteration based on the previous epoch counter
+    # example: _title_series_wraparound_counter[('title', 'series')] =
+    #           {'first_step':None, 'last_step':None, 'adjust_counter':0,}
+    _title_series_wraparound_counter = {}
+
     @property
     def variants(self):
         return self._variants
@@ -111,8 +120,8 @@ class EventTrainsWriter(object):
                 org_series = series
                 org_title = title
                 other_logdir = self._event_writers_id_to_logdir[event_writer_id]
-                split_logddir = self._logdir.split(os.path.sep)
-                unique_logdir = set(split_logddir) - set(other_logdir.split(os.path.sep))
+                split_logddir = self._logdir.split('/')
+                unique_logdir = set(split_logddir) - set(other_logdir.split('/'))
                 header = '/'.join(s for s in split_logddir if s in unique_logdir)
                 if logdir_header == 'series_last':
                     series = header + ': ' + series
@@ -160,6 +169,9 @@ class EventTrainsWriter(object):
         # We are the events_writer, so that's what we'll pass
         IsTensorboardInit.set_tensorboard_used()
         self._logdir = logdir or ('unknown %d' % len(self._event_writers_id_to_logdir))
+        # conform directory structure to unix
+        if os.path.sep == '\\':
+            self._logdir = self._logdir.replace('\\', '/')
         self._id = hash(self._logdir)
         self._event_writers_id_to_logdir[self._id] = self._logdir
         self.max_keep_images = max_keep_images
@@ -220,6 +232,8 @@ class EventTrainsWriter(object):
 
         title, series = self.tag_splitter(tag, num_split_parts=3, default_title='Images', logdir_header='title',
                                           auto_reduce_num_split=True)
+        step = self._fix_step_counter(title, series, step)
+
         if img_data_np.dtype != np.uint8:
             # assume scale 0-1
             img_data_np = (img_data_np * 255).astype(np.uint8)
@@ -259,6 +273,7 @@ class EventTrainsWriter(object):
         default_title = tag if not self._logger._get_tensorboard_auto_group_scalars() else 'Scalars'
         title, series = self.tag_splitter(tag, num_split_parts=1,
                                           default_title=default_title, logdir_header='series_last')
+        step = self._fix_step_counter(title, series, step)
 
         # update scalar cache
         num, value = self._scalar_report_cache.get((title, series), (0, 0))
@@ -310,6 +325,7 @@ class EventTrainsWriter(object):
         # Z-axis actual value (interpolated 'bucket')
         title, series = self.tag_splitter(tag, num_split_parts=1, default_title='Histograms',
                                           logdir_header='series')
+        step = self._fix_step_counter(title, series, step)
 
         # get histograms from cache
         hist_list, hist_iters, minmax = self._hist_report_cache.get((title, series), ([], np.array([]), None))
@@ -417,6 +433,23 @@ class EventTrainsWriter(object):
                                           iteration=step, reverse_xaxis=reverse_xaxis)
         except Exception:
             pass
+
+    def _fix_step_counter(self, title, series, step):
+        key = (title, series)
+        if key not in EventTrainsWriter._title_series_wraparound_counter:
+            EventTrainsWriter._title_series_wraparound_counter[key] = {'first_step': step, 'last_step': step,
+                                                                       'adjust_counter': 0}
+            return step
+        wraparound_counter = EventTrainsWriter._title_series_wraparound_counter[key]
+        # we decide on wrap around if the current step is less than 10% of the previous step
+        # notice since counter is int and we want to avoid rounding error, we have double check in the if
+        if step < wraparound_counter['last_step'] and step < 0.9*wraparound_counter['last_step']:
+            # adjust step base line
+            wraparound_counter['adjust_counter'] += wraparound_counter['last_step'] + (1 if step <= 0 else step)
+
+        # return adjusted step
+        wraparound_counter['last_step'] = step
+        return step + wraparound_counter['adjust_counter']
 
     def add_event(self, event, step=None, walltime=None, **kwargs):
         supported_metrics = {

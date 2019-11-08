@@ -55,6 +55,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._thread = Thread(target=self._daemon)
         self._thread.daemon = True
         self._thread.start()
+        self._max_iteration = 0
 
     def _set_storage_uri(self, value):
         value = '/'.join(x for x in (value.rstrip('/'), self._metrics.storage_key_prefix) if x)
@@ -78,6 +79,10 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
     def async_enable(self, value):
         self._async_enable = bool(value)
 
+    @property
+    def max_iteration(self):
+        return self._max_iteration
+
     def _daemon(self):
         while not self._exit_flag:
             self._flush_event.wait(self._flush_frequency)
@@ -92,6 +97,9 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             self.wait_for_results()
 
     def _report(self, ev):
+        ev_iteration = ev.get_iteration()
+        if ev_iteration is not None:
+            self._max_iteration = max(self._max_iteration, ev_iteration)
         self._events.append(ev)
         if len(self._events) >= self._flush_threshold:
             self.flush()

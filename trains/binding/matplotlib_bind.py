@@ -21,6 +21,8 @@ class PatchedMatplotlib:
     __patched_draw_all_recursion_guard = False
     _global_plot_counter = -1
     _global_image_counter = -1
+    _global_image_counter_limit = None
+    _last_iteration_plot_titles = (-1, [])
     _current_task = None
     _support_image_plot = False
     _matplotlylib = None
@@ -125,6 +127,9 @@ class PatchedMatplotlib:
     def update_current_task(task):
         if PatchedMatplotlib.patch_matplotlib():
             PatchedMatplotlib._current_task = task
+            if PatchedMatplotlib._global_image_counter_limit is None:
+                from ..config import config
+                PatchedMatplotlib._global_image_counter_limit = config.get('metric.matplotlib_untitled_history_size', 100)
 
     @staticmethod
     def patched_imshow(*args, **kw):
@@ -310,8 +315,13 @@ class PatchedMatplotlib:
 
                 # remove borders and size, we should let the web take care of that
                 if plotly_fig:
-                    PatchedMatplotlib._global_plot_counter += 1
-                    title = plot_title or 'untitled %d' % PatchedMatplotlib._global_plot_counter
+                    last_iteration = PatchedMatplotlib._current_task.get_last_iteration()
+                    if plot_title:
+                        title = PatchedMatplotlib._enforce_unique_title_per_iteration(plot_title, last_iteration)
+                    else:
+                        PatchedMatplotlib._global_plot_counter += 1
+                        title = 'untitled %d' % PatchedMatplotlib._global_plot_counter
+
                     plotly_fig.layout.margin = {}
                     plotly_fig.layout.autosize = True
                     plotly_fig.layout.height = None
@@ -321,37 +331,58 @@ class PatchedMatplotlib:
                     if not plotly_dict.get('layout'):
                         plotly_dict['layout'] = {}
                     plotly_dict['layout']['title'] = title
-                    reporter.report_plot(title=title, series='plot', plot=plotly_dict,
-                                         iter=PatchedMatplotlib._global_plot_counter if plot_title else 0)
+                    reporter.report_plot(title=title, series='plot', plot=plotly_dict, iter=last_iteration)
                 else:
                     logger = PatchedMatplotlib._current_task.get_logger()
 
                     # this is actually a failed plot, we should put it under plots:
                     # currently disabled
                     if force_save_as_image or not PatchedMatplotlib._support_image_plot:
+                        last_iteration = PatchedMatplotlib._current_task.get_last_iteration()
                         # send the plot as image
-                        PatchedMatplotlib._global_image_counter += 1
-                        title = plot_title or 'untitled %d' % PatchedMatplotlib._global_image_counter
+                        if plot_title:
+                            title = PatchedMatplotlib._enforce_unique_title_per_iteration(plot_title, last_iteration)
+                        else:
+                            PatchedMatplotlib._global_image_counter += 1
+                            title = 'untitled %d' % (PatchedMatplotlib._global_image_counter %
+                                                     PatchedMatplotlib._global_image_counter_limit)
 
                         logger.report_image(title=title, series='plot image', local_path=image,
-                                            delete_after_upload=True,
-                                            iteration=PatchedMatplotlib._global_image_counter
-                                            if plot_title else 0)
+                                            delete_after_upload=True, iteration=last_iteration)
                     else:
                         # send the plot as plotly with embedded image
-                        PatchedMatplotlib._global_plot_counter += 1
-                        title = plot_title or 'untitled %d' % PatchedMatplotlib._global_plot_counter
+                        last_iteration = PatchedMatplotlib._current_task.get_last_iteration()
+                        if plot_title:
+                            title = PatchedMatplotlib._enforce_unique_title_per_iteration(plot_title, last_iteration)
+                        else:
+                            PatchedMatplotlib._global_plot_counter += 1
+                            title = 'untitled %d' % (PatchedMatplotlib._global_plot_counter %
+                                                     PatchedMatplotlib._global_image_counter_limit)
 
                         logger._report_image_plot_and_upload(title=title, series='plot image', path=image,
-                                                             delete_after_upload=True,
-                                                             iteration=PatchedMatplotlib._global_plot_counter
-                                                             if plot_title else 0)
-
+                                                             delete_after_upload=True, iteration=last_iteration)
         except Exception:
             # plotly failed
             pass
 
         return
+
+    @staticmethod
+    def _enforce_unique_title_per_iteration(title, last_iteration):
+        if last_iteration != PatchedMatplotlib._last_iteration_plot_titles[0]:
+            PatchedMatplotlib._last_iteration_plot_titles = (last_iteration, [title])
+        elif title not in PatchedMatplotlib._last_iteration_plot_titles[1]:
+            PatchedMatplotlib._last_iteration_plot_titles[1].append(title)
+        else:
+            base_title = title
+            counter = 1
+            while title in PatchedMatplotlib._last_iteration_plot_titles[1]:
+                # we already used this title in this iteration, we should change the title
+                title = base_title + ' %d' % counter
+                counter += 1
+            # store the new title
+            PatchedMatplotlib._last_iteration_plot_titles[1].append(title)
+        return title
 
     @staticmethod
     def _get_output_figures(stored_figure, all_figures):

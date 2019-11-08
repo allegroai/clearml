@@ -9,13 +9,14 @@
 
 from __future__ import print_function
 
-from os.path import exists
+from os.path import exists, join
+import tempfile
 
 import numpy as np
 import tensorflow as tf
 from trains import Task
 
-MODEL_PATH = "/tmp/module_no_signatures"
+MODEL_PATH = join(tempfile.gettempdir(), "module_no_signatures")
 task = Task.init(project_name='examples', task_name='Tensorflow mnist example')
 
 ## block
@@ -39,14 +40,14 @@ with tf.Session(graph=tf.Graph()) as sess:
 
 # Import MNIST data
 from tensorflow.examples.tutorials.mnist import input_data
-mnist = input_data.read_data_sets("MNIST_data/", one_hot=True)
+mnist = input_data.read_data_sets("MNIST_data", one_hot=True)
 
 # Parameters
 parameters = {
     'learning_rate': 0.001,
     'batch_size': 100,
     'display_step': 1,
-    'model_path': "/tmp/model.ckpt",
+    'model_path': join(tempfile.gettempdir(), "model.ckpt"),
 
     # Network Parameters
     'n_hidden_1': 256,  # 1st layer number of features

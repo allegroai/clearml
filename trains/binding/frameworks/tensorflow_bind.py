@@ -519,7 +519,7 @@ class EventTrainsWriter(object):
                     self._add_plot(tag, step, values, vdict)
                 else:
                     LoggerRoot.get_base_logger(TensorflowBinding).debug('Event unsupported. tag = %s, vdict keys [%s]'
-                                                       % (tag, ', '.join(vdict.keys)))
+                                                       % (tag, ', '.join(vdict.keys())))
                     continue
 
     def get_logdir(self):

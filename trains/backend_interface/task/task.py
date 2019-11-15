@@ -282,7 +282,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     @property
     def name(self):
-        return self.data.name
+        return self.data.name or ''
+
+    @name.setter
+    def name(self, value):
+        self.set_name(value)
 
     @property
     def task_type(self):
@@ -302,7 +306,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     @property
     def comment(self):
-        return self.data.comment
+        return self.data.comment or ''
+
+    @comment.setter
+    def comment(self, value):
+        self.set_comment(value)
 
     @property
     def cache_dir(self):
@@ -750,6 +758,26 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._set_task_property("tags", tags)
         self._edit(tags=self.data.tags)
 
+    def set_name(self, name):
+        """
+        Set a comment text to the task.
+
+        :param name: The name of the task
+        :type name: str
+        """
+        self._set_task_property("name", str(name))
+        self._edit(name=self.data.name)
+
+    def set_comment(self, comment):
+        """
+        Set a comment text to the task.
+
+        :param comment: The comment of the task
+        :type comment: str
+        """
+        self._set_task_property("comment", str(comment))
+        self._edit(comment=comment)
+
     def _get_default_report_storage_uri(self):
         if not self._files_server:
             self._files_server = Session.get_files_server_host()
@@ -769,7 +797,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             # Since we ae using forced update, make sure he task status is valid
             if not self._data or (str(self.data.status) not in (str(tasks.TaskStatusEnum.created),
                                                                 str(tasks.TaskStatusEnum.in_progress))):
-                raise ValueError('Task object can only be updated if created or in_progress')
+                # the exception being name/comment that we can always change.
+                if kwargs and all(k in ('name', 'comment') for k in kwargs.keys()):
+                    pass
+                else:
+                    raise ValueError('Task object can only be updated if created or in_progress')
 
             res = self.send(tasks.EditRequest(task=self.id, force=True, **kwargs), raise_on_errors=False)
             return res

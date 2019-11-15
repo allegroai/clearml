@@ -31,6 +31,22 @@ def schema_property(name):
     return init
 
 
+# Support both jsonschema >= 3.0.0 and <= 2.6.0
+_CustomValidator = None
+try:
+    from jsonschema import TypeChecker, Draft7Validator
+
+    def _is_array(checker, instance):
+        return isinstance(instance, (list, tuple))
+
+    _CustomValidator = jsonschema.validators.extend(
+        Draft7Validator,
+        type_checker=Draft7Validator.TYPE_CHECKER.redefine("array", _is_array)
+    )
+except ImportError:
+    pass
+
+
 class DataModel(object):
     """ Data Model"""
     _schema = None
@@ -66,11 +82,18 @@ class DataModel(object):
         }
 
     def validate(self, schema=None):
-        jsonschema.validate(
-            self.to_dict(),
-            schema or self._schema,
-            types=dict(array=(list, tuple), integer=six.integer_types),
-        )
+        if _CustomValidator is None:
+            jsonschema.validate(
+                self.to_dict(),
+                schema or self._schema,
+                types=dict(array=(list, tuple), integer=six.integer_types),
+            )
+        else:
+            jsonschema.validate(
+                self.to_dict(),
+                schema or self._schema,
+                cls=_CustomValidator,
+            )
 
     def __repr__(self):
         return '<{}.{}: {}>'.format(

@@ -76,7 +76,6 @@ class ScriptRequirements(object):
         modules = ImportedModules()
         try_imports = set()
         local_mods = list()
-        cur_dir = project_path  # os.getcwd()
         ignore_paths = collections.defaultdict(set)
         if not ignores:
             ignore_paths[project_path].add('.git')
@@ -85,28 +84,36 @@ class ScriptRequirements(object):
                 parent_dir = os.path.dirname(path)
                 ignore_paths[parent_dir].add(os.path.basename(path))
 
-        for dirpath, dirnames, files in os.walk(project_path, followlinks=True):
-            if dirpath in ignore_paths:
-                dirnames[:] = [d for d in dirnames
-                               if d not in ignore_paths[dirpath]]
-            py_files = list()
-            for fn in files:
-                # C extension.
-                if fn.endswith('.so'):
-                    local_mods.append(fn[:-3])
-                # Normal Python file.
-                if fn.endswith('.py'):
-                    local_mods.append(fn[:-3])
-                    py_files.append(fn)
-            if '__init__.py' in files:
-                local_mods.append(os.path.basename(dirpath))
-            for file in py_files:
-                fpath = os.path.join(dirpath, file)
-                fake_path = fpath.split(cur_dir)[1][1:]
-                with open(fpath, 'rb') as f:
-                    fmodules, try_ipts = file_import_modules(fake_path, f.read())
-                    modules |= fmodules
-                    try_imports |= try_ipts
+        if os.path.isfile(project_path):
+            fake_path = Path(project_path).name
+            with open(project_path, 'rb') as f:
+                fmodules, try_ipts = file_import_modules(fake_path, f.read())
+                modules |= fmodules
+                try_imports |= try_ipts
+        else:
+            cur_dir = project_path  # os.getcwd()
+            for dirpath, dirnames, files in os.walk(project_path, followlinks=True):
+                if dirpath in ignore_paths:
+                    dirnames[:] = [d for d in dirnames
+                                   if d not in ignore_paths[dirpath]]
+                py_files = list()
+                for fn in files:
+                    # C extension.
+                    if fn.endswith('.so'):
+                        local_mods.append(fn[:-3])
+                    # Normal Python file.
+                    if fn.endswith('.py'):
+                        local_mods.append(fn[:-3])
+                        py_files.append(fn)
+                if '__init__.py' in files:
+                    local_mods.append(os.path.basename(dirpath))
+                for file in py_files:
+                    fpath = os.path.join(dirpath, file)
+                    fake_path = fpath.split(cur_dir)[1][1:]
+                    with open(fpath, 'rb') as f:
+                        fmodules, try_ipts = file_import_modules(fake_path, f.read())
+                        modules |= fmodules
+                        try_imports |= try_ipts
 
         # hack: forcefully insert storage modules if we have them
         # noinspection PyBroadException
@@ -452,12 +459,13 @@ class ScriptInfo(object):
                 if not plugin or not repo_info.commit else repo_info.diff
         else:
             diff = ''
-            # if this is not jupyter, get the requirements.txt
+        # if this is not jupyter, get the requirements.txt
         requirements = ''
         # create requirements if backend supports requirements
         # if jupyter is present, requirements will be created in the background, when saving a snapshot
         if not jupyter_filepath and Session.check_min_api_version('2.2'):
-            script_requirements = ScriptRequirements(Path(repo_root).as_posix())
+            script_requirements = ScriptRequirements(
+                Path(repo_root).as_posix() if repo_info.url else script_path.as_posix())
             if create_requirements:
                 requirements = script_requirements.get_requirements()
         else:

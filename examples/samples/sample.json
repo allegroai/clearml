@@ -1,0 +1,8 @@
+{
+    "list_of_ints": [1,2,3,4],
+    "dict": {
+        "sub_value": "string",
+        "sub_integer": 11
+    },
+    "value": 13.37
+}

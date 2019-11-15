@@ -5,6 +5,9 @@ import sys
 import threading
 import time
 from argparse import ArgumentParser
+from tempfile import mkstemp
+
+from pathlib2 import Path
 from collections import OrderedDict, Callable
 from typing import Optional
 
@@ -40,6 +43,8 @@ from .binding.matplotlib_bind import PatchedMatplotlib
 from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
 from .utilities.dicts import ReadOnlyDict
+from .utilities.proxy_object import ProxyDictPreWrite, ProxyDictPostWrite, flatten_dictionary, \
+    nested_from_flat_dictionary
 
 
 class Task(_Task):
@@ -354,12 +359,26 @@ class Task(_Task):
         """
         Returns Task object based on either, task_id (system uuid) or task name
 
-        :param task_id: unique task id string (if exists other parameters are ignored)
-        :param project_name: project name (str) the task belongs to
-        :param task_name: task name (str) in within the selected project
-        :return: Task() object
+        :param str task_id: unique task id string (if exists other parameters are ignored)
+        :param str project_name: project name (str) the task belongs to
+        :param str task_name: task name (str) in within the selected project
+        :return: Task object
         """
         return cls.__get_task(task_id=task_id, project_name=project_name, task_name=task_name)
+
+    @classmethod
+    def get_tasks(cls, task_ids=None, project_name=None, task_name=None):
+        """
+        Returns a list of Task objects, matching requested task name (or partially matching)
+
+        :param list(str) task_ids: list of unique task id string (if exists other parameters are ignored)
+        :param str project_name: project name (str) the task belongs to (use None for all projects)
+        :param str task_name: task name (str) in within the selected project
+            Return any partial match of task_name, regular expressions matching is also supported
+            If None is passed, returns all tasks within the project
+        :return: list of Task object
+        """
+        return cls.__get_tasks(task_ids=task_ids, project_name=project_name, task_name=task_name)
 
     @property
     def output_uri(self):
@@ -385,9 +404,12 @@ class Task(_Task):
         """
         if not Session.check_min_api_version('2.3'):
             return ReadOnlyDict()
-        if not self.data.execution or not self.data.execution.artifacts:
-            return ReadOnlyDict()
-        return ReadOnlyDict([(a.key, Artifact(a)) for a in self.data.execution.artifacts])
+        artifacts_pairs = []
+        if self.data.execution and self.data.execution.artifacts:
+            artifacts_pairs = [(a.key, Artifact(a)) for a in self.data.execution.artifacts]
+        if self._artifacts_manager:
+            artifacts_pairs += list(self._artifacts_manager.registered_artifacts.items())
+        return ReadOnlyDict(artifacts_pairs)
 
     @classmethod
     def clone(cls, source_task=None, name=None, comment=None, parent=None, project=None):
@@ -469,19 +491,6 @@ class Task(_Task):
         resp = res.response
         return resp
 
-    def set_comment(self, comment):
-        """
-        Set a comment text to the task.
-
-        In remote, this is a no-op.
-
-        :param comment: The comment of the task
-        :type comment: str
-        """
-        if not running_remotely() or not self.is_main_task():
-            self._edit(comment=comment)
-            self.reload()
-
     def add_tags(self, tags):
         """
         Add tags to this task. Old tags are not deleted
@@ -525,6 +534,93 @@ class Task(_Task):
                 return method(mutable)
 
         raise Exception('Unsupported mutable type %s: no connect function found' % type(mutable).__name__)
+
+    def connect_configuration(self, configuration):
+        """
+        Connect a configuration dict / file (pathlib.Path / str) with the Task
+        Connecting configuration file should be called before reading the configuration file.
+        When an output model will be created it will include the content of the configuration dict/file
+
+        Example local file:
+            config_file = task.connect_configuration(config_file)
+            my_params = json.load(open(config_file,'rt'))
+
+        Example parameter dictionary:
+            my_params = task.connect_configuration(my_params)
+
+        :param (dict, pathlib.Path/str) configuration: usually configuration file used in the model training process
+            configuration can be either dict or path to local file.
+            If dict is provided, it will be stored in json alike format (hocon) editable in the UI
+            If pathlib2.Path / string is provided the content of the file will be stored
+            Notice: local path must be relative path
+            (and in remote execution, the content of the file will be overwritten with the content brought from the UI)
+        :return: configuration object
+            If dict was provided, a dictionary will be returned
+            If pathlib2.Path / string was provided, a path to a local configuration file is returned
+        """
+        if not isinstance(configuration, (dict, Path, six.string_types)):
+            raise ValueError("connect_configuration supports `dict`, `str` and 'Path' types, "
+                             "{} is not supported".format(type(configuration)))
+
+        # parameter dictionary
+        if isinstance(configuration, dict):
+            def _update_config_dict(task, config_dict):
+                task.set_model_config(config_dict=config_dict)
+
+            if not running_remotely():
+                self.set_model_config(config_dict=configuration)
+                configuration = ProxyDictPostWrite(self, _update_config_dict, **configuration)
+            else:
+                configuration.clear()
+                configuration.update(self.get_model_config_dict())
+                configuration = ProxyDictPreWrite(False, False, **configuration)
+            return configuration
+
+        # it is a path to a local file
+        if not running_remotely():
+            # check if not absolute path
+            configuration_path = Path(configuration)
+            if not configuration_path.is_file():
+                ValueError("Configuration file does not exist")
+            try:
+                with open(configuration_path.as_posix(), 'rt') as f:
+                    configuration_text = f.read()
+            except Exception:
+                raise ValueError("Could not connect configuration file {}, file could not be read".format(
+                    configuration_path.as_posix()))
+            self.set_model_config(config_text=configuration_text)
+            return configuration
+        else:
+            configuration_text = self.get_model_config_text()
+            configuration_path = Path(configuration)
+            fd, local_filename = mkstemp(prefix='trains_task_config_',
+                                         suffix=configuration_path.suffixes[-1] if
+                                         configuration_path.suffixes else '.txt')
+            os.write(fd, configuration_text.encode('utf-8'))
+            os.close(fd)
+            return Path(local_filename) if isinstance(configuration, Path) else local_filename
+
+    def connect_label_enumeration(self, enumeration):
+        """
+        Connect a label enumeration dictionary with the Task
+
+        When an output model is created it will store the model label enumeration dictionary
+
+        :param dict enumeration: dictionary of string to integer, enumerating the model output integer to labels
+            example: {'background': 0 , 'person': 1}
+        :return: enumeration dict
+        """
+        if not isinstance(enumeration, dict):
+            raise ValueError("connect_label_enumeration supports only `dict` type, "
+                             "{} is not supported".format(type(enumeration)))
+
+        if not running_remotely():
+            self.set_model_label_enumeration(enumeration)
+        else:
+            # pop everything
+            enumeration.clear()
+            enumeration.update(self.get_labels_enumeration())
+        return enumeration
 
     def get_logger(self):
         # type: () -> Logger
@@ -1029,12 +1125,26 @@ class Task(_Task):
             self._arguments.copy_defaults_from_argparse(parser, args=args, namespace=namespace, parsed_args=parsed_args)
 
     def _connect_dictionary(self, dictionary):
+        def _update_args_dict(task, config_dict):
+            task._arguments.copy_from_dict(flatten_dictionary(config_dict))
+
+        def _refresh_args_dict(task, config_dict):
+            # reread from task including newly added keys
+            flat_dict = task._arguments.copy_to_dict(flatten_dictionary(config_dict))
+            nested_dict = config_dict._to_dict()
+            config_dict.clear()
+            config_dict.update(nested_from_flat_dictionary(nested_dict, flat_dict))
+
         self._try_set_connected_parameter_type(self._ConnectedParametersType.dictionary)
 
-        if running_remotely():
-            dictionary = self._arguments.copy_to_dict(dictionary)
+        if not running_remotely():
+            self._arguments.copy_from_dict(flatten_dictionary(dictionary))
+            dictionary = ProxyDictPostWrite(self, _update_args_dict, **dictionary)
         else:
-            dictionary = self._arguments.copy_from_dict(dictionary)
+            flat_dict = flatten_dictionary(dictionary)
+            flat_dict = self._arguments.copy_to_dict(flat_dict)
+            dictionary = nested_from_flat_dictionary(dictionary, flat_dict)
+            dictionary = ProxyDictPostWrite(self, _refresh_args_dict, **dictionary)
 
         return dictionary
 
@@ -1408,7 +1518,7 @@ class Task(_Task):
             cls._get_default_session(),
             tasks.GetAllRequest(
                 project=[project.id],
-                name=exact_match_regex(task_name),
+                name=exact_match_regex(task_name) if task_name else None,
                 only_fields=['id', 'name', 'last_update', system_tags]
             )
         )
@@ -1429,6 +1539,37 @@ class Task(_Task):
             task_id=task.id,
             log_to_backend=False,
         )
+
+    @classmethod
+    def __get_tasks(cls, task_ids=None, project_name=None, task_name=None):
+        if task_ids:
+            if isinstance(task_ids, six.string_types):
+                task_ids = [task_ids]
+            return [cls(private=cls.__create_protection, task_id=i, log_to_backend=False) for i in task_ids]
+
+        if project_name:
+            res = cls._send(
+                cls._get_default_session(),
+                projects.GetAllRequest(
+                    name=exact_match_regex(project_name)
+                )
+            )
+            project = get_single_result(entity='project', query=project_name, results=res.response.projects)
+        else:
+            project = None
+
+        system_tags = 'system_tags' if hasattr(tasks.Task, 'system_tags') else 'tags'
+        res = cls._send(
+            cls._get_default_session(),
+            tasks.GetAllRequest(
+                project=[project.id] if project else None,
+                name=task_name if task_name else None,
+                only_fields=['id', 'name', 'last_update', system_tags]
+            )
+        )
+        res_tasks = res.response.tasks
+
+        return [cls(private=cls.__create_protection, task_id=task.id, log_to_backend=False) for task in res_tasks]
 
     @classmethod
     def __get_hash_key(cls, *args):

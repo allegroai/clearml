@@ -947,6 +947,7 @@ class _HttpDriver(_Driver):
     """ LibCloud http/https adapter (simple, enough for now) """
 
     timeout = (5.0, 30.)
+    min_kbps_speed = 50
 
     class _Container(object):
         _default_backend_session = None
@@ -980,7 +981,16 @@ class _HttpDriver(_Driver):
         url = object_name[:object_name.index('/')]
         url_path = object_name[len(url)+1:]
         full_url = container.name+url
-        res = container.session.post(full_url, files={url_path: iterator}, timeout=self.timeout,
+        # when sending data in post, there is no connection timeout, just an entire upload timeout
+        timeout = self.timeout[-1]
+        if hasattr(iterator, 'tell') and hasattr(iterator, 'seek'):
+            pos = iterator.tell()
+            iterator.seek(0, 2)
+            stream_size = iterator.tell() - pos
+            iterator.seek(pos, 0)
+            timeout = max(timeout, (stream_size / 1024) / float(self.min_kbps_speed))
+
+        res = container.session.post(full_url, files={url_path: iterator}, timeout=timeout,
                                      headers=container.get_headers(full_url))
         if res.status_code != requests.codes.ok:
             raise ValueError('Failed uploading object %s (%d): %s' % (object_name, res.status_code, res.text))

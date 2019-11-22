@@ -441,7 +441,7 @@ class Session(TokenManager):
 
         # return default
         host = cls.get_api_server_host(config)
-        if host == cls.default_host:
+        if host == cls.default_host and cls.default_web:
             return cls.default_web
 
         # compose ourselves
@@ -468,7 +468,7 @@ class Session(TokenManager):
 
         # return default
         host = cls.get_api_server_host(config)
-        if host == cls.default_host:
+        if host == cls.default_host and cls.default_files:
             return cls.default_files
 
         # compose ourselves

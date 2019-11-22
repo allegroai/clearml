@@ -79,6 +79,7 @@ class Task(_Task):
     __task_id_reuse_time_window_in_hours = float(config.get('development.task_reuse_time_window_in_hours', 24.0))
     __store_diff_on_train = config.get('development.store_uncommitted_code_diff_on_train', False)
     __detect_repo_async = config.get('development.vcs_repo_detect_async', False)
+    __default_output_uri = config.get('development.default_output_uri', None)
 
     class _ConnectedParametersType(object):
         argparse = "argument_parser"
@@ -253,6 +254,8 @@ class Task(_Task):
                 )
                 if output_uri:
                     task.output_uri = output_uri
+                elif cls.__default_output_uri:
+                    task.output_uri = cls.__default_output_uri
             else:
                 task = cls(
                     private=cls.__create_protection,
@@ -847,26 +850,34 @@ class Task(_Task):
         return scalar_metrics
 
     @classmethod
-    def set_credentials(cls, host=None, key=None, secret=None):
+    def set_credentials(cls, api_host=None, web_host=None, files_host=None, key=None, secret=None, host=None):
         """
         Set new default TRAINS-server host and credentials
         These configurations will be overridden by wither OS environment variables or trains.conf configuration file
 
         Notice! credentials needs to be set *prior* to Task initialization
 
-        :param host: host url, example: host='http://localhost:8008'
-        :type  host: str
-        :param key: user key/secret pair, example: key='thisisakey123'
-        :type  key: str
-        :param secret: user key/secret pair, example: secret='thisisseceret123'
-        :type  secret: str
+        :param str api_host: Trains API server url, example: host='http://localhost:8008'
+        :param str web_host: Trains WEB server url, example: host='http://localhost:8080'
+        :param str files_host: Trains Files server url, example: host='http://localhost:8081'
+        :param str key: user key/secret pair, example: key='thisisakey123'
+        :param str secret: user key/secret pair, example: secret='thisisseceret123'
+        :param str host: host url, example: host='http://localhost:8008' (deprecated)
         """
-        if host:
-            Session.default_host = host
+        if api_host:
+            Session.default_host = api_host
+        if web_host:
+            Session.default_web = web_host
+        if files_host:
+            Session.default_files = files_host
         if key:
             Session.default_key = key
         if secret:
             Session.default_secret = secret
+        if host:
+            Session.default_host = host
+            Session.default_web = web_host or ''
+            Session.default_files = files_host or ''
 
     @classmethod
     def _reset_current_task_obj(cls):

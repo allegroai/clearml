@@ -167,10 +167,10 @@ Relevant outputs
     * **DEBUG IMAGES**: Generated images
     * **LOG**: Console standard output/error
 
-### Tensorflow Flags / absl
-##### Toy Tensorflow FLAGS logging with absl
+### Hyper Parameters / Tensorflow Flags / absl
+##### Hyper Parameters / Toy Tensorflow FLAGS logging with absl
 
-[absl_example.py](https://github.com/allegroai/trains/blob/master/examples/absl_example.py) 
+[hyper_parameters_example.py](https://github.com/allegroai/trains/blob/master/examples/hyper_parameters_example.py)
 is an example of toy Tensorflow FLAGS logging with absl package (*absl-py*) coupled with parameters dictionary
 
 Relevant outputs

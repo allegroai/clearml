@@ -10,7 +10,7 @@ class ProxyDictPostWrite(dict):
         self._update_func = None
         for k, i in self.items():
             if isinstance(i, dict):
-                super(ProxyDictPostWrite, self).update({k: ProxyDictPostWrite(update_obj, self._set_callback, **i)})
+                super(ProxyDictPostWrite, self).update({k: ProxyDictPostWrite(update_obj, self._set_callback, i)})
         self._update_func = update_func
 
     def __setitem__(self, key, value):
@@ -32,7 +32,7 @@ class ProxyDictPostWrite(dict):
 
     def update(self, E=None, **F):
         return super(ProxyDictPostWrite, self).update(
-            ProxyDictPostWrite(self._update_obj, self._set_callback, **E) if E is not None else
+            ProxyDictPostWrite(self._update_obj, self._set_callback, E) if E is not None else
             ProxyDictPostWrite(self._update_obj, self._set_callback, **F))
 
 
@@ -44,7 +44,7 @@ class ProxyDictPreWrite(dict):
         self._update_func = None
         for k, i in self.items():
             if isinstance(i, dict):
-                self.update({k: ProxyDictPreWrite(k, self._nested_callback, **i)})
+                self.update({k: ProxyDictPreWrite(k, self._nested_callback, i)})
         self._update_obj = update_obj
         self._update_func = update_func
 

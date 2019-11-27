@@ -426,7 +426,7 @@ class Session(TokenManager):
             from ...config import config_obj
             config = config_obj
         return ENV_HOST.get(default=(config.get("api.api_server", None) or
-                                     config.get("api.host", None) or cls.default_host))
+                                     config.get("api.host", None) or cls.default_host)).rstrip('/')
 
     @classmethod
     def get_app_server_host(cls, config=None):
@@ -435,7 +435,7 @@ class Session(TokenManager):
             config = config_obj
 
         # get from config/environment
-        web_host = ENV_WEB_HOST.get(default=config.get("api.web_server", None))
+        web_host = ENV_WEB_HOST.get(default=config.get("api.web_server", "")).rstrip('/')
         if web_host:
             return web_host
 
@@ -462,7 +462,7 @@ class Session(TokenManager):
             from ...config import config_obj
             config = config_obj
         # get from config/environment
-        files_host = ENV_FILES_HOST.get(default=(config.get("api.files_server", None)))
+        files_host = ENV_FILES_HOST.get(default=(config.get("api.files_server", ""))).rstrip('/')
         if files_host:
             return files_host
 

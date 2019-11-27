@@ -17,7 +17,6 @@ from tempfile import mktemp
 from time import time
 from types import GeneratorType
 
-import numpy as np
 import requests
 import six
 from _socket import gethostname
@@ -740,8 +739,10 @@ class StorageHelper(object):
 
             # TODO: ugly py3 hack, please remove ASAP
             if six.PY3 and not isinstance(stream, GeneratorType):
+                import numpy as np
                 return np.frombuffer(stream, dtype=np.uint8)
             else:
+                import numpy as np
                 return np.asarray(bytearray(b''.join(stream)), dtype=np.uint8)
 
         except Exception as e:
@@ -962,9 +963,9 @@ class _HttpDriver(_Driver):
                 from ..backend_interface.base import InterfaceBase
                 self._default_backend_session = InterfaceBase._get_default_session()
             if self._default_files_server_host is None:
-                self._default_files_server_host = self._default_backend_session.get_files_server_host()
+                self._default_files_server_host = self._default_backend_session.get_files_server_host().rstrip('/')
 
-            if url.startswith(self._default_files_server_host):
+            if url == self._default_files_server_host or url.startswith(self._default_files_server_host + '/'):
                 return self._default_backend_session.add_auth_headers({})
             return None
 

@@ -182,7 +182,8 @@ class Task(_Task):
                 if default is not None and default != current:
                     raise UsageError(
                         "Current task already created "
-                        "and requested {field} '{default}' does not match current {field} '{current}'".format(
+                        "and requested {field} '{default}' does not match current {field} '{current}'. "
+                        "If you wish to create additional tasks use `Task.create`".format(
                             field=field,
                             default=default,
                             current=current,
@@ -262,6 +263,8 @@ class Task(_Task):
                     task_id=get_remote_task_id(),
                     log_to_backend=False,
                 )
+                if cls.__default_output_uri and not task.output_uri:
+                    task.output_uri = cls.__default_output_uri
         except Exception:
             raise
         else:
@@ -321,8 +324,8 @@ class Task(_Task):
     @classmethod
     def create(
             cls,
-            task_name=None,
             project_name=None,
+            task_name=None,
             task_type=TaskTypes.training,
     ):
         """
@@ -330,10 +333,10 @@ class Task(_Task):
 
         Notice: This function will always create a new task, whether running in development or remote execution mode.
 
-        :param task_name: task name to be created
         :param project_name: Project to create the task in.
             If project is None, and the main execution task is initialized (Task.init), its project will be used.
             If project is provided but doesn't exist, it will be created.
+        :param task_name: task name to be created
         :param task_type: Task type to be created. (default: "training")
             Optional Task types are: "training" / "testing" / "dataset_import" / "annotation" / "annotation_manual"
         :return: Task() object

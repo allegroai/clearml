@@ -243,7 +243,6 @@ class Artifacts(object):
         self._thread = None
         self._flush_event = Event()
         self._exit_flag = False
-        self._thread_pool = ThreadPool()
         self._summary = ''
         self._temp_folder = []
         self._task_artifact_list = []
@@ -442,7 +441,8 @@ class Artifacts(object):
                     pass
 
     def _start(self):
-        if not self._thread:
+        """ Start daemon thread if any artifacts are registered and thread is not up yet """
+        if not self._thread and self._artifacts_dict:
             # start the daemon thread
             self._flush_event.clear()
             self._thread = Thread(target=self._daemon)

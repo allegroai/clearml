@@ -679,8 +679,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 and all(isinstance(a, tasks.Artifact) for a in artifacts_list)):
             raise ValueError('Expected artifacts to [tasks.Artifacts]')
         with self._edit_lock:
+            self.reload()
             execution = self.data.execution
-            execution.artifacts = artifacts_list
+            keys = [a.key for a in artifacts_list]
+            execution.artifacts = [a for a in execution.artifacts or [] if a.key not in keys] + artifacts_list
             self._edit(execution=execution)
 
     def _set_model_design(self, design=None):

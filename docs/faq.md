@@ -26,6 +26,7 @@ Experiments
 * [Sometimes I see experiments as running when in fact they are not. What's going on?](#experiment-running-but-stopped)
 * [My code throws an exception, but my experiment status is not "Failed". What happened?](#exception-not-failed)
 * [When I run my experiment, I get an SSL Connection error [CERTIFICATE_VERIFY_FAILED]. Do you have a solution?](#ssl-connection-error)
+* [How do I modify experiment names once they have been created?](#name-changing)
 
 Graphs and Logs
 
@@ -173,13 +174,13 @@ TRAINS monitors your Python process. When the process exits in an orderly fashio
 
 When the process crashes and terminates abnormally, the stop signal is sometimes missed. In such a case, you can safely right click the experiment in the Web-App and stop it.
 
-## My code throws an exception, but my experiment status is not "Failed". What happened? <a name="exception-not-failed"></a>
+### My code throws an exception, but my experiment status is not "Failed". What happened? <a name="exception-not-failed"></a>
 
 This issue was resolved in v0.9.2. Upgrade TRAINS:
 
 ```pip install -U trains```
 
-## When I run my experiment, I get an SSL Connection error [CERTIFICATE_VERIFY_FAILED]. Do you have a solution? <a name="ssl-connection-error"></a>
+### When I run my experiment, I get an SSL Connection error [CERTIFICATE_VERIFY_FAILED]. Do you have a solution? <a name="ssl-connection-error"></a>
 
 Your firewall may be preventing the connection. Try one of the following solutons:
 
@@ -198,6 +199,38 @@ Your firewall may be preventing the connection. Try one of the following soluton
         ```api { verify_certificate = False }```
         
     1. Copy the new **trains.conf** file to ~/trains.conf (on Windows: C:\Users\your_username\trains.conf)        
+
+### How do I modify experiment names once they have been created? <a name="name-changing"></a>
+
+An experiments' name is a user controlled property which can be accessed via the `Task.name` variable.  
+This allows you to use meaningful naming schemes for to easily filter and compare different experiments.  
+
+For example, to distinguish between different experiments you can append the task Id to the task name:
+
+```python
+task = Task.init('examples', 'train')
+task.name += ' {}'.format(task.id)
+```
+
+Or, even for post-execution:
+
+```python
+tasks = Task.get_tasks(project_name='examples', task_name='train')
+for t in tasks:
+    t.name += ' {}'.format(task.id)
+```
+
+Another example - To append a specific hyperparameter and its value to each task's name:
+
+```python
+tasks = Task.get_tasks(project_name='examples', task_name='my_automl_experiment')
+for t in tasks:
+    params = t.get_parameters()
+    if 'my_secret_parameter' in params:
+        t.name += ' my_secret_parameter={}'.format(params['my_secret_parameter'])	
+```
+
+Use it also when creating automation pipelines with a naming convention, see our [random search automation example](https://github.com/allegroai/trains/blob/master/examples/automl/automl_random_search_example.py).
 
 ## Graphs and Logs
 

@@ -942,9 +942,12 @@ class Task(_Task):
                         log_to_backend=True,
                     )
                     task_tags = task.data.system_tags if hasattr(task.data, 'system_tags') else task.data.tags
+                    task_artifacts = task.data.execution.artifacts \
+                        if hasattr(task.data.execution, 'artifacts') else None
                     if ((str(task.status) in (str(tasks.TaskStatusEnum.published), str(tasks.TaskStatusEnum.closed)))
                             or task.output_model_id or (ARCHIVED_TAG in task_tags)
-                            or (cls._development_tag not in task_tags)):
+                            or (cls._development_tag not in task_tags)
+                            or task_artifacts):
                         # If the task is published or closed, we shouldn't reset it so we can't use it in dev mode
                         # If the task is archived, or already has an output model,
                         #  we shouldn't use it in development mode either

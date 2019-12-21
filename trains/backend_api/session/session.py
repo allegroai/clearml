@@ -41,6 +41,7 @@ class Session(TokenManager):
     _session_timeout = (10.0, 300.)
     _write_session_data_size = 15000
     _write_session_timeout = (300.0, 300.)
+    _sessions_created = 0
 
     api_version = '2.1'
     default_host = "https://demoapi.trains.allegro.ai"
@@ -157,6 +158,8 @@ class Session(TokenManager):
         # we do that here, so if we have problems authenticating, we see them immediately
         # notice: this is across the board warning omission
         urllib_log_warning_setup(total_retries=http_retries_config.get('total', 0), display_warning_after=3)
+
+        self.__class__._sessions_created += 1
 
     def _send_request(
         self,
@@ -493,6 +496,14 @@ class Session(TokenManager):
         def version_tuple(v):
             v = tuple(map(int, (v.split("."))))
             return v + (0,) * max(0, 3 - len(v))
+
+        # If no session was created, create a default one, in order to get the backend api version.
+        if cls._sessions_created <= 0:
+            try:
+                dummy = cls()
+            except Exception:
+                pass
+
         return version_tuple(cls.api_version) >= version_tuple(str(min_api_version))
 
     def _do_refresh_token(self, old_token, exp=None):

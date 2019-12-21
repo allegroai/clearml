@@ -17,6 +17,9 @@ class ProxyDictPostWrite(dict):
         super(ProxyDictPostWrite, self).__setitem__(key, value)
         self._set_callback()
 
+    def __reduce__(self):
+        return dict, (), None, None, iter(self._to_dict().items())
+
     def _set_callback(self, *_):
         if self._update_func:
             self._update_func(self._update_obj, self)
@@ -47,6 +50,9 @@ class ProxyDictPreWrite(dict):
                 self.update({k: ProxyDictPreWrite(k, self._nested_callback, i)})
         self._update_obj = update_obj
         self._update_func = update_func
+
+    def __reduce__(self):
+        return dict, (), None, None, iter(self.items())
 
     def __setitem__(self, key, value):
         key_value = self._set_callback((key, value,))

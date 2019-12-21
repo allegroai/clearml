@@ -862,7 +862,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         execution = ConfigTree.merge_configs(ConfigFactory.from_dict(execution),
                                              ConfigFactory.from_dict(execution_overrides or {}))
         # clear all artifacts
-        execution['artifacts'] = [e for e in execution['artifacts'] if e.get('mode') != 'output']
+        execution['artifacts'] = [e for e in execution['artifacts'] if e.get('mode') == 'input']
 
         if not tags and task.tags:
             tags = [t for t in task.tags if t != cls._development_tag]

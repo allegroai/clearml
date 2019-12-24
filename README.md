@@ -1,7 +1,8 @@
 # TRAINS
 ## Auto-Magical Experiment Manager & Version Control for AI
 
-## :tada: Now with Full DevOps :confetti_ball: checkout the new addition [TRAINS AGENT](https://github.com/allegroai/trains-agent)
+## :tada: Now with Full DevOps :confetti_ball: our latest addition [TRAINS AGENT](https://github.com/allegroai/trains-agent)
+## Happy Holidays! Checkout our :gift: [Auto-Magic dynamic AWS cluster](https://github.com/allegroai/trains-agent/blob/master/examples/dynamic_cloud_cluster.ipynb)
 
 "Because it’s a jungle out there"
 

@@ -57,7 +57,6 @@ TRAINS is a two part solution:
     - Install TRAINS
 
             pip install trains
-    		
 		<details>
 		<summary>Add optional cloud storage support (S3/GoogleStorage/Azure):</summary>
 
@@ -68,7 +67,6 @@ TRAINS is a two part solution:
 		```
 		
 		</details>
-
 
     - Add the following lines to your code
 

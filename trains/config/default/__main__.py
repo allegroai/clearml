@@ -12,7 +12,7 @@ from trains.utilities.pyhocon import ConfigFactory, ConfigMissingException
 
 
 description = """
-Please create new trains credentials through the profile page in your trains web app (e.g. https://demoapp.trains.allegro.ai/profile)
+Please create new trains credentials through the profile page in your trains web app (e.g. http://localhost:8080/profile)
 In the profile page, press "Create new credentials", then press "Copy to clipboard".
 
 Paste copied configuration here:

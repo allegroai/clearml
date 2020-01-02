@@ -95,6 +95,13 @@ def get_http_session_with_retry(
 
     session = requests.Session()
 
+    # HACK: with python 2.7 there is a potential race condition that can cause
+    # a deadlock when importing "netrc", inside the get_netrc_auth() function
+    # setting 'session.trust_env' to False will make sure the `get_netrc_auth()` is not called
+    # see details: https://github.com/psf/requests/issues/2925
+    if six.PY2:
+        session.trust_env = False
+
     if backoff_max is not None:
         Retry.BACKOFF_MAX = backoff_max
 

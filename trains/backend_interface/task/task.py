@@ -297,6 +297,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return self.data.project
 
     @property
+    def parent(self):
+        return self.data.parent
+
+    @property
     def input_model_id(self):
         return self.data.execution.model
 

@@ -126,7 +126,7 @@ class PatchedMatplotlib:
 
     @staticmethod
     def update_current_task(task):
-        # make sure we have a default value
+        # make sure we have a default vale
         if PatchedMatplotlib._global_image_counter_limit is None:
             from ..config import config
             PatchedMatplotlib._global_image_counter_limit = config.get('metric.matplotlib_untitled_history_size', 100)

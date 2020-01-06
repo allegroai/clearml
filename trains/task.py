@@ -7,8 +7,11 @@ import time
 from argparse import ArgumentParser
 from tempfile import mkstemp
 
-from pathlib2 import Path
-from collections import OrderedDict, Callable
+try:
+    from collections.abc import Sequence
+except ImportError:
+    from collections import Sequence
+
 from typing import Optional
 
 import psutil
@@ -703,7 +706,7 @@ class Task(_Task):
         if self.is_main_task():
             self.__register_at_exit(None)
 
-    def register_artifact(self, name, artifact, metadata=None):
+    def register_artifact(self, name, artifact, metadata=None, uniqueness_columns=True):
         """
         Add artifact for the current Task, used mostly for Data Audition.
         Currently supported artifacts object types: pandas.DataFrame
@@ -711,8 +714,14 @@ class Task(_Task):
         :param str name: name of the artifacts. Notice! it will override previous artifacts if name already exists.
         :param pandas.DataFrame artifact: artifact object, supported artifacts object types: pandas.DataFrame
         :param dict metadata: dictionary of key value to store with the artifact (visible in the UI)
+        :param Sequence uniqueness_columns: Sequence of columns for artifact uniqueness comparison criteria.
+            The default value is True, which equals to all the columns (same as artifact.columns).
         """
-        self._artifacts_manager.register_artifact(name=name, artifact=artifact, metadata=metadata)
+        if not isinstance(uniqueness_columns, Sequence) and uniqueness_columns is not True:
+            raise ValueError('uniqueness_columns should be a sequence or True')
+        if isinstance(uniqueness_columns, str):
+            uniqueness_columns = [uniqueness_columns]
+        self._artifacts_manager.register_artifact(name=name, artifact=artifact, metadata=metadata, uniqueness_columns=uniqueness_columns)
 
     def unregister_artifact(self, name):
         """

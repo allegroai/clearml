@@ -92,7 +92,7 @@ class _Arguments(object):
         ]
         for sub_parser in sub_parsers:
             if sub_parser.dest and sub_parser.dest != SUPPRESS:
-                defaults[sub_parser.dest] = full_args_dict.get(sub_parser.dest)
+                defaults[sub_parser.dest] = full_args_dict.get(sub_parser.dest) or ''
             for choice in sub_parser.choices.values():
                 # recursively parse
                 defaults = cls._add_to_defaults(
@@ -156,6 +156,12 @@ class _Arguments(object):
                                if not k.startswith(self._prefix_tf_defines)])
         arg_parser_argeuments = {}
         for k, v in task_arguments.items():
+            # python2 unicode support
+            try:
+                v = str(v)
+            except:
+                pass
+
             # if we have a StoreTrueAction and the value is either False or Empty or 0 change the default to False
             # with the rest we have to make sure the type is correct
             matched_actions = self._find_parser_action(parser, k)
@@ -217,14 +223,16 @@ class _Arguments(object):
                         v = var_type(v)
                         # cast back to int if it's the same value
                         if type(current_action.default) == int and int(v) == v:
-                            arg_parser_argeuments[k] = int(v)
-                        if current_action.default is None and v in (None, ''):
+                            arg_parser_argeuments[k] = v = int(v)
+                        elif current_action.default is None and v in (None, ''):
                             # Do nothing, we should leave it as is.
                             pass
                         else:
                             arg_parser_argeuments[k] = v
                     except Exception:
-                        pass
+                        # if we failed, leave as string
+                        arg_parser_argeuments[k] = v
+
                 elif current_action and current_action.type == bool:
                     # parser.set_defaults cannot cast string `False`/`True` to boolean properly,
                     # so we have to do it manually here
@@ -241,6 +249,12 @@ class _Arguments(object):
                             pass
                     if v not in (None, ''):
                         arg_parser_argeuments[k] = v
+                elif current_action and current_action.type:
+                    arg_parser_argeuments[k] = v
+                    try:
+                        arg_parser_argeuments[k] = v = current_action.type(v)
+                    except:
+                        pass
 
                 # add as default
                 try:
@@ -304,6 +318,12 @@ class _Arguments(object):
                                if not k.startswith(self._prefix_tf_defines)])
 
         for k, v in dictionary.items():
+            # if key is not present in the task's parameters, assume we didn't get this far when running
+            # in non-remote mode, and just add it to the task's parameters
+            if k not in parameters:
+                self._task.set_parameter(k, v)
+                continue
+
             param = parameters.get(k, None)
             if param is None:
                 continue
@@ -346,7 +366,7 @@ class _Arguments(object):
                 except Exception:
                     self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
                                            (str(k), str(param), str(k), str(v)))
-            elif v_type == type(None):
+            elif isinstance(v_type, type(None)):
                 v_type = str
 
             try:

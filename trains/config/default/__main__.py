@@ -177,15 +177,16 @@ def verify_credentials(api_host, credentials):
     try:
         print('Verifying credentials ...')
         if api_host:
-            Session(api_key=credentials['access_key'], secret_key=credentials['secret_key'], host=api_host)
+            Session(api_key=credentials['access_key'], secret_key=credentials['secret_key'], host=api_host,
+                    http_retries_config={"total": 1})
             print('Credentials verified!')
             return True
         else:
             print("Can't verify credentials")
             return False
-    except Exception:
-        print('Error: could not verify credentials: key={} secret={}'.format(
-            credentials.get('access_key'), credentials.get('secret_key')))
+    except Exception as ex:
+        print('Exception: {}\nError: could not verify credentials: key={} secret={}'.format(
+            str(ex), credentials.get('access_key'), credentials.get('secret_key')))
         return False
 
 

@@ -85,6 +85,7 @@ class Session(TokenManager):
         initialize_logging=True,
         client=None,
         config=None,
+        http_retries_config=None,
         **kwargs
     ):
 
@@ -127,9 +128,8 @@ class Session(TokenManager):
             raise ValueError("host is required in init or config")
 
         self.__host = host.strip("/")
-        http_retries_config = self.config.get(
-            "api.http.retries", ConfigTree()
-        ).as_plain_ordered_dict()
+        http_retries_config = http_retries_config or self.config.get(
+            "api.http.retries", ConfigTree()).as_plain_ordered_dict()
         http_retries_config["status_forcelist"] = self._retry_codes
         self.__http_session = get_http_session_with_retry(**http_retries_config)
 

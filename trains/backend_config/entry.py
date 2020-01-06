@@ -101,3 +101,7 @@ class Entry(object):
     def error(self, message):
         # type: (Text) -> None
         pass
+
+    def exists(self):
+        # type: () -> bool
+        return any(key for key in self.keys if self._get(key) is not NotSet)

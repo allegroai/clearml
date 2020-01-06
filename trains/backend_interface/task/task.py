@@ -24,7 +24,7 @@ from ..setupuploadmixin import SetupUploadMixin
 from ..util import make_message, get_or_create_project, get_single_result, \
     exact_match_regex
 from ...config import get_config_for_bucket, get_remote_task_id, TASK_ID_ENV_VAR, get_log_to_backend, \
-    running_remotely, get_cache_dir
+    running_remotely, get_cache_dir, DOCKER_IMAGE_ENV_VAR
 from ...debugging import get_logger
 from ...debugging.log import LoggerRoot
 from ...storage import StorageHelper
@@ -669,6 +669,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     and all(isinstance(k, six.string_types) and isinstance(v, int) for k, v in enumeration.items())):
                 raise ValueError('Expected label to be a dict[str => int]')
             execution.model_labels = enumeration
+            self._edit(execution=execution)
+
+    def _set_default_docker_image(self):
+        if not DOCKER_IMAGE_ENV_VAR.exists():
+            return
+        with self._edit_lock:
+            self.reload()
+            execution = self.data.execution
+            execution.docker_cmd = DOCKER_IMAGE_ENV_VAR.get(default="")
             self._edit(execution=execution)
 
     def set_artifacts(self, artifacts_list=None):

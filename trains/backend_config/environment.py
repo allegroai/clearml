@@ -23,3 +23,6 @@ class EnvEntry(Entry):
 
     def error(self, message):
         print("Environment configuration: {}".format(message))
+
+    def exists(self):
+        return any(key for key in self.keys if getenv(key) is not None)

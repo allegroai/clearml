@@ -53,6 +53,7 @@ class Framework(Options):
         'model.json': (tensorflowjs, ),
         '.tflite': (tensorflowlite, ),
         '.pth': (pytorch, ),
+        '.pt': (pytorch, ),
         '.caffemodel': (caffe, ),
         '.prototxt': (caffe, ),
         'predict_net.pb': (caffe2, ),

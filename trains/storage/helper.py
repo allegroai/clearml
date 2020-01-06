@@ -2,6 +2,7 @@ from __future__ import with_statement
 
 import errno
 import getpass
+import itertools
 import json
 import os
 import shutil
@@ -342,7 +343,7 @@ class StorageHelper(object):
                 config=self._conf
             )
 
-        elif self._scheme in ('http', 'https'):
+        elif self._scheme in _HttpDriver.schemes:
             self._driver = _HttpDriver(retries=retries)
             self._container = self._driver.get_container(container_name=self._base_url)
         else:  # elif self._scheme == 'file':
@@ -949,6 +950,8 @@ class _HttpDriver(_Driver):
 
     timeout = (5.0, 30.)
     min_kbps_speed = 50
+
+    schemes = ('http', 'https')
 
     class _Container(object):
         _default_backend_session = None
@@ -2235,3 +2238,16 @@ class _FileStorageDriver(_Driver):
 
     def test_upload(self, test_path, config, **kwargs):
         return True
+
+
+driver_schemes = set(
+    filter(
+        None,
+        itertools.chain(
+            (getattr(cls, "scheme", None) for cls in _Driver.__subclasses__()),
+            *(getattr(cls, "schemes", []) for cls in _Driver.__subclasses__())
+        )
+    )
+)
+
+remote_driver_schemes = driver_schemes - {_FileStorageDriver.scheme}

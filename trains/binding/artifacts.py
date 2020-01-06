@@ -274,6 +274,7 @@ class Artifacts(object):
         artifact_type_data = tasks.ArtifactTypeData()
         override_filename_in_uri = None
         override_filename_ext_in_uri = None
+        uri = None
         if np and isinstance(artifact_object, np.ndarray):
             artifact_type = 'numpy'
             artifact_type_data.content_type = 'application/numpy'
@@ -316,10 +317,15 @@ class Artifacts(object):
             os.close(fd)
             artifact_type_data.preview = preview
             delete_after_upload = True
-        elif isinstance(artifact_object, six.string_types) or isinstance(artifact_object, Path):
+        elif isinstance(artifact_object, six.string_types) and urlparse(artifact_object).scheme in remote_driver_schemes:
+            # we should not upload this, just register
+            local_filename = None
+            uri = artifact_object
+            artifact_type = 'custom'
+            artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
+        elif isinstance(artifact_object, six.string_types + (Path,)):
             # check if single file
-            if isinstance(artifact_object, six.string_types):
-                artifact_object = Path(artifact_object)
+            artifact_object = Path(artifact_object)
 
             artifact_object.expanduser().absolute()
             try:
@@ -388,21 +394,26 @@ class Artifacts(object):
                 self._task_artifact_list.remove(artifact)
                 break
 
-        # check that the file to upload exists
-        local_filename = Path(local_filename).absolute()
-        if not local_filename.exists() or not local_filename.is_file():
-            LoggerRoot.get_base_logger().warning('Artifact upload failed, cannot find file {}'.format(
-                local_filename.as_posix()))
-            return False
+        if not local_filename:
+            file_size = None
+            file_hash = None
+        else:
+            # check that the file to upload exists
+            local_filename = Path(local_filename).absolute()
+            if not local_filename.exists() or not local_filename.is_file():
+                LoggerRoot.get_base_logger().warning('Artifact upload failed, cannot find file {}'.format(
+                    local_filename.as_posix()))
+                return False
 
-        file_hash, _ = self.sha256sum(local_filename.as_posix())
+            file_hash, _ = self.sha256sum(local_filename.as_posix())
+            file_size = local_filename.stat().st_size
+
+            uri = self._upload_local_file(local_filename, name,
+                                          delete_after_upload=delete_after_upload,
+                                          override_filename=override_filename_in_uri,
+                                          override_filename_ext=override_filename_ext_in_uri)
+
         timestamp = int(time())
-        file_size = local_filename.stat().st_size
-
-        uri = self._upload_local_file(local_filename, name,
-                                      delete_after_upload=delete_after_upload,
-                                      override_filename=override_filename_in_uri,
-                                      override_filename_ext=override_filename_ext_in_uri)
 
         artifact = tasks.Artifact(key=name, type=artifact_type,
                                   uri=uri,

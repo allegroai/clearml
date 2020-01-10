@@ -51,8 +51,8 @@ class TensorBoardImage(TensorBoard):
 
 
 parser = argparse.ArgumentParser(description='Keras MNIST Example')
-parser.add_argument('--batch-size', type=int, default=128, help='input batch size for training (default: 64)')
-parser.add_argument('--epochs', type=int, default=6, help='number of epochs to train (default: 10)')
+parser.add_argument('--batch-size', type=int, default=128, help='input batch size for training (default: 128)')
+parser.add_argument('--epochs', type=int, default=6, help='number of epochs to train (default: 6)')
 args = parser.parse_args()
 
 # the data, shuffled and split between train and test sets

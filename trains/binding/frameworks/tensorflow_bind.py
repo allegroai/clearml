@@ -1026,11 +1026,15 @@ class PatchTensorFlowEager(object):
             event_writer._add_histogram(tag=tag, step=step, histo_data=hist_data)
             return
 
-        # prepare the dictionary, assume numpy
-        # histo_data['bucketLimit'] is the histogram bucket right side limit, meaning X axis
-        # histo_data['bucket'] is the histogram height, meaning the Y axis
-        # notice hist_data[:, 1] is the right side limit, for backwards compatibility we take the left side
-        histo_data = {'bucketLimit': hist_data[:, 0].tolist(), 'bucket': hist_data[:, 2].tolist()}
+        if isinstance(hist_data, np.ndarray):
+            hist_data = np.histogram(hist_data)
+            histo_data = {'bucketLimit': hist_data[1].tolist(), 'bucket': hist_data[0].tolist()}
+        else:
+            # prepare the dictionary, assume numpy
+            # histo_data['bucketLimit'] is the histogram bucket right side limit, meaning X axis
+            # histo_data['bucket'] is the histogram height, meaning the Y axis
+            # notice hist_data[:, 1] is the right side limit, for backwards compatibility we take the left side
+            histo_data = {'bucketLimit': hist_data[:, 0].tolist(), 'bucket': hist_data[:, 2].tolist()}
         event_writer._add_histogram(tag=tag, step=step, histo_data=histo_data)
 
     @staticmethod

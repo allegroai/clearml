@@ -326,10 +326,38 @@ class ScriptInfo(object):
             from notebook.notebookapp import list_running_servers
             import requests
             current_kernel = sys.argv[2].split(os.path.sep)[-1].replace('kernel-', '').replace('.json', '')
-            server_info = next(list_running_servers())
-            r = requests.get(
-                url=server_info['url'] + 'api/sessions',
-                headers={'Authorization': 'token {}'.format(server_info.get('token', '')), })
+            try:
+                server_info = next(list_running_servers())
+            except Exception:
+                # on some jupyter notebook versions this function can crash on parsing the json file,
+                # we will parse it manually here
+                import ipykernel
+                from glob import glob
+                import json
+                for f in glob(os.path.join(os.path.dirname(ipykernel.get_connection_file()), 'nbserver-*.json')):
+                    try:
+                        with open(f, 'r') as json_data:
+                            server_info = json.load(json_data)
+                    except:
+                        server_info = None
+                    if server_info:
+                        break
+            try:
+                r = requests.get(
+                    url=server_info['url'] + 'api/sessions',
+                    headers={'Authorization': 'token {}'.format(server_info.get('token', '')), })
+            except requests.exceptions.SSLError:
+                # disable SSL check warning
+                from urllib3.exceptions import InsecureRequestWarning
+                requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+                # fire request
+                r = requests.get(
+                    url=server_info['url'] + 'api/sessions',
+                    headers={'Authorization': 'token {}'.format(server_info.get('token', '')), }, verify=False)
+                # enable SSL check warning
+                import warnings
+                warnings.simplefilter('default', InsecureRequestWarning)
+
             r.raise_for_status()
             notebooks = r.json()
 

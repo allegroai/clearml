@@ -58,6 +58,7 @@ class PatchedMatplotlib:
                 LoggerRoot.get_base_logger().warning(
                     'matplotlib binding supports version 2.0 and above, found version {}'.format(
                         matplotlib.__version__))
+                PatchedMatplotlib._patched_original_plot = False
                 return False
 
             if running_remotely():

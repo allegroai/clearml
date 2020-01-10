@@ -46,16 +46,22 @@ class PostImportHookPatching(object):
 
     @staticmethod
     def _patched_import3(name, globals=None, locals=None, fromlist=(), level=0):
-        base_name = name.split('.')[0]
-        already_imported = (not base_name) or (base_name in sys.modules)
+        name_parts = name.split('.')
+        base_name = name_parts[0]
+        second_name = '.'.join(name_parts[:2]) if len(name_parts) > 1 else None
+        base_already_imported = (not base_name) or (base_name in sys.modules)
+        second_already_imported = (not second_name) or (second_name in sys.modules)
         mod = builtins.__org_import__(
             name,
             globals=globals,
             locals=locals,
             fromlist=fromlist,
             level=level)
-        if not already_imported and base_name in PostImportHookPatching._post_import_hooks:
+        if not base_already_imported and base_name in PostImportHookPatching._post_import_hooks:
             for hook in PostImportHookPatching._post_import_hooks[base_name]:
+                hook()
+        if not second_already_imported and second_name in PostImportHookPatching._post_import_hooks:
+            for hook in PostImportHookPatching._post_import_hooks[second_name]:
                 hook()
         return mod
 
@@ -70,4 +76,3 @@ class PostImportHookPatching(object):
     def remove_on_import(name, func):
         if name in PostImportHookPatching._post_import_hooks and func in PostImportHookPatching._post_import_hooks[name]:
             PostImportHookPatching._post_import_hooks[name].remove(func)
-

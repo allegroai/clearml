@@ -1283,7 +1283,11 @@ class PatchKerasModelIO(object):
             filepath = kwargs['filepath'] if 'filepath' in kwargs else args[0]
 
             # this will already generate an output model
-            config = self._updated_config()
+            try:
+                config = self._updated_config()
+            except Exception as ex:
+                # we failed to convert the network to json, for some reason (most likely internal keras error)
+                config = {}
 
             # check if object already has InputModel
             if not hasattr(self, 'trains_out_model'):

@@ -211,7 +211,7 @@ class Logger(object):
 
         :param str title: Title (AKA metric)
         :param str series: Series (AKA variant)
-        :param np.ndarray scatter: A scattered data: list of (pairs of x,y,z) (or numpy array)
+        :param Union[np.ndarray, list] scatter: A scattered data: list of (pairs of x,y,z) (or numpy array)
             or list of series [[(x1,y1,z1)...]]
         :param int iteration: Iteration number
         :param str xaxis: optional x-axis title

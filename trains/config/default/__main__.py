@@ -1,5 +1,7 @@
 from __future__ import print_function
 
+import os
+
 from six.moves import input
 from pathlib2 import Path
 from six.moves.urllib.parse import urlparse
@@ -32,6 +34,36 @@ Enter the url of the trains-server's Web service, for example: {HOST}
 )
 
 
+def get_user_input():
+    """
+    Hack: Supporting two forms of input:
+     - one line credentials, e.g.
+        'credentials {"access_key" = "<access>", "secret_key" = "<secret>"}'
+     - line break with all the info, e.g.
+         api {
+         web_server: https://demoapp.trains.allegro.ai
+         api_server: https://demoapi.trains.allegro.ai
+         credentials {
+         "access_key" = "<access>"
+         "secret_key" = "<secret>"
+         }
+         }
+    :return: str The paste data
+    """
+    brackets_counter = 0  # check that the parse field is valid
+    input_list = []
+    while True:
+        user_input = input()
+        if not user_input:
+            return
+        brackets_counter += user_input.count("{") - user_input.count("}")
+        input_list.append(user_input)
+        if user_input.strip() == '}' and brackets_counter == 0:  # For break line input
+            return os.linesep.join(input_list)
+        elif user_input.strip().startswith("credentials") and len(input_list) == 1:  # For one line input
+            return os.linesep.join(input_list)
+
+
 def main():
     print('TRAINS SDK setup process')
     conf_file = Path(LOCAL_CONFIG_FILES[0]).absolute()
@@ -41,8 +73,7 @@ def main():
         return
 
     print(description, end='')
-    sentinel = ''
-    parse_input = '\n'.join(iter(input, sentinel))
+    parse_input = get_user_input()
     credentials = None
     api_host = None
     web_server = None

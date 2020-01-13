@@ -134,6 +134,17 @@ class ScriptRequirements(object):
             modules.add('azure_storage_blob', 'trains.storage', 0)
         except Exception:
             pass
+        # if we have torch and it supports tensorboard, we should add that as well
+        # (because it will not be detected automatically)
+        if 'torch' in modules and 'tensorboard' not in modules:
+            # noinspection PyBroadException
+            try:
+                # see if this version of torch support tensorboard
+                import torch.utils.tensorboard
+                import tensorboard
+                modules.add('tensorboard', 'torch', 0)
+            except Exception:
+                pass
 
         return modules, try_imports, local_mods
 

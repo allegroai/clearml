@@ -196,3 +196,19 @@ class Metrics(InterfaceBase):
                 return self.send(req, raise_on_errors=False)
 
         return None
+
+    @staticmethod
+    def close_async_threads():
+        global file_upload_pool
+        global upload_pool
+        try:
+            file_upload_pool.close()
+            file_upload_pool.join()
+        except:
+            pass
+
+        try:
+            upload_pool.close()
+            upload_pool.join()
+        except:
+            pass

@@ -21,6 +21,7 @@ from pathlib2 import Path
 
 from .backend_api.services import tasks, projects, queues
 from .backend_api.session.session import Session
+from .backend_interface.metrics import Metrics
 from .backend_interface.model import Model as BackendModel
 from .backend_interface.task import Task as _Task
 from .backend_interface.task.args import _Arguments
@@ -683,8 +684,12 @@ class Task(_Task):
 
         # flush any outstanding logs
         if self._logger:
-            # noinspection PyProtectedMember
-            self._logger._flush_stdout_handler()
+            if wait_for_uploads:
+                # noinspection PyProtectedMember
+                self._logger._flush_wait_stdout_handler()
+            else:
+                # noinspection PyProtectedMember
+                self._logger._flush_stdout_handler()
         if self._reporter:
             self.reporter.flush()
         LoggerRoot.flush()
@@ -1365,6 +1370,11 @@ class Task(_Task):
                 # wait until the reporter flush everything
                 if self._reporter:
                     self.reporter.stop()
+                    if self.is_main_task():
+                        # notice: this will close the reporting for all the Tasks in the system
+                        Metrics.close_async_threads()
+                        # notice: this will close the jupyter monitoring
+                        ScriptInfo.close()
                 if print_done_waiting:
                     self.log.info('Finished uploading')
             elif self._logger:

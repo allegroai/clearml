@@ -92,6 +92,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             if self.get_num_results() > 0:
                 self.wait_for_results()
         # make sure we flushed everything
+        self._async_enable = False
         self._write()
         if self.get_num_results() > 0:
             self.wait_for_results()

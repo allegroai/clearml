@@ -113,6 +113,16 @@ class TaskHandler(BufferingHandler):
         if batch_requests:
             self._thread_pool.apply_async(self._send_events, args=(batch_requests, ))
 
+    def wait_for_flush(self):
+        self.acquire()
+        try:
+            self._thread_pool.close()
+            self._thread_pool.join()
+        except Exception:
+            pass
+        self._thread_pool = ThreadPool(processes=1)
+        self.release()
+
     def _send_events(self, a_request):
         try:
             res = self.session.send(a_request)

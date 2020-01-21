@@ -650,6 +650,11 @@ class Logger(object):
         if self._task_handler and DevWorker.report_stdout:
             self._task_handler.flush()
 
+    def _flush_wait_stdout_handler(self):
+        if self._task_handler and DevWorker.report_stdout:
+            self._task_handler.flush()
+            self._task_handler.wait_for_flush()
+
     def _touch_title_series(self, title, series):
         if title not in self._graph_titles:
             self._graph_titles[title] = set()

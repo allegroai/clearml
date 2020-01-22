@@ -217,7 +217,7 @@ class _Arguments(object):
                     # if we have an int, we should cast to float, because it is more generic
                     if var_type == int:
                         var_type = float
-                    elif var_type == type(None):
+                    elif var_type == type(None):  # do not change! because isinstance(var_type, type(None)) === False
                         var_type = str
                     # now we should try and cast the value if we can
                     try:
@@ -370,12 +370,14 @@ class _Arguments(object):
                 except Exception:
                     self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
                                            (str(k), str(param), str(k), str(v)))
-            elif isinstance(v_type, type(None)):
-                v_type = str
 
             try:
-                dictionary[k] = v_type(param)
-            except ValueError:
+                # do not change this comparison because isinstance(v_type, type(None)) === False
+                if v_type == type(None):
+                    dictionary[k] = str(param) if param else None
+                else:
+                    dictionary[k] = v_type(param)
+            except Exception:
                 self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
                                        (str(k), str(param), str(k), str(v)))
                 continue

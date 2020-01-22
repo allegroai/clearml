@@ -111,7 +111,8 @@ class _Arguments(object):
         if parsed_args:
             for k, v in parsed_args.__dict__.items():
                 if k not in task_defaults:
-                    if type(v) == None:
+                    # do not change this comparison because isinstance(type(v), type(None)) === False
+                    if type(v) == type(None):
                         task_defaults[k] = ''
                     elif type(v) in (str, int, float, bool, list):
                         task_defaults[k] = v

@@ -253,7 +253,10 @@ class _Arguments(object):
                 elif current_action and current_action.type:
                     arg_parser_argeuments[k] = v
                     try:
-                        arg_parser_argeuments[k] = v = current_action.type(v)
+                        if current_action.default is None and current_action.type != str and not v:
+                            arg_parser_argeuments[k] = v = None
+                        else:
+                            arg_parser_argeuments[k] = v = current_action.type(v)
                     except:
                         pass
 

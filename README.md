@@ -57,7 +57,7 @@ TRAINS is a two part solution:
 
     To connect your code with TRAINS:
 
-    - Install TRAINS
+    - Install TRAINS <a name="integrate-trains"></a>
 
             pip install trains
 		<details>
@@ -71,7 +71,7 @@ TRAINS is a two part solution:
 		
 		</details>
 
-    - Add the following lines to your code <a name="integrate-trains"></a>
+    - Add the following lines to your code
 
             from trains import Task
             task = Task.init(project_name="my project", task_name="my task")

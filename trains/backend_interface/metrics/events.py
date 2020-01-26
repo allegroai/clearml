@@ -156,8 +156,8 @@ class PlotEvent(MetricsEventAdapter):
 class ImageEventNoUpload(MetricsEventAdapter):
 
     def __init__(self, metric, variant, src, iter=0, **kwargs):
+        self._url = src
         parts = urlparse(src)
-        self._url = urlunparse((parts.scheme, parts.netloc, '', '', '', ''))
         self._key = urlunparse(('', '', parts.path, parts.params, parts.query, parts.fragment))
         super(ImageEventNoUpload, self).__init__(metric, variant, iter=iter, **kwargs)
 

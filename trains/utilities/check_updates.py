@@ -336,6 +336,11 @@ class CheckPackageUpdates(object):
 
     @staticmethod
     def get_version_from_updates_server(cur_version):
+        """
+        Get the latest version for trains from updates server
+        :param cur_version: The current running version of trains
+        :type cur_version: Version
+        """
         try:
             _ = requests.get('https://updates.trains.allegro.ai/updates',
                              data=json.dumps({"versions": {"trains": str(cur_version)}}),

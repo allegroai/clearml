@@ -79,15 +79,15 @@ def get_single_result(entity, query, results, log=None, show_results=10, raise_o
     return results[0]
 
 
-def at_least_one(_exception_cls=Exception, **kwargs):
-    actual = [k for k, v in kwargs.items() if v]
+def at_least_one(_exception_cls=Exception, _check_none=False, **kwargs):
+    actual = [k for k, v in kwargs.items() if (v is not None if _check_none else v)]
     if len(actual) < 1:
         raise _exception_cls('At least one of (%s) is required' % ', '.join(kwargs.keys()))
 
 
-def mutually_exclusive(_exception_cls=Exception, _require_at_least_one=True, **kwargs):
+def mutually_exclusive(_exception_cls=Exception, _require_at_least_one=True, _check_none=False, **kwargs):
     """ Helper for checking mutually exclusive options """
-    actual = [k for k, v in kwargs.items() if v]
+    actual = [k for k, v in kwargs.items() if (v is not None if _check_none else v)]
     if _require_at_least_one:
         at_least_one(_exception_cls=_exception_cls, **kwargs)
     if len(actual) > 1:
@@ -106,4 +106,3 @@ def validate_dict(obj, key_types, value_types, desc=''):
 def exact_match_regex(name):
     """ Convert string to a regex representing an exact match """
     return '^%s$' % re.escape(name)
-

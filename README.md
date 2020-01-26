@@ -20,7 +20,9 @@ We designed TRAINS specifically to require effortless integration so that teams 
 and practices. Use it on a daily basis to boost collaboration and visibility, or use it to automatically collect
 your experimentation logs, outputs, and data to one centralized server.
 
-(Experience TRAINS live at [https://demoapp.trains.allegro.ai](https://demoapp.trains.allegro.ai))
+**We have a demo server up and running at [https://demoapp.trains.allegro.ai](https://demoapp.trains.allegro.ai).**
+
+**You can try out TRAINS and [test your code](#integrate-trains), with no additional setup.**
 <a href="https://demoapp.trains.allegro.ai"><img src="https://github.com/allegroai/trains/blob/master/docs/webapp_screenshots.gif?raw=true" width="100%"></a>
 
 ## TRAINS Automatically Logs Everything
@@ -69,7 +71,7 @@ TRAINS is a two part solution:
 		
 		</details>
 
-    - Add the following lines to your code
+    - Add the following lines to your code <a name="integrate-trains"></a>
 
             from trains import Task
             task = Task.init(project_name="my project", task_name="my task")
@@ -87,11 +89,14 @@ TRAINS is a two part solution:
     **See examples [here](https://github.com/allegroai/trains/tree/master/examples)**
 
 2. [TRAINS-server](https://github.com/allegroai/trains-server) for logging, querying, control and UI ([Web-App](https://github.com/allegroai/trains-web))
+    
+    **We already have a demo server up and running for you at [https://demoapp.trains.allegro.ai](https://demoapp.trains.allegro.ai).**
+    
+    **You can try out TRAINS without the need to install your own *trains-server*, just add the two lines of code, and it will automatically connect to the TRAINS demo-server.**
+    
+    *Note that the demo server resets every 24 hours and all of the logged data is deleted.*
 
-We have a demo server up and running at [https://demoapp.trains.allegro.ai](https://demoapp.trains.allegro.ai). You can try out TRAINS and test your code with it.
-Note that it resets every 24 hours and all of the data is deleted.
-
-When you are ready to use your own TRAINS server, go ahead and [install *TRAINS-server*](https://github.com/allegroai/trains-server).
+    When you are ready to use your own TRAINS server, go ahead and [install *TRAINS-server*](https://github.com/allegroai/trains-server).
 
 <img src="https://github.com/allegroai/trains/blob/master/docs/system_diagram.png?raw=true" width="50%">
 

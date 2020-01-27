@@ -89,7 +89,7 @@ def mutually_exclusive(_exception_cls=Exception, _require_at_least_one=True, _ch
     """ Helper for checking mutually exclusive options """
     actual = [k for k, v in kwargs.items() if (v is not None if _check_none else v)]
     if _require_at_least_one:
-        at_least_one(_exception_cls=_exception_cls, **kwargs)
+        at_least_one(_exception_cls=_exception_cls, _check_none=_check_none, **kwargs)
     if len(actual) > 1:
         raise _exception_cls('Only one of (%s) is allowed' % ', '.join(kwargs.keys()))
 

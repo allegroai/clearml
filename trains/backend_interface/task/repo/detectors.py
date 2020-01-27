@@ -201,11 +201,13 @@ class GitDetector(Detector):
         )
 
     def _post_process_info(self, info):
-        if info.url and not info.url.endswith(".git"):
-            info.url += ".git"
+        # Deprecated code: this was intended to make sure git repository names always
+        # ended with ".git", but this is not always the case (e.g. Azure Repos)
+        # if info.url and not info.url.endswith(".git"):
+        #     info.url += ".git"
 
         if (info.branch or "").startswith("origin/"):
-            info.branch = info.branch[len("origin/") :]
+            info.branch = info.branch[len("origin/"):]
 
         return info
 

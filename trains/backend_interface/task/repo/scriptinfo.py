@@ -46,6 +46,10 @@ class ScriptRequirements(object):
                 new_mapping.update(mapping)
                 mapping = new_mapping
 
+        # HACK: prefer tensorflow_gpu over tensorflow
+        if 'tensorflow_gpu' in new_mapping:
+            new_mapping['tensorflow'] = new_mapping['tensorflow_gpu']
+
         return mapping
 
     def get_requirements(self):

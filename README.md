@@ -1,8 +1,9 @@
 # TRAINS
 ## Auto-Magical Experiment Manager & Version Control for AI
 
-## :tada: Now with Full DevOps :confetti_ball: our latest addition [TRAINS AGENT](https://github.com/allegroai/trains-agent)
-## Happy Holidays! Checkout our :gift: [Auto-Magic dynamic AWS cluster](https://github.com/allegroai/trains-agent/blob/master/examples/dynamic_cloud_cluster.ipynb)
+## :tada: Now with Full DevOps - check the latest addition [TRAINS AGENT](https://github.com/allegroai/trains-agent)
+## :station: [Documentation is here!](https://allegro.ai/docs) `wubba lubba dub dub` and a [Slack Channel](https://join.slack.com/t/allegroai-trains/shared_invite/enQtOTQyMTI1MzQxMzE4LTY5NTUxOTY1NmQ1MzQ5MjRhMGRhZmM4ODE5NTNjMTg2NTBlZGQzZGVkMWU3ZDg1MGE1MjQxNDEzMWU2NmVjZmY) :train2: 
+## There is also an updated :sparkle: [TRAINS AWS autoscaler](https://github.com/allegroai/trains-agent/blob/master/examples/dynamic_cloud_cluster.ipynb)
 
 "Because it’s a jungle out there"
 
@@ -135,12 +136,13 @@ even though this project is currently in the beta stage, your logs and data will
 
 Apache License, Version 2.0 (see the [LICENSE](https://www.apache.org/licenses/LICENSE-2.0.html) for more information)
 
-## Community & Support
+## Documentation, Community & Support
+
+TRAINS documentation is available [here](https://allegro.ai/docs)
 
 For more examples and use cases, check [examples](https://github.com/allegroai/trains/blob/master/docs/trains_examples.md).
 
-If you have any questions, look to the TRAINS [FAQ](https://github.com/allegroai/trains/blob/master/docs/faq.md), or
-tag your questions on [stackoverflow](https://stackoverflow.com/questions/tagged/trains) with '**trains**' tag.
+If you have any questions: post on our [Slack Channel](https://join.slack.com/t/allegroai-trains/shared_invite/enQtOTQyMTI1MzQxMzE4LTY5NTUxOTY1NmQ1MzQ5MjRhMGRhZmM4ODE5NTNjMTg2NTBlZGQzZGVkMWU3ZDg1MGE1MjQxNDEzMWU2NmVjZmY), or tag your questions on [stackoverflow](https://stackoverflow.com/questions/tagged/trains) with '**trains**' tag.
 
 For feature requests or bug reports, please use [GitHub issues](https://github.com/allegroai/trains/issues).
 

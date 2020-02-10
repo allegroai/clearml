@@ -319,6 +319,16 @@ class ImageEvent(UploadEvent):
 
     def get_api_event(self):
         return events.MetricsImageEvent(
-            url=self._url,
+            # Hack: replace single '%' with quoted value '%25',
+            # allowing the link to be properly unquoted during http serving
+            url=self._url
+            if (
+                not self._url
+                or self._url.startswith("file://")
+                or self._url.startswith("/")
+                or self._url.startswith("\\")
+            )
+            else self._url.replace("%", "%25"),
             key=self._key,
-            **self._get_base_dict())
+            **self._get_base_dict()
+        )

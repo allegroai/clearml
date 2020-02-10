@@ -533,6 +533,11 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             return self.report_image_and_upload(title=title, series=series, iter=iter, path=path, image=matrix,
                                                 upload_uri=upload_uri, max_image_history=max_image_history)
 
+        # Hack: replace single '%' with quoted value '%25',
+        #  allowing the link to be properly unquoted during http serving
+        if url:
+            url = url.replace('%', '%25')
+
         self._report(ev)
         plotly_dict = create_image_plot(
             image_src=url,

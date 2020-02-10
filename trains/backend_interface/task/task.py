@@ -675,11 +675,23 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def _set_default_docker_image(self):
         if not DOCKER_IMAGE_ENV_VAR.exists():
             return
+        self.set_base_docker(DOCKER_IMAGE_ENV_VAR.get(default=""))
+
+    def set_base_docker(self, docker_cmd):
+        """
+        Set the base docker image for this experiment
+        If provided, this value will be used by trains-agent to execute this experiment
+         inside the provided docker image.
+        """
         with self._edit_lock:
             self.reload()
             execution = self.data.execution
-            execution.docker_cmd = DOCKER_IMAGE_ENV_VAR.get(default="")
+            execution.docker_cmd = docker_cmd
             self._edit(execution=execution)
+
+    def get_base_docker(self):
+        """Get the base docker command (image) set for this experiment"""
+        return self._get_task_property('execution.docker_cmd', raise_on_error=False, log_on_error=False)
 
     def set_artifacts(self, artifacts_list=None):
         """

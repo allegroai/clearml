@@ -137,8 +137,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param iter: Iteration number
         :type value: int
         """
-        ev = ScalarEvent(metric=self._normalize_name(title),
-                         variant=self._normalize_name(series), value=value, iter=iter)
+        ev = ScalarEvent(metric=self._normalize_name(title), variant=self._normalize_name(series), value=value, iter=iter)
         self._report(ev)
 
     def report_vector(self, title, series, values, iter):
@@ -155,8 +154,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         """
         if not isinstance(values, collections.Iterable):
             raise ValueError('values: expected an iterable')
-        ev = VectorEvent(metric=self._normalize_name(title),
-                         variant=self._normalize_name(series), values=values, iter=iter)
+        ev = VectorEvent(metric=self._normalize_name(title), variant=self._normalize_name(series), values=values, iter=iter)
         self._report(ev)
 
     def report_plot(self, title, series, plot, iter):
@@ -182,8 +180,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             plot = json.dumps(plot, default=default)
         elif not isinstance(plot, six.string_types):
             raise ValueError('Plot should be a string or a dict')
-        ev = PlotEvent(metric=self._normalize_name(title),
-                       variant=self._normalize_name(series), plot_str=plot, iter=iter)
+        ev = PlotEvent(metric=self._normalize_name(title), variant=self._normalize_name(series), plot_str=plot, iter=iter)
         self._report(ev)
 
     def report_image(self, title, series, src, iter):
@@ -199,8 +196,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param iter: Iteration number
         :type value: int
         """
-        ev = ImageEventNoUpload(metric=self._normalize_name(title),
-                                variant=self._normalize_name(series), iter=iter, src=src)
+        ev = ImageEventNoUpload(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter, src=src)
         self._report(ev)
 
     def report_image_and_upload(self, title, series, iter, path=None, image=None, upload_uri=None,
@@ -227,8 +223,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             raise ValueError('Upload configuration is required (use setup_upload())')
         if len([x for x in (path, image) if x is not None]) != 1:
             raise ValueError('Expected only one of [filename, image]')
-        kwargs = dict(metric=self._normalize_name(title),
-                      variant=self._normalize_name(series), iter=iter, image_file_history_size=max_image_history)
+        kwargs = dict(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter, image_file_history_size=max_image_history)
         ev = ImageEvent(image_data=image, upload_uri=upload_uri, local_image_path=path,
                         delete_after_upload=delete_after_upload, **kwargs)
         self._report(ev)
@@ -521,8 +516,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             raise ValueError('Upload configuration is required (use setup_upload())')
         if len([x for x in (path, matrix) if x is not None]) != 1:
             raise ValueError('Expected only one of [filename, matrix]')
-        kwargs = dict(metric=self._normalize_name(title),
-                      variant=self._normalize_name(series), iter=iter, image_file_history_size=max_image_history)
+        kwargs = dict(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter, image_file_history_size=max_image_history)
         ev = UploadEvent(image_data=matrix, upload_uri=upload_uri, local_image_path=path,
                          delete_after_upload=delete_after_upload, **kwargs)
         _, url = ev.get_target_full_upload_uri(upload_uri or self._storage_uri, self._metrics.storage_key_prefix)
@@ -555,9 +549,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
 
     @classmethod
     def _normalize_name(cls, name):
-        if not name:
-            return name
-        return name.replace('$', '/').replace('.', '/')
+        return name
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         # don't flush in case an exception was raised

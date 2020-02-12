@@ -197,7 +197,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                         )
                     else:
                         self.get_logger().report_text(
-                            'TRAINS-SERVER new version available: upgrade to v{} is recommended!'.format(
+                            'TRAINS new version available: upgrade to v{} is recommended!'.format(
                                 latest_version[0]),
                         )
             except Exception:

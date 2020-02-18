@@ -567,6 +567,7 @@ class ScriptInfo(object):
             working_dir=working_dir,
             diff=diff,
             requirements={'pip': requirements, 'conda': conda_requirements} if requirements else None,
+            binary='python{}.{}'.format(sys.version_info.major, sys.version_info.minor),
         )
 
         messages = []

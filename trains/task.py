@@ -1081,6 +1081,7 @@ class Task(_Task):
     def _connect_output_model(self, model):
         assert isinstance(model, OutputModel)
         model.connect(self)
+        return model
 
     def _save_output_model(self, model):
         """
@@ -1117,6 +1118,7 @@ class Task(_Task):
             return
         self._last_input_model_id = model.id
         model.connect(self)
+        return model
 
     def _try_set_connected_parameter_type(self, option):
         # """ Raise an error if current value is not None and not equal to the provided option value """
@@ -1146,7 +1148,7 @@ class Task(_Task):
                 from IPython import get_ipython
                 ip = get_ipython()
                 if ip is not None and 'IPKernelApp' in ip.config:
-                    return
+                    return parser
         except Exception:
             pass
 
@@ -1168,6 +1170,7 @@ class Task(_Task):
             self._arguments.copy_to_parser(parser, parsed_args)
         else:
             self._arguments.copy_defaults_from_argparse(parser, args=args, namespace=namespace, parsed_args=parsed_args)
+        return parser
 
     def _connect_dictionary(self, dictionary):
         def _update_args_dict(task, config_dict):
@@ -1200,6 +1203,7 @@ class Task(_Task):
             attr_class.update_from_dict(self.get_parameters())
         else:
             self.set_parameters(attr_class.to_dict())
+        return attr_class
 
     def _validate(self, check_output_dest_credentials=False):
         if running_remotely():

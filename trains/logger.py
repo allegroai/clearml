@@ -11,7 +11,7 @@ from .backend_interface.task import Task as _Task
 from .backend_interface.task.development.worker import DevWorker
 from .backend_interface.task.log import TaskHandler
 from .backend_interface.util import mutually_exclusive
-from .config import running_remotely, get_cache_dir
+from .config import running_remotely, get_cache_dir, config
 from .debugging.log import LoggerRoot
 from .errors import UsageError
 from .storage import StorageHelper
@@ -31,6 +31,7 @@ class Logger(object):
     """
     SeriesInfo = SeriesInfo
     _tensorboard_logging_auto_group_scalars = False
+    _tensorboard_single_series_per_graph = config.get('metrics.tensorboard_single_series_per_graph', False)
 
     def __init__(self, private_task):
         """
@@ -519,6 +520,14 @@ class Logger(object):
         cls._tensorboard_logging_auto_group_scalars = group_scalars
 
     @classmethod
+    def tensorboard_single_series_per_graph(cls, single_series=False):
+        """
+        If `single_series` set to True, we generate a separate graph (plot) for each Tensorboard scalar series
+        Default is False: Tensorboard scalar series will be grouped according to their title
+        """
+        cls._tensorboard_logging_single_series_per_graphs = single_series
+
+    @classmethod
     def _remove_std_logger(cls):
         StdStreamPatch.remove_std_logger()
 
@@ -568,7 +577,7 @@ class Logger(object):
         self._start_task_if_needed()
 
     def _report_image_plot_and_upload(self, title, series, iteration, path=None, matrix=None, max_image_history=None,
-                                     delete_after_upload=False):
+                                      delete_after_upload=False):
         """
         Report an image, upload its contents, and present in plots section using plotly
 
@@ -691,3 +700,11 @@ class Logger(object):
             default is False: Tensorboard scalars without title will have title/series with the same tag
         """
         return cls._tensorboard_logging_auto_group_scalars
+
+    @classmethod
+    def _get_tensorboard_single_series_per_graph(cls):
+        """
+        :return: return True if we generate a separate graph (plot) for each Tensorboard scalar series
+            default is False: Tensorboard scalar series will be grouped according to their title
+        """
+        return cls._tensorboard_single_series_per_graph

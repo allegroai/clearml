@@ -271,14 +271,17 @@ class EventTrainsWriter(object):
 
     def _add_scalar(self, tag, step, scalar_data):
         default_title = tag if not self._logger._get_tensorboard_auto_group_scalars() else 'Scalars'
-        title, series = self.tag_splitter(tag, num_split_parts=1,
-                                          default_title=default_title, logdir_header='series_last')
+        title, series = self.tag_splitter(
+            tag, num_split_parts=1, default_title=default_title, logdir_header='series_last'
+        )
+
         step = self._fix_step_counter(title, series, step)
         tag = self._get_add_scalars_event_tag(default_title)
-        group = config.get('metrics.tensorboard_auto_group_scalars', True)
 
-        possible_title = None if group else tag
-        possible_tag = tag if group else None
+        series_per_graph = self._logger._get_tensorboard_single_series_per_graph()
+
+        possible_title = tag if series_per_graph else None
+        possible_tag = None if series_per_graph else tag
 
         title = title + possible_title if possible_title else title
         series = possible_tag or series
@@ -1095,6 +1098,7 @@ class PatchTensorFlowEager(object):
                                           step=int(step.numpy()) if not isinstance(step, int) else step,
                                           img_data_np=img_data_np,
                                           max_keep_images=kwargs.get('max_images'))
+
 
 class PatchKerasModelIO(object):
     __main_task = None

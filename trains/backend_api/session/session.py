@@ -549,7 +549,7 @@ class Session(TokenManager):
             # check if this is a misconfigured api server (getting 200 without the data section)
             if res and res.status_code == 200:
                 raise ValueError('It seems *api_server* is misconfigured. '
-                                 'Is this the TRAINS API server {} ?'.format(self.get_api_server_host()))
+                                 'Is this the TRAINS API server {} ?'.format(self.host))
             else:
                 raise LoginError("Response data mismatch: No 'token' in 'data' value from res, receive : {}, "
                                  "exception: {}".format(res, ex))

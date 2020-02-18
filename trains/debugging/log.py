@@ -99,7 +99,7 @@ def add_options(parser):
         '--log-level', '-l', default=level, help='Log level (default is %s)' % level)
 
 
-def apply_args(args):
+def apply_logging_args(args):
     """ Apply logging args from an argparse.ArgumentParser parsed args """
     global default_level
     default_level = logging.getLevelName(args.log_level.upper())

@@ -48,7 +48,7 @@ from .utilities.args import argparser_parseargs_called, get_argparser_last_args,
     argparser_update_currenttask
 from .utilities.dicts import ReadOnlyDict
 from .utilities.proxy_object import ProxyDictPreWrite, ProxyDictPostWrite, flatten_dictionary, \
-    nested_from_flat_dictionary
+    nested_from_flat_dictionary, naive_nested_from_flat_dictionary
 from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
 
@@ -877,6 +877,21 @@ class Task(_Task):
                 scalar_metrics.setdefault(j['metric'], {}).setdefault(
                     j['variant'], {'last': j['value'], 'min': j['min_value'], 'max': j['max_value']})
         return scalar_metrics
+
+    def get_parameters_as_dict(self):
+        """
+        Get task parameters as a raw nested dict
+        Note that values are not parsed and returned as is (i.e. string)
+        """
+        return naive_nested_from_flat_dictionary(self.get_parameters())
+
+    def set_parameters_as_dict(self, dictionary):
+        """
+        Set task parameters from a (possibly nested) dict.
+        While parameters are set just as they would be in connect(dict), this does not link the dict to the task,
+        but rather does a one-time update.
+        """
+        self._arguments.copy_from_dict(flatten_dictionary(dictionary))
 
     @classmethod
     def set_credentials(cls, api_host=None, web_host=None, files_host=None, key=None, secret=None, host=None):

@@ -1,3 +1,5 @@
+import itertools
+
 import six
 
 
@@ -110,3 +112,28 @@ def nested_from_flat_dictionary(a_dict, flat_dict, prefix=''):
             # leave it as is, we have nothing to do with it.
             a_dict[k] = flat_dict.get(prefix+k, v)
     return a_dict
+
+
+def naive_nested_from_flat_dictionary(flat_dict, sep='/'):
+    """ A naive conversion of a flat dictionary with '/'-separated keys signifying nesting
+    into a nested dictionary.
+    """
+    return {
+        sub_prefix: (
+            bucket[0][1] if (len(bucket) == 1 and sub_prefix == bucket[0][0])
+            else naive_nested_from_flat_dictionary(
+                {
+                    k[len(sub_prefix)+1:]: v
+                    for k, v in bucket
+                    if len(k) > len(sub_prefix)
+                }
+            )
+        )
+        for sub_prefix, bucket in (
+            (key, list(group))
+            for key, group in itertools.groupby(
+                sorted(flat_dict.items()),
+                key=lambda item: item[0].partition(sep)[0]
+            )
+        )
+    }

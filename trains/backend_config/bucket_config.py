@@ -2,6 +2,7 @@ import abc
 import warnings
 from copy import copy
 from operator import itemgetter
+from os import getenv
 
 import furl
 import six
@@ -102,9 +103,9 @@ class S3BucketConfigurations(BaseBucketConfigurations):
             s3_configuration.get("credentials", [])
         )
 
-        default_key = s3_configuration.get("key", "")
-        default_secret = s3_configuration.get("secret", "")
-        default_region = s3_configuration.get("region", "")
+        default_key = s3_configuration.get("key") or getenv("AWS_ACCESS_KEY_ID", "")
+        default_secret = s3_configuration.get("secret") or getenv("AWS_SECRET_ACCESS_KEY", "")
+        default_region = s3_configuration.get("region") or getenv("AWS_DEFAULT_REGION", "")
 
         default_key = _none_to_empty_string(default_key)
         default_secret = _none_to_empty_string(default_secret)
@@ -233,14 +234,16 @@ class GSBucketConfigurations(BaseBucketConfigurations):
 
     @classmethod
     def from_config(cls, gs_configuration):
-        if gs_configuration is None:
-            return cls()
+        default_credentials = getenv("GOOGLE_APPLICATION_CREDENTIALS") or {}
+
+        if not gs_configuration:
+            return cls(default_credentials=default_credentials)
 
         config_list = gs_configuration.get("credentials", [])
         buckets_configs = [GSBucketConfig(**entry) for entry in config_list]
 
-        default_project = gs_configuration.get("project", {})
-        default_credentials = gs_configuration.get("credentials_json", {})
+        default_project = gs_configuration.get("project") or {}
+        default_credentials = gs_configuration.get("credentials_json") or default_credentials
 
         return cls(buckets_configs, default_project, default_credentials)
 
@@ -306,11 +309,20 @@ class AzureContainerConfigurations(object):
 
     @classmethod
     def from_config(cls, configuration):
+        default_account = getenv("AZURE_STORAGE_ACCOUNT")
+        default_key = getenv("AZURE_STORAGE_KEY")
+
+        default_container_configs = []
+        if default_account and default_key:
+            default_container_configs.append(AzureContainerConfig(
+                account_name=default_account, account_key=default_key
+            ))
+
         if configuration is None:
-            return cls()
+            return cls(default_container_configs)
 
         containers = configuration.get("containers", list())
-        container_configs = [AzureContainerConfig(**entry) for entry in containers]
+        container_configs = [AzureContainerConfig(**entry) for entry in containers] + default_container_configs
 
         return cls(container_configs)
 

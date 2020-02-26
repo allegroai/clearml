@@ -1332,8 +1332,9 @@ class Task(_Task):
     def _summary_artifacts(self):
         # signal artifacts upload, and stop daemon
         self._artifacts_manager.stop(wait=True)
-        # print artifacts summary
-        self.get_logger().report_text(self._artifacts_manager.summary)
+        # print artifacts summary (if not empty)
+        if self._artifacts_manager.summary:
+            self.get_logger().report_text(self._artifacts_manager.summary)
 
     def _at_exit(self):
         """

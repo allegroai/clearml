@@ -128,5 +128,7 @@ class TaskHandler(BufferingHandler):
             res = self.session.send(a_request)
             if not res.ok():
                 print("Failed logging task to backend ({:d} lines, {})".format(len(a_request.requests), str(res.meta)))
-        except Exception:
-            print("Failed logging task to backend ({:d} lines)".format(len(a_request.requests)))
+        except Exception as ex:
+            print("Retrying, failed logging task to backend ({:d} lines): {}".format(len(a_request.requests), ex))
+            # we should push ourselves back into the thread pool
+            self._thread_pool.apply_async(self._send_events, args=(a_request, ))

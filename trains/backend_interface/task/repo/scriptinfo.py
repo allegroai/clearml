@@ -26,102 +26,17 @@ class ScriptRequirements(object):
     def __init__(self, root_folder):
         self._root_folder = root_folder
 
-    @staticmethod
-    def get_installed_pkgs_detail(reqs):
-        """
-        HACK: bugfix of the original pigar get_installed_pkgs_detail
-
-        Get mapping for import top level name
-        and install package name with version.
-        """
-        mapping = dict()
-
-        for path in sys.path:
-            if os.path.isdir(path) and path.rstrip('/').endswith(
-                    ('site-packages', 'dist-packages')):
-                new_mapping = reqs._search_path(path)
-                # BUGFIX:
-                # override with previous, just like python resolves imports, the first match is the one used.
-                # unlike the original implementation, where the last one is used.
-                new_mapping.update(mapping)
-                mapping = new_mapping
-
-        # HACK: prefer tensorflow_gpu over tensorflow
-        if 'tensorflow_gpu' in new_mapping:
-            new_mapping['tensorflow'] = new_mapping['tensorflow_gpu']
-
-        return mapping
-
     def get_requirements(self):
         try:
-            from pigar import reqs
-            reqs.project_import_modules = ScriptRequirements._patched_project_import_modules
-            from pigar.__main__ import GenerateReqs
-            from pigar.log import logger
-            logger.setLevel(logging.WARNING)
-            try:
-                # first try our version, if we fail revert to the internal implantation
-                installed_pkgs = self.get_installed_pkgs_detail(reqs)
-            except Exception:
-                installed_pkgs = reqs.get_installed_pkgs_detail()
+            from ....utilities.pigar.reqs import get_installed_pkgs_detail
+            from ....utilities.pigar.__main__ import GenerateReqs
+            installed_pkgs = get_installed_pkgs_detail()
             gr = GenerateReqs(save_path='', project_path=self._root_folder, installed_pkgs=installed_pkgs,
                               ignores=['.git', '.hg', '.idea', '__pycache__', '.ipynb_checkpoints'])
-            reqs, try_imports, guess = gr.extract_reqs()
-            return self.create_requirements_txt(reqs)
+            reqs, try_imports, guess, local_pks = gr.extract_reqs(module_callback=ScriptRequirements.add_trains_used_packages)
+            return self.create_requirements_txt(reqs, local_pks)
         except Exception:
             return '', ''
-
-    @staticmethod
-    def _patched_project_import_modules(project_path, ignores):
-        """
-        copied form pigar req.project_import_modules
-        patching, os.getcwd() is incorrectly used
-        """
-        from pigar.modules import ImportedModules
-        from pigar.reqs import file_import_modules
-        modules = ImportedModules()
-        try_imports = set()
-        local_mods = list()
-        ignore_paths = collections.defaultdict(set)
-        if not ignores:
-            ignore_paths[project_path].add('.git')
-        else:
-            for path in ignores:
-                parent_dir = os.path.dirname(path)
-                ignore_paths[parent_dir].add(os.path.basename(path))
-
-        if os.path.isfile(project_path):
-            fake_path = Path(project_path).name
-            with open(project_path, 'rb') as f:
-                fmodules, try_ipts = file_import_modules(fake_path, f.read())
-                modules |= fmodules
-                try_imports |= try_ipts
-        else:
-            cur_dir = project_path  # os.getcwd()
-            for dirpath, dirnames, files in os.walk(project_path, followlinks=True):
-                if dirpath in ignore_paths:
-                    dirnames[:] = [d for d in dirnames
-                                   if d not in ignore_paths[dirpath]]
-                py_files = list()
-                for fn in files:
-                    # C extension.
-                    if fn.endswith('.so'):
-                        local_mods.append(fn[:-3])
-                    # Normal Python file.
-                    if fn.endswith('.py'):
-                        local_mods.append(fn[:-3])
-                        py_files.append(fn)
-                if '__init__.py' in files:
-                    local_mods.append(os.path.basename(dirpath))
-                for file in py_files:
-                    fpath = os.path.join(dirpath, file)
-                    fake_path = fpath.split(cur_dir)[1][1:]
-                    with open(fpath, 'rb') as f:
-                        fmodules, try_ipts = file_import_modules(fake_path, f.read())
-                        modules |= fmodules
-                        try_imports |= try_ipts
-
-        return ScriptRequirements.add_trains_used_packages(modules), try_imports, local_mods
 
     @staticmethod
     def add_trains_used_packages(modules):
@@ -159,7 +74,7 @@ class ScriptRequirements(object):
         return modules
 
     @staticmethod
-    def create_requirements_txt(reqs):
+    def create_requirements_txt(reqs, local_pks=None):
         # write requirements.txt
         try:
             conda_requirements = ''
@@ -188,6 +103,11 @@ class ScriptRequirements(object):
         # python version header
         requirements_txt = '# Python ' + sys.version.replace('\n', ' ').replace('\r', ' ') + '\n'
 
+        if local_pks:
+            requirements_txt += '\n# Local modules found - skipping:\n'
+            for k, v in local_pks.sorted_items():
+                requirements_txt += '# {0} == {1}\n'.format(k, v.version)
+
         # requirement summary
         requirements_txt += '\n'
         for k, v in reqs.sorted_items():
@@ -203,6 +123,13 @@ class ScriptRequirements(object):
         requirements_txt += '\n' + \
                             '# Detailed import analysis\n' \
                             '# **************************\n'
+
+        if local_pks:
+            for k, v in local_pks.sorted_items():
+                requirements_txt += '\n'
+                requirements_txt += '# IMPORT LOCAL PACKAGE {0}\n'.format(k)
+                requirements_txt += ''.join(['# {0}\n'.format(c) for c in v.comments.sorted_items()])
+
         for k, v in reqs.sorted_items():
             requirements_txt += '\n'
             if k == '-e':
@@ -262,9 +189,9 @@ class _JupyterObserver(object):
         # load pigar
         # noinspection PyBroadException
         try:
-            from pigar.reqs import get_installed_pkgs_detail, file_import_modules
-            from pigar.modules import ReqsModules
-            from pigar.log import logger
+            from ....utilities.pigar.reqs import get_installed_pkgs_detail, file_import_modules
+            from ....utilities.pigar.modules import ReqsModules
+            from ....utilities.pigar.log import logger
             logger.setLevel(logging.WARNING)
         except Exception:
             file_import_modules = None

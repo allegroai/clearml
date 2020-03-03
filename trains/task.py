@@ -5,13 +5,12 @@ import sys
 import threading
 import time
 from argparse import ArgumentParser
-from collections import Callable
 from tempfile import mkstemp
 
 try:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 except ImportError:
-    from collections import Sequence
+    from collections import Callable, Sequence
 
 from typing import Optional
 

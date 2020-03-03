@@ -1,5 +1,9 @@
-import collections
 import json
+
+try:
+    from collections.abc import Iterable
+except ImportError:
+    from collections import Iterable
 
 import six
 import numpy as np
@@ -152,7 +156,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param iter: Iteration number
         :type value: int
         """
-        if not isinstance(values, collections.Iterable):
+        if not isinstance(values, Iterable):
             raise ValueError('values: expected an iterable')
         ev = VectorEvent(metric=self._normalize_name(title), variant=self._normalize_name(series), values=values, iter=iter)
         self._report(ev)

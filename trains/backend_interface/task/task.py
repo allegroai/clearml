@@ -1,11 +1,15 @@
 """ Backend task management support """
-import collections
 import itertools
 import logging
 import os
 from enum import Enum
 from threading import Thread
 from multiprocessing import RLock
+
+try:
+    from collections.abc import Iterable
+except ImportError:
+    from collections import Iterable
 
 import six
 from six.moves.urllib.parse import quote
@@ -587,7 +591,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             a single key/value dictionary.
         :param kwargs: Key/value pairs, merged into the parameters dictionary created from `args`.
         """
-        if not all(isinstance(x, (dict, collections.Iterable)) for x in args):
+        if not all(isinstance(x, (dict, Iterable)) for x in args):
             raise ValueError('only dict or iterable are supported as positional arguments')
 
         update = kwargs.pop('__update', False)

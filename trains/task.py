@@ -1207,8 +1207,6 @@ class Task(_Task):
                 parsed_args = _parsed_args
 
         if running_remotely() and self.is_main_task():
-            # This hack prevents Argparse from crashing when running remotely with different set of parameters
-            sys.argv = sys.argv[:1]
             self._arguments.copy_to_parser(parser, parsed_args)
         else:
             self._arguments.copy_defaults_from_argparse(parser, args=args, namespace=namespace, parsed_args=parsed_args)

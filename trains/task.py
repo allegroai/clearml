@@ -335,8 +335,8 @@ class Task(_Task):
             elif argparser_parseargs_called():
                 # parse_args was automatically patched, but auto_connect_arg_parser is False...
                 raise UsageError("ArgumentParser.parse_args() was automatically connected to this task, "
-                                 "although auto_connect_arg_parser is turned off!"
-                                 "When turning off auto_connect_arg_parser, call Task.init() "
+                                 "although auto_connect_arg_parser is turned off!\n"
+                                 "When turning off auto_connect_arg_parser, call Task.init(...) "
                                  "before calling ArgumentParser.parse_args()")
 
         # Make sure we start the logger, it will patch the main logging object and pipe all output
@@ -922,7 +922,7 @@ class Task(_Task):
     def set_credentials(cls, api_host=None, web_host=None, files_host=None, key=None, secret=None, host=None):
         """
         Set new default TRAINS-server host and credentials
-        These configurations will be overridden by wither OS environment variables or trains.conf configuration file
+        These configurations will be overridden by either OS environment variables or trains.conf configuration file
 
         Notice! credentials needs to be set *prior* to Task initialization
 
@@ -1382,7 +1382,7 @@ class Task(_Task):
             # first thing mark task as stopped, so we will not end up with "running" on lost tasks
             # if we are running remotely, the daemon will take care of it
             task_status = None
-            if not running_remotely() and self.is_main_task():
+            if not running_remotely() and self.is_main_task() and not is_sub_process:
                 # check if we crashed, ot the signal is not interrupt (manual break)
                 task_status = ('stopped', )
                 if self.__exit_hook:

@@ -205,6 +205,8 @@ class Task(_Task):
                 cls.__forked_proc_main_pid = os.getpid()
                 # make sure we do not wait for the repo detect thread
                 cls.__main_task._detect_repo_async_thread = None
+                cls.__main_task._dev_worker = None
+                cls.__main_task._resource_monitor = None
                 # remove the logger from the previous process
                 logger = cls.__main_task.get_logger()
                 logger.set_flush_period(None)
@@ -212,6 +214,7 @@ class Task(_Task):
                 cls.__main_task._logger = None
                 cls.__main_task._reporter = None
                 cls.__main_task.get_logger()
+                cls.__main_task._artifacts_manager = Artifacts(cls.__main_task)
                 # unregister signal hooks, they cause subprocess to hang
                 cls.__main_task.__register_at_exit(cls.__main_task._at_exit)
                 cls.__main_task.__register_at_exit(None, only_remove_signal_and_exception_hooks=True)

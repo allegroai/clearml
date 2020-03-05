@@ -30,10 +30,15 @@ class TaskStopSignal(object):
     def test(self):
         # noinspection PyBroadException
         try:
-            status = str(self.task.status)
-            message = self.task.data.status_message
+            # we use internal status read, so we do not need to constantly pull the entire task object,
+            # it might be large, and we want to also avoid the edit lock on it.
+            status, message = self.task._get_status()
+            status = str(status)
+            message = str(message)
 
             if status == str(tasks.TaskStatusEnum.in_progress) and "stopping" in message:
+                # make sure we syn the entire task object
+                self.task.reload()
                 return TaskStopReason.stopped
 
             _expected_statuses = (
@@ -43,12 +48,16 @@ class TaskStopSignal(object):
             )
 
             if status not in _expected_statuses and "worker" not in message:
+                # make sure we syn the entire task object
+                self.task.reload()
                 return TaskStopReason.status_changed
 
             if status == str(tasks.TaskStatusEnum.created):
                 self._task_reset_state_counter += 1
 
                 if self._task_reset_state_counter >= self._number_of_consecutive_reset_tests:
+                    # make sure we syn the entire task object
+                    self.task.reload()
                     return TaskStopReason.reset
 
                 self.task.log.warning(

@@ -815,6 +815,24 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self._files_server = Session.get_files_server_host()
         return self._files_server
 
+    def _get_status(self):
+        try:
+            all_tasks = self.send(
+                tasks.GetAllRequest(id=[self.id], only_fields=['status', 'status_message']),
+            ).response.tasks
+            return all_tasks[0].status, all_tasks[0].status_message
+        except Exception:
+            return None, None
+
+    def _reload_last_iteration(self):
+        try:
+            all_tasks = self.send(
+                tasks.GetAllRequest(id=[self.id], only_fields=['last_iteration']),
+            ).response.tasks
+            self.data.last_iteration = all_tasks[0].last_iteration
+        except Exception:
+            return None
+
     @classmethod
     def _get_api_server(cls):
         return Session.get_api_server_host()

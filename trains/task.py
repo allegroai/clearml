@@ -848,7 +848,7 @@ class Task(_Task):
 
         :return: last reported iteration number (integer)
         """
-        self.reload()
+        self._reload_last_iteration()
         return max(self.data.last_iteration, self._reporter.max_iteration if self._reporter else 0)
 
     def set_last_iteration(self, last_iteration):

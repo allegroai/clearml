@@ -1512,7 +1512,7 @@ class Task(_Task):
                 if self._exit_callback:
                     atexit.register(self._exit_callback)
 
-                if self._org_handlers:
+                if not self._org_handlers and not Task._Task__is_subprocess():
                     if sys.platform == 'win32':
                         catch_signals = [signal.SIGINT, signal.SIGTERM, signal.SIGSEGV, signal.SIGABRT,
                                          signal.SIGILL, signal.SIGFPE]

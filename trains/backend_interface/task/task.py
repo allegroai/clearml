@@ -452,6 +452,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def update_model_desc(self, new_model_desc_file=None):
         """ Change the task's model_desc """
         with self._edit_lock:
+            self.reload()
             execution = self._get_task_property('execution')
             p = Path(new_model_desc_file)
             if not p.is_file():
@@ -571,6 +572,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             model_id = ''
 
         with self._edit_lock:
+            self.reload()
             # store model id
             self.data.execution.model = model_id
 
@@ -669,6 +671,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         enumeration = enumeration or {}
         with self._edit_lock:
+            self.reload()
             execution = self.data.execution
             if enumeration is None:
                 return
@@ -719,6 +722,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def _set_model_design(self, design=None):
         with self._edit_lock:
+            self.reload()
             execution = self.data.execution
             if design is not None:
                 execution.model_desc = Model._wrap_design(design)

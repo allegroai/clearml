@@ -151,7 +151,7 @@ def train():
     def feed_dict(train):
         """Make a TensorFlow feed_dict: maps data onto Tensor placeholders."""
         if train or FLAGS.fake_data:
-            xs, ys = mnist.train.next_batch(100, fake_data=FLAGS.fake_data)
+            xs, ys = mnist.train.next_batch(FLAGS.batch_size, fake_data=FLAGS.fake_data)
             k = FLAGS.dropout
         else:
             xs, ys = mnist.test.images, mnist.test.labels
@@ -165,7 +165,7 @@ def train():
             test_writer.add_summary(summary, i)
             print('Accuracy at step %s: %s' % (i, acc))
         else:  # Record train set summaries, and train
-            if i % 100 == 99:  # Record execution stats
+            if i % FLAGS.batch_size == FLAGS.batch_size - 1:  # Record execution stats
                 run_metadata = tf.RunMetadata()
                 summary, _ = sess.run([merged, train_step],
                                       feed_dict=feed_dict(True),
@@ -213,5 +213,7 @@ if __name__ == '__main__':
                         help='Summaries log directory')
     parser.add_argument('--save_path', default=os.path.join(tempfile.gettempdir(), "model.ckpt"),
                         help='Save the trained model under this path')
+    parser.add_argument('--batch_size', default=100,
+                        help='Batch size for training')
     FLAGS, unparsed = parser.parse_known_args()
     tf.app.run(main=main, argv=[sys.argv[0]] + unparsed)

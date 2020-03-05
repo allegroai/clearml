@@ -170,7 +170,7 @@ class Task(_Task):
             Fine grained control is possible by passing a dictionary instead of a Boolean.
             Missing keys are considered to have True value, empty dictionary is considered as False, full example:
                 auto_connect_frameworks={'matplotlib': True, 'tensorflow': True, 'pytorch': True,
-                    'xgboost': True, 'scikit': True}
+                    'xgboost': True, 'scikit': True, 'detect_repository': True}
         :param auto_resource_monitoring: If true, machine vitals will be sent along side the task scalars,
             Resources graphs will appear under the title ':resource monitor:' in the scalars tab.
         :return: Task() object
@@ -956,7 +956,8 @@ class Task(_Task):
             task._dev_worker = None
 
     @classmethod
-    def _create_dev_task(cls, default_project_name, default_task_name, default_task_type, reuse_last_task_id):
+    def _create_dev_task(cls, default_project_name, default_task_name, default_task_type, reuse_last_task_id,
+                         detect_repo=True):
         if not default_project_name or not default_task_name:
             # get project name and task name from repository name and entry_point
             result, _ = ScriptInfo.get(create_requirements=False, check_uncommitted=False)
@@ -1066,12 +1067,13 @@ class Task(_Task):
             logger.report_text('TRAINS Task: created new task id=%s' % task.id)
 
         # update current repository and put warning into logs
-        if in_dev_mode and cls.__detect_repo_async:
-            task._detect_repo_async_thread = threading.Thread(target=task._update_repository)
-            task._detect_repo_async_thread.daemon = True
-            task._detect_repo_async_thread.start()
-        else:
-            task._update_repository()
+        if detect_repo:
+            if in_dev_mode and cls.__detect_repo_async:
+                task._detect_repo_async_thread = threading.Thread(target=task._update_repository)
+                task._detect_repo_async_thread.daemon = True
+                task._detect_repo_async_thread.start()
+            else:
+                task._update_repository()
 
         # make sure everything is in sync
         task.reload()

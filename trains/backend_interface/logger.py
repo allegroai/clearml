@@ -46,7 +46,7 @@ class StdStreamPatch(object):
                 pass
 
             # now check if we have loguru and make it re-register the handlers
-            # because it sores internally the stream.write function, which we cant patch
+            # because it stores internally the stream.write function, which we cant patch
             # noinspection PyBroadException
             try:
                 from loguru import logger

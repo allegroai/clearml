@@ -35,7 +35,7 @@ from .binding.frameworks.tensorflow_bind import TensorflowBinding
 from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
 from .binding.joblib_bind import PatchedJoblib
 from .binding.matplotlib_bind import PatchedMatplotlib
-from .config import config, PROC_MASTER_ID_ENV_VAR, DEV_TASK_NO_REUSE
+from .config import config, DEV_TASK_NO_REUSE
 from .config import running_remotely, get_remote_task_id
 from .config.cache import SessionCache
 from .debugging.log import LoggerRoot

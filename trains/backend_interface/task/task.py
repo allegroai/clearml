@@ -3,7 +3,7 @@ import itertools
 import logging
 import os
 from enum import Enum
-from threading import Thread
+from tempfile import gettempdir
 from multiprocessing import RLock
 
 try:
@@ -14,7 +14,7 @@ except ImportError:
 import six
 from six.moves.urllib.parse import quote
 
-from ...backend_interface.task.repo.scriptinfo import ScriptRequirements
+from ...utilities.locks import RLock as FileRLock
 from ...backend_interface.task.development.worker import DevWorker
 from ...backend_api import Session
 from ...backend_api.services import tasks, models, events, projects
@@ -81,7 +81,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :type force_create: bool
         """
         task_id = self._resolve_task_id(task_id, log=log) if not force_create else None
-        self._edit_lock = RLock()
+        self.__edit_lock = None
         super(Task, self).__init__(id=task_id, session=session, log=log)
         self._project_name = None
         self._storage_uri = None
@@ -596,26 +596,30 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         update = kwargs.pop('__update', False)
 
-        parameters = dict() if not update else self.get_parameters()
-        parameters.update(itertools.chain.from_iterable(x.items() if isinstance(x, dict) else x for x in args))
-        parameters.update(kwargs)
-
-        not_allowed = {
-            k: type(v).__name__
-            for k, v in parameters.items()
-            if not isinstance(v, self._parameters_allowed_types)
-        }
-        if not_allowed:
-            raise ValueError(
-                "Only builtin types ({}) are allowed for values (got {})".format(
-                    ', '.join(t.__name__ for t in self._parameters_allowed_types),
-                    ', '.join('%s=>%s' % p for p in not_allowed.items())),
-                )
-
-        # force cast all variables to strings (so that we can later edit them in UI)
-        parameters = {k: str(v) if v is not None else "" for k, v in parameters.items()}
-
         with self._edit_lock:
+            self.reload()
+            if update:
+                parameters = self.get_parameters()
+            else:
+                parameters = dict()
+            parameters.update(itertools.chain.from_iterable(x.items() if isinstance(x, dict) else x for x in args))
+            parameters.update(kwargs)
+
+            not_allowed = {
+                k: type(v).__name__
+                for k, v in parameters.items()
+                if not isinstance(v, self._parameters_allowed_types)
+            }
+            if not_allowed:
+                raise ValueError(
+                    "Only builtin types ({}) are allowed for values (got {})".format(
+                        ', '.join(t.__name__ for t in self._parameters_allowed_types),
+                        ', '.join('%s=>%s' % p for p in not_allowed.items())),
+                    )
+
+            # force cast all variables to strings (so that we can later edit them in UI)
+            parameters = {k: str(v) if v is not None else "" for k, v in parameters.items()}
+
             execution = self.data.execution
             if execution is None:
                 execution = tasks.Execution(parameters=parameters)
@@ -631,9 +635,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param value: Parameter value
         :param description: Parameter description (unused for now)
         """
-        params = self.get_parameters()
-        params[name] = value
-        self.set_parameters(params)
+        self.set_parameters({name: value}, __update=True)
 
     def get_parameter(self, name, default=None):
         """

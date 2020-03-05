@@ -198,10 +198,10 @@ class Task(_Task):
         if cls.__main_task is not None:
             # if this is a subprocess, regardless of what the init was called for,
             # we have to fix the main task hooks and stdout bindings
-            if cls.__forked_proc_main_pid != os.getpid() and PROC_MASTER_ID_ENV_VAR.get() != os.getpid():
+            if cls.__forked_proc_main_pid != os.getpid() and cls.__is_subprocess():
                 if task_type is None:
                     task_type = cls.__main_task.task_type
-                # make sure we only do it once  per process
+                # make sure we only do it once per process
                 cls.__forked_proc_main_pid = os.getpid()
                 # make sure we do not wait for the repo detect thread
                 cls.__main_task._detect_repo_async_thread = None
@@ -223,7 +223,7 @@ class Task(_Task):
 
         # check that we are not a child process, in that case do nothing.
         # we should not get here unless this is Windows platform, all others support fork
-        if PROC_MASTER_ID_ENV_VAR.get() and PROC_MASTER_ID_ENV_VAR.get() != os.getpid():
+        if cls.__is_subprocess():
             class _TaskStub(object):
                 def __call__(self, *args, **kwargs):
                     return self
@@ -234,9 +234,14 @@ class Task(_Task):
                 def __setattr__(self, attr, val):
                     pass
 
-            return _TaskStub()
-        # set us as master process
-        PROC_MASTER_ID_ENV_VAR.set(os.getpid())
+            is_sub_process_task_id = cls.__get_master_id_task_id()
+            # we could not find a task ID, revert to old stub behaviour
+            if not is_sub_process_task_id:
+                return _TaskStub()
+        else:
+            # set us as master process (without task ID)
+            cls.__update_master_pid_task()
+            is_sub_process_task_id = None
 
         if task_type is None:
             # Backwards compatibility: if called from Task.current_task and task_type
@@ -252,24 +257,41 @@ class Task(_Task):
 
         try:
             if not running_remotely():
-                task = cls._create_dev_task(
-                    project_name,
-                    task_name,
-                    task_type,
-                    reuse_last_task_id,
-                )
-                if output_uri:
-                    task.output_uri = output_uri
-                elif cls.__default_output_uri:
-                    task.output_uri = cls.__default_output_uri
+                # if this is the main process, create the task
+                if not is_sub_process_task_id:
+                    task = cls._create_dev_task(
+                        project_name,
+                        task_name,
+                        task_type,
+                        reuse_last_task_id,
+                        detect_repo=False if (isinstance(auto_connect_frameworks, dict) and
+                                              not auto_connect_frameworks.get('detect_repository', True)) else True
+                    )
+                    # set defaults
+                    if output_uri:
+                        task.output_uri = output_uri
+                    elif cls.__default_output_uri:
+                        task.output_uri = cls.__default_output_uri
+                    # store new task ID
+                    cls.__update_master_pid_task(task=task)
+                else:
+                    # subprocess should get back the task info
+                    task = Task.get_task(task_id=is_sub_process_task_id)
             else:
-                task = cls(
-                    private=cls.__create_protection,
-                    task_id=get_remote_task_id(),
-                    log_to_backend=False,
-                )
-                if cls.__default_output_uri and not task.output_uri:
-                    task.output_uri = cls.__default_output_uri
+                # if this is the main process, create the task
+                if not is_sub_process_task_id:
+                    task = cls(
+                        private=cls.__create_protection,
+                        task_id=get_remote_task_id(),
+                        log_to_backend=False,
+                    )
+                    if cls.__default_output_uri and not task.output_uri:
+                        task.output_uri = cls.__default_output_uri
+                    # store new task ID
+                    cls.__update_master_pid_task(task=task)
+                else:
+                    # subprocess should get back the task info
+                    task = Task.get_task(task_id=is_sub_process_task_id)
         except Exception:
             raise
         else:
@@ -291,7 +313,7 @@ class Task(_Task):
                     PatchPyTorchModelIO.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('xgboost', True):
                     PatchXGBoostModelIO.update_current_task(task)
-            if auto_resource_monitoring:
+            if auto_resource_monitoring and not is_sub_process_task_id:
                 task._resource_monitor = ResourceMonitor(task)
                 task._resource_monitor.start()
 
@@ -319,13 +341,14 @@ class Task(_Task):
         # The logger will automatically take care of all patching (we just need to make sure to initialize it)
         logger = task.get_logger()
         # show the debug metrics page in the log, it is very convenient
-        logger.report_text(
-            'TRAINS results page: {}/projects/{}/experiments/{}/output/log'.format(
-                task._get_app_server(),
-                task.project if task.project is not None else '*',
-                task.id,
-            ),
-        )
+        if not is_sub_process_task_id:
+            logger.report_text(
+                'TRAINS results page: {}/projects/{}/experiments/{}/output/log'.format(
+                    task._get_app_server(),
+                    task.project if task.project is not None else '*',
+                    task.id,
+                ),
+            )
         # Make sure we start the dev worker if required, otherwise it will only be started when we write
         # something to the log.
         task._dev_mode_task_start()
@@ -1344,7 +1367,7 @@ class Task(_Task):
         if self._at_exit_called:
             return
 
-        is_sub_process = PROC_MASTER_ID_ENV_VAR.get() and PROC_MASTER_ID_ENV_VAR.get() != os.getpid()
+        is_sub_process = self.__is_subprocess()
 
         # noinspection PyBroadException
         try:
@@ -1371,11 +1394,12 @@ class Task(_Task):
                             task_status = ('stopped', )
 
             # wait for repository detection (if we didn't crash)
-            if not is_sub_process and wait_for_uploads and self._logger:
+            if wait_for_uploads and self._logger:
                 # we should print summary here
                 self._summary_artifacts()
                 # make sure that if we crashed the thread we are not waiting forever
-                self._wait_for_repo_detection(timeout=10.)
+                if not is_sub_process:
+                    self._wait_for_repo_detection(timeout=10.)
 
             # wait for uploads
             print_done_waiting = False
@@ -1399,11 +1423,11 @@ class Task(_Task):
             elif self._logger:
                 self._logger._flush_stdout_handler()
 
-            if not is_sub_process:
-                # from here, do not check worker status
-                if self._dev_worker:
-                    self._dev_worker.unregister()
+            # from here, do not check worker status
+            if self._dev_worker:
+                self._dev_worker.unregister()
 
+            if not is_sub_process:
                 # change task status
                 if not task_status:
                     pass

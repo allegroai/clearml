@@ -1455,6 +1455,14 @@ class Task(_Task):
         except Exception:
             # make sure we do not interrupt the exit process
             pass
+        # delete locking object (lock file)
+        # noinspection PyBroadException
+        if self._edit_lock:
+            try:
+                del self._edit_lock
+            except Exception:
+                pass
+            self._edit_lock = None
 
     @classmethod
     def __register_at_exit(cls, exit_callback, only_remove_signal_and_exception_hooks=False):

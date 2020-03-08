@@ -4,7 +4,7 @@ import subprocess
 from copy import deepcopy
 import socket
 from tempfile import mkstemp
-# make sure we have jupter in the auto requirements
+# make sure we have jupyter in the auto requirements
 import jupyter
 from trains import Task
 
@@ -27,9 +27,39 @@ for key in os.environ:
 
 # Add jupyter server base folder
 param = {
-    'jupyter_server_base_directory': '',
+    'jupyter_server_base_directory': '~/',
+    'ssh_server': True,
 }
 task.connect(param)
+
+if param.get('ssh_server'):
+    print('Installing SSH Server on {} [{}]'.format(socket.gethostname(),
+                                                    socket.gethostbyname(socket.gethostname())))
+    ssh_password = 'training'
+    try:
+        import psutil
+        used_ports = [i.laddr.port for i in psutil.net_connections()]
+        port = [i for i in range(10022, 15000) if i not in used_ports][0]
+
+        result = os.system(
+            'apt-get install -y openssh-server && '
+            'mkdir -p /var/run/sshd && '
+            'echo \'root:{password}\' | chpasswd && '
+            'echo \'PermitRootLogin yes\' >> /etc/ssh/sshd_config && '
+            'sed -i \'s/PermitRootLogin prohibit-password/PermitRootLogin yes/\' /etc/ssh/sshd_config && '
+            'sed \'s@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g\' -i /etc/pam.d/sshd && '
+            'echo "export VISIBLE=now" >> /etc/profile && '
+            'echo "export TRAINS_CONFIG_FILE={trains_config_file}" >> /etc/profile && '
+            '/usr/sbin/sshd -p {port}'.format(
+                password=ssh_password, port=port, trains_config_file=os.environ.get('TRAINS_CONFIG_FILE')))
+
+        if result == 0:
+            print('\n#\n# SSH Server running on {} [{}] port {}\n# LOGIN u:root p:{}\n#\n'.format(
+                socket.gethostname(), socket.gethostbyname(socket.gethostname()), port, ssh_password))
+        else:
+            raise ValueError()
+    except:
+        print('\n#\n# Error: SSH server could not be launched\n#\n')
 
 # execute jupyter notebook
 fd, local_filename = mkstemp()

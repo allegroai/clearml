@@ -5,6 +5,7 @@ import os
 from enum import Enum
 from tempfile import gettempdir
 from multiprocessing import RLock
+from threading import Thread
 
 try:
     from collections.abc import Iterable

@@ -3,11 +3,11 @@ import sys
 import subprocess
 from copy import deepcopy
 import socket
+import psutil
 from tempfile import mkstemp
 # make sure we have jupyter in the auto requirements
 import jupyter
 from trains import Task
-
 
 # set default docker image, with network configuration
 os.environ['TRAINS_DOCKER_IMAGE'] = 'nvidia/cuda --network host'
@@ -29,15 +29,27 @@ for key in os.environ:
 param = {
     'jupyter_server_base_directory': '~/',
     'ssh_server': True,
+    'ssh_password': 'training'
 }
 task.connect(param)
 
+try:
+    hostname = socket.gethostname()
+    hostnames = socket.gethostbyname(socket.gethostname())
+except Exception:
+    def get_ip_addresses(family):
+        for interface, snics in psutil.net_if_addrs().items():
+            for snic in snics:
+                if snic.family == family:
+                    yield snic.address
+
+    hostnames = list(get_ip_addresses(socket.AF_INET))
+    hostname = hostnames[0]
+
 if param.get('ssh_server'):
-    print('Installing SSH Server on {} [{}]'.format(socket.gethostname(),
-                                                    socket.gethostbyname(socket.gethostname())))
-    ssh_password = 'training'
+    print('Installing SSH Server on {} [{}]'.format(hostname, hostnames))
+    ssh_password = param.get('ssh_password', 'training')
     try:
-        import psutil
         used_ports = [i.laddr.port for i in psutil.net_connections()]
         port = [i for i in range(10022, 15000) if i not in used_ports][0]
 
@@ -55,7 +67,7 @@ if param.get('ssh_server'):
 
         if result == 0:
             print('\n#\n# SSH Server running on {} [{}] port {}\n# LOGIN u:root p:{}\n#\n'.format(
-                socket.gethostname(), socket.gethostbyname(socket.gethostname()), port, ssh_password))
+                hostname, hostnames, port, ssh_password))
         else:
             raise ValueError()
     except:
@@ -65,9 +77,8 @@ if param.get('ssh_server'):
 fd, local_filename = mkstemp()
 cwd = os.path.expandvars(os.path.expanduser(param['jupyter_server_base_directory'])) \
     if param['jupyter_server_base_directory'] else os.getcwd()
-print('Running Jupyter Notebook Server on {} [{}] at {}'.format(socket.gethostname(),
-                                                                socket.gethostbyname(socket.gethostname()), cwd))
-process = subprocess.Popen([sys.executable, '-m', 'jupyter', 'notebook', '--no-browser', '--allow-root'],
+print('Running Jupyter Notebook Server on {} [{}] at {}'.format(hostname, hostnames, cwd))
+process = subprocess.Popen([sys.executable, '-m', 'jupyter', 'notebook', '--no-browser', '--allow-root', '--ip', '0.0.0.0'],
                            env=env, stdout=fd, stderr=fd, cwd=cwd)
 
 # print stdout/stderr

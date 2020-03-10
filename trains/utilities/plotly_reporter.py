@@ -1,4 +1,11 @@
 import numpy as np
+
+from ..errors import UsageError
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 from attr import attrs, attrib
 
 
@@ -412,3 +419,51 @@ def plotly_scatter3d_layout_dict(title="Scatter", xaxis_title="X", yaxis_title="
             "name": series,
         }
     }
+
+
+def create_plotly_table(table_plot, title, series):
+    """
+    Create a basic Plotly table json style to be sent
+
+    :param table_plot: the output table in pandas.DataFrame structure
+    :return: dict with plotly data
+    :param title: Title (AKA metric)
+    :type title: str
+    :param series: Series (AKA variant)
+    :type series: str
+    """
+    if not pd:
+        raise UsageError(
+            "pandas is required in order to support reporting tables using CSV or a URL, please install the pandas python package"
+        )
+    index_added = not isinstance(table_plot.index, pd.RangeIndex)
+    headers_values = list([col] for col in table_plot.columns)
+    cells_values = table_plot.T.values.tolist()
+    if index_added:
+        headers_values.insert(0, "")
+        cells_values.insert(0, table_plot.index.values.tolist())
+
+    ret = {
+        "data": [{
+            'type': 'table',
+            'header': {
+                'values': headers_values,
+                'align': "left",
+                'line': {'width': 0.5, 'color': '#d4d6e0'},
+                'fill': {'color': "#fff"},
+                'font': {'family': "Heebo, verdana, arial, sans-serif", 'size': 12, 'color': "#333"}
+            },
+            'cells': {
+                'height': 30,
+                'values': cells_values,
+                'align': "left",
+                'line': {'color': "white", 'width': 1},
+                'font': {'family': "Heebo, verdana, arial, sans-serif", 'size': 14, 'color': "#384161"},
+            }
+        }],
+        "layout": {
+            "title": title,
+            "name": series,
+        }
+    }
+    return ret

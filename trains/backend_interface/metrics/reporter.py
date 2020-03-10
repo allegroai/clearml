@@ -14,7 +14,7 @@ from ..setupuploadmixin import SetupUploadMixin
 from ...utilities.async_manager import AsyncManagerMixin
 from ...utilities.plotly_reporter import create_2d_histogram_plot, create_value_matrix, create_3d_surface, \
     create_2d_scatter_series, create_3d_scatter_series, create_line_plot, plotly_scatter3d_layout_dict, \
-    create_image_plot
+    create_image_plot, create_plotly_table
 from ...utilities.py3_interop import AbstractContextManager
 from .events import ScalarEvent, VectorEvent, ImageEvent, PlotEvent, ImageEventNoUpload, UploadEvent
 
@@ -270,6 +270,27 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=self._normalize_name(series),
             plot=plotly_dict,
             iter=iter,
+        )
+
+    def report_table(self, title, series, table, iteration):
+        """
+        Report a table plot.
+
+        :param title: Title (AKA metric)
+        :type title: str
+        :param series: Series (AKA variant)
+        :type series: str
+        :param table: The table data
+        :type table: pandas.DataFrame
+        :param iteration: Iteration number
+        :type iteration: int
+        """
+        table_output = create_plotly_table(table, title, series)
+        return self.report_plot(
+            title=self._normalize_name(title),
+            series=self._normalize_name(series),
+            plot=table_output,
+            iter=iteration,
         )
 
     def report_line_plot(self, title, series, iter, xtitle, ytitle, mode='lines', reverse_xaxis=False, comment=None):

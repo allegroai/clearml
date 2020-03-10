@@ -2,6 +2,12 @@ import logging
 import warnings
 
 import numpy as np
+import six
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 from PIL import Image
 from pathlib2 import Path
 
@@ -138,6 +144,49 @@ class Logger(object):
             xlabels=xlabels,
             xtitle=xaxis,
             ytitle=yaxis,
+        )
+
+    def report_table(self, title, series, iteration, table_plot=None, csv=None, url=None):
+        """
+        Report a table plot.
+
+        :param title: Title (AKA metric)
+        :type title: str
+        :param series: Series (AKA variant)
+        :type series: str
+        :param iteration: Iteration number
+        :type iteration: int
+        :param table_plot: The output table plot object
+        :type table_plot: pandas.DataFrame
+        :param csv: path to local csv file
+        :type csv: str
+        :param url: A URL to the location of csv file.
+        :type url: str
+
+        .. note::
+            :paramref:`~.Logger.report_table.table_plot`, :paramref:`~.Logger.report_table.csv`
+            and :paramref:`~.Logger.report_table.url' are mutually exclusive, and at least one must be provided.
+        """
+        mutually_exclusive(
+            UsageError, _check_none=True,
+            table_plot=table_plot, csv=csv, url=url
+        )
+        table = table_plot
+        if url or csv:
+            if not pd:
+                raise UsageError(
+                    "pandas is required in order to support reporting tables using CSV or a URL, please install the pandas python package"
+                )
+            if url:
+                table = pd.read_csv(url)
+            elif csv:
+                table = pd.read_csv(csv)
+
+        return self._task.reporter.report_table(
+            title=title,
+            series=series,
+            table=table,
+            iteration=iteration
         )
 
     def report_line_plot(self, title, series, iteration, xaxis, yaxis, mode='lines',

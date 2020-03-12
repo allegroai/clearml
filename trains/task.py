@@ -19,7 +19,7 @@ import six
 from pathlib2 import Path
 
 from .backend_api.services import tasks, projects, queues
-from .backend_api.session.session import Session
+from .backend_api.session.session import Session, ENV_ACCESS_KEY, ENV_SECRET_KEY
 from .backend_interface.metrics import Metrics
 from .backend_interface.model import Model as BackendModel
 from .backend_interface.task import Task as _Task
@@ -940,8 +940,12 @@ class Task(_Task):
             Session.default_files = files_host
         if key:
             Session.default_key = key
+            if not running_remotely():
+                ENV_ACCESS_KEY.set(key)
         if secret:
             Session.default_secret = secret
+            if not running_remotely():
+                ENV_SECRET_KEY.set(secret)
         if host:
             Session.default_host = host
             Session.default_web = web_host or ''

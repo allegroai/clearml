@@ -1,3 +1,4 @@
+from six.moves.urllib.parse import quote, urlparse, urlunparse
 import six
 import fnmatch
 
@@ -16,3 +17,11 @@ def get_config_object_matcher(**patterns):
             if pat and fnmatch.fnmatch(value, pat):
                 return True
     return _matcher
+
+
+def quote_url(url):
+    parsed = urlparse(url)
+    if parsed.scheme not in ('http', 'https'):
+        return url
+    parsed = parsed._replace(path=quote(parsed.path))
+    return urlunparse(parsed)

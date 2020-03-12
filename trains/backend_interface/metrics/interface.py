@@ -119,7 +119,7 @@ class Metrics(InterfaceBase):
             entry = ev.get_file_entry()
             kwargs = {}
             if entry:
-                key, url = ev.get_target_full_upload_uri(storage_uri, self.storage_key_prefix)
+                key, url = ev.get_target_full_upload_uri(storage_uri, self.storage_key_prefix, quote_uri=False)
                 kwargs[entry.key_prop] = key
                 kwargs[entry.url_prop] = url
                 if not entry.stream:

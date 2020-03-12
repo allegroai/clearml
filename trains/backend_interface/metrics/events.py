@@ -11,6 +11,7 @@ from six.moves.urllib.parse import urlparse, urlunparse
 
 from ...backend_api.services import events
 from ...config import config
+from ...storage.util import quote_url
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -294,7 +295,7 @@ class UploadEvent(MetricsEventAdapter):
             delete_local_file=local_file if self._delete_after_upload else None,
         )
 
-    def get_target_full_upload_uri(self, storage_uri, storage_key_prefix=None):
+    def get_target_full_upload_uri(self, storage_uri, storage_key_prefix=None, quote_uri=True):
         e_storage_uri = self._upload_uri or storage_uri
         # if we have an entry (with or without a stream), we'll generate the URL and store it in the event
         filename = self._upload_filename
@@ -306,6 +307,10 @@ class UploadEvent(MetricsEventAdapter):
         # make sure we preserve local path root
         if e_storage_uri.startswith('/'):
             url = '/'+url
+
+        if quote_uri:
+            url = quote_url(url)
+
         return key, url
 
 
@@ -319,16 +324,7 @@ class ImageEvent(UploadEvent):
 
     def get_api_event(self):
         return events.MetricsImageEvent(
-            # Hack: replace single '%' with quoted value '%25',
-            # allowing the link to be properly unquoted during http serving
-            url=self._url
-            if (
-                not self._url
-                or self._url.startswith("file://")
-                or self._url.startswith("/")
-                or self._url.startswith("\\")
-            )
-            else self._url.replace("%", "%25"),
+            url=self._url,
             key=self._key,
             **self._get_base_dict()
         )

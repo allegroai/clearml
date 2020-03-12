@@ -30,6 +30,7 @@ from six.moves.queue import Queue, Empty
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import url2pathname
 
+from .util import quote_url
 from ..backend_api.utils import get_http_session_with_retry
 from ..backend_config.bucket_config import S3BucketConfigurations, GSBucketConfigurations, AzureContainerConfigurations
 from ..config import config
@@ -546,6 +547,10 @@ class StorageHelper(object):
                     pass
         if last_ex:
             raise last_ex
+
+        if self.scheme in _HttpDriver.schemes:
+            # qoute link
+            dest_path = quote_url(dest_path)
 
         return dest_path
 

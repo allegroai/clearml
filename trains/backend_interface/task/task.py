@@ -48,6 +48,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     _anonymous_dataview_id = '__anonymous__'
     _development_tag = 'development'
 
+    _store_diff = config.get('development.store_uncommitted_code_diff', False)
+
     class TaskTypes(Enum):
         def __str__(self):
             return str(self.value)
@@ -214,7 +216,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             check_package_update_thread.daemon = True
             check_package_update_thread.start()
             # do not request requirements, because it might be a long process, and we first want to update the git repo
-            result, script_requirements = ScriptInfo.get(log=self.log, create_requirements=False)
+            result, script_requirements = ScriptInfo.get(
+                log=self.log, create_requirements=False, check_uncommitted=self._store_diff
+            )
             for msg in result.warning_messages:
                 self.get_logger().report_text(msg)
 

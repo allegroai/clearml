@@ -82,7 +82,6 @@ class Task(_Task):
     __exit_hook = None
     __forked_proc_main_pid = None
     __task_id_reuse_time_window_in_hours = float(config.get('development.task_reuse_time_window_in_hours', 24.0))
-    __store_diff_on_train = config.get('development.store_uncommitted_code_diff_on_train', False)
     __detect_repo_async = config.get('development.vcs_repo_detect_async', False)
     __default_output_uri = config.get('development.default_output_uri', None)
 
@@ -1256,19 +1255,6 @@ class Task(_Task):
 
         # Make sure we know we've started, just in case we didn't so far
         self._dev_mode_task_start(model_updated=True)
-
-        # Store uncommitted code changes
-        self._store_uncommitted_code_changes()
-
-    def _store_uncommitted_code_changes(self):
-        if running_remotely() or not self.is_main_task():
-            return
-
-        if not self.__store_diff_on_train:
-            # Feature turned off
-            return
-
-        return
 
     def _dev_mode_task_start(self, model_updated=False):
         """ Called when we suspect the task has started running """

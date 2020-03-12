@@ -35,7 +35,7 @@ from .binding.frameworks.tensorflow_bind import TensorflowBinding
 from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
 from .binding.joblib_bind import PatchedJoblib
 from .binding.matplotlib_bind import PatchedMatplotlib
-from .config import config, DEV_TASK_NO_REUSE
+from .config import config, DEV_TASK_NO_REUSE, get_node_id
 from .config import running_remotely, get_remote_task_id
 from .config.cache import SessionCache
 from .debugging.log import LoggerRoot
@@ -240,6 +240,13 @@ class Task(_Task):
             # we could not find a task ID, revert to old stub behaviour
             if not is_sub_process_task_id:
                 return _TaskStub()
+        elif running_remotely() and get_node_id(default=0) != 0:
+            print("get_node_id", get_node_id(), get_remote_task_id())
+
+            # make sure we only do it once per process
+            cls.__forked_proc_main_pid = os.getpid()
+            # make sure everyone understands we should act as if we are a subprocess (fake pid 1)
+            cls.__update_master_pid_task(pid=1, task=get_remote_task_id())
         else:
             # set us as master process (without task ID)
             cls.__update_master_pid_task()

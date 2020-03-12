@@ -1059,6 +1059,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         pid = pid or os.getpid()
         if not task:
             PROC_MASTER_ID_ENV_VAR.set(str(pid) + ':')
+        elif isinstance(task, str):
+            PROC_MASTER_ID_ENV_VAR.set(str(pid) + ':' + task)
         else:
             PROC_MASTER_ID_ENV_VAR.set(str(pid) + ':' + str(task.id))
             # make sure we refresh the edit lock next time we need it,

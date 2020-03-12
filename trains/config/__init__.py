@@ -1,5 +1,6 @@
 """ Configuration module. Uses backend_config to load system configuration. """
 import logging
+import os
 from os.path import expandvars, expanduser
 
 from ..backend_api import load_config
@@ -47,7 +48,51 @@ def get_log_to_backend(default=None):
 
 
 def get_node_id(default=0):
-    return NODE_ID_ENV_VAR.get(default=default)
+    node_id = NODE_ID_ENV_VAR.get()
+
+    try:
+        mpi_world_rank = int(os.environ.get('OMPI_COMM_WORLD_NODE_RANK', os.environ.get('PMI_RANK')))
+    except:
+        mpi_world_rank = None
+
+    try:
+        mpi_rank = int(os.environ.get('OMPI_COMM_WORLD_RANK', os.environ.get('SLURM_PROCID')))
+    except:
+        mpi_rank = None
+
+    # if we have no node_id, use the mpi rank
+    if node_id is None and (mpi_world_rank is not None or mpi_rank is not None):
+        node_id = mpi_world_rank if mpi_world_rank is not None else mpi_rank
+
+    # if node is is till None, use the default
+    if node_id is None:
+        node_id = default
+
+    # check if we have pyTorch node/worker ID
+    try:
+        from torch.utils.data.dataloader import get_worker_info
+        worker_info = get_worker_info()
+        if not worker_info:
+            torch_rank = None
+        else:
+            w_id = worker_info.id
+            try:
+                torch_rank = int(w_id)
+            except Exception:
+                # guess a number based on wid hopefully unique value
+                import hashlib
+                h = hashlib.md5()
+                h.update(str(w_id).encode('utf-8'))
+                torch_rank = int(h.hexdigest(), 16)
+    except Exception:
+        torch_rank = None
+
+    # if we also have a torch rank add it to the node rank
+    if torch_rank is not None:
+        # Since we dont know the world rank, we assume it is not bigger than 10k
+        node_id = (10000 * node_id) + torch_rank
+
+    return node_id
 
 
 def get_log_redirect_level():

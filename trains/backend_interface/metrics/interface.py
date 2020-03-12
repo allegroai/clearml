@@ -44,9 +44,10 @@ class Metrics(InterfaceBase):
         finally:
             self._storage_lock.release()
 
-    def __init__(self, session, task_id, storage_uri, storage_uri_suffix='metrics', log=None):
+    def __init__(self, session, task_id, storage_uri, storage_uri_suffix='metrics', iteration_offset=0, log=None):
         super(Metrics, self).__init__(session, log=log)
         self._task_id = task_id
+        self._task_iteration_offset = iteration_offset
         self._storage_uri = storage_uri.rstrip('/') if storage_uri else None
         self._storage_key_prefix = storage_uri_suffix.strip('/') if storage_uri_suffix else None
         self._file_related_event_time = None
@@ -80,6 +81,12 @@ class Metrics(InterfaceBase):
             safe_call,
             args=(events, storage_uri),
             callback=partial(self._callback_wrapper, callback))
+
+    def set_iteration_offset(self, offset):
+        self._task_iteration_offset = offset
+
+    def get_iteration_offset(self):
+        return self._task_iteration_offset
 
     def _callback_wrapper(self, callback, res):
         """ A wrapper for the async callback for handling common errors """
@@ -129,7 +136,7 @@ class Metrics(InterfaceBase):
                     if not hasattr(entry.stream, 'read'):
                         raise ValueError('Invalid file object %s' % entry.stream)
                     entry.url = url
-            ev.update(task=self._task_id, **kwargs)
+            ev.update(task=self._task_id, iter_offset=self._task_iteration_offset, **kwargs)
             return entry
 
         # prepare event needing file upload

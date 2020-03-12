@@ -78,7 +78,7 @@ class Task(_Task):
     NotSet = object()
 
     __create_protection = object()
-    __main_task = None
+    __main_task = None  # type: Task
     __exit_hook = None
     __forked_proc_main_pid = None
     __task_id_reuse_time_window_in_hours = float(config.get('development.task_reuse_time_window_in_hours', 24.0))
@@ -886,6 +886,24 @@ class Task(_Task):
         """
         self.data.last_iteration = int(last_iteration)
         self._edit(last_iteration=self.data.last_iteration)
+
+    def set_initial_iteration(self, offset=0):
+        """
+        Set initial iteration, instead of zero. Useful when continuing training from previous checkpoints
+
+        :param int offset: Initial iteration (at starting point)
+        :return: newly set initial offset
+        """
+        return super(Task, self).set_initial_iteration(offset=offset)
+
+    def get_initial_iteration(self):
+        """
+        Return the initial iteration offset, default is 0.
+        Useful when continuing training from previous checkpoints.
+
+        :return int: initial iteration offset
+        """
+        return super(Task, self).get_initial_iteration()
 
     def get_last_scalar_metrics(self):
         """

@@ -91,10 +91,12 @@ class MetricsEventAdapter(object):
     def get_iteration(self):
         return self._iter
 
-    def update(self, task=None, **kwargs):
+    def update(self, task=None, iter_offset=None, **kwargs):
         """ Update event properties """
         if task:
             self._task = task
+        if iter_offset is not None and self._iter is not None:
+            self._iter += iter_offset
 
     def _get_base_dict(self):
         """ Get a dict with the base attributes """

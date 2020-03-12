@@ -99,6 +99,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         )
         self._app_server = None
         self._files_server = None
+        self._initial_iteration_offset = 0
 
         if not task_id:
             # generate a new task
@@ -398,7 +399,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 session=self.session,
                 task_id=self.id,
                 storage_uri=storage_uri,
-                storage_uri_suffix=self._get_output_destination_suffix('metrics')
+                storage_uri_suffix=self._get_output_destination_suffix('metrics'),
+                iteration_offset=self.get_initial_iteration()
             )
         return self._metrics_manager
 
@@ -820,6 +822,30 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         self._set_task_property("comment", str(comment))
         self._edit(comment=comment)
+
+    def set_initial_iteration(self, offset=0):
+        """
+        Set initial iteration, instead of zero. Useful when continuing training from previous checkpoints
+
+        :param int offset: Initial iteration (at starting point)
+        :return: newly set initial offset
+        """
+        if not isinstance(offset, int):
+            raise ValueError("Initial iteration offset must be an integer")
+
+        self._initial_iteration_offset = offset
+        if self._metrics_manager:
+            self._metrics_manager.set_iteration_offset(self._initial_iteration_offset)
+        return self._initial_iteration_offset
+
+    def get_initial_iteration(self):
+        """
+        Return the initial iteration offset, default is 0.
+        Useful when continuing training from previous checkpoints.
+
+        :return int: initial iteration offset
+        """
+        return self._initial_iteration_offset
 
     def _get_default_report_storage_uri(self):
         if not self._files_server:

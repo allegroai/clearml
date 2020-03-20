@@ -1436,6 +1436,13 @@ class Task(_Task):
                         Metrics.close_async_threads()
                         # notice: this will close the jupyter monitoring
                         ScriptInfo.close()
+                if self.is_main_task():
+                    try:
+                        from .storage.helper import StorageHelper
+                        StorageHelper.close_async_threads()
+                    except:
+                        pass
+
                 if print_done_waiting:
                     self.log.info('Finished uploading')
             elif self._logger:

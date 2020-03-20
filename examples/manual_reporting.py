@@ -61,5 +61,28 @@ m = np.concatenate((np.atleast_3d(m), np.zeros((256, 256, 2), dtype=np.uint8)), 
 logger.report_image("test case", "image color red", iteration=1, image=m)
 image_open = Image.open(os.path.join("samples", "picasso.jpg"))
 logger.report_image("test case", "image PIL", iteration=1, image=image_open)
+
+
+# reporting tables
+try:
+    import pandas as pd
+    # Report table - DataFrame with index
+    df = pd.DataFrame(
+        {
+            'num_legs': [2, 4, 8, 0],
+            'num_wings': [2, 0, 0, 0],
+            'num_specimen_seen': [10, 2, 1, 8]
+        },
+        index=['falcon', 'dog', 'spider', 'fish']
+    )
+    logger.report_table("test table pd", "PD with index", 1, table_plot=df)
+
+    # Report table - CSV from path
+    csv_url = "https://raw.githubusercontent.com/plotly/datasets/master/Mining-BTC-180.csv"
+    logger.report_table("test table csv", "remote csv", 1, url=csv_url)
+except ImportError:
+    pass
+
+
 # flush reports (otherwise it will be flushed in the background, every couple of seconds)
 logger.flush()

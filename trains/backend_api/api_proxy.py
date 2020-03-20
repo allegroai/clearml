@@ -41,7 +41,10 @@ class ApiServiceProxy(object):
 
     def _import_module(self, name, package):
         # type: (str, str) -> Any
-        return importlib.import_module(name, package=package)
+        try:
+            return importlib.import_module(name, package=package)
+        except:
+            return None
 
 
 class ExtApiServiceProxy(ApiServiceProxy):

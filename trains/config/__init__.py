@@ -95,6 +95,14 @@ def get_node_id(default=0):
     return node_id
 
 
+def get_is_master_node():
+    global __force_master_node
+    if __force_master_node:
+        return True
+
+    return get_node_id(default=0) == 0
+
+
 def get_log_redirect_level():
     """ Returns which log level (and up) should be redirected to stderr. None means no redirection. """
     value = LOG_STDERR_REDIRECT_LEVEL.get()
@@ -107,3 +115,21 @@ def get_log_redirect_level():
 
 def dev_worker_name():
     return DEV_WORKER_NAME.get()
+
+
+def __set_is_master_node():
+    try:
+        force_master_node = os.environ.pop('TRAINS_FORCE_MASTER_NODE', None)
+    except:
+        force_master_node = None
+
+    if force_master_node is not None:
+        try:
+            force_master_node = bool(int(force_master_node))
+        except:
+            force_master_node = None
+
+    return force_master_node
+
+
+__force_master_node = __set_is_master_node()

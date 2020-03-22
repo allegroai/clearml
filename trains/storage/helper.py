@@ -910,7 +910,8 @@ class StorageHelper(object):
             except Exception as e:
                 self._log.error("Calling upload callback when starting upload: %s" % str(e))
         if verbose:
-            msg = "Starting upload: %s => %s" % (src_path, object_name)
+            msg = 'Starting upload: {} => {}{}'.format(src_path, self._container.name if self._container else '',
+                                                       object_name)
             if object_name.startswith('file://') or object_name.startswith('/'):
                 self._log.debug(msg)
             else:

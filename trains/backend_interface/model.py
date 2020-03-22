@@ -106,7 +106,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         elif res is False:
             self.log.info('Failed model upload')
         else:
-            self.log.info('Completed model upload to %s' % res)
+            self.log.info('Completed model upload to {}'.format(res))
         if cb:
             cb(res)
 
@@ -176,6 +176,8 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             if upload_storage_uri:
                 self.upload_storage_uri = upload_storage_uri
             self._create_empty_model(self.upload_storage_uri)
+        elif upload_storage_uri:
+            self.upload_storage_uri = upload_storage_uri
 
         if model_file and uri:
             Model._local_model_to_id_uri[str(model_file)] = (self.model_id, uri)

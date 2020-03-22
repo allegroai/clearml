@@ -803,6 +803,20 @@ class Task(_Task):
         return self._artifacts_manager.upload_artifact(name=name, artifact_object=artifact_object,
                                                        metadata=metadata, delete_after_upload=delete_after_upload)
 
+    def get_models(self):
+        """
+        Return a dictionary with {'input': [], 'output': []} loaded/stored models of the current Task.
+        Input models are files loaded in the task, either manually or automatically logged
+        Output models are files stored in the task, either manually or automatically logged
+        Automatically logged frameworks are for example: TensorFlow, Keras, PyTorch, ScikitLearn(joblib) etc.
+
+        :return dict: dict with keys input/output, each is list of Model objects.
+            Example: {'input': [trains.Model()], 'output': [trains.Model()]}
+        """
+        task_models = {'input': self._get_models(model_type='input'),
+                       'output': self._get_models(model_type='output')}
+        return task_models
+
     def is_current_task(self):
         """
         Check if this task is the main task (returned by Task.init())

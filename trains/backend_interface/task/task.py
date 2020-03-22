@@ -2,6 +2,7 @@
 import itertools
 import logging
 import os
+import re
 from enum import Enum
 from tempfile import gettempdir
 from multiprocessing import RLock
@@ -13,6 +14,7 @@ except ImportError:
     from collections import Iterable
 
 import six
+from collections import OrderedDict
 from six.moves.urllib.parse import quote
 
 from ...utilities.locks import RLock as FileRLock
@@ -560,7 +562,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     ready=True,
                     page=0,
                     page_size=10,
-                    order_by='-created',
+                    order_by=['-created'],
                     only_fields=['id', 'created']
                 )
             )
@@ -846,6 +848,44 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :return int: initial iteration offset
         """
         return self._initial_iteration_offset
+
+    def _get_models(self, model_type='output'):
+        model_type = model_type.lower().strip()
+        assert model_type == 'output' or model_type == 'input'
+
+        if model_type == 'input':
+            regex = '((?i)(Using model id: )(\w+)?)'
+            compiled = re.compile(regex)
+            ids = [i[-1] for i in re.findall(compiled, self.comment)] + (
+                [self.input_model_id] if self.input_model_id else [])
+            # remove duplicates and preserve order
+            ids = list(OrderedDict.fromkeys(ids))
+            from ...model import Model as TrainsModel
+            in_model = []
+            for i in ids:
+                m = TrainsModel(model_id=i)
+                try:
+                    # make sure the model is is valid
+                    m._get_model_data()
+                    in_model.append(m)
+                except:
+                    pass
+            return in_model
+        else:
+            res = self.send(
+                models.GetAllRequest(
+                    task=[self.id],
+                    order_by=['created'],
+                    only_fields=['id']
+                )
+            )
+            if not res.response.models:
+                return []
+            ids = [m.id for m in res.response.models] + ([self.output_model_id] if self.output_model_id else [])
+            # remove duplicates and preserve order
+            ids = list(OrderedDict.fromkeys(ids))
+            from ...model import Model as TrainsModel
+            return [TrainsModel(model_id=i) for i in ids]
 
     def _get_default_report_storage_uri(self):
         if not self._files_server:

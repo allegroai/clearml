@@ -168,12 +168,14 @@ class Artifact(object):
         from trains.storage.helper import StorageHelper
         local_path = StorageHelper.get_local_copy(self.url)
         if local_path and extract_archive and self.type == 'archive':
+            temp_folder = None
             try:
                 temp_folder = mkdtemp(prefix='artifact_', suffix='.archive_'+self.name)
                 ZipFile(local_path).extractall(path=temp_folder)
             except Exception:
                 try:
-                    Path(temp_folder).rmdir()
+                    if temp_folder:
+                        Path(temp_folder).rmdir()
                 except Exception:
                     pass
                 return local_path

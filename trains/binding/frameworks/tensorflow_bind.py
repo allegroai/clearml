@@ -1006,9 +1006,18 @@ class PatchTensorFlowEager(object):
                 try:
                     from tensorflow.python.eager import context
                     logdir = context.context().summary_writer._init_op_fn.keywords.get('logdir')
-                    logdir = logdir.numpy().decode()
+                except:
+                    try:
+                        from tensorflow.python.ops.summary_ops_v2 import _summary_state
+                        logdir = _summary_state.writer._init_op_fn.keywords.get('logdir')
+                    except:
+                        logdir = None
+                try:
+                    if logdir is not None:
+                        logdir = logdir.numpy().decode()
                 except:
                     logdir = None
+
             PatchTensorFlowEager.__trains_event_writer[id(writer)] = EventTrainsWriter(
                 logger=PatchTensorFlowEager.__main_task.get_logger(), logdir=logdir,
                 **PatchTensorFlowEager.defaults_dict)

@@ -116,10 +116,10 @@ Task.current_task().set_model_label_enumeration( {"label": int(0), } )
 
 ### Can I store the model configuration file as well?  <a name="store-model-configuration"></a>
 
-Yes! Use the `Task.set_model_config()` method:
+Yes! Use the `Task.connect_configuration()` method:
 
 ```python
-Task.current_task().set_model_config("a very long text with the configuration file's content")
+Task.current_task().connect_configuration("/path/to/file")
 ```
 
 ### I am training multiple models at the same time, but I only see one of them. What happened? <a name="only-last-model-appears"></a>

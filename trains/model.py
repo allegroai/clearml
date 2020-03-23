@@ -628,8 +628,8 @@ class InputModel(Model):
             if model.id != self._EMPTY_MODEL_ID:
                 task.set_input_model(model_id=model.id)
             # only copy the model design if the task has no design to begin with
-            if not self._task.get_model_config_text():
-                task.set_model_config(config_text=model.model_design)
+            if not self._task._get_model_config_text():
+                task._set_model_config(config_text=model.model_design)
             if not self._task.get_labels_enumeration():
                 task.set_model_label_enumeration(model.data.labels)
 
@@ -798,22 +798,22 @@ class OutputModel(BaseModel):
 
         if running_remotely() and task.is_main_task():
             if self._floating_data:
-                self._floating_data.design = _Model._wrap_design(self._task.get_model_config_text()) or \
+                self._floating_data.design = _Model._wrap_design(self._task._get_model_config_text()) or \
                                              self._floating_data.design
                 self._floating_data.labels = self._task.get_labels_enumeration() or \
                                              self._floating_data.labels
             elif self._base_model:
-                self._base_model.update(design=_Model._wrap_design(self._task.get_model_config_text()) or
+                self._base_model.update(design=_Model._wrap_design(self._task._get_model_config_text()) or
                                                self._base_model.design)
                 self._base_model.update(labels=self._task.get_labels_enumeration() or self._base_model.labels)
 
         elif self._floating_data is not None:
             # we copy configuration / labels if they exist, obviously someone wants them as the output base model
             if _Model._unwrap_design(self._floating_data.design):
-                if not task.get_model_config_text():
-                    task.set_model_config(config_text=self._floating_data.design)
+                if not task._get_model_config_text():
+                    task._set_model_config(config_text=self._floating_data.design)
             else:
-                self._floating_data.design = _Model._wrap_design(self._task.get_model_config_text())
+                self._floating_data.design = _Model._wrap_design(self._task._get_model_config_text())
 
             if self._floating_data.labels:
                 task.set_model_label_enumeration(self._floating_data.labels)
@@ -1037,8 +1037,8 @@ class OutputModel(BaseModel):
 
         config_text = self._resolve_config(config_text=config_text, config_dict=config_dict)
 
-        if self._task and not self._task.get_model_config_text():
-            self._task.set_model_config(config_text=config_text)
+        if self._task and not self._task._get_model_config_text():
+            self._task._set_model_config(config_text=config_text)
 
         if self.id:
             # update the model object (this will happen if we resumed a training task)
@@ -1095,7 +1095,7 @@ class OutputModel(BaseModel):
         self._base_model = self._task.create_output_model()
         # update the model from the task inputs
         labels = self._task.get_labels_enumeration()
-        config_text = self._task.get_model_config_text()
+        config_text = self._task._get_model_config_text()
         parent = self._task.output_model_id or self._task.input_model_id
         self._base_model.update(
             labels=self._floating_data.labels or labels,

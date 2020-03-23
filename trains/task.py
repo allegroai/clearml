@@ -842,38 +842,28 @@ class Task(_Task):
         return self is self.__main_task
 
     def set_model_config(self, config_text=None, config_dict=None):
+        # type: (Optional[str], Optional[Mapping]) -> None
         """
-        Set Task model configuration  text/dict  (before creating an output model)
-        When an output model is created it will inherit these properties
-
-        :param config_text: model configuration (unconstrained text string). usually the content of a configuration file.
-            If `config_text` is not None, `config_dict` must not be provided.
-        :param config_dict: model configuration parameters dictionary.
-            If `config_dict` is not None, `config_text` must not be provided.
+        .. deprecated:: 0.14.1
+            Use :func:`connect_configuration` instead
         """
-        design = OutputModel._resolve_config(config_text=config_text, config_dict=config_dict)
-        super(Task, self)._set_model_design(design=design)
+        self._set_model_config(config_text=config_text, config_dict=config_dict)
 
     def get_model_config_text(self):
+        # type: () -> str
         """
-        Get Task model configuration text (before creating an output model)
-        When an output model is created it will inherit these properties
-
-        :return: model config_text (unconstrained text string). usually the content of a configuration file.
-            If `config_text` is not None, `config_dict` must not be provided.
+        .. deprecated:: 0.14.1
+            Use :func:`connect_configuration` instead
         """
-        return super(Task, self).get_model_design()
+        return self._get_model_config_text()
 
     def get_model_config_dict(self):
+        # type: () -> Dict
         """
-        Get Task model configuration dictionary (before creating an output model)
-        When an output model is created it will inherit these properties
-
-        :return: model config_text (unconstrained text string). usually the content of a configuration file.
-            If `config_text` is not None, `config_dict` must not be provided.
+        .. deprecated:: 0.14.1
+            Use :func:`connect_configuration` instead
         """
-        config_text = self.get_model_config_text()
-        return OutputModel._text_to_config_dict(config_text)
+        return self._get_model_config_dict()
 
     def set_model_label_enumeration(self, enumeration=None):
         """
@@ -988,6 +978,40 @@ class Task(_Task):
             Session.default_web = web_host or ''
             Session.default_files = files_host or ''
 
+    def _set_model_config(self, config_text=None, config_dict=None):
+        # type: (Optional[str], Optional[Mapping]) -> None
+        """
+        Set Task model configuration text/dict
+
+        :param config_text: model configuration (unconstrained text string). usually the content of a configuration file.
+            If `config_text` is not None, `config_dict` must not be provided.
+        :param config_dict: model configuration parameters dictionary.
+            If `config_dict` is not None, `config_text` must not be provided.
+        """
+        design = OutputModel._resolve_config(config_text=config_text, config_dict=config_dict)
+        super(Task, self)._set_model_design(design=design)
+
+    def _get_model_config_text(self):
+        # type: () -> str
+        """
+        Get Task model configuration text (before creating an output model)
+        When an output model is created it will inherit these properties
+
+        :return: model config_text (unconstrained text string)
+        """
+        return super(Task, self).get_model_design()
+
+    def _get_model_config_dict(self):
+        # type: () -> Dict
+        """
+        Get Task model configuration dictionary (before creating an output model)
+        When an output model is created it will inherit these properties
+
+        :return: config_dict: model configuration parameters dictionary
+        """
+        config_text = self._get_model_config_text()
+        return OutputModel._text_to_config_dict(config_text)
+
     @classmethod
     def _reset_current_task_obj(cls):
         if not cls.__main_task:
@@ -1071,7 +1095,7 @@ class Task(_Task):
                         task.set_comment(make_message('Auto-generated at %(time)s by %(user)s@%(host)s'))
                         # clear the input model (and task model design/labels)
                         task.set_input_model(model_id='', update_task_design=False, update_task_labels=False)
-                        task.set_model_config(config_text='')
+                        task._set_model_config(config_text='')
                         task.set_model_label_enumeration({})
                         task.set_artifacts([])
                         task._set_storage_uri(None)

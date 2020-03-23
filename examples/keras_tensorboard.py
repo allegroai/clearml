@@ -90,7 +90,7 @@ model.compile(loss='categorical_crossentropy',
 
 # Connecting TRAINS
 task = Task.init(project_name='examples', task_name='Keras with TensorBoard example')
-task.set_model_config(config_dict={'test': 1337, 'nested': {'key': 'value', 'number': 1}})
+task.connect_configuration({'test': 1337, 'nested': {'key': 'value', 'number': 1}})
 
 # Advanced: setting model class enumeration
 labels = dict(('digit_%d' % i, i) for i in range(10))

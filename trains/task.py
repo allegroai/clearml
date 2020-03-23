@@ -458,6 +458,16 @@ class Task(_Task):
             artifacts_pairs += list(self._artifacts_manager.registered_artifacts.items())
         return ReadOnlyDict(artifacts_pairs)
 
+    @property
+    def models(self):
+        # type: () -> Dict[str, List[Model]]
+        """
+        Read-only dictionary of the Task's loaded/stored models
+
+        :return: dictionary of models loaded/stored {'input': list(Model), 'output': list(Model)}
+        """
+        return self.get_models()
+
     @classmethod
     def clone(cls, source_task=None, name=None, comment=None, parent=None, project=None):
         """

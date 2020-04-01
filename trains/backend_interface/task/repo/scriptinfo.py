@@ -32,7 +32,8 @@ class ScriptRequirements(object):
             from ....utilities.pigar.__main__ import GenerateReqs
             installed_pkgs = get_installed_pkgs_detail()
             gr = GenerateReqs(save_path='', project_path=self._root_folder, installed_pkgs=installed_pkgs,
-                              ignores=['.git', '.hg', '.idea', '__pycache__', '.ipynb_checkpoints'])
+                              ignores=['.git', '.hg', '.idea', '__pycache__', '.ipynb_checkpoints',
+                                       'site-packages', 'dist-packages'])
             reqs, try_imports, guess, local_pks = gr.extract_reqs(module_callback=ScriptRequirements.add_trains_used_packages)
             return self.create_requirements_txt(reqs, local_pks)
         except Exception:

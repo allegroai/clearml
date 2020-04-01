@@ -29,13 +29,14 @@ def project_import_modules(project_path, ignores):
     modules = ImportedModules()
     try_imports = set()
     local_mods = list()
-    ignore_paths = collections.defaultdict(set)
+    ignore_paths = set()
+    venv_subdirs = set(('bin', 'etc', 'include', 'lib', 'lib64', 'share'))
+    ignore_absolute = []
     if not ignores:
-        ignore_paths[project_path].add('.git')
+        ignore_paths.add('.git')
     else:
         for path in ignores:
-            parent_dir = os.path.dirname(path)
-            ignore_paths[parent_dir].add(os.path.basename(path))
+            ignore_paths.add(Path(path).name)
 
     if os.path.isfile(project_path):
         fake_path = Path(project_path).name
@@ -44,11 +45,19 @@ def project_import_modules(project_path, ignores):
             modules |= fmodules
             try_imports |= try_ipts
     else:
-        cur_dir = project_path  # os.getcwd()
-        for dirpath, dirnames, files in os.walk(project_path, followlinks=True):
-            if dirpath in ignore_paths:
-                dirnames[:] = [d for d in dirnames
-                               if d not in ignore_paths[dirpath]]
+        cur_dir = project_path
+        for dirpath, dirnames, files in os.walk(os.path.abspath(project_path), followlinks=True):
+            # see if we have a parent folder in the ignore list
+            if ignore_paths & set(Path(dirpath).relative_to(cur_dir).parts):
+                continue
+            # check if we are in a subfolder of ignore list
+            if any(True for prefix in ignore_absolute if dirpath.startswith(prefix)):
+                continue
+            # Hack detect if this is a virtual-env folder, if so add it to the uignore list
+            if set(dirnames) == venv_subdirs:
+                ignore_absolute.append(Path(dirpath).as_posix()+os.sep)
+                continue
+
             py_files = list()
             for fn in files:
                 # C extension.

@@ -52,6 +52,12 @@ class GenerateReqs(object):
         # add local modules, so we know what is used but not installed.
         for name in self._local_mods:
             if name in modules:
+                # if this is a folder of our project, we can safely ignore it
+                if os.path.commonpath([os.path.realpath(self._project_path)]) == \
+                        os.path.commonpath([os.path.realpath(self._project_path),
+                                            os.path.realpath(self._local_mods[name])]):
+                    continue
+
                 relpath = os.path.relpath(self._local_mods[name], self._project_path)
                 if not relpath.startswith('.'):
                     relpath = '.' + os.path.sep + relpath

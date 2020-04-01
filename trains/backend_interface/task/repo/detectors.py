@@ -224,19 +224,12 @@ class EnvDetector(Detector):
     @staticmethod
     def _normalize_root(root):
         """
-        Get the absolute location of the parent folder (where .git resides)
+        Convert to absolute and squash 'path/../folder'
         """
-        root_parts = list(reversed(Path(root).parts))
-        cwd_abs = list(reversed(Path.cwd().parts))
-        count = len(cwd_abs)
-        for i, p in enumerate(cwd_abs):
-            if i >= len(root_parts):
-                break
-            if p == root_parts[i]:
-                count -= 1
-        cwd_abs.reverse()
-        root_abs_path = Path().joinpath(*cwd_abs[:count])
-        return str(root_abs_path)
+        try:
+            return os.path.abspath((Path.cwd() / root).absolute().as_posix())
+        except:
+            return Path.cwd()
 
     def _get_info(self, _, include_diff=False):
         repository_url = VCS_REPOSITORY_URL.get()

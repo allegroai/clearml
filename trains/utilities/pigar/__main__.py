@@ -33,12 +33,14 @@ class GenerateReqs(object):
             self._project_path, self._ignores)
         if module_callback:
             modules = module_callback(modules)
-        app_name = os.path.basename(self._project_path)
-        if app_name in local_mods:
-            local_mods.remove(app_name)
 
         # Filtering modules
         candidates = self._filter_modules(modules, local_mods)
+
+        # make sure we are in candidates
+        ourselves = self.__module__.split('.') if self.__module__ else None
+        if ourselves and ourselves[0] not in candidates:
+            candidates.add(ourselves[0])
 
         logger.info('Check module in local environment.')
         for name in candidates:
@@ -46,7 +48,7 @@ class GenerateReqs(object):
             if name in self._installed_pkgs:
                 pkg_name, version = self._installed_pkgs[name]
                 reqs.add(pkg_name, version, modules[name])
-            else:
+            elif name in modules:
                 guess.add(name, 0, modules[name])
 
         # add local modules, so we know what is used but not installed.

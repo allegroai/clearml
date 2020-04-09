@@ -150,8 +150,9 @@ class TaskHandler(BufferingHandler):
                     if self._pending <= 0:
                         break
                     self.__log_stderr('INFO: trains.Task - flushing console logs (timeout {}s)'.format(
-                        self.__wait_for_flush_timeout-i))
-                    threadpool_waited_join(t, timeout=1.0)
+                        float(self.__wait_for_flush_timeout-i)))
+                    if threadpool_waited_join(t, timeout=1.0):
+                        break
                 ll(msg % 7)
             except Exception:
                 ll(msg % 8)
@@ -164,9 +165,8 @@ class TaskHandler(BufferingHandler):
         ll(msg % 11)
 
     def close(self, wait=False):
-        self.__log_stderr('Closing {} {}'.format(self._task_id, wait))
-        # import traceback
-        # self.__log_stderr('trace: {}'.format(traceback.format_stack()))
+        import os
+        self.__log_stderr('Closing {} wait={}'.format(os.getpid(), wait))
         # super already calls self.flush()
         super(TaskHandler, self).close()
         # shut down the TaskHandler, from this point onwards. No events will be logged

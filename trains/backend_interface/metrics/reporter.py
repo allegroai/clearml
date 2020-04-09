@@ -16,7 +16,7 @@ from ...utilities.plotly_reporter import create_2d_histogram_plot, create_value_
     create_2d_scatter_series, create_3d_scatter_series, create_line_plot, plotly_scatter3d_layout_dict, \
     create_image_plot, create_plotly_table
 from ...utilities.py3_interop import AbstractContextManager
-from .events import ScalarEvent, VectorEvent, ImageEvent, PlotEvent, ImageEventNoUpload, UploadEvent
+from .events import ScalarEvent, VectorEvent, ImageEvent, PlotEvent, ImageEventNoUpload, UploadEvent, MediaEvent
 
 
 class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncManagerMixin):
@@ -204,11 +204,28 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         ev = ImageEventNoUpload(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter, src=src)
         self._report(ev)
 
+    def report_media(self, title, series, src, iter):
+        """
+        Report a media link.
+        :param title: Title (AKA metric)
+        :type title: str
+        :param series: Series (AKA variant)
+        :type series: str
+        :param src: Media source URI. This URI will be used by the webapp and workers when trying to obtain the image
+            for presentation of processing. Currently only http(s), file and s3 schemes are supported.
+        :type src: str
+        :param iter: Iteration number
+        :type value: int
+        """
+        ev = ImageEventNoUpload(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter, src=src)
+        self._report(ev)
+
     def report_image_and_upload(self, title, series, iter, path=None, image=None, upload_uri=None,
                                 max_image_history=None, delete_after_upload=False):
         """
         Report an image and upload its contents. Image is uploaded to a preconfigured bucket (see setup_upload()) with
          a key (filename) describing the task ID, title, series and iteration.
+
         :param title: Title (AKA metric)
         :type title: str
         :param series: Series (AKA variant)
@@ -228,8 +245,41 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             raise ValueError('Upload configuration is required (use setup_upload())')
         if len([x for x in (path, image) if x is not None]) != 1:
             raise ValueError('Expected only one of [filename, image]')
-        kwargs = dict(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter, image_file_history_size=max_image_history)
+        kwargs = dict(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter, file_history_size=max_image_history)
         ev = ImageEvent(image_data=image, upload_uri=upload_uri, local_image_path=path,
+                        delete_after_upload=delete_after_upload, **kwargs)
+        self._report(ev)
+
+    def report_media_and_upload(self, title, series, iter, path=None, stream=None, upload_uri=None,
+                                file_extension=None, max_history=None, delete_after_upload=False):
+        """
+        Report a media file/stream and upload its contents.
+        Media is uploaded to a preconfigured bucket
+        (see setup_upload()) with a key (filename) describing the task ID, title, series and iteration.
+
+        :param title: Title (AKA metric)
+        :type title: str
+        :param series: Series (AKA variant)
+        :type series: str
+        :param iter: Iteration number
+        :type iter: int
+        :param path: A path to an image file. Required unless matrix is provided.
+        :type path: str
+        :param stream: File stream
+        :param file_extension: file extension to use when stream is passed
+        :param max_history: maximum number of files to store per metric/variant combination
+        use negative value for unlimited. default is set in global configuration (default=5)
+        :param delete_after_upload: if True, one the file was uploaded the local copy will be deleted
+        :type delete_after_upload: boolean
+        """
+        if not self._storage_uri and not upload_uri:
+            raise ValueError('Upload configuration is required (use setup_upload())')
+        if len([x for x in (path, stream) if x is not None]) != 1:
+            raise ValueError('Expected only one of [filename, stream]')
+        kwargs = dict(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter,
+                      file_history_size=max_history)
+        ev = MediaEvent(stream=stream, upload_uri=upload_uri, local_image_path=path,
+                        override_filename_ext=file_extension,
                         delete_after_upload=delete_after_upload, **kwargs)
         self._report(ev)
 
@@ -542,7 +592,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             raise ValueError('Upload configuration is required (use setup_upload())')
         if len([x for x in (path, matrix) if x is not None]) != 1:
             raise ValueError('Expected only one of [filename, matrix]')
-        kwargs = dict(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter, image_file_history_size=max_image_history)
+        kwargs = dict(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter, file_history_size=max_image_history)
         ev = UploadEvent(image_data=matrix, upload_uri=upload_uri, local_image_path=path,
                          delete_after_upload=delete_after_upload, **kwargs)
         _, url = ev.get_target_full_upload_uri(upload_uri or self._storage_uri, self._metrics.storage_key_prefix)

@@ -5,6 +5,7 @@ import threading
 from collections import defaultdict
 from functools import partial
 from io import BytesIO
+from mimetypes import guess_extension
 from typing import Any
 
 import numpy as np
@@ -454,6 +455,31 @@ class EventTrainsWriter(object):
         except Exception:
             pass
 
+    def _add_audio(self, tag, step, values):
+        # only report images every specific interval
+        if step % self.image_report_freq != 0:
+            return None
+
+        audio_str = values['encodedAudioString']
+        audio_data = base64.b64decode(audio_str)
+        if audio_data is None:
+            return
+
+        title, series = self.tag_splitter(tag, num_split_parts=3, default_title='Images', logdir_header='title',
+                                          auto_reduce_num_split=True)
+        step = self._fix_step_counter(title, series, step)
+
+        stream = BytesIO(audio_data)
+        file_extension = guess_extension(values['contentType']) or '.{}'.format(values['contentType'].split('/')[-1])
+        self._logger.report_media(
+            title=title,
+            series=series,
+            iteration=step,
+            stream=stream,
+            file_extension=file_extension,
+            max_history=self.max_keep_images,
+        )
+
     def _fix_step_counter(self, title, series, step):
         key = (title, series)
         if key not in EventTrainsWriter._title_series_wraparound_counter:
@@ -473,7 +499,7 @@ class EventTrainsWriter(object):
 
     def add_event(self, event, step=None, walltime=None, **kwargs):
         supported_metrics = {
-            'simpleValue', 'image', 'histo', 'tensor'
+            'simpleValue', 'image', 'histo', 'tensor', 'audio'
         }
 
         def get_data(value_dict, metric_search_order):
@@ -531,6 +557,8 @@ class EventTrainsWriter(object):
                     self._add_histogram(tag=tag, step=step, histo_data=values)
                 elif metric == 'image':
                     self._add_image(tag=tag, step=step, img_data=values)
+                elif metric == 'audio':
+                    self._add_audio(tag, step, values)
                 elif metric == 'tensor' and values.get('dtype') == 'DT_STRING':
                     # text, just print to console
                     text = base64.b64decode('\n'.join(values['stringVal'])).decode('utf-8')

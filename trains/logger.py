@@ -477,6 +477,71 @@ class Logger(object):
                 delete_after_upload=delete_after_upload,
             )
 
+    def report_media(self, title, series, iteration, local_path=None, stream=None,
+                     file_extension=None, max_history=None, delete_after_upload=False, url=None):
+        """
+        Report an image and upload its contents.
+
+        Image is uploaded to a preconfigured bucket (see setup_upload()) with a key (filename)
+        describing the task ID, title, series and iteration.
+
+        .. note::
+            :paramref:`~.Logger.report_image.local_path`, :paramref:`~.Logger.report_image.url`, :paramref:`~.Logger.report_image.image` and :paramref:`~.Logger.report_image.matrix`
+            are mutually exclusive, and at least one must be provided.
+
+        :param str title: Title (AKA metric)
+        :param str series: Series (AKA variant)
+        :param int iteration: Iteration number
+        :param str local_path: A path to an image file.
+        :param stream: BytesIO stream to upload (must provide file extension if used)
+        :param str url: A URL to the location of a pre-uploaded image.
+        :param file_extension: file extension to use when stream is passed
+        :param int max_history: maximum number of media files to store per metric/variant combination
+            use negative value for unlimited. default is set in global configuration (default=5)
+        :param bool delete_after_upload: if True, one the file was uploaded the local copy will be deleted
+        """
+        mutually_exclusive(
+            UsageError, _check_none=True,
+            local_path=local_path or None, url=url or None, stream=stream,
+        )
+        if stream is not None and not file_extension:
+            raise ValueError("No file extension provided for stream media upload")
+
+        # if task was not started, we have to start it
+        self._start_task_if_needed()
+
+        self._touch_title_series(title, series)
+
+        if url:
+            self._task.reporter.report_media(
+                title=title,
+                series=series,
+                src=url,
+                iter=iteration,
+            )
+
+        else:
+            upload_uri = self.get_default_upload_destination()
+            if not upload_uri:
+                upload_uri = Path(get_cache_dir()) / 'debug_images'
+                upload_uri.mkdir(parents=True, exist_ok=True)
+                # Verify that we can upload to this destination
+                upload_uri = str(upload_uri)
+                storage = StorageHelper.get(upload_uri)
+                upload_uri = storage.verify_upload(folder_uri=upload_uri)
+
+            self._task.reporter.report_media_and_upload(
+                title=title,
+                series=series,
+                path=local_path,
+                stream=stream,
+                iter=iteration,
+                upload_uri=upload_uri,
+                max_history=max_history,
+                delete_after_upload=delete_after_upload,
+                file_extension=file_extension,
+            )
+
     def set_default_upload_destination(self, uri):
         """
         Set the uri to upload all the debug images to.

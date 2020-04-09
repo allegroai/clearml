@@ -179,31 +179,31 @@ class UploadEvent(MetricsEventAdapter):
 
     _metric_counters = {}
     _metric_counters_lock = Lock()
-    _image_file_history_size = int(config.get('metrics.file_history_size', 5))
+    _file_history_size = int(config.get('metrics.file_history_size', 5))
 
     @staticmethod
     def _replace_slash(part):
         return part.replace('\\', '/').strip('/').replace('/', '.slash.')
 
     def __init__(self, metric, variant, image_data, local_image_path=None, iter=0, upload_uri=None,
-                 image_file_history_size=None, delete_after_upload=False, **kwargs):
+                 file_history_size=None, delete_after_upload=False, **kwargs):
         # param override_filename: override uploaded file name (notice extension will be added from local path
         # param override_filename_ext: override uploaded file extension
-        if image_data is not None and not hasattr(image_data, 'shape'):
+        if image_data is not None and (not hasattr(image_data, 'shape') and not isinstance(image_data, six.BytesIO)):
             raise ValueError('Image must have a shape attribute')
         self._image_data = image_data
         self._local_image_path = local_image_path
         self._url = None
         self._key = None
         self._count = self._get_metric_count(metric, variant)
-        if not image_file_history_size:
-            image_file_history_size = self._image_file_history_size
+        if not file_history_size:
+            file_history_size = self._file_history_size
         self._filename = kwargs.pop('override_filename', None)
         if not self._filename:
-            if image_file_history_size < 1:
+            if file_history_size < 1:
                 self._filename = '%s_%s_%08d' % (metric, variant, self._count)
             else:
-                self._filename = '%s_%s_%08d' % (metric, variant, self._count % image_file_history_size)
+                self._filename = '%s_%s_%08d' % (metric, variant, self._count % file_history_size)
 
         # make sure we have to '/' in the filename because it might access other folders,
         # and we don't want that to occur
@@ -253,8 +253,10 @@ class UploadEvent(MetricsEventAdapter):
         local_file = None
         # don't provide file in case this event is out of the history window
         last_count = self._get_metric_count(self.metric, self.variant, next=False)
-        if abs(self._count - last_count) > self._image_file_history_size:
+        if abs(self._count - last_count) > self._file_history_size:
             output = None
+        elif isinstance(self._image_data, six.BytesIO):
+            output = self._image_data
         elif self._image_data is not None:
             image_data = self._image_data
             if not isinstance(image_data, np.ndarray):
@@ -318,10 +320,26 @@ class UploadEvent(MetricsEventAdapter):
 
 class ImageEvent(UploadEvent):
     def __init__(self, metric, variant, image_data, local_image_path=None, iter=0, upload_uri=None,
-                 image_file_history_size=None, delete_after_upload=False, **kwargs):
+                 file_history_size=None, delete_after_upload=False, **kwargs):
         super(ImageEvent, self).__init__(metric, variant, image_data=image_data, local_image_path=local_image_path,
                                          iter=iter, upload_uri=upload_uri,
-                                         image_file_history_size=image_file_history_size,
+                                         file_history_size=file_history_size,
+                                         delete_after_upload=delete_after_upload, **kwargs)
+
+    def get_api_event(self):
+        return events.MetricsImageEvent(
+            url=self._url,
+            key=self._key,
+            **self._get_base_dict()
+        )
+
+
+class MediaEvent(UploadEvent):
+    def __init__(self, metric, variant, stream, local_image_path=None, iter=0, upload_uri=None,
+                 file_history_size=None, delete_after_upload=False, **kwargs):
+        super(MediaEvent, self).__init__(metric, variant, image_data=stream, local_image_path=local_image_path,
+                                         iter=iter, upload_uri=upload_uri,
+                                         file_history_size=file_history_size,
                                          delete_after_upload=delete_after_upload, **kwargs)
 
     def get_api_event(self):

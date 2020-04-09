@@ -50,7 +50,7 @@ class ResourceMonitor(object):
 
     def start(self):
         self._exit_event.clear()
-        self._thread = Thread(target=self._daemon)
+        self._thread = Thread(target=self._run)
         self._thread.daemon = True
         self._thread.start()
 
@@ -58,8 +58,13 @@ class ResourceMonitor(object):
         self._exit_event.set()
         # self._thread.join()
 
+    def _run(self):
+        try:
+            self._daemon()
+        except:
+            pass
+
     def _daemon(self):
-        logger = self._task.get_logger()
         seconds_since_started = 0
         reported = 0
         last_iteration = 0
@@ -143,7 +148,7 @@ class ResourceMonitor(object):
                         title = self._title_gpu if k.startswith('gpu_') else self._title_machine
                         # 3 points after the dot
                         value = round(v*1000) / 1000.
-                        logger.report_scalar(title=title, series=k, iteration=iteration, value=value)
+                        self._task.get_logger().report_scalar(title=title, series=k, iteration=iteration, value=value)
                     except Exception:
                         pass
                 # clear readouts if this is update is not averaged

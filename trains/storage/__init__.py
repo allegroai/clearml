@@ -1,2 +1,2 @@
 """ Local and remote storage support """
-from .helper import StorageHelper
+from .manager import StorageManager

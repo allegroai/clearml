@@ -14,7 +14,7 @@ from .utilities.pyhocon import ConfigFactory, HOCONConverter
 
 from .backend_interface.util import validate_dict, get_single_result, mutually_exclusive
 from .debugging.log import get_logger
-from .storage import StorageHelper
+from .storage.helper import StorageHelper
 from .utilities.enum import Options
 from .backend_interface import Task as _Task
 from .backend_interface.model import create_dummy_model, Model as _Model

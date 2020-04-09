@@ -10,7 +10,8 @@ from ..backend_api import Session
 from ..backend_api.services import models
 from .base import IdObjectBase
 from .util import make_message
-from ..storage import StorageHelper
+from ..storage import StorageManager
+from ..storage.helper import StorageHelper
 from ..utilities.async_manager import AsyncManagerMixin
 
 ModelPackage = namedtuple('ModelPackage', 'weights design')
@@ -54,10 +55,6 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
     def model_id(self):
         return self.id
 
-    @property
-    def storage(self):
-        return StorageHelper.get(self.upload_storage_uri)
-
     def __init__(self, upload_storage_uri, cache_dir, model_id=None,
                  upload_storage_suffix='models', session=None, log=None):
         super(Model, self).__init__(id=model_id, session=session, log=log)
@@ -84,10 +81,9 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
     def _upload_model(self, model_file, async_enable=False, target_filename=None, cb=None):
         if not self.upload_storage_uri:
             raise ValueError('Model has no storage URI defined (nowhere to upload to)')
-        helper = self.storage
         target_filename = target_filename or Path(model_file).name
         dest_path = '/'.join((self.upload_storage_uri, self._upload_storage_suffix or '.', target_filename))
-        result = helper.upload(
+        result = StorageHelper.get(dest_path).upload(
             src_path=model_file,
             dest_path=dest_path,
             async_enable=async_enable,
@@ -412,7 +408,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             # remove non existing model file
             Model._local_model_to_id_uri.pop(dl_file, None)
 
-        local_download = StorageHelper.get(uri).get_local_copy(uri)
+        local_download = StorageManager.get_local_copy(uri)
 
         # save local model, so we can later query what was the original one
         Model._local_model_to_id_uri[str(local_download)] = (self.model_id, uri)

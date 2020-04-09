@@ -20,7 +20,7 @@ from .backend_interface.util import mutually_exclusive
 from .config import running_remotely, get_cache_dir, config
 from .debugging.log import LoggerRoot
 from .errors import UsageError
-from .storage import StorageHelper
+from .storage.helper import StorageHelper
 from .utilities.plotly_reporter import SeriesInfo
 
 # Make sure that DeprecationWarning within this package always gets printed

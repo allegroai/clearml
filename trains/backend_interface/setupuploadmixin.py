@@ -1,7 +1,7 @@
 from abc import abstractproperty
 
 from ..backend_config.bucket_config import S3BucketConfig
-from ..storage import StorageHelper
+from ..storage.helper import StorageHelper
 
 
 class SetupUploadMixin(object):

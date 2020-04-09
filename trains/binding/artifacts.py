@@ -147,15 +147,6 @@ class Artifact(object):
 
         if self._object is None:
             self._object = local_file
-        else:
-            from trains.storage.helper import StorageHelper
-            # only of we are not using cache, we should delete the file
-            if not hasattr(StorageHelper, 'get_cached_disabled'):
-                # delete the temporary file, we already used it
-                try:
-                    local_file.unlink()
-                except Exception:
-                    pass
 
         return self._object
 
@@ -165,8 +156,8 @@ class Artifact(object):
             The returned path will be a temporary folder containing the archive content
         :return: a local path to a downloaded copy of the artifact
         """
-        from trains.storage.helper import StorageHelper
-        local_path = StorageHelper.get_local_copy(self.url)
+        from trains.storage import StorageManager
+        local_path = StorageManager.get_local_copy(self.url)
         if local_path and extract_archive and self.type == 'archive':
             temp_folder = None
             try:
@@ -179,10 +170,6 @@ class Artifact(object):
                 except Exception:
                     pass
                 return local_path
-            try:
-                Path(local_path).unlink()
-            except Exception:
-                pass
             return temp_folder
 
         return local_path

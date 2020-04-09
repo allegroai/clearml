@@ -168,15 +168,15 @@ class TaskHandler(BufferingHandler):
     def _send_events(self, a_request):
         try:
             if self._thread_pool is None:
-                self.__log_stderr('Warning: trains.Task - '
+                self.__log_stderr('WARNING: trains.Task - '
                                   'Task.close() flushing remaining logs ({})'.format(self._pending))
             self._pending -= 1
             res = self.session.send(a_request)
             if not res.ok():
-                self.__log_stderr("Warning: trains.log._send_events: failed logging task to backend "
+                self.__log_stderr("WARNING: trains.log._send_events: failed logging task to backend "
                                   "({:d} lines, {})".format(len(a_request.requests), str(res.meta)))
         except Exception as ex:
-            self.__log_stderr("Warning: trains.log._send_events: Retrying, "
+            self.__log_stderr("WARNING: trains.log._send_events: Retrying, "
                               "failed logging task to backend ({:d} lines): {}".format(len(a_request.requests), ex))
             # we should push ourselves back into the thread pool
             if self._thread_pool:

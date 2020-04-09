@@ -724,10 +724,11 @@ class Logger(object):
 
     def _start_task_if_needed(self):
         # do not refresh the task status read from cached variable _status
-        if str(self._task._status) == str(tasks.TaskStatusEnum.created):
-            self._task.mark_started()
-
-        self._task._dev_mode_task_start()
+        # if str(self._task._status) == str(tasks.TaskStatusEnum.created):
+        #     self._task.mark_started()
+        #
+        # self._task._dev_mode_task_start()
+        pass
 
     def _flush_stdout_handler(self):
         if self._task_handler and DevWorker.report_stdout:

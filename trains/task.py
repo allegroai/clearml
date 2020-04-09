@@ -767,10 +767,13 @@ class Task(_Task):
         Close the current Task. Enables to manually shutdown the task.
         Should only be called if you are absolutely sure there is no need for the Task.
         """
+        # store is main before we call at_exit, because will will Null it
+        is_main = self.is_main_task()
         self._at_exit()
-        self._at_exit_called = False
+        # leave _at_exit_called set to True (I think)
+        ## self._at_exit_called = False
         # unregister atexit callbacks and signal hooks, if we are the main task
-        if self.is_main_task():
+        if is_main:
             self.__register_at_exit(None)
 
     def register_artifact(self, name, artifact, metadata=None, uniqueness_columns=True):
@@ -1419,7 +1422,7 @@ class Task(_Task):
             parent.terminate()
 
     def _dev_mode_setup_worker(self, model_updated=False):
-        if running_remotely() or not self.is_main_task():
+        if running_remotely() or not self.is_main_task() or self._at_exit_called:
             return
 
         if self._dev_worker:

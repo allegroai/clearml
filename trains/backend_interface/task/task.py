@@ -34,8 +34,7 @@ from ...config import get_config_for_bucket, get_remote_task_id, TASK_ID_ENV_VAR
     running_remotely, get_cache_dir, DOCKER_IMAGE_ENV_VAR
 from ...debugging import get_logger
 from ...debugging.log import LoggerRoot
-from ...storage import StorageHelper
-from ...storage.helper import StorageError
+from ...storage.helper import StorageHelper, StorageError
 from .access import AccessMixin
 from .log import TaskHandler
 from .repo import ScriptInfo

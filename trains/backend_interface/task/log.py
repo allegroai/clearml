@@ -80,11 +80,14 @@ class TaskHandler(BufferingHandler):
             self.last_timestamp = timestamp
             self.counter = 1
 
+        # ignore backspaces (they are often used)
+        msg = record.getMessage().replace('\x08', '')
+
         # unite all records in a single second
         if self._last_event and timestamp - self._last_event.timestamp < 1000 and \
                 record.levelname.lower() == str(self._last_event.level):
             # ignore backspaces (they are often used)
-            self._last_event.msg += '\n' + record.getMessage().replace('\x08', '')
+            self._last_event.msg += '\n' + msg
             return None
 
         self._last_event = events.TaskLogEvent(
@@ -92,7 +95,7 @@ class TaskHandler(BufferingHandler):
             timestamp=timestamp,
             level=record.levelname.lower(),
             worker=self.session.worker,
-            msg=record.getMessage().replace('\x08', '')  # ignore backspaces (they are often used)
+            msg=msg
         )
         return self._last_event
 
@@ -114,7 +117,7 @@ class TaskHandler(BufferingHandler):
             self._last_event = None
             batch_requests = events.AddBatchRequest(requests=[events.AddRequest(e) for e in record_events if e])
         except Exception:
-            # print("Failed logging task to backend ({:d} lines)".format(len(buffer)))
+            self.__log_stderr("WARNING: trains.log - Failed logging task to backend ({:d} lines)".format(len(buffer)))
             batch_requests = None
 
         if batch_requests:
@@ -154,6 +157,9 @@ class TaskHandler(BufferingHandler):
         ll(msg % 11)
 
     def close(self, wait=False):
+        self.__log_stderr('Closing {} {}'.format(self._task_id, wait))
+        # import traceback
+        # self.__log_stderr('trace: {}'.format(traceback.format_stack()))
         # super already calls self.flush()
         super(TaskHandler, self).close()
         # shut down the TaskHandler, from this point onwards. No events will be logged
@@ -169,7 +175,7 @@ class TaskHandler(BufferingHandler):
         try:
             if self._thread_pool is None:
                 self.__log_stderr('INFO: trains.Task - '
-                                  'Task.close() flushing remaining logs ({})'.format(self._pending))
+                                  'Task.close() flushing remaining logs ({}){}'.format(self._pending, a_request))
             self._pending -= 1
             res = self.session.send(a_request)
             if not res.ok():
@@ -185,7 +191,5 @@ class TaskHandler(BufferingHandler):
 
     @staticmethod
     def __log_stderr(t):
-        if hasattr(sys.stderr, '_original_write'):
-            sys.stderr._original_write(t + '\n')
-        else:
-            sys.stderr.write(t + '\n')
+        write = sys.stderr._original_write if hasattr(sys.stderr, '_original_write') else sys.stderr.write
+        write(t + '\n')

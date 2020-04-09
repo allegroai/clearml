@@ -89,7 +89,7 @@ class ConfigFactory(object):
         :param unresolved_value: assigned value value to unresolved substitution.
         If overriden with a default value, it will replace all unresolved value to the default value.
         If it is set to to pyhocon.STR_SUBSTITUTION then it will replace the value by its substitution expression (e.g., ${x})
-        :type unresolved_value: boolean
+        :type unresolved_value: class
         :return: Config object
         :type return: Config
         """
@@ -496,13 +496,20 @@ class ConfigParser(object):
                                 _, _, current_item = cls._do_substitute(substitution, value)
                     previous_item = current_item
 
-                if len(history) == 1:  # special case, when self optional referencing without existing
+                if len(history) == 1:
                     for substitution in cls._find_substitutions(previous_item):
                         prop_path = ConfigTree.parse_key(substitution.variable)
                         if len(prop_path) > 1 and config.get(substitution.variable, None) is not None:
                             continue  # If value is present in latest version, don't do anything
                         if prop_path[0] == key and substitution.optional:
                             cls._do_substitute(substitution, None)
+                        if prop_path[0] == key:
+                            value = os.environ.get(key)
+                            if value is not None:
+                                cls._do_substitute(substitution, value)
+                                continue
+                            if substitution.optional:  # special case, when self optional referencing without existing
+                                cls._do_substitute(substitution, None)
 
     # traverse config to find all the substitutions
     @classmethod

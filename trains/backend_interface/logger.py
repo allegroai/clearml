@@ -11,6 +11,7 @@ class StdStreamPatch(object):
     _stdout_proxy = None
     _stderr_proxy = None
     _stdout_original_write = None
+    _stderr_original_write = None
 
     @staticmethod
     def patch_std_streams(logger):
@@ -22,6 +23,8 @@ class StdStreamPatch(object):
             try:
                 if StdStreamPatch._stdout_original_write is None:
                     StdStreamPatch._stdout_original_write = sys.stdout.write
+                if StdStreamPatch._stderr_original_write is None:
+                    StdStreamPatch._stderr_original_write = sys.stderr.write
                 # this will only work in python 3, guard it with try/catch
                 if not hasattr(sys.stdout, '_original_write'):
                     sys.stdout._original_write = sys.stdout.write
@@ -92,6 +95,11 @@ class StdStreamPatch(object):
     def stdout_original_write(*args, **kwargs):
         if StdStreamPatch._stdout_original_write:
             StdStreamPatch._stdout_original_write(*args, **kwargs)
+
+    @staticmethod
+    def stderr_original_write(*args, **kwargs):
+        if StdStreamPatch._stderr_original_write:
+            StdStreamPatch._stderr_original_write(*args, **kwargs)
 
     @staticmethod
     def _stdout__patched__write__(*args, **kwargs):

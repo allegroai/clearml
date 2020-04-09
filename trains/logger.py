@@ -607,8 +607,13 @@ class Logger(object):
                                           if isinstance(h, TaskHandler) and h.task_id == self._task.id][0]
                 self._task_handler.emit(record)
             except Exception:
-                LoggerRoot.get_base_logger().warning(msg='Logger failed sending log: [level %s]: "%s"'
-                                                         % (str(level), str(msg)))
+                # avoid infinite loop, output directly to stderr
+                try:
+                    # make sure we are writing to the original stdout
+                    StdStreamPatch.stderr_original_write(
+                        'trains.Logger failed sending log [level {}]: "{}"\n'.format(level, msg))
+                except Exception:
+                    pass
 
         if not omit_console:
             # if we are here and we grabbed the stdout, we need to print the real thing
@@ -728,10 +733,11 @@ class Logger(object):
         if self._task_handler and DevWorker.report_stdout:
             self._task_handler.flush()
 
-    def _flush_wait_stdout_handler(self):
+    def _close_stdout_handler(self, wait=True):
         if self._task_handler and DevWorker.report_stdout:
-            self._task_handler.flush()
-            self._task_handler.wait_for_flush()
+            t = self._task_handler
+            self._task_handler = None
+            t.close(wait)
 
     def _touch_title_series(self, title, series):
         if title not in self._graph_titles:

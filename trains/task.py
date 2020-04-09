@@ -741,12 +741,8 @@ class Task(_Task):
 
         # flush any outstanding logs
         if self._logger:
-            if wait_for_uploads:
-                # noinspection PyProtectedMember
-                self._logger._flush_wait_stdout_handler()
-            else:
-                # noinspection PyProtectedMember
-                self._logger._flush_stdout_handler()
+            # noinspection PyProtectedMember
+            self._logger._flush_stdout_handler()
         if self._reporter:
             self.reporter.flush()
         LoggerRoot.flush()
@@ -1556,6 +1552,8 @@ class Task(_Task):
 
             if self._logger:
                 self._logger.set_flush_period(None)
+                if wait_for_uploads:
+                    self._logger._close_stdout_handler()
             # this is so in theory we can close a main task and start a new one
             if self.is_main_task():
                 Task.__main_task = None

@@ -299,6 +299,8 @@ class Task(_Task):
                         task.output_uri = cls.__default_output_uri
                     # store new task ID
                     cls.__update_master_pid_task(task=task)
+                    # make sure we are started
+                    task.started(ignore_errors=True)
                 else:
                     # subprocess should get back the task info
                     task = Task.get_task(task_id=is_sub_process_task_id)

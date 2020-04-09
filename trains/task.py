@@ -1487,6 +1487,7 @@ class Task(_Task):
             # first thing mark task as stopped, so we will not end up with "running" on lost tasks
             # if we are running remotely, the daemon will take care of it
             task_status = None
+            wait_for_std_log = True
             if not running_remotely() and self.is_main_task() and not is_sub_process:
                 # check if we crashed, ot the signal is not interrupt (manual break)
                 task_status = ('stopped', )
@@ -1502,6 +1503,8 @@ class Task(_Task):
                             task_status = ('completed', )
                         else:
                             task_status = ('stopped', )
+                            # user aborted. do not bother flushing the stdout logs
+                            wait_for_std_log = self.__exit_hook.signal is not None
 
             # wait for repository detection (if we didn't crash)
             if wait_for_uploads and self._logger:
@@ -1546,6 +1549,7 @@ class Task(_Task):
             # from here, do not check worker status
             if self._dev_worker:
                 self._dev_worker.unregister()
+                self._dev_worker = None
 
             if not is_sub_process:
                 # change task status
@@ -1564,8 +1568,8 @@ class Task(_Task):
 
             if self._logger:
                 self._logger.set_flush_period(None)
-                if wait_for_uploads:
-                    self._logger._close_stdout_handler()
+                self._logger._close_stdout_handler(wait=wait_for_uploads or wait_for_std_log)
+
             # this is so in theory we can close a main task and start a new one
             if self.is_main_task():
                 Task.__main_task = None

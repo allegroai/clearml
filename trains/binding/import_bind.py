@@ -23,14 +23,14 @@ class PostImportHookPatching(object):
         if six.PY2:
             # python2.x
             builtins.__org_import__ = builtins.__import__
-            builtins.__import__ = PostImportHookPatching._patched_import2
+            builtins.__import__ = PostImportHookPatching.__patched_import2
         else:
             # python3.x
             builtins.__org_import__ = builtins.__import__
-            builtins.__import__ = PostImportHookPatching._patched_import3
+            builtins.__import__ = PostImportHookPatching.__patched_import3
 
     @staticmethod
-    def _patched_import2(name, globals={}, locals={}, fromlist=[], level=-1):
+    def __patched_import2(name, globals={}, locals={}, fromlist=[], level=-1):
         already_imported = name in sys.modules
         mod = builtins.__org_import__(
             name,
@@ -45,7 +45,7 @@ class PostImportHookPatching(object):
         return mod
 
     @staticmethod
-    def _patched_import3(name, globals=None, locals=None, fromlist=(), level=0):
+    def __patched_import3(name, globals=None, locals=None, fromlist=(), level=0):
         name_parts = name.split('.')
         base_name = name_parts[0]
         second_name = '.'.join(name_parts[:2]) if len(name_parts) > 1 else None

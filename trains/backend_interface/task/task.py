@@ -243,6 +243,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
             # we do not want to wait for the check version thread,
             # because someone might wait for us to finish the repo detection update
+        except SystemExit:
+            pass
         except Exception as e:
             get_logger('task').debug(str(e))
 

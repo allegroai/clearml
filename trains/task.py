@@ -1212,8 +1212,6 @@ class Task(_Task):
 
         :return: Logger object
         """
-        pass
-
         if not self._logger:
             # force update of base logger to this current task (this is the main logger task)
             self._setup_log(replace_existing=self.is_main_task())
@@ -1456,7 +1454,7 @@ class Task(_Task):
                         if self._detect_repo_async_thread.is_alive():
                             self.log.info('Repository and package analysis timed out ({} sec), '
                                           'giving up'.format(timeout))
-                            # fone waiting, kill the thread
+                            # done waiting, kill the thread
                             from .utilities.os.lowlevel import kill_thread
                             kill_thread(self._detect_repo_async_thread)
                         else:

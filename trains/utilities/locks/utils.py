@@ -230,7 +230,7 @@ class RLock(Lock):
 
     def acquire(self, timeout=None, check_interval=None, fail_when_locked=None):
         if self._lock:
-            if not self._lock.acquire(timeout=timeout):
+            if not self._lock.acquire(block=timeout != 0, timeout=timeout):
                 # We got a timeout... reraising
                 raise exceptions.LockException()
 

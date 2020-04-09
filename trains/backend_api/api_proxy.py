@@ -31,7 +31,7 @@ class ApiServiceProxy(object):
                         ]])
 
             version = str(min(Version(Session.api_version), ApiServiceProxy._max_available_version))
-            self.__dict__["__wrapped_version__"] = version
+            self.__dict__["__wrapped_version__"] = Session.api_version
             name = ".v{}.{}".format(
                 version.replace(".", "_"), self.__dict__.get("__wrapped_name__")
             )

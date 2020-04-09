@@ -222,14 +222,14 @@ class Metrics(InterfaceBase):
 
         if file_pool:
             try:
-                file_pool.close()
+                file_pool.terminate()
                 file_pool.join()
             except:
                 pass
 
         if pool:
             try:
-                pool.close()
+                pool.terminate()
                 pool.join()
             except:
                 pass

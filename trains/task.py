@@ -772,7 +772,7 @@ class Task(_Task):
         """
         # store is main before we call at_exit, because will will Null it
         is_main = self.is_main_task()
-        self._at_exit()
+        self.__shutdown()
         # unregister atexit callbacks and signal hooks, if we are the main task
         if is_main:
             self.__register_at_exit(None)
@@ -1407,7 +1407,6 @@ class Task(_Task):
     @staticmethod
     def _kill_all_child_processes(send_kill=False):
         # get current process if pid not provided
-        include_parent = True
         pid = os.getpid()
         try:
             parent = psutil.Process(pid)
@@ -1477,6 +1476,18 @@ class Task(_Task):
             self.get_logger().report_text(self._artifacts_manager.summary)
 
     def _at_exit(self):
+        # protect sub-process at_exit (should never happen)
+        if self._at_exit_called:
+            return
+        # shutdown will clear the main, so we have to store it before.
+        # is_main = self.is_main_task()
+        self.__shutdown()
+        # In rare cases we might need to forcefully shutdown the process, currently we should avoid it.
+        # if is_main:
+        #     # we have to forcefully shutdown if we have forked processes, sometimes they will get stuck
+        #     os._exit(self.__exit_hook.exit_code if self.__exit_hook and self.__exit_hook.exit_code else 0)
+
+    def __shutdown(self):
         """
         Will happen automatically once we exit code, i.e. atexit
         :return:

@@ -218,7 +218,8 @@ class Task(_Task):
                 cls.__main_task._artifacts_manager = Artifacts(cls.__main_task)
                 # unregister signal hooks, they cause subprocess to hang
                 cls.__main_task.__register_at_exit(cls.__main_task._at_exit)
-                cls.__main_task.__register_at_exit(None, only_remove_signal_and_exception_hooks=True)
+                # TODO: Check if the signal handler method is safe enough, for the time being, do not unhook
+                # cls.__main_task.__register_at_exit(None, only_remove_signal_and_exception_hooks=True)
 
             if not running_remotely():
                 verify_defaults_match()
@@ -1633,7 +1634,8 @@ class Task(_Task):
                 if self._exit_callback:
                     atexit.register(self._exit_callback)
 
-                if not self._org_handlers and not Task._Task__is_subprocess():
+                # TODO: check if sub-process hooks are safe enough, for the time being allow it
+                if not self._org_handlers:  # ## and not Task._Task__is_subprocess():
                     if sys.platform == 'win32':
                         catch_signals = [signal.SIGINT, signal.SIGTERM, signal.SIGSEGV, signal.SIGABRT,
                                          signal.SIGILL, signal.SIGFPE]

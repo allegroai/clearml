@@ -68,16 +68,18 @@ class PatchOsFork(object):
 
                 # Hack: now make sure we setup the reporter thread
                 task._setup_reporter()
-                # if we got here patch the os._exit of our instance to call us
-                def _at_exit_callback(*args, **kwargs):
-                    # call at exit manually
-                    # noinspection PyProtectedMember
-                    task._at_exit()
-                    # noinspection PyProtectedMember
-                    return os._org_exit(*args, **kwargs)
 
-                if not hasattr(os, '_org_exit'):
-                    os._org_exit = os._exit
-                os._exit = _at_exit_callback
+                # TODO: Check if the signal handler method is enough, for the time being, disable the _exit hook
+                # # if we got here patch the os._exit of our instance to call us
+                # def _at_exit_callback(*args, **kwargs):
+                #     # call at exit manually
+                #     # noinspection PyProtectedMember
+                #     task._at_exit()
+                #     # noinspection PyProtectedMember
+                #     return os._org_exit(*args, **kwargs)
+                #
+                # if not hasattr(os, '_org_exit'):
+                #     os._org_exit = os._exit
+                # os._exit = _at_exit_callback
 
         return ret

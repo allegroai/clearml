@@ -148,7 +148,7 @@ class TaskHandler(BufferingHandler):
             self._exit_event.clear()
             # multiple workers could be supported as well
             self._thread = Thread(target=self._daemon)
-            # self._thread.daemon = True
+            self._thread.daemon = True
             self._thread.start()
         self._queue.put(request)
 

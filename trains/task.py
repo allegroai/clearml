@@ -1438,22 +1438,32 @@ class Task(_Task):
 
     def _wait_for_repo_detection(self, timeout=None):
         # wait for detection repo sync
-        if self._detect_repo_async_thread:
-            with self._repo_detect_lock:
-                if self._detect_repo_async_thread:
-                    try:
+        if not self._detect_repo_async_thread:
+            return
+        with self._repo_detect_lock:
+            if not self._detect_repo_async_thread:
+                return
+            try:
+                if self._detect_repo_async_thread.is_alive():
+                    # if negative timeout, just kill the thread:
+                    if timeout is not None and timeout < 0:
+                        from .utilities.os.lowlevel import kill_thread
+                        kill_thread(self._detect_repo_async_thread)
+                    else:
+                        self.log.info('Waiting for repository detection and full package requirement analysis')
+                        self._detect_repo_async_thread.join(timeout=timeout)
+                        # because join has no return value
                         if self._detect_repo_async_thread.is_alive():
-                            self.log.info('Waiting for repository detection and full package requirement analysis')
-                            self._detect_repo_async_thread.join(timeout=timeout)
-                            # because join has no return value
-                            if self._detect_repo_async_thread.is_alive():
-                                self.log.info('Repository and package analysis timed out ({} sec), '
-                                              'giving up'.format(timeout))
-                            else:
-                                self.log.info('Finished repository detection and package analysis')
-                        self._detect_repo_async_thread = None
-                    except Exception:
-                        pass
+                            self.log.info('Repository and package analysis timed out ({} sec), '
+                                          'giving up'.format(timeout))
+                            # fone waiting, kill the thread
+                            from .utilities.os.lowlevel import kill_thread
+                            kill_thread(self._detect_repo_async_thread)
+                        else:
+                            self.log.info('Finished repository detection and package analysis')
+                self._detect_repo_async_thread = None
+            except Exception:
+                pass
 
     def _summary_artifacts(self):
         # signal artifacts upload, and stop daemon
@@ -1504,6 +1514,9 @@ class Task(_Task):
                 # make sure that if we crashed the thread we are not waiting forever
                 if not is_sub_process:
                     self._wait_for_repo_detection(timeout=10.)
+
+            # kill the repo thread (negative timeout, do not wait), if it hasn't finished yet.
+            self._wait_for_repo_detection(timeout=-1)
 
             # wait for uploads
             print_done_waiting = False
@@ -1571,6 +1584,8 @@ class Task(_Task):
             except Exception:
                 pass
             self._edit_lock = None
+        # HACK FOR TRACE
+        self.is_main_task()
 
     @classmethod
     def __register_at_exit(cls, exit_callback, only_remove_signal_and_exception_hooks=False):

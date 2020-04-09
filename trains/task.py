@@ -1216,7 +1216,7 @@ class Task(_Task):
 
         # do not recreate logger after task was closed/quit
         if self._at_exit_called:
-            return None
+            raise ValueError("Cannot use Task Logger after task was closed")
 
         if not self._logger:
             # force update of base logger to this current task (this is the main logger task)

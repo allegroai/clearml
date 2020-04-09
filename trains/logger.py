@@ -735,6 +735,9 @@ class Logger(object):
             self._task_handler.flush()
 
     def _close_stdout_handler(self, wait=True):
+        # detach the sys stdout/stderr
+        StdStreamPatch.remove_std_logger(self)
+
         if self._task_handler and DevWorker.report_stdout:
             t = self._task_handler
             self._task_handler = None

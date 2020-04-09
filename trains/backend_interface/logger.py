@@ -77,17 +77,17 @@ class StdStreamPatch(object):
                 StdStreamPatch._stderr_proxy.connect(logger)
 
     @staticmethod
-    def remove_std_logger():
+    def remove_std_logger(logger=None):
         if isinstance(sys.stdout, PrintPatchLogger):
             # noinspection PyBroadException
             try:
-                sys.stdout.connect(None)
+                sys.stdout.disconnect(logger)
             except Exception:
                 pass
         if isinstance(sys.stderr, PrintPatchLogger):
             # noinspection PyBroadException
             try:
-                sys.stderr.connect(None)
+                sys.stderr.disconnect(logger)
             except Exception:
                 pass
 
@@ -171,6 +171,11 @@ class PrintPatchLogger(object):
     def connect(self, logger):
         self._cur_line = ''
         self._log = logger
+
+    def disconnect(self, logger=None):
+        # disconnect the logger only if it was registered
+        if not logger or self._log == logger:
+            self.connect(None)
 
     def __getattr__(self, attr):
         if attr in ['_log', '_terminal', '_log_level', '_cur_line']:

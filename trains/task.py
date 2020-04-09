@@ -1559,6 +1559,11 @@ class Task(_Task):
                 self._dev_worker.unregister()
                 self._dev_worker = None
 
+            # stop resource monitoring
+            if self._resource_monitor:
+                self._resource_monitor.stop()
+                self._resource_monitor = None
+
             if not is_sub_process:
                 # change task status
                 if not task_status:
@@ -1569,10 +1574,6 @@ class Task(_Task):
                     self.completed()
                 elif task_status[0] == 'stopped':
                     self.stopped()
-
-            # stop resource monitoring
-            if self._resource_monitor:
-                self._resource_monitor.stop()
 
             if self._logger:
                 self._logger.set_flush_period(None)
@@ -1634,10 +1635,12 @@ class Task(_Task):
             def hook(self):
                 if self._orig_exit is None:
                     self._orig_exit = sys.exit
-                sys.exit = self.exit
+                    sys.exit = self.exit
+
                 if self._orig_exc_handler is None:
                     self._orig_exc_handler = sys.excepthook
-                sys.excepthook = self.exc_handler
+                    sys.excepthook = self.exc_handler
+
                 if self._exit_callback:
                     atexit.register(self._exit_callback)
 

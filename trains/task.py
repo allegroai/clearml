@@ -770,8 +770,6 @@ class Task(_Task):
         # store is main before we call at_exit, because will will Null it
         is_main = self.is_main_task()
         self._at_exit()
-        # leave _at_exit_called set to True (I think)
-        ## self._at_exit_called = False
         # unregister atexit callbacks and signal hooks, if we are the main task
         if is_main:
             self.__register_at_exit(None)
@@ -1582,8 +1580,6 @@ class Task(_Task):
             except Exception:
                 pass
             self._edit_lock = None
-        # HACK FOR TRACE
-        self.is_main_task()
 
     @classmethod
     def __register_at_exit(cls, exit_callback, only_remove_signal_and_exception_hooks=False):

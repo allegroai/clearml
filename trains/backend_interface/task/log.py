@@ -153,7 +153,7 @@ class TaskHandler(BufferingHandler):
         self.release()
         ll(msg % 11)
 
-    def close(self, wait=True):
+    def close(self, wait=False):
         # super already calls self.flush()
         super(TaskHandler, self).close()
         # shut down the TaskHandler, from this point onwards. No events will be logged
@@ -168,7 +168,7 @@ class TaskHandler(BufferingHandler):
     def _send_events(self, a_request):
         try:
             if self._thread_pool is None:
-                self.__log_stderr('WARNING: trains.Task - '
+                self.__log_stderr('INFO: trains.Task - '
                                   'Task.close() flushing remaining logs ({})'.format(self._pending))
             self._pending -= 1
             res = self.session.send(a_request)

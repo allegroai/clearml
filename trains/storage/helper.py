@@ -964,7 +964,7 @@ class StorageHelper(object):
             pool = StorageHelper._upload_pool
             StorageHelper._upload_pool = None
             try:
-                pool.close()
+                pool.terminate()
                 pool.join()
             except:
                 pass

@@ -10,7 +10,7 @@ from ...backend_api.services import events as api_events
 from ..base import InterfaceBase
 from ...config import config
 from ...debugging import get_logger
-from ...storage import StorageHelper
+from ...storage.helper import StorageHelper
 
 from .events import MetricsEventAdapter
 

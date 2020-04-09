@@ -38,9 +38,9 @@ class GenerateReqs(object):
         candidates = self._filter_modules(modules, local_mods)
 
         # make sure we are in candidates
-        ourselves = self.__module__.split('.') if self.__module__ else None
-        if ourselves and ourselves[0] not in candidates:
-            candidates.add(ourselves[0])
+        ourselves = self.__module__.split('.')[0]if self.__module__ else None
+        if ourselves and ourselves not in candidates:
+            candidates.add(ourselves)
 
         logger.info('Check module in local environment.')
         for name in candidates:
@@ -54,6 +54,11 @@ class GenerateReqs(object):
         # add local modules, so we know what is used but not installed.
         for name in self._local_mods:
             if name in modules:
+                if ourselves and name == ourselves:
+                    from ...version import __version__
+                    reqs.add(name, __version__, modules[name])
+                    continue
+
                 # if this is a folder of our project, we can safely ignore it
                 if os.path.commonpath([os.path.realpath(self._project_path)]) == \
                         os.path.commonpath([os.path.realpath(self._project_path),

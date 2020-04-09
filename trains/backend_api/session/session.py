@@ -2,13 +2,13 @@ import json as json_lib
 import sys
 import types
 from socket import gethostname
-from six.moves.urllib.parse import urlparse, urlunparse
+from time import sleep
 
 import jwt
 import requests
 import six
-from ...utilities.pyhocon import ConfigTree
 from requests.auth import HTTPBasicAuth
+from six.moves.urllib.parse import urlparse, urlunparse
 
 from .callresult import CallResult
 from .defs import ENV_VERBOSE, ENV_HOST, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_WEB_HOST, ENV_FILES_HOST
@@ -16,7 +16,14 @@ from .request import Request, BatchRequest
 from .token_manager import TokenManager
 from ..config import load
 from ..utils import get_http_session_with_retry, urllib_log_warning_setup
+from ...debugging import get_logger
+from ...utilities.pyhocon import ConfigTree
 from ...version import __version__
+
+try:
+    from OpenSSL.SSL import Error as SSLError
+except ImportError:
+    from requests.exceptions import SSLError
 
 
 class LoginError(Exception):
@@ -42,6 +49,7 @@ class Session(TokenManager):
     _write_session_data_size = 15000
     _write_session_timeout = (300.0, 300.)
     _sessions_created = 0
+    _ssl_error_count_verbosity = 2
 
     api_version = '2.1'
     default_host = "https://demoapi.trains.allegro.ai"
@@ -127,6 +135,9 @@ class Session(TokenManager):
         if not host:
             raise ValueError("host is required in init or config")
 
+        self._ssl_error_count_verbosity = self.config.get(
+            "api.ssl_error_count_verbosity", self._ssl_error_count_verbosity)
+
         self.__host = host.strip("/")
         http_retries_config = http_retries_config or self.config.get(
             "api.http.retries", ConfigTree()).as_plain_ordered_dict()
@@ -193,6 +204,7 @@ class Session(TokenManager):
             if version
             else "{host}/{service}.{action}"
         ).format(**locals())
+        retry_counter = 0
         while True:
             if data and len(data) > self._write_session_data_size:
                 timeout = self._write_session_timeout
@@ -200,8 +212,17 @@ class Session(TokenManager):
                 timeout = self._session_initial_timeout
             else:
                 timeout = self._session_timeout
-            res = self.__http_session.request(
-                method, url, headers=headers, auth=auth, data=data, json=json, timeout=timeout)
+            try:
+                res = self.__http_session.request(
+                    method, url, headers=headers, auth=auth, data=data, json=json, timeout=timeout)
+            # except Exception as ex:
+            except SSLError as ex:
+                retry_counter += 1
+                # we should retry
+                if retry_counter >= self._ssl_error_count_verbosity:
+                    (self._logger or get_logger()).warning("SSLError Retrying {}".format(ex))
+                sleep(0.1)
+                continue
 
             if (
                 refresh_token_if_unauthorized
@@ -213,16 +234,18 @@ class Session(TokenManager):
                 self.refresh_token()
                 token_refreshed_on_error = True
                 # try again
+                retry_counter += 1
                 continue
             if (
                 res.status_code == requests.codes.service_unavailable
                 and self.config.get("api.http.wait_on_maintenance_forever", True)
             ):
-                self._logger.warning(
+                (self._logger or get_logger()).warning(
                     "Service unavailable: {} is undergoing maintenance, retrying...".format(
                         host
                     )
                 )
+                retry_counter += 1
                 continue
             break
         self._session_requests += 1

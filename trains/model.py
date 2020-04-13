@@ -1056,7 +1056,7 @@ class OutputModel(BaseModel):
         # select the correct file extension based on the framework, or update the framework based on the file extension
         framework, file_ext = Framework._get_file_ext(
             framework=self._get_model_data().framework,
-            filename=weights_filename or register_uri
+            filename=target_filename or weights_filename or register_uri
         )
 
         if weights_filename:

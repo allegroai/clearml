@@ -77,7 +77,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param task_name: Optional task name, used only if a new task is created.
         :type project_name: str
         :param task_type: Optional task type, used only if a new task is created. Default is training task.
-        :type project_name: str (see tasks.TaskTypeEnum)
+        :type task_type: str (see tasks.TaskTypeEnum)
         :param log_to_backend: If True, all calls to the task's log will be logged to the backend using the API.
             This value can be overridden using the environment variable TRAINS_LOG_TASK_TO_BACKEND.
         :type log_to_backend: bool
@@ -332,12 +332,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     @property
     def cache_dir(self):
-        """ Cache dir used to store task related files """
+        """ The cache directory which is used to store the Task related files. """
         return Path(get_cache_dir()) / self.id
 
     @property
     def status(self):
-        """ The task's status. In order to stay updated, we always reload the task info when this value is accessed. """
+        """
+        The Task's status. To keep the Task updated, Trains reloads the Task information when this value
+        is accessed.
+        """
         self.reload()
         return self._status
 
@@ -433,26 +436,26 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self.reload()
 
     def started(self, ignore_errors=True):
-        """ Signal that this task has started """
+        """ The signal that this Task started. """
         return self.send(tasks.StartedRequest(self.id), ignore_errors=ignore_errors)
 
     def stopped(self, ignore_errors=True):
-        """ Signal that this task has stopped """
+        """ The signal that this Task stopped. """
         return self.send(tasks.StoppedRequest(self.id), ignore_errors=ignore_errors)
 
     def completed(self, ignore_errors=True):
-        """ Signal that this task has been completed """
+        """ The signal indicating that this Task completed. """
         if hasattr(tasks, 'CompletedRequest'):
             return self.send(tasks.CompletedRequest(self.id, status_reason='completed'), ignore_errors=ignore_errors)
         return self.send(tasks.StoppedRequest(self.id, status_reason='completed'), ignore_errors=ignore_errors)
 
     def mark_failed(self, ignore_errors=True, status_reason=None, status_message=None):
-        """ Signal that this task has stopped """
+        """ The signal that this Task stopped. """
         return self.send(tasks.FailedRequest(self.id, status_reason=status_reason, status_message=status_message),
                          ignore_errors=ignore_errors)
 
     def publish(self, ignore_errors=True):
-        """ Signal that this task will be published """
+        """ The signal that this Task will be published """
         if str(self.status) != str(tasks.TaskStatusEnum.stopped):
             raise ValueError("Can't publish, Task is not stopped")
         resp = self.send(tasks.PublishRequest(self.id), ignore_errors=ignore_errors)
@@ -460,7 +463,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return resp
 
     def update_model_desc(self, new_model_desc_file=None):
-        """ Change the task's model_desc """
+        """ Change the Task's model description. """
         with self._edit_lock:
             self.reload()
             execution = self._get_task_property('execution')
@@ -476,18 +479,19 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def update_output_model(self, model_uri, name=None, comment=None, tags=None):
         """
-        Update the task's output model.
-        Note that this method only updates the model's metadata using the API and does not upload any data. Use this
-        method to update the output model when you have a local model URI (e.g. storing the weights file locally and
-        providing a file://path/to/file URI)
+        Update the Task's output model. Use this method to update the output model when you have a local model URI,
+        for example, storing the weights file locally, and specifying a ``file://path/to/file`` URI)
 
-        :param model_uri: URI for the updated model weights file
+        .. important::
+           This method only updates the model's metadata using the API. It does not upload any data.
+
+        :param model_uri: The URI of the updated model weights file.
         :type model_uri: str
-        :param name: Optional updated model name
+        :param name: The updated model name. (Optional)
         :type name: str
-        :param comment: Optional updated model description
+        :param comment: The updated model description. (Optional)
         :type comment: str
-        :param tags: Optional updated model tags
+        :param tags: The updated model tags. (Optional)
         :type tags: [str]
         """
         self._conditionally_start_task()
@@ -496,26 +500,31 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def update_output_model_and_upload(
             self, model_file, name=None, comment=None, tags=None, async_enable=False, cb=None, iteration=None):
         """
-        Update the task's output model weights file. File is first uploaded to the preconfigured output destination (see
-        task's output.destination property or call setup_upload()), than the model object associated with the task is
-        updated using an API call with the URI of the uploaded file (and other values provided by additional arguments)
+        Update the Task's output model weights file. First, Trains uploads the file to the preconfigured output
+        destination (see the Task's ``output.destination`` property or call the ``setup_upload()`` method),
+        then Trains updates the model object associated with the Task an API call. The API call uses with the URI
+        of the uploaded file, and other values provided by additional arguments.
 
-        :param model_file: Path to the updated model weights file
+        :param model_file: The path to the updated model weights file.
         :type model_file: str
-        :param name: Optional updated model name
+        :param name: The updated model name. (Optional)
         :type name: str
-        :param comment: Optional updated model description
+        :param comment: The updated model description. (Optional)
         :type comment: str
-        :param tags: Optional updated model tags
+        :param tags: The updated model tags. (Optional)
         :type tags: [str]
-        :param async_enable: Request asynchronous upload. If False, the call blocks until upload is completed and the
-            API call updating the model returns. If True, the call returns immediately, while upload and update are
-            scheduled in another thread. Default is False.
+        :param async_enable: Request asynchronous upload?
+
+            - ``True`` - The API call returns immediately, while the upload and update are scheduled in another thread.
+            - ``False`` - The API call blocks until the upload completes, and the API call updating the model returns.
+              (Default)
+
         :type async_enable: bool
-        :param cb: Asynchronous callback. If async=True, this callback will be invoked once the asynchronous upload and
-            update have completed.
-        :return: The URI of the uploaded weights file. If async=True, this is the expected URI as the upload is
-            probably still in progress.
+        :param cb: Asynchronous callback. A callback. If ``async_enable`` is set to ``True``, this is a callback that
+            is invoked once the asynchronous upload and update complete.
+
+        :return: The URI of the uploaded weights file. If ``async_enable`` is set to ``True``, this is the expected URI,
+            as the upload is probably still in progress.
         """
         self._conditionally_start_task()
         uri = self.output_model.update_for_task_and_upload(
@@ -544,13 +553,22 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def set_input_model(self, model_id=None, model_name=None, update_task_design=True, update_task_labels=True):
         """
-        Set a new input model for this task. Model must be 'ready' in order to be used as the Task's input model.
+        Set a new input model for the Task. The model must be "ready" (status is ``Published``) to be used as the
+        Task's input model.
 
-        :param model_id: ID for a model that exists in the backend. Required if model_name is not provided.
-        :param model_name: Model name. Required if model_id is not provided. If provided, this name will be used to
-            locate an existing model in the backend.
-        :param update_task_design: if True, the task's model design will be copied from the input model
-        :param update_task_labels: if True, the task's label enumeration will be copied from the input model
+        :param model_id: The Id of the model on the **Trains Server** (backend). If ``model_name`` is not specified,
+            then ``model_id`` must be specified.
+        :param model_name: The model name. The name is used to locate an existing model in the **Trains Server**
+            (backend). If ``model_id`` is not specified, then ``model_name`` must be specified.
+        :param update_task_design: Update the Task's design?
+
+            - ``True`` - Trains copies the Task's model design from the input model.
+            - ``False`` - Trains does not copy the Task's model design from the input model.
+
+        :param update_task_labels: Update the Task's label enumeration?
+
+            - ``True`` - Trains copies the Task's label enumeration from the input model.
+            - ``False`` - Trains does not copy the Task's label enumeration from the input model.
         """
         if model_id is None and not model_name:
             raise ValueError('Expected one of [model_id, model_name]')
@@ -596,12 +614,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def set_parameters(self, *args, **kwargs):
         """
-        Set parameters for this task. This allows setting a complete set of key/value parameters, but does not support
-        parameter descriptions (as the input is a dictionary or key/value pairs.
+        Set the parameters for a Task. This method sets a complete group of key-value parameter pairs, but does not
+        support parameter descriptions (the input is a dictionary of key-value pairs).
 
-        :param args: Positional arguments (one or more dictionary or (key, value) iterable). These will be merged into
-            a single key/value dictionary.
-        :param kwargs: Key/value pairs, merged into the parameters dictionary created from `args`.
+        :param args: Positional arguments, which are one or more dictionary or (key, value) iterable. They are
+            merged into a single key-value pair dictionary.
+        :param kwargs: Key-value pairs, merged into the parameters dictionary created from ``args``.
         """
         if not all(isinstance(x, (dict, Iterable)) for x in args):
             raise ValueError('only dict or iterable are supported as positional arguments')
@@ -641,11 +659,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def set_parameter(self, name, value, description=None):
         """
-        Set a single task parameter. This overrides any previous value for this parameter.
+        Set a single Task parameter. This overrides any previous value for this parameter.
 
-        :param name: Parameter name
-        :param value: Parameter value
-        :param description: Parameter description (unused for now)
+        :param name: The parameter name.
+        :param value: The parameter value.
+        :param description: The parameter description.
+
+            .. note::
+               The ``description`` is not yet in use.
         """
         self.set_parameters({name: value}, __update=True)
 
@@ -662,14 +683,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def update_parameters(self, *args, **kwargs):
         """
-        Update parameters for this task.
+        Update the parameters for a Task. This method updates a complete group of key-value parameter pairs, but does
+        not support parameter descriptions (the input is a dictionary of key-value pairs).
 
-        This allows updating a complete set of key/value parameters,but does not support
-        parameter descriptions (as the input is a dictionary or key/value pairs.
-
-        :param args: Positional arguments (one or more dictionary or (key, value) iterable). These will be merged into
-            a single key/value dictionary.
-        :param kwargs: Key/value pairs, merged into the parameters dictionary created from `args`.
+        :param args: Positional arguments, which are one or more dictionary or (key, value) iterable. They are
+            merged into a single key-value pair dictionary.
+        :param kwargs: Key-value pairs, merged into the parameters dictionary created from ``args``.
         """
         self.set_parameters(__update=True, *args, **kwargs)
 
@@ -700,7 +719,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         Set the base docker image for this experiment
         If provided, this value will be used by trains-agent to execute this experiment
-         inside the provided docker image.
+        inside the provided docker image.
         """
         with self._edit_lock:
             self.reload()
@@ -709,7 +728,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self._edit(execution=execution)
 
     def get_base_docker(self):
-        """Get the base docker command (image) set for this experiment"""
+        """Get the base Docker command (image) that is set for this experiment."""
         return self._get_task_property('execution.docker_cmd', raise_on_error=False, log_on_error=False)
 
     def set_artifacts(self, artifacts_list=None):
@@ -741,7 +760,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def get_labels_enumeration(self):
         """
-        Return a dictionary of labels (text) to ids (integers) {str(label): integer(id)}
+        Get the label enumeration dictionary label enumeration dictionary of string (label) to integer (value) pairs.
+
         :return: dict
         """
         if not self.data or not self.data.execution:
@@ -750,7 +770,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def get_model_design(self):
         """
-        Returns the model configuration as blob of text
+        Get the model configuration as blob of text.
+
         :return:
         """
         design = self._get_task_property("execution.model_desc", default={}, raise_on_error=False, log_on_error=False)
@@ -808,9 +829,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def set_name(self, name):
         """
-        Set a comment text to the task.
+        Set the Task name.
 
-        :param name: The name of the task
+        :param name: The name of the Task.
         :type name: str
         """
         self._set_task_property("name", str(name))
@@ -818,9 +839,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def set_comment(self, comment):
         """
-        Set a comment text to the task.
+        Set a comment / description for the Task.
 
-        :param comment: The comment of the task
+        :param comment: The comment / description for the Task.
         :type comment: str
         """
         self._set_task_property("comment", str(comment))
@@ -828,7 +849,16 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def set_initial_iteration(self, offset=0):
         """
-        Set initial iteration, instead of zero. Useful when continuing training from previous checkpoints
+        Set the initial iteration offset. The default value is ``0``. This method is useful when continuing training
+        from previous checkpoints.
+
+        For example, to start on iteration 100000, including scalars and plots:
+
+        ..code-block:: py
+
+          task.set_initial_iteration(100000)
+
+        Task.set_initial_iteration(100000)
 
         :param int offset: Initial iteration (at starting point)
         :return: newly set initial offset
@@ -843,10 +873,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def get_initial_iteration(self):
         """
-        Return the initial iteration offset, default is 0.
-        Useful when continuing training from previous checkpoints.
+        Get the initial iteration offset. The default value is ``0``. This method is useful when continuing training
+        from previous checkpoints.
 
-        :return int: initial iteration offset
+        :return: The initial iteration offset.
+
+        :rtype: int
         """
         return self._initial_iteration_offset
 
@@ -1016,16 +1048,23 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     @classmethod
     def get_all(cls, session=None, log=None, **kwargs):
         """
-        List all tasks based on specific projection
+        List all the Tasks based on specific projection.
 
-        :param session: Session object used for sending requests to the API
+        :param session: The session object used for sending requests to the API.
         :type session: Session
-        :param log: Log object
+        :param log: The Log object.
         :type log: logging.Logger
-        :param kwargs: Keyword args passed to the GetAllRequest (see .backend_api.services.tasks.GetAllRequest)
-            Example: status='completed', 'search_text'='specific_word', 'user'='user_id', 'project'='project_id'
+        :param kwargs: Keyword args passed to the GetAllRequest (see :class:`.backend_api.services.v2_5.tasks.GetAllRequest`)
+
+            For example:
+
+            .. code-block:: bash
+
+               status='completed', 'search_text'='specific_word', 'user'='user_id', 'project'='project_id'
+
         :type kwargs: dict
-        :return: API response
+
+        :return: The API response.
         """
         session = session if session else cls._get_default_session()
         req = tasks.GetAllRequest(**kwargs)

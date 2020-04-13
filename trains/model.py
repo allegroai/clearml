@@ -99,91 +99,108 @@ class BaseModel(object):
     @property
     def id(self):
         """
-        return the id of the model (string)
+        The Id (system UUID) of the model.
 
-        :return: model id (string)
+        :return: The model id.
+
+        :rtype: str
         """
         return self._get_model_data().id
 
     @property
     def name(self):
         """
-        return the name of the model (string)
+        The name of the model.
 
-        :return: model name (string)
+        :return: The model name.
+
+        :rtype: str
         """
         return self._get_model_data().name
 
     @name.setter
     def name(self, value):
         """
-        Update the model name
+        Set the model name.
 
-        :param value: model name (string)
+        :param str value: The model name.
         """
         self._get_base_model().update(name=value)
 
     @property
     def comment(self):
         """
-        return comment/description of the model (string)
+        The comment for the model. Also, use for a model description.
 
-        :return: model description (string)
+        :return: The model comment / description.
+
+        :rtype: str
         """
         return self._get_model_data().comment
 
     @comment.setter
     def comment(self, value):
         """
-        Update the model comment/description of the model (string)
+        Set comment for the model. Also, use for a model description.
 
-        :param value: model comment/description (string)
+        :param str value: The model comment/description.
         """
         self._get_base_model().update(comment=value)
 
     @property
     def tags(self):
         """
-        Return the list of tags the model has
+        A list of tags describing the model.
 
-        :return: list of strings (tags)
+        :return: The list of tags.
+
+        :rtype: list(str)
         """
         return self._get_model_data().tags
 
     @tags.setter
     def tags(self, value):
         """
-        Update the model list of tags (list of strings)
+        Set the list of tags describing the model.
 
-        :param value: list of strings as tags
+        :param value: The tags.
+
+        :type value: list(str)
         """
         self._get_base_model().update(tags=value)
 
     @property
     def config_text(self):
         """
-        returns a string representing the model configuration (from prototxt to ini file or python code to evaluate)
+        The configuration as a string. For example, prototxt, an ini file, or Python code to evaluate.
 
-        :return: string
+        :return: The configuration.
+
+        :rtype: str
         """
         return _Model._unwrap_design(self._get_model_data().design)
 
     @property
     def config_dict(self):
         """
-        returns a configuration dictionary parsed from the design text,
-        usually representing the model configuration (from prototxt to ini file or python code to evaluate)
+        The configuration as a dictionary, parsed from the design text. This usually represents the model configuration.
+        For example, prototxt, an ini file, or Python code to evaluate.
 
-        :return: Dictionary
+        :return: The configuration.
+
+        :rtype: dict
         """
         return self._text_to_config_dict(self.config_text)
 
     @property
     def labels(self):
         """
-        Return the labels enumerator {str(label): integer(id)} as saved in the model object
+        The label enumeration of string (label) to integer (value) pairs.
 
-        :return: labels_dict, dictionary with labels (text) keys and values as integers
+
+        :return: A dictionary containing labels enumeration, where the keys are labels and the values as integers.
+
+        :rtype: dict
         """
         return self._get_model_data().labels
 
@@ -221,20 +238,28 @@ class BaseModel(object):
 
     def get_weights(self):
         """
-        Download the base model and returns a string of locally stored filename
+        Download the base model and return the locally stored filename.
 
-        :return: string to locally stored file
+        :return: The locally stored file.
+
+        :rtype: str
         """
         # download model (synchronously) and return local file
         return self._get_base_model().download_model_weights()
 
     def get_weights_package(self, return_path=False):
         """
-        Download the base model package, extract the files and return list of locally stored filenames
+        Download the base model package into a temporary directory (extract the files), or return a list of the
+        locally stored filenames.
 
-        :param return_path: if True the model weights are downloaded into a
-            temporary directory and the directory path is returned, instead of list of files
-        :return: string to locally stored file
+        :param bool return_path: Return the model weights or a list of filenames? (Optional)
+
+            - ``True`` - Download the model weights into a temporary directory, and return the temporary directory path.
+            - ``False`` - Return a list of the locally stored filenames. (Default)
+
+        :return: The model weights, or a list of the locally stored filenames.
+
+        :rtype: package or path
         """
         # check if model was packaged
         if self._package_tag not in self._get_model_data().tags:
@@ -266,9 +291,8 @@ class BaseModel(object):
 
     def publish(self):
         """
-        Set the model to 'published' and set it for public use.
-
-        If the model is already published, this method is a no-op.
+        Set the model to the status ``published`` and for public use. If the model's status is already ``published``,
+        then this method is a no-op.
         """
 
         if not self.published:
@@ -412,31 +436,72 @@ class InputModel(Model):
         framework=None,
     ):
         """
-        Create a model from pre-existing model file (link must be valid), and model configuration.
+        Create an InputModel object from a pre-trained model by specifying the URL of an initial weight files.
+        Optionally, input a configuration, label enumeration, name for the model, tags describing the model,
+        comment as a description of the model, indicate whether the model is a package, specify the model's
+        framework, and indicate whether to immediately set the model's status to ``Published``.
+        The model is read-only.
 
-        If the url to the weights file already exists, the import process will stop with a warning
-        and automatically it will try to import the model that was found.
-        The Model will be read-only and can be used to pre initialize a network
-        We can connect the model to a task as input model, then when running remotely override it with the UI.
-        Load model based on id, returned object is read-only and can be connected to a task
-        That is, we can override the input model when running remotely
+        The **Trains Server** (backend) may already store the model's URL. If the input model's URL is not
+        stored, meaning the model is new, then it is imported and Trains stores its metadata.
+        If the URL is already stored, the import process stops, Trains issues a warning message, and Trains
+        reuses the model.
 
-        :param weights_url: valid url for the weights file (string).
-            examples: "https://domain.com/file.bin" or "s3://bucket/file.bin" or "file:///home/user/file.bin".
-            NOTE: if a model with the exact same URL exists, it will be used, and all other arguments will be ignored.
-        :param config_text: model configuration  (unconstrained text string). usually the content of
-            configuration file. If `config_text` is not None, `config_dict` must not be provided.
-        :param config_dict: model configuration parameters (dict).
-            If `config_dict` is not None, `config_text` must not be provided.
-        :param label_enumeration: dictionary of string to integer, enumerating the model output to labels
-            example: {'background': 0 , 'person': 1}
-        :param name: optional, name for the newly imported model
-        :param tags: optional, list of strings as tags
-        :param comment: optional, string description for the model
-        :param is_package: Boolean. Indicates that the imported weights file is a package.
-            If True, and a new model was created, a package tag will be added.
-        :param create_as_published: Boolean. If True, and a new model is created, it will be published.
-        :param framework: optional, string name of the framework of the model or Framework
+        In your Python experiment script, after importing the model, you can connect it to the main execution
+        Task as an input model using :meth:`InputModel.connect` or :meth:`.Task.connect`. That initializes the
+        network.
+
+        .. note::
+           Using the **Trains Web-App** (user interface), you can reuse imported models and switch models in
+           experiments.
+
+        :param str weights_url: A valid URL for the initial weights file. If the **Trains Web-App** (backend)
+            already stores the metadata of a model with the same URL, that existing model is returned
+            and Trains ignores all other parameters.
+
+            For example:
+
+            - ``https://domain.com/file.bin``
+            - ``s3://bucket/file.bin``
+            - ``file:///home/user/file.bin``
+
+        :param str config_text: The configuration as a string. This is usually the content of a configuration
+            dictionary file. Specify ``config_text`` or ``config_dict``, but not both.
+        :type config_text: unconstrained text string
+        :param dict config_dict: The configuration as a dictionary. Specify ``config_text`` or ``config_dict``,
+            but not both.
+        :param dict label_enumeration: The label enumeration dictionary of string (label) to integer (value) pairs. (Optional)
+
+            For example:
+
+            .. code-block:: javascript
+
+               {
+                    'background': 0,
+                    'person': 1
+               }
+        :param str name: The name of the newly imported model. (Optional)
+        :param tags: The list of tags which describe the model. (Optional)
+        :type tags: list(str)
+        :param str comment: A comment / description for the model. (Optional)
+        :type comment str:
+        :param is_package: Is the imported weights file is a package? (Optional)
+
+            - ``True`` - Is a package. Add a package tag to the model.
+            - ``False`` - Is not a package. Do not add a package tag. (Default)
+
+        :type is_package: bool
+        :param bool create_as_published: Set the model's status to Published? (Optional)
+
+            - ``True`` - Set the status to Published.
+            - ``False`` - Do not set the status to Published. The status will be Draft. (Default)
+
+        :param str framework: The framework of the model. (Optional)
+        :type framework: str or Framework object
+
+        :return: The imported model or existing model (see above).
+
+        :rtype: A model object.
         """
         config_text = cls._resolve_config(config_text=config_text, config_dict=config_dict)
         weights_url = StorageHelper.conform_url(weights_url)
@@ -567,15 +632,24 @@ class InputModel(Model):
         label_enumeration=None,
     ):
         """
-        Create an empty model, so that later we can execute the task in remote and
-        replace the empty model with pre-trained model file
+        Create an empty model object. Later, you can assign a model to the empty model object.
 
-        :param config_text: model configuration (unconstrained text string). usually the content of a config_dict file.
-            If `config_text` is not None, `config_dict` must not be provided.
-        :param config_dict: model configuration parameters (dict).
-            If `config_dict` is not None, `config_text` must not be provided.
-        :param label_enumeration: dictionary of string to integer, enumerating the model output to labels
-            example: {'background': 0 , 'person': 1}
+        :param config_text: The model configuration as a string. This is usually the content of a configuration
+            dictionary file. Specify ``config_text`` or ``config_dict``, but not both.
+        :type config_text: unconstrained text string
+        :param dict config_dict: The model configuration as a dictionary. Specify ``config_text`` or ``config_dict``,
+            but not both.
+        :param dict label_enumeration: The label enumeration dictionary of string (label) to integer (value) pairs.
+            (Optional)
+
+            For example:
+
+            .. code-block:: javascript
+
+               {
+                    'background': 0,
+                    'person': 1
+               }
         """
         design = cls._resolve_config(config_text=config_text, config_dict=config_dict)
 
@@ -591,11 +665,8 @@ class InputModel(Model):
 
     def __init__(self, model_id):
         """
-        Load model based on id, returned object is read-only and can be connected to a task
-
-        Notice, we can override the input model when running remotely
-
-        :param model_id: id (string)
+        :param str model_id: The Trains Id (system UUID) of the input model whose metadata the **Trains Server**
+            (backend) stores.
         """
         super(InputModel, self).__init__(model_id)
 
@@ -605,16 +676,22 @@ class InputModel(Model):
 
     def connect(self, task):
         """
-        Connect current model with a specific task, only supported for preexisting models,
+        Connect the current model to a Task object, if the model is preexisting. Preexisting models include:
 
-        i.e. not supported on objects created with create_and_connect()
-        When running in debug mode (i.e. locally), the task is updated with the model object
-        (i.e. task input model is the load_model_id)
-        When running remotely (i.e. from a daemon) the model is being updated from the task
-        Notice! when running remotely the load_model_id is ignored and loaded from the task object
-        regardless of the code
+        - Imported models (InputModel objects created using the :meth:`Logger.import_model` method).
+        - Models whose metadata is already in the Trains platform, meaning the InputModel object is instantiated
+          from the ``InputModel`` class specifying the the model's Trains Id as an argument.
+        - Models whose origin is not Trains that are used to create an InputModel object. For example,
+          models created using TensorFlow models.
 
-        :param task: Task object
+        When the experiment is executed remotely in a worker, the input model already specified in the experiment is
+        used.
+
+        .. note::
+           The **Trains Web-App** allows you to switch one input model for another and then enqueue the experiment
+           to execute in a worker.
+
+        :param object task: A Task object.
         """
         self._set_task(task)
 
@@ -640,13 +717,23 @@ class InputModel(Model):
 
 class OutputModel(BaseModel):
     """
-    Create an output model for a task to store the training results in.
+    Create an output model for a Task (experiment) to store the training results.
 
-    By definition the Model is always connected to a task, and is automatically registered as its output model.
-    The common use case is reusing the model object, and overriding the weights every stored snapshot.
-    A user can create multiple output models for a task, think a snapshot after a validation test has a new high-score.
-    The Model will be read-write and if config/label-enumeration are None,
-    their values will be initialized from the task input model.
+    The OutputModel object is always connected to a Task object, because it is instantiated with a Task object
+    as an argument. It is, therefore, automatically registered as the Task's (experiment's) output model.
+
+    The OutputModel object is read-write.
+
+    A common use case is to reuse the OutputModel object, and override the weights after storing a model snapshot.
+    Another use case is to create multiple OutputModel objects for a Task (experiment), and after a new high score
+    is found, store a model snapshot.
+
+    If the model configuration and / or the model's label enumeration
+    are ``None``, then the output model is initialized with the values from the Task object's input model.
+
+    .. note::
+       When executing a Task (experiment) remotely in a worker, you can modify the model configuration and / or model's
+       label enumeration using the **Trains Web-App**.
     """
 
     @property
@@ -658,49 +745,78 @@ class OutputModel(BaseModel):
     @property
     def config_text(self):
         """
-        returns a string representing the model configuration (from prototxt to ini file or python code to evaluate)
+        Get the configuration as a string. For example, prototxt, an ini file, or Python code to evaluate.
 
-        :return: string
+        :return: The configuration.
+
+        :rtype: str
         """
         return _Model._unwrap_design(self._get_model_data().design)
 
     @config_text.setter
     def config_text(self, value):
         """
-        Update the model configuration, store a blob of text for custom usage
+        Set the configuration. Store a blob of text for custom usage.
         """
         self.update_design(config_text=value)
 
     @property
     def config_dict(self):
         """
-        returns a configuration dictionary parsed from the config_text text,
-        usually representing the model configuration (from prototxt to ini file or python code to evaluate)
+        Get the configuration as a dictionary parsed from the ``config_text`` text. This usually represents the model
+        configuration. For example, from prototxt to ini file or python code to evaluate.
 
-        :return: Dictionary
+        :return: The configuration.
+
+        :rtype: dict
         """
         return self._text_to_config_dict(self.config_text)
 
     @config_dict.setter
     def config_dict(self, value):
         """
-        Update the model configuration: model configuration parameters (dict).
+        Set the configuration. Saved in the model object.
+
+        :param dict value: The configuration parameters.
         """
         self.update_design(config_dict=value)
 
     @property
     def labels(self):
         """
-        Return the labels enumerator {str(label): integer(id)} as saved in the model object
+        Get the label enumeration as a dictionary of string (label) to integer (value) pairs.
 
-        :return: labels_dict, dictionary with labels (text) keys and values as integers
+        For example:
+
+        .. code-block:: javascript
+
+           {
+                'background': 0,
+                'person': 1
+           }
+
+        :return: The label enumeration.
+
+        :rtype: dict
         """
         return self._get_model_data().labels
 
     @labels.setter
     def labels(self, value):
         """
-        update the labels enumerator {str(label): integer(id)} as saved in the model object
+        Set the label enumeration.
+
+        :param dict value: The label enumeration dictionary of string (label) to integer (value) pairs.
+
+            For example:
+
+            .. code-block:: javascript
+
+               {
+                    'background': 0,
+                    'person': 1
+               }
+
         """
         self.update_labels(labels=value)
 
@@ -726,19 +842,30 @@ class OutputModel(BaseModel):
         We do not allow for Model creation without a task, so we always keep track on how we created the models
         In remote execution, Model parameters can be overridden by the Task (such as model configuration & label enumerator)
 
-        :param task: Task object
+        :param task: The Task object with which the OutputModel object is associated.
         :type task: Task
-        :param config_text: model configuration (unconstrained text string). usually the content of a config_dict file.
-            If `config_text` is not None, `config_dict` must not be provided.
-        :param config_dict: model configuration parameters (dict).
-            If `config_dict` is not None, `config_text` must not be provided.
-        :param label_enumeration: dictionary of string to integer, enumerating the model output to labels
-            example: {'background': 0 , 'person': 1}
-        :type label_enumeration: dict[str: int] or None
-        :param name: optional, name for the newly created model
-        :param tags: optional, list of strings as tags
-        :param comment: optional, string description for the model
-        :param framework: optional, string name of the framework of the model or Framework
+        :param config_text: The configuration as a string. This is usually the content of a configuration
+            dictionary file. Specify ``config_text`` or ``config_dict``, but not both.
+        :type config_text: unconstrained text string
+        :param dict config_dict: The configuration as a dictionary.
+            Specify ``config_dict`` or ``config_text``, but not both.
+        :param dict label_enumeration: The label enumeration dictionary of string (label) to integer (value) pairs.
+            (Optional)
+
+            For example:
+
+            .. code-block:: javascript
+
+               {
+                    'background': 0,
+                    'person': 1
+               }
+
+        :param str name: The name for the newly created model. (Optional)
+        :param list(str) tags: A list of strings which are tags for the model. (Optional)
+        :param str comment: A comment / description for the model. (Optional)
+        :param framework: The framework of the model or a Framework object. (Optional)
+        :type framework: str or Framework object
         :param base_model_id: optional, model id to be reused
         """
         super(OutputModel, self).__init__(task=task)
@@ -782,16 +909,13 @@ class OutputModel(BaseModel):
 
     def connect(self, task):
         """
-        Connect current model with a specific task, only supported for preexisting models,
+        Connect the current model to a Task object, if the model is a preexisting model. Preexisting models include:
 
-        i.e. not supported on objects created with create_and_connect()
-        When running in debug mode (i.e. locally), the task is updated with the model object
-        (i.e. task input model is the load_model_id)
-        When running remotely (i.e. from a daemon) the model is being updated from the task
-        Notice! when running remotely the load_model_id is ignored and loaded from the task object
-        regardless of the code
+        - Imported models.
+        - Models whose metadata the **Trains Server** (backend) is already storing.
+        - Models from another source, such as frameworks like TensorFlow.
 
-        :param task: Task object
+        :param object task: A Task object.
         """
         if self._task != task:
             raise ValueError('Can only connect preexisting model to task, but this is a fresh model')
@@ -824,15 +948,28 @@ class OutputModel(BaseModel):
 
     def set_upload_destination(self, uri):
         """
-        Set the uri to upload all the model weight files to.
+        Set the URI of the storage destination for uploaded model weight files. Supported storage destinations include
+        S3, Google Cloud Storage), and file locations.
 
-        Files are uploaded separately to the destination storage (e.g. s3,gc,file) and then
-        a link to the uploaded model is stored in the model object
-        Notice: credentials for the upload destination will be pooled from the
-        global configuration file (i.e. ~/trains.conf)
+        Using this method, files uploads are separate and then a link to each is stored in the model object.
 
-        :param uri: upload destination (string). example: 's3://bucket/directory/' or 'file:///tmp/debug/'
-        :return: True if destination scheme is supported (i.e. s3:// file:// gc:// etc...)
+        .. note::
+           For storage requiring credentials, the credentials are stored in the Trains configuration file,
+           ``~/trains.conf``.
+
+        :param str uri: The URI of the upload storage destination.
+
+            For example:
+
+            - ``s3://bucket/directory/``
+            - ``file:///tmp/debug/``
+
+        :return: The status of whether the storage destination schema is supported.
+
+            - ``True`` - The storage destination scheme is supported.
+            - ``False`` - The storage destination scheme is not supported.
+
+        :rtype: bool
         """
         if not uri:
             return
@@ -857,15 +994,31 @@ class OutputModel(BaseModel):
         """
         Update the model weights from a locally stored model filename.
 
-        Uploading the model is a background process, the call returns immediately.
+        .. note::
+           Uploading the model is a background process. A call to this method returns immediately.
 
-        :param weights_filename: locally stored filename to be uploaded as is
-        :param upload_uri: destination uri for model weights upload (default: previously used uri)
-        :param target_filename: the newly created filename in the destination uri location (default: weights_filename)
-        :param auto_delete_file: delete temporary file after uploading
-        :param register_uri: register an already uploaded weights file (uri must be valid)
-        :param update_comment: if True, model comment will be updated with local weights file location (provenance)
-        :return: uploaded uri
+        :param str weights_filename: The name of the locally stored weights file to upload. Specify ``weights_filename``
+            or ``register_uri``, but not both.
+        :param str upload_uri: The URI of the storage destination for model weights upload. The default value
+            is the previously used URI. (Optional)
+        :param str target_filename: The newly created filename in the storage destination location. The default value
+            is the ``weights_filename`` value. (Optional)
+        :param bool auto_delete_file: Delete the temporary file after uploading? (Optional)
+
+            - ``True`` - Delete (Default)
+            - ``False`` - Do not delete
+
+        :param str register_uri: The URI of an already uploaded weights file. The URI must be valid. Specify
+            ``register_uri`` or ``weights_filename``, but not both.
+        :param bool update_comment: Update the model comment with the local weights file name (to maintain
+            provenance)? (Optional)
+
+            - ``True`` - Update model comment (Default)
+            - ``False`` - Do not update
+
+        :return: The uploaded URI.
+
+        :rtype: str
         """
 
         def delete_previous_weights_file(filename=weights_filename):
@@ -961,18 +1114,29 @@ class OutputModel(BaseModel):
     def update_weights_package(self, weights_filenames=None, weights_path=None, upload_uri=None,
                                target_filename=None, auto_delete_file=True, iteration=None):
         """
-        Update the model weights from a locally stored model files (or directory containing multiple files).
+        Update the model weights from locally stored model files, or from directory containing multiple files.
 
-        Uploading the model is a background process, the call returns immediately.
+        .. note::
+           Uploading the model weights is a background process. A call to this method returns immediately.
 
-        :param weights_filenames: list of locally stored filenames (list of strings)
-        :type weights_filenames: list
-        :param weights_path: directory path to package (all the files in the directory will be uploaded)
+        :param weights_filenames: The file names of the locally stored model files. Specify ``weights_filenames``
+            or ``weights_path``, but not both.
+        :type weights_filenames: list(str)
+        :param weights_path: The directory path to a package. All the files in the directory will be uploaded.
+            Specify ``weights_path`` or ``weights_filenames``, but not both.
         :type weights_path: str
-        :param upload_uri: destination uri for model weights upload (default: previously used uri)
-        :param target_filename: the newly created filename in the destination uri location (default: weights_filename)
-        :param auto_delete_file: delete temporary file after uploading
-        :return: uploaded uri for the weights package
+        :param str upload_uri: The URI of the storage destination for the model weights upload. The default
+            is the previously used URI. (Optional)
+        :param str target_filename: The newly created filename in the storage destination URI location. The default
+            is the value specified in the ``weights_filename`` parameter.  (Optional)
+        :param bool auto_delete_file: Delete temporary file after uploading?  (Optional)
+
+            - ``True`` - Delete (Default)
+            - ``False`` - Do not delete
+
+        :return: The uploaded URI for the weights package.
+
+        :rtype: str
         """
         # create list of files
         if (not weights_filenames and not weights_path) or (weights_filenames and weights_path):
@@ -1022,23 +1186,31 @@ class OutputModel(BaseModel):
 
     def update_design(self, config_text=None, config_dict=None):
         """
-        Update the model configuration, basically store a blob of text for custom usage
+        Update the model configuration. Store a blob of text for custom usage.
 
-        Notice: this is done in a lazily, only when updating weights we force the update of configuration in the backend
+        .. note::
+           This method's behavior is lazy. The design update is only forced when the weights
+           are updated.
 
-        :param config_text: model configuration (unconstrained text string). usually the content of a config_dict file.
-            If `config_text` is not None, `config_dict` must not be provided.
-        :param config_dict: model configuration parameters (dict).
-            If `config_dict` is not None, `config_text` must not be provided.
-        :return: True if update was successful
+        :param config_text: The configuration as a string. This is usually the content of a configuration
+            dictionary file. Specify ``config_text`` or ``config_dict``, but not both.
+        :type config_text: unconstrained text string
+        :param dict config_dict: The configuration as a dictionary. Specify ``config_text`` or ``config_dict``,
+            but not both.
+
+        :return: The status of the update.
+
+            - ``True`` - Update successful.
+            - ``False`` - Update not successful.
+        :rtype: bool
         """
         if not self._validate_update():
             return
 
         config_text = self._resolve_config(config_text=config_text, config_dict=config_dict)
 
-        if self._task and not self._task._get_model_config_text():
-            self._task._set_model_config(config_text=config_text)
+        if self._task and not self._task.get_model_config_text():
+            self._task.set_model_config(config_text=config_text)
 
         if self.id:
             # update the model object (this will happen if we resumed a training task)
@@ -1052,10 +1224,19 @@ class OutputModel(BaseModel):
 
     def update_labels(self, labels):
         """
-        Update the model label enumeration {str(label): integer(id)}
+        Update the label enumeration.
 
-        :param labels: dictionary with labels (text) keys and values as integers
-            example: {'background': 0 , 'person': 1}
+        :param dict labels: The label enumeration dictionary of string (label) to integer (value) pairs.
+
+            For example:
+
+            .. code-block:: javascript
+
+               {
+                    'background': 0,
+                    'person': 1
+               }
+
         :return:
         """
         validate_dict(labels, key_types=six.string_types, value_types=six.integer_types, desc='label enumeration')
@@ -1079,11 +1260,11 @@ class OutputModel(BaseModel):
     @classmethod
     def wait_for_uploads(cls, timeout=None, max_num_uploads=None):
         """
-        Wait for any pending/in-progress model uploads. If no uploads are pending or in-progress, returns immediately.
+        Wait for any pending or in-progress model uploads to complete. If no uploads are pending or in-progress,
+        then the ``wait_for_uploads`` returns immediately.
 
-        :param timeout: If not None, a floating point number specifying a timeout in seconds after which this call will
-            return.
-        :param max_num_uploads: Max number of uploads to wait for.
+        :param float timeout: The timeout interval to wait for uploads (seconds). (Optional).
+        :param int max_num_uploads: The maximum number of uploads to wait for. (Optional).
         """
         _Model.wait_for_results(timeout=timeout, max_num_uploads=max_num_uploads)
 

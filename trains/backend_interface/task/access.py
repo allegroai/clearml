@@ -57,8 +57,8 @@ class AccessMixin(object):
         return self._get_task_property('execution.parameters')
 
     def get_label_num_description(self):
-        """ Get a dict of label number to a string representing all labels associated with this number on the
-            model labels
+        """ Get a dictionary of label number to a string pairs representing all labels associated with this number
+            on the model labels.
         """
         model_labels = self._get_task_property('execution.model_labels')
         label_getter = operator.itemgetter(0)

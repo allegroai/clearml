@@ -29,11 +29,25 @@ warnings.filterwarnings('always', category=DeprecationWarning, module=__name__)
 
 class Logger(object):
     """
-    Console log and metric statistics interface.
+    The ``Logger`` class is the Trains console log and metric statistics interface, and contains methods for explicit
+    reporting.
 
-    This is how we send graphs/plots/text to the system, later we can compare the performance of different tasks.
+    Explicit reporting extends Trains automagical capturing of inputs and output. Explicit reporting
+    methods include scalar plots, line plots, histograms, confusion matrices, 2D and 3D scatter
+    diagrams, text logging, tables, and image uploading and reporting.
 
-    **Usage:** :func:`Logger.current_logger` or :func:`Task.get_logger`
+    In the **Trains Web-App (UI)**, ``Logger`` output appears in the **RESULTS** tab, **LOG**, **SCALARS**,
+    **PLOTS**, and **DEBUG IMAGES** sub-tabs. When you compare experiments, ``Logger`` output appears in the
+    comparisons.
+
+    .. warning::
+
+       Do not construct Logger objects directly.
+
+    You must get a Logger object before calling any of the other ``Logger`` class methods by calling
+    :meth:`.Task.get_logger` or :meth:`Logger.current_logger`.
+
+
     """
     SeriesInfo = SeriesInfo
     _tensorboard_logging_auto_group_scalars = False
@@ -41,9 +55,9 @@ class Logger(object):
 
     def __init__(self, private_task):
         """
-        **Do not construct Logger manually!**
-
-        please use :func:`Logger.current_logger`
+        .. warning::
+            **Do not construct Logger manually!**
+            Please use :meth:`Logger.get_current`
         """
         assert isinstance(private_task, _Task), \
             'Logger object cannot be instantiated externally, use Logger.current_logger()'
@@ -61,9 +75,17 @@ class Logger(object):
     def current_logger(cls):
         # type: () -> Logger
         """
-        Return a logger object for the current task. Can be called from anywhere in the code
+        Get the Logger object for the main execution Task, the current running Task, if one exists. If no Logger object
+        exists, this method creates one and returns it. Therefore, you can call this method from anywhere
+        in the code.
 
-        :return: Singleton Logger object for the current running task
+        .. code-block:: py
+
+           logger = Logger.current_logger()
+
+        :return: The Logger object (a singleton) for the current running Task.
+
+        :rtype: Logger object
         """
         from .task import Task
         task = Task.current_task()
@@ -73,22 +95,45 @@ class Logger(object):
 
     def report_text(self, msg, level=logging.INFO, print_console=True, *args, **_):
         """
-        print text to log and optionally also prints to console
+        For explicit reporting, print text to the log. Optionally, print a log level and print to the console.
 
-        :param str msg: text to print to the console (always send to the backend and displayed in console)
-        :param int level: logging level, default: logging.INFO
-        :param bool print_console: If True we also print 'msg' to console
+        For example:
+
+        .. code-block:: py
+
+           logger.report_text('log some text', level=logging.DEBUG, print_console=False)
+
+        You can view the reported text in the **Trains Web-App (UI)**, **RESULTS** tab, **LOG** sub-tab.
+
+        :param str msg: The text to log.
+        :param int level: The log level from the Python ``logging`` package. The default value is ``logging.INFO``.
+        :param bool print_console: In addition to the log, print to the console?
+
+            The values are:
+
+            - ``True`` - Print to the console. (Default)
+            - ``False`` - Do not print to the console.
         """
         return self._console(msg, level, not print_console, *args, **_)
 
     def report_scalar(self, title, series, value, iteration):
         """
-        Report a scalar value
+        For explicit reporting, plot a scalar series.
 
-        :param str title: Title (AKA metric)
-        :param str series: Series (AKA variant)
-        :param float value: Reported value
-        :param int iteration: Iteration number
+        For example, plot a scalar series:
+
+        .. code-block:: py
+
+           scalar_series = [random.randint(0,10) for i in range(10)]
+           logger.report_scalar(title='scalar metrics','series', value=scalar_series[iteration], iteration=0)
+
+        You can view the scalar plots in the **Trains Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab.
+
+        :param str title: The title of the plot. Plot more than one scalar series on the same plot by using
+            the same ``title`` for each call to this method.
+        :param str series: The title of the series.
+        :param float value: The value to plot per iteration.
+        :param int iteration: The iteration number. Iterations are on the x-axis.
         """
 
         # if task was not started, we have to start it
@@ -99,16 +144,29 @@ class Logger(object):
     def report_vector(self, title, series, values, iteration, labels=None, xlabels=None,
                       xaxis=None, yaxis=None):
         """
-        Report a histogram plot
+        For explicit reporting, plot a vector as (stacked) histogram.
 
-        :param str title: Title (AKA metric)
-        :param str series: Series (AKA variant)
-        :param list(float) values: Reported values (or numpy array)
-        :param int iteration: Iteration number
-        :param list(str) labels: optional, labels for each bar group.
-        :param list(str) xlabels: optional label per entry in the vector (bucket in the histogram)
-        :param str xaxis: optional x-axis title
-        :param str yaxis: optional y-axis title
+        For example:
+
+        .. code-block:: py
+
+           vector_series = np.random.randint(10, size=10).reshape(2,5)
+           logger.report_vector(title='vector example', series='vector series', values=vector_series, iteration=0,
+                labels=['A','B'], xaxis='X axis label', yaxis='Y axis label')
+
+        You can view the vectors plots in the **Trains Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
+
+        :param str title: The title of the plot.
+        :param str series: The title of the series.
+        :param list(float) values: The series values. A list of floats, or an N-dimensional Numpy array containing
+            data for each histogram bar.
+        :type values: list(float), numpy.ndarray
+        :param int iteration: The iteration number. Each ``iteration`` creates another plot.
+        :param list(str) labels: Labels for each bar group, creating a plot legend labeling each series. (Optional)
+        :param list(str) xlabels: Labels per entry in each bucket in the histogram (vector), creating a set of labels
+            for each histogram bar on the x-axis. (Optional)
+        :param str xaxis: The x-axis title. (Optional)
+        :param str yaxis: The y-axis title. (Optional)
         """
         self._touch_title_series(title, series)
         return self.report_histogram(title, series, values, iteration, labels=labels, xlabels=xlabels,
@@ -117,16 +175,29 @@ class Logger(object):
     def report_histogram(self, title, series, values, iteration, labels=None, xlabels=None,
                          xaxis=None, yaxis=None):
         """
-        Report a histogram plot
+        For explicit reporting, plot a (stacked) histogram.
 
-        :param str title: Title (AKA metric)
-        :param str series: Series (AKA variant)
-        :param list(float) values: Reported values (or numpy array)
-        :param int iteration: Iteration number
-        :param list(str) labels: optional, labels for each bar group.
-        :param list(str) xlabels: optional label per entry in the vector (bucket in the histogram)
-        :param str xaxis: optional x-axis title
-        :param str yaxis: optional y-axis title
+        For example:
+
+        .. code-block:: py
+
+           vector_series = np.random.randint(10, size=10).reshape(2,5)
+           logger.report_vector(title='histogram example', series='histogram series', values=vector_series, iteration=0,
+                labels=['A','B'], xaxis='X axis label', yaxis='Y axis label')
+
+        You can view the reported histograms in the **Trains Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
+
+        :param str title: The title of the plot.
+        :param str series: The title of the series.
+        :param list(float) values: The series values. A list of floats, or an N-dimensional Numpy array containing
+            data for each histogram bar.
+        :type values: list(float), numpy.ndarray
+        :param int iteration: The iteration number. Each ``iteration`` creates another plot.
+        :param list(str) labels: Labels for each bar group, creating a plot legend labeling each series. (Optional)
+        :param list(str) xlabels: Labels per entry in each bucket in the histogram (vector), creating a set of labels
+            for each histogram bar on the x-axis. (Optional)
+        :param str xaxis: The x-axis title. (Optional)
+        :param str yaxis: The y-axis title. (Optional)
         """
 
         if not isinstance(values, np.ndarray):
@@ -148,24 +219,36 @@ class Logger(object):
 
     def report_table(self, title, series, iteration, table_plot=None, csv=None, url=None):
         """
-        Report a table plot.
+        For explicit report, report a table plot.
 
-        :param title: Title (AKA metric)
-        :type title: str
-        :param series: Series (AKA variant)
-        :type series: str
-        :param iteration: Iteration number
-        :type iteration: int
+        One and only one of the following parameters must be provided.
+
+        - ``table_plot`` - Pandas DataFrame
+        - ``csv`` - CSV file
+        - ``url`` - URL to CSV file
+
+        For example:
+
+        .. code-block:: py
+
+           df = pd.DataFrame({'num_legs': [2, 4, 8, 0],
+                   'num_wings': [2, 0, 0, 0],
+                   'num_specimen_seen': [10, 2, 1, 8]},
+                   index=['falcon', 'dog', 'spider', 'fish'])
+
+           logger.report_table(title='table example',series='pandas DataFrame',iteration=0,table_plot=df)
+
+        You can view the reported tables in the **Trains Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
+
+        :param str title: The title of the table.
+        :param str series: The title of the series.
+        :param int iteration: The iteration number.
         :param table_plot: The output table plot object
         :type table_plot: pandas.DataFrame
         :param csv: path to local csv file
         :type csv: str
         :param url: A URL to the location of csv file.
         :type url: str
-
-        .. note::
-            :paramref:`~.Logger.report_table.table_plot`, :paramref:`~.Logger.report_table.csv`
-            and :paramref:`~.Logger.report_table.url' are mutually exclusive, and at least one must be provided.
         """
         mutually_exclusive(
             UsageError, _check_none=True,
@@ -192,16 +275,30 @@ class Logger(object):
     def report_line_plot(self, title, series, iteration, xaxis, yaxis, mode='lines',
                          reverse_xaxis=False, comment=None):
         """
-        Report a (possibly multiple) line plot.
+        For explicit reporting, plot one or more series as lines.
 
-        :param str title: Title (AKA metric)
-        :param list(LineSeriesInfo) series: All the series' data, one for each line in the plot.
-        :param int iteration: Iteration number
-        :param str xaxis: optional x-axis title
-        :param str yaxis: optional y-axis title
-        :param str mode: scatter plot with 'lines'/'markers'/'lines+markers'
-        :param bool reverse_xaxis: If true X axis will be displayed from high to low (reversed)
-        :param str comment: comment underneath the title
+        :param str title: The title of the plot.
+        :param list(LineSeriesInfo) series: All the series data, one list element for each line
+            in the plot.
+        :param int iteration: The iteration number.
+        :param str xaxis: The x-axis title. (Optional)
+        :param str yaxis: The y-axis title. (Optional)
+        :param str mode: The type of line plot.
+
+            The values are:
+
+            - ``lines`` (default)
+            - ``markers``
+            - ``lines+markers``
+
+        :param bool reverse_xaxis: Reverse the x-axis?
+
+            The values are:
+
+            - ``True`` - The x-axis is high to low  (reversed).
+            - ``False`` - The x-axis is low to high  (not reversed). (Default)
+
+        :param str comment: A comment displayed with the plot, underneath the title.
         """
 
         series = [self.SeriesInfo(**s) if isinstance(s, dict) else s for s in series]
@@ -223,17 +320,47 @@ class Logger(object):
     def report_scatter2d(self, title, series, scatter, iteration, xaxis=None, yaxis=None, labels=None,
                          mode='lines', comment=None):
         """
-        Report a 2d scatter graph (with lines)
+        For explicit reporting, report a 2d scatter plot.
 
-        :param str title: Title (AKA metric)
-        :param str series: Series (AKA variant)
-        :param np.ndarray scatter: A scattered data: list of (pairs of x,y) (or numpy array)
-        :param int iteration: Iteration number
-        :param str xaxis: optional x-axis title
-        :param str yaxis: optional y-axis title
-        :param list(str) labels: label (text) per point in the scatter (in the same order)
-        :param str mode: scatter plot with 'lines'/'markers'/'lines+markers'
-        :param str comment: comment underneath the title
+        For example:
+
+        .. code-block:: py
+
+           scatter2d = np.hstack((np.atleast_2d(np.arange(0, 10)).T, np.random.randint(10, size=(10, 1))))
+           logger.report_scatter2d(title='example_scatter', series='series', iteration=0, scatter=scatter2d,
+                xaxis="title x', yaxis="title y")
+
+        Plot multiple 2D scatter series on the same plot by passing the same ``title`` and ``iteration`` values
+        to this method:
+
+        .. code-block:: py
+
+           scatter2d_1 = np.hstack((np.atleast_2d(np.arange(0, 10)).T, np.random.randint(10, size=(10, 1))))
+           logger.report_scatter2d(title='example_scatter', series='series_1', iteration=1, scatter=scatter2d_1,
+                xaxis="title x', yaxis="title y")
+
+           scatter2d_2 = np.hstack((np.atleast_2d(np.arange(0, 10)).T, np.random.randint(10, size=(10, 1))))
+           logger.report_scatter2d("example_scatter', "series_2', iteration=1, scatter=scatter2d_2,
+                xaxis="title x', yaxis="title y")
+
+        :param str title: The title of the plot.
+        :param str series: The title of the series.
+        :param scatter: The scatter data.
+        :type numpy.ndarray, list of (pairs of x,y) scatter:
+        :param int iteration: The iteration number. To set an initial iteration, for example to continue a previously
+        :param str xaxis: The x-axis title. (Optional)
+        :param str yaxis: The y-axis title. (Optional)
+        :param list(str) labels: Labels per point in the data assigned to the ``scatter`` parameter. The labels must be
+            in the same order as the data.
+        :param str mode: The type of scatter plot.
+
+            The values are:
+
+            - ``lines``
+            - ``markers``
+            - ``lines+markers``
+
+        :param str comment: A comment displayed with the plot, underneath the title.
         """
 
         if not isinstance(scatter, np.ndarray):
@@ -259,20 +386,42 @@ class Logger(object):
     def report_scatter3d(self, title, series, scatter, iteration, xaxis=None, yaxis=None, zaxis=None,
                          labels=None, mode='markers', fill=False, comment=None):
         """
-        Report a 3d scatter graph (with markers)
+        For explicit reporting, plot a 3d scatter graph (with markers).
 
-        :param str title: Title (AKA metric)
-        :param str series: Series (AKA variant)
-        :param Union[np.ndarray, list] scatter: A scattered data: list of (pairs of x,y,z) (or numpy array)
-            or list of series [[(x1,y1,z1)...]]
-        :param int iteration: Iteration number
-        :param str xaxis: optional x-axis title
-        :param str yaxis: optional y-axis title
-        :param str zaxis: optional z-axis title
-        :param list(str) labels: label (text) per point in the scatter (in the same order)
-        :param str mode: scatter plot with 'lines'/'markers'/'lines+markers'
-        :param bool fill: fill area under the curve
-        :param str comment: comment underneath the title
+        :param str title: The title of the plot.
+        :param str series: The title of the series.
+        :param Union[numpy.ndarray, list] scatter: The scatter data.
+        :type scatter: list of (pairs of x,y,z), list of series [[(x1,y1,z1)...]], or numpy.ndarray
+        :param int iteration: The iteration number.
+        :param str xaxis: The x-axis title. (Optional)
+        :param str yaxis: The y-axis title. (Optional)
+        :param str zaxis: The z-axis title. (Optional)
+        :param list(str) labels: Labels per point in the data assigned to the ``scatter`` parameter. The labels must be
+            in the same order as the data.
+        :param str mode: The type of scatter plot.
+
+            The values are:
+
+            - ``lines``
+            - ``markers``
+            - ``lines+markers``
+
+        For example:
+
+        .. code-block:: py
+
+           scatter3d = np.random.randint(10, size=(10, 3))
+           logger.report_scatter3d(title='example_scatter_3d', series='series_xyz', iteration=1, scatter=scatter3d,
+                xaxis='title x', yaxis="title y', zaxis="title z")
+
+        :param bool fill: Fill the area under the curve?
+
+            The values are:
+
+            - ``True`` - Fill
+            - ``False`` - Do not fill (Default)
+
+        :param str comment: A comment displayed with the plot, underneath the title.
         """
         # check if multiple series
         multi_series = (
@@ -317,17 +466,25 @@ class Logger(object):
     def report_confusion_matrix(self, title, series, matrix, iteration, xaxis=None, yaxis=None,
                                 xlabels=None, ylabels=None, comment=None):
         """
-        Report a heat-map matrix
+        For explicit reporting, plot a heat-map matrix.
 
-        :param str title: Title (AKA metric)
-        :param str series: Series (AKA variant)
-        :param np.ndarray matrix: A heat-map matrix (example: confusion matrix)
-        :param int iteration: Iteration number
-        :param str xaxis: optional x-axis title
-        :param str yaxis: optional y-axis title
-        :param list(str) xlabels: optional label per column of the matrix
-        :param list(str) ylabels: optional label per row of the matrix
-        :param str comment: comment underneath the title
+        For example:
+
+        .. code-block:: py
+
+           confusion = np.random.randint(10, size=(10, 10))
+           logger.report_confusion_matrix("example confusion matrix', "ignored', iteration=1, matrix=confusion,
+                xaxis='title X', yaxis='title Y")
+
+        :param str title: The title of the plot.
+        :param str series: The title of the series.
+        :param numpy.ndarray matrix: A heat-map matrix (example: confusion matrix)
+        :param int iteration: The iteration number.
+        :param str xaxis: The x-axis title. (Optional)
+        :param str yaxis: The y-axis title. (Optional)
+        :param list(str) xlabels: Labels for each column of the matrix. (Optional)
+        :param list(str) ylabels: Labels for each row of the matrix. (Optional)
+        :param str comment: A comment displayed with the plot, underneath the title.
         """
 
         if not isinstance(matrix, np.ndarray):
@@ -350,17 +507,19 @@ class Logger(object):
 
     def report_matrix(self, title, series, matrix, iteration, xaxis=None, yaxis=None, xlabels=None, ylabels=None):
         """
-        Same as report_confusion_matrix
-        Report a heat-map matrix
+        For explicit reporting, plot a confusion matrix.
 
-        :param str title: Title (AKA metric)
-        :param str series: Series (AKA variant)
-        :param np.ndarray matrix: A heat-map matrix (example: confusion matrix)
-        :param int iteration: Iteration number
-        :param str xaxis: optional x-axis title
-        :param str yaxis: optional y-axis title
-        :param list(str) xlabels: optional label per column of the matrix
-        :param list(str) ylabels: optional label per row of the matrix
+        .. note::
+            This method is the same as :meth:`Logger.report_confusion_matrix`.
+
+        :param str title: The title of the plot.
+        :param str series: The title of the series.
+        :param numpy.ndarray matrix: A heat-map matrix (example: confusion matrix)
+        :param int iteration: The iteration number.
+        :param str xaxis: The x-axis title. (Optional)
+        :param str yaxis: The y-axis title. (Optional)
+        :param list(str) xlabels: Labels for each column of the matrix. (Optional)
+        :param list(str) ylabels: Labels for each row of the matrix. (Optional)
         """
         self._touch_title_series(title, series)
         return self.report_confusion_matrix(title, series, matrix, iteration,
@@ -369,19 +528,29 @@ class Logger(object):
     def report_surface(self, title, series, matrix, iteration, xaxis=None, yaxis=None, zaxis=None,
                        xlabels=None, ylabels=None, camera=None, comment=None):
         """
-        Report a 3d surface (same data as heat-map matrix, only presented differently)
+        For explicit reporting, report a 3d surface plot.
 
-        :param str title: Title (AKA metric)
-        :param str series: Series (AKA variant)
-        :param np.ndarray matrix: A heat-map matrix (example: confusion matrix)
-        :param int iteration: Iteration number
-        :param str xaxis: optional x-axis title
-        :param str yaxis: optional y-axis title
-        :param str zaxis: optional z-axis title
-        :param list(str) xlabels: optional label per column of the matrix
-        :param list(str) ylabels: optional label per row of the matrix
-        :param list(float) camera: X,Y,Z camera position. def: (1,1,1)
-        :param str comment: comment underneath the title
+        .. note::
+           This method plots the same data as :meth:`Logger.report_confusion_matrix`, but presents the
+           data as a surface diagram not a confusion matrix.
+
+        .. code-block:: py
+
+           surface_matrix = np.random.randint(10, size=(10, 10))
+           logger.report_surface("example surface', "series', iteration=0, matrix=surface_matrix,
+                xaxis='title X', yaxis='title Y', zaxis="title Z")
+
+        :param str title: The title of the plot.
+        :param str series: The title of the series.
+        :param numpy.ndarray matrix: A heat-map matrix (example: confusion matrix)
+        :param int iteration: The iteration number.
+        :param str xaxis: The x-axis title. (Optional)
+        :param str yaxis: The y-axis title. (Optional)
+        :param str zaxis: The z-axis title. (Optional)
+        :param list(str) xlabels: Labels for each column of the matrix. (Optional)
+        :param list(str) ylabels: Labels for each row of the matrix. (Optional)
+        :param list(float) camera: X,Y,Z coordinates indicating the camera position. The default value is ``(1,1,1)``.
+        :param str comment: A comment displayed with the plot, underneath the title.
         """
 
         if not isinstance(matrix, np.ndarray):
@@ -407,27 +576,50 @@ class Logger(object):
     def report_image(self, title, series, iteration, local_path=None, image=None, matrix=None, max_image_history=None,
                      delete_after_upload=False, url=None):
         """
-        Report an image and upload its contents.
+        For explicit reporting, report an image and upload its contents.
 
-        Image is uploaded to a preconfigured bucket (see setup_upload()) with a key (filename)
+        This method uploads the image to a preconfigured bucket (see :meth:`Logger.setup_upload`) with a key (filename)
         describing the task ID, title, series and iteration.
 
-        .. note::
-            :paramref:`~.Logger.report_image.local_path`, :paramref:`~.Logger.report_image.url`, :paramref:`~.Logger.report_image.image` and :paramref:`~.Logger.report_image.matrix`
-            are mutually exclusive, and at least one must be provided.
+        For example:
 
-        :param str title: Title (AKA metric)
-        :param str series: Series (AKA variant)
-        :param int iteration: Iteration number
+        .. code-block:: py
+
+           matrix = np.eye(256, 256, dtype=np.uint8)*255
+           matrix = np.concatenate((np.atleast_3d(matrix), np.zeros((256, 256, 2), dtype=np.uint8)), axis=2)
+           logger.report_image("test case', "image color red', iteration=1, image=m)
+
+           image_open = Image.open(os.path.join("<image_path>', "<image_filename>"))
+           logger.report_image("test case', "image PIL', iteration=1, image=image_open)
+
+        One and only one of the following parameters must be provided.
+
+        - :paramref:`~.Logger.report_image.local_path`
+        - :paramref:`~.Logger.report_image.url`
+        - :paramref:`~.Logger.report_image.image`
+        - :paramref:`~.Logger.report_image.matrix`
+
+        :param str title: The title of the image.
+        :param str series: The title of the series of this image.
+        :param int iteration: The iteration number.
         :param str local_path: A path to an image file.
-        :param str url: A URL to the location of a pre-uploaded image.
-        :param np.ndarray or PIL.Image.Image image: Could be a PIL.Image.Image object or a 3D numpy.ndarray
-                object containing image data (RGB).
-        :param np.ndarray matrix: A 3D numpy.ndarray object containing image data (RGB).
-                This is deprecated, use image variable instead.
-        :param int max_image_history: maximum number of image to store per metric/variant combination
-            use negative value for unlimited. default is set in global configuration (default=5)
-        :param bool delete_after_upload: if True, one the file was uploaded the local copy will be deleted
+        :param str url: A URL for the location of a pre-uploaded image.
+        :param image: Image data (RGB).
+        :type image: numpy.ndarray, PIL.Image.Image
+        :param numpy.ndarray matrix: Image data (RGB).
+
+            .. note::
+               The ``matrix`` paramater is deprecated. Use the ``image`` parameters.
+        :type matrix: 3D numpy.ndarray
+        :param int max_image_history: The maximum number of images to store per metric/variant combination.
+            For an unlimited number, use a negative value. The default value is set in global configuration
+            (default=``5``).
+        :param bool delete_after_upload: After the upload, delete the local copy of the image?
+
+            The values are:
+
+            - ``True`` - Delete after upload.
+            - ``False`` - Do not delete after upload. (Default)
         """
         mutually_exclusive(
             UsageError, _check_none=True,
@@ -544,15 +736,22 @@ class Logger(object):
 
     def set_default_upload_destination(self, uri):
         """
-        Set the uri to upload all the debug images to.
+        Set the destination storage URI (for example, S3, Google Cloud Storage, a file path) for uploading debug images.
 
-        Images are uploaded separately to the destination storage (e.g. s3,gc,file) and then
-        a link to the uploaded image is sent in the report
-        Notice: credentials for the upload destination will be pooled from the
-        global configuration file (i.e. ~/trains.conf)
+        The images are uploaded separately. A link to each image is reported.
+
+        .. note::
+           Credentials for the destination storage are specified in the  Trains configuration file,
+           ``~/trains.conf``.
 
         :param str uri: example: 's3://bucket/directory/' or 'file:///tmp/debug/'
-        :return: True if destination scheme is supported (i.e. s3:// file:// gc:// etc...)
+
+        :return: bool
+
+            The values are:
+
+            - ``True`` - The destination scheme is supported (for example, ``s3://``, ``file://``, or ``gc://``).
+            - ``False`` - The destination scheme is not supported.
         """
 
         # Create the storage helper
@@ -565,14 +764,14 @@ class Logger(object):
 
     def get_default_upload_destination(self):
         """
-        Get the uri to upload all the debug images to.
+        Get the destination storage URI (for example, S3, Google Cloud Storage, a file path) for uploading debug images
+        (see :meth:`Logger.set_default_upload_destination`).
 
-        Images are uploaded separately to the destination storage (e.g. s3,gc,file) and then
-        a link to the uploaded image is sent in the report
-        Notice: credentials for the upload destination will be pooled from the
-        global configuration file (i.e. ~/trains.conf)
+        :return: The default upload destination URI.
 
-        :return: Uri (str)  example: 's3://bucket/directory/' or 'file:///tmp/debug/' etc...
+            For example, ``s3://bucket/directory/`` or ``file:///tmp/debug/``.
+
+        :rtype: str
         """
         return self._default_upload_destination or self._task._get_default_report_storage_uri()
 
@@ -580,7 +779,12 @@ class Logger(object):
         """
         Flush cached reports and console outputs to backend.
 
-        :return: True if successful
+        :return: bool
+
+            The values are:
+
+            - ``True`` - Successfully flushed the cache.
+            - ``False`` - Failed.
         """
         self._flush_stdout_handler()
         if self._task:
@@ -589,7 +793,11 @@ class Logger(object):
 
     def get_flush_period(self):
         """
-        :return: logger flush period in seconds
+        Get the Logger flush period.
+
+        :return: The logger flush period in seconds.
+
+        :rtype: int
         """
         if self._flusher:
             return self._flusher.period
@@ -597,10 +805,10 @@ class Logger(object):
 
     def set_flush_period(self, period):
         """
-        Set the period of the logger flush.
+        Set the logger flush period.
 
-        :param float period: The period to flush the logger in seconds. If None or 0,
-            There will be no periodic flush.
+        :param float period: The period to flush the logger in seconds. To set no periodic flush,
+            specify ``None`` or ``0``.
         """
         if self._task.is_main_task() and DevWorker.report_stdout and DevWorker.report_period and \
                 not running_remotely() and period is not None:
@@ -619,7 +827,8 @@ class Logger(object):
     def report_image_and_upload(self, title, series, iteration, path=None, matrix=None, max_image_history=None,
                                 delete_after_upload=False):
         """
-        Deprecated: Backwards compatibility, please use report_image instead
+        .. deprecated:: 0.13.0
+            Use :meth:`Logger.report_image` instead
         """
         self.report_image(title=title, series=series, iteration=iteration, local_path=path, image=matrix,
                           max_image_history=max_image_history, delete_after_upload=delete_after_upload)
@@ -627,17 +836,32 @@ class Logger(object):
     @classmethod
     def tensorboard_auto_group_scalars(cls, group_scalars=False):
         """
-        If `group_scalars` set to True, we preserve backward compatible Tensorboard auto-magic behaviour,
-        i.e. Scalars without specific title will be grouped under the "Scalars" graph.
-        Default is False: Tensorboard scalars without title will have title/series with the same tag
+        Group together TensorBoard scalars that do not have a title, or assign a title/series with the same tag.
+
+        :param group_scalars: Group TensorBoard scalars without a title?
+
+            The values are:
+
+            - ``True`` - Scalars without specific titles are grouped together in the "Scalars" plot, preserving
+              backward compatibility with Trains automagical behavior.
+            - ``False`` - TensorBoard scalars without titles get a title/series with the same tag. (Default)
+        :type group_scalars: bool
         """
         cls._tensorboard_logging_auto_group_scalars = group_scalars
 
     @classmethod
     def tensorboard_single_series_per_graph(cls, single_series=False):
         """
-        If `single_series` set to True, we generate a separate graph (plot) for each Tensorboard scalar series
-        Default is False: Tensorboard scalar series will be grouped according to their title
+        Group TensorBoard scalar series together or in separate plots.
+
+        :param single_series: Group TensorBoard scalar series together?
+
+            The values are:
+
+            - ``True`` - Generate a separate plot for each TensorBoard scalar series.
+            - ``False`` - Group the TensorBoard scalar series together in the same plot. (Default)
+
+        :type single_series: bool
         """
         cls._tensorboard_logging_single_series_per_graphs = single_series
 
@@ -649,9 +873,14 @@ class Logger(object):
         """
         print text to log (same as print to console, and also prints to console)
 
-        :param msg: text to print to the console (always send to the backend and displayed in console)
+        :param str msg: text to print to the console (always send to the backend and displayed in console)
         :param level: logging level, default: logging.INFO
-        :param omit_console: If True we only send 'msg' to log (no console print)
+        :type level: Logging Level
+        :param bool omit_console: Omit the console output, and only send the ``msg`` value to the log?
+
+            - ``True`` - Omit the console output.
+            - ``False`` - Print the console output. (Default)
+
         """
         try:
             level = int(level)
@@ -700,7 +929,7 @@ class Logger(object):
         """
         Report an image, upload its contents, and present in plots section using plotly
 
-        Image is uploaded to a preconfigured bucket (see setup_upload()) with a key (filename)
+        Image is uploaded to a preconfigured bucket (see :meth:`Logger.setup_upload`) with a key (filename)
         describing the task ID, title, series and iteration.
 
         :param title: Title (AKA metric)
@@ -747,7 +976,7 @@ class Logger(object):
         """
         Upload a file and report it as link in the debug images section.
 
-        File is uploaded to a preconfigured storage (see setup_upload()) with a key (filename)
+        File is uploaded to a preconfigured storage (see :meth:`Logger.setup_upload`) with a key (filename)
         describing the task ID, title, series and iteration.
 
         :param title: Title (AKA metric)

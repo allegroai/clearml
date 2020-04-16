@@ -33,7 +33,49 @@ class Net(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training)
         x = self.fc2(x)
-        return F.log_softmax(x)
+        return F.log_softmax(x, dim=1)
+
+
+def train(model, epoch, train_loader, args, optimizer, writer):
+    model.train()
+    for batch_idx, (data, target) in enumerate(train_loader):
+        if args.cuda:
+            data, target = data.cuda(), target.cuda()
+        data, target = Variable(data), Variable(target)
+        optimizer.zero_grad()
+        output = model(data)
+        loss = F.nll_loss(output, target)
+        loss.backward()
+        optimizer.step()
+        if batch_idx % args.log_interval == 0:
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx * len(data), len(train_loader.dataset),
+                100. * batch_idx / len(train_loader), loss.data.item()))
+            niter = epoch*len(train_loader)+batch_idx
+            writer.add_scalar('Train/Loss', loss.data.item(), niter)
+
+
+def test(model, test_loader, args, optimizer, writer):
+    model.eval()
+    test_loss = 0
+    correct = 0
+    for niter, (data, target) in enumerate(test_loader):
+        if args.cuda:
+            data, target = data.cuda(), target.cuda()
+        data, target = Variable(data), Variable(target)
+        output = model(data)
+        test_loss += F.nll_loss(output, target, reduction='sum').data.item()  # sum up batch loss
+        pred = output.data.max(1)[1] # get the index of the max log-probability
+        pred = pred.eq(target.data).cpu().sum()
+        writer.add_scalar('Test/Loss', pred, niter)
+        correct += pred
+        if niter % 100 == 0:
+            writer.add_image('test', data[0, :, :, :], niter)
+
+    test_loss /= len(test_loader.dataset)
+    print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
+        test_loss, correct, len(test_loader.dataset),
+        100. * correct / len(test_loader.dataset)))
 
 
 def main():
@@ -60,7 +102,7 @@ def main():
 
     task = Task.init(project_name='examples', task_name='pytorch with tensorboardX')
     writer = SummaryWriter('runs')
-    writer.add_text('lstm', 'This is an lstm', 0)
+    writer.add_text('TEXT', 'This is some text', 0)
 
     torch.manual_seed(args.seed)
     if args.cuda:
@@ -83,48 +125,10 @@ def main():
         model.cuda()
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
-    def train(epoch):
-        model.train()
-        for batch_idx, (data, target) in enumerate(train_loader):
-            if args.cuda:
-                data, target = data.cuda(), target.cuda()
-            data, target = Variable(data), Variable(target)
-            optimizer.zero_grad()
-            output = model(data)
-            loss = F.nll_loss(output, target)
-            loss.backward()
-            optimizer.step()
-            if batch_idx % args.log_interval == 0:
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch, batch_idx * len(data), len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader), loss.data.item()))
-                niter = epoch*len(train_loader)+batch_idx
-                writer.add_scalar('Train/Loss', loss.data.item(), niter)
-
-    def test():
-        model.eval()
-        test_loss = 0
-        correct = 0
-        for niter, (data, target) in enumerate(test_loader):
-            if args.cuda:
-                data, target = data.cuda(), target.cuda()
-            data, target = Variable(data, volatile=True), Variable(target)
-            output = model(data)
-            test_loss += F.nll_loss(output, target, size_average=False).data.item()  # sum up batch loss
-            pred = output.data.max(1)[1]  # get the index of the max log-probability
-            pred = pred.eq(target.data).cpu().sum()
-            writer.add_scalar('Test/Loss', pred, niter)
-            correct += pred
-
-        test_loss /= len(test_loader.dataset)
-        print('\nTest set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-            test_loss, correct, len(test_loader.dataset),
-            100. * correct / len(test_loader.dataset)))
-
     for epoch in range(1, args.epochs + 1):
-        train(epoch)
+        train(model, epoch, train_loader, args, optimizer, writer)
         torch.save(model, os.path.join(gettempdir(), 'model{}'.format(epoch)))
-    test()
+    test(model, test_loader, args, optimizer, writer)
 
 
 if __name__ == "__main__":

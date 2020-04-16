@@ -214,11 +214,14 @@ class UploadEvent(MetricsEventAdapter):
 
         # get upload uri upfront, either predefined image format or local file extension
         # e.g.: image.png -> .png or image.raw.gz -> .raw.gz
-        image_format = kwargs.pop('override_filename_ext', None)
-        if image_format is None:
-            image_format = self._format.lower() if self._image_data is not None else \
+        filename_ext = kwargs.pop('override_filename_ext', None)
+        if filename_ext is None:
+            filename_ext = self._format.lower() if self._image_data is not None else \
                 '.' + '.'.join(pathlib2.Path(self._local_image_path).parts[-1].split('.')[1:])
-        self._upload_filename = str(pathlib2.Path(self._filename).with_suffix(image_format))
+        # always add file extension to the uploaded target file
+        if filename_ext and filename_ext[0] != '.':
+            filename_ext = '.' + filename_ext
+        self._upload_filename = pathlib2.Path(self._filename).as_posix() + filename_ext
 
         self._override_storage_key_prefix = kwargs.pop('override_storage_key_prefix', None)
 

@@ -1853,14 +1853,22 @@ class Task(_Task):
                 # check if we crashed, ot the signal is not interrupt (manual break)
                 task_status = ('stopped', )
                 if self.__exit_hook:
-                    if (self.__exit_hook.exception and not isinstance(self.__exit_hook.exception, KeyboardInterrupt)) \
+                    is_exception = self.__exit_hook.exception
+                    # check if we are running inside a debugger
+                    if not is_exception and sys.modules.get('pydevd'):
+                        try:
+                            is_exception = sys.last_type
+                        except:
+                            pass
+
+                    if (is_exception and not isinstance(self.__exit_hook.exception, KeyboardInterrupt)) \
                             or (not self.__exit_hook.remote_user_aborted and self.__exit_hook.signal not in (None, 2)):
                         task_status = ('failed', 'Exception')
                         wait_for_uploads = False
                     else:
                         wait_for_uploads = (self.__exit_hook.remote_user_aborted or self.__exit_hook.signal is None)
                         if not self.__exit_hook.remote_user_aborted and self.__exit_hook.signal is None and \
-                                not self.__exit_hook.exception:
+                                not is_exception:
                             task_status = ('completed', )
                         else:
                             task_status = ('stopped', )

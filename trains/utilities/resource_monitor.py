@@ -242,13 +242,18 @@ class ResourceMonitor(object):
         return stats
 
     def _check_logger_reported(self):
-        titles = list(self._task.get_logger()._get_used_title_series().keys())
-        try:
-            titles.remove(self._title_machine)
-        except ValueError:
-            pass
-        try:
-            titles.remove(self._title_gpu)
-        except ValueError:
-            pass
+        titles = self.get_logger_reported_titles(self._task)
         return len(titles) > 0
+
+    @classmethod
+    def get_logger_reported_titles(cls, task):
+        titles = list(task.get_logger()._get_used_title_series().keys())
+        try:
+            titles.remove(cls._title_machine)
+        except ValueError:
+            pass
+        try:
+            titles.remove(cls._title_gpu)
+        except ValueError:
+            pass
+        return titles

@@ -45,6 +45,9 @@ all_distributions = [mean_moving_normal, variance_shrinking_normal, gamma, poiss
 all_combined = tf.concat(all_distributions, 0)
 tf.summary.histogram("all_combined", all_combined)
 
+# Log text value
+tf.summary.text("this is a test", tf.make_tensor_proto("This is the content", dtype=tf.string))
+
 # convert to 4d [batch, col, row, RGB-channels]
 image_open = Image.open('./samples/picasso.jpg')
 image = np.asarray(image_open)

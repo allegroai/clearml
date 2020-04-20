@@ -1,6 +1,6 @@
-import tensorflow as tf
 import autokeras as ak
 import numpy as np
+import tensorflow as tf
 from tensorflow import keras
 from trains import Task
 

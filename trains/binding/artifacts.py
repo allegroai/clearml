@@ -347,7 +347,7 @@ class Artifacts(object):
 
             if create_zip_file:
                 folder = Path('').joinpath(*artifact_object.parts[:-1])
-                if not folder.is_dir():
+                if not folder.is_dir() or not folder.parts:
                     raise ValueError("Artifact file/folder '{}' could not be found".format(
                         artifact_object.as_posix()))
 

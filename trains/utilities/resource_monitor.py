@@ -38,7 +38,8 @@ class ResourceMonitor(object):
         self._gpustat = gpustat
         self._active_gpus = None
         self._process_info = psutil.Process() if report_mem_used_per_process else None
-        self._last_process_pool = None
+        self._last_process_pool = {}
+        self._last_process_id_list = []
         if not self._gpustat:
             self._task.get_logger().report_text('TRAINS Monitor: GPU monitoring is not available')
         else:  # if running_remotely():
@@ -224,17 +225,7 @@ class ResourceMonitor(object):
         # check if we can access the gpu statistics
         if self._gpustat:
             try:
-                gpu_stat = self._gpustat.new_query()
-                for i, g in enumerate(gpu_stat.gpus):
-                    # only monitor the active gpu's, if none were selected, monitor everything
-                    if self._active_gpus and i not in self._active_gpus:
-                        continue
-                    stats["gpu_%d_temperature" % i] = float(g["temperature.gpu"])
-                    stats["gpu_%d_utilization" % i] = float(g["utilization.gpu"])
-                    stats["gpu_%d_mem_usage" % i] = 100. * float(g["memory.used"]) / float(g["memory.total"])
-                    # already in MBs
-                    stats["gpu_%d_mem_free_gb" % i] = float(g["memory.total"] - g["memory.used"]) / 1024
-                    stats["gpu_%d_mem_used_gb" % i] = float(g["memory.used"]) / 1024
+                stats.update(self._get_gpu_stats())
             except Exception:
                 # something happened and we can't use gpu stats,
                 self._gpustat_fail += 1
@@ -264,6 +255,7 @@ class ResourceMonitor(object):
 
     def _get_process_used_memory(self):
         def mem_usage_children(a_mem_size, pr, parent_mem=None):
+            self._last_process_id_list.append(pr.pid)
             # add out memory usage
             our_mem = pr.memory_info()
             mem_diff = our_mem.rss - parent_mem.rss if parent_mem else our_mem.rss
@@ -279,13 +271,56 @@ class ResourceMonitor(object):
 
         # only run the memory usage query once per reporting period
         # because this memory query is relatively slow, and changes very little.
-        if self._last_process_pool and (time() - self._last_process_pool[0]) < 0.01*self._report_frequency:
-            return self._last_process_pool[1]
+        if self._last_process_pool.get('cpu') and \
+                (time() - self._last_process_pool['cpu'][0]) < self._report_frequency:
+            return self._last_process_pool['cpu'][1]
 
         # if we have no parent process, return 0 (it's an error)
         if not self._process_info:
             return 0
 
+        self._last_process_id_list = []
         mem_size = mem_usage_children(0, self._process_info)
-        self._last_process_pool = time(), mem_size
+        self._last_process_pool['cpu'] = time(), mem_size
+
         return mem_size
+
+    def _get_gpu_stats(self):
+        if not self._gpustat:
+            return {}
+
+        # per process memory query id slow, so we only call it once per reporting period,
+        # On the rest of the samples we return the previous memory measurement
+
+        # update mem used by our process and sub processes
+        if self._process_info and (not self._last_process_pool.get('gpu') or
+                                   (time() - self._last_process_pool['gpu'][0]) >= self._report_frequency):
+            gpu_stat = self._gpustat.new_query(per_process_stats=True)
+            gpu_mem = {}
+            for i, g in enumerate(gpu_stat.gpus):
+                gpu_mem[i] = 0
+                for p in g.processes:
+                    if p['pid'] in self._last_process_id_list:
+                        gpu_mem[i] += p.get('gpu_memory_usage', 0)
+            self._last_process_pool['gpu'] = time(), gpu_mem
+        else:
+            # if we do no need to update the memory usage, run global query
+            # if we have no parent process (backward compatibility), return global stats
+            gpu_stat = self._gpustat.new_query()
+            gpu_mem = self._last_process_pool['gpu'][1] if self._last_process_pool.get('gpu') else None
+
+        # generate the statistics dict for actual report
+        stats = {}
+        for i, g in enumerate(gpu_stat.gpus):
+            # only monitor the active gpu's, if none were selected, monitor everything
+            if self._active_gpus and i not in self._active_gpus:
+                continue
+            stats["gpu_%d_temperature" % i] = float(g["temperature.gpu"])
+            stats["gpu_%d_utilization" % i] = float(g["utilization.gpu"])
+            stats["gpu_%d_mem_usage" % i] = 100. * float(g["memory.used"]) / float(g["memory.total"])
+            # already in MBs
+            stats["gpu_%d_mem_free_gb" % i] = float(g["memory.total"] - g["memory.used"]) / 1024
+            # use previously sampled process gpu memory, or global if it does not exist
+            stats["gpu_%d_mem_used_gb" % i] = float(gpu_mem[i] if gpu_mem else g["memory.used"]) / 1024
+
+        return stats

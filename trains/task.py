@@ -422,7 +422,8 @@ class Task(_Task):
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('xgboost', True):
                     PatchXGBoostModelIO.update_current_task(task)
             if auto_resource_monitoring and not is_sub_process_task_id:
-                task._resource_monitor = ResourceMonitor(task)
+                task._resource_monitor = ResourceMonitor(
+                    task, report_mem_used_per_process=not config.get('development.worker.report_global_mem_used', False))
                 task._resource_monitor.start()
 
             # make sure all random generators are initialized with new seed

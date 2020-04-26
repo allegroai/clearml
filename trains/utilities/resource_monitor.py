@@ -21,7 +21,7 @@ class ResourceMonitor(object):
 
     def __init__(self, task, sample_frequency_per_sec=2., report_frequency_sec=30.,
                  first_report_sec=None, wait_for_first_iteration_to_start_sec=180.0,
-                 max_wait_for_first_iteration_to_start_sec=1800.):
+                 max_wait_for_first_iteration_to_start_sec=1800., report_mem_used_per_process=True):
         self._task = task
         self._sample_frequency = sample_frequency_per_sec
         self._report_frequency = report_frequency_sec
@@ -37,6 +37,8 @@ class ResourceMonitor(object):
         self._gpustat_fail = 0
         self._gpustat = gpustat
         self._active_gpus = None
+        self._process_info = psutil.Process() if report_mem_used_per_process else None
+        self._last_process_pool = None
         if not self._gpustat:
             self._task.get_logger().report_text('TRAINS Monitor: GPU monitoring is not available')
         else:  # if running_remotely():
@@ -197,7 +199,9 @@ class ResourceMonitor(object):
             return x / bytes_per_megabyte
 
         virtual_memory = psutil.virtual_memory()
-        stats["memory_used_gb"] = bytes_to_megabytes(virtual_memory.used) / 1024
+        # stats["memory_used_gb"] = bytes_to_megabytes(virtual_memory.used) / 1024
+        stats["memory_used_gb"] = bytes_to_megabytes(
+            self._get_process_used_memory() if self._process_info else virtual_memory.used) / 1024
         stats["memory_free_gb"] = bytes_to_megabytes(virtual_memory.available) / 1024
         disk_use_percentage = psutil.disk_usage(Text(Path.home())).percent
         stats["disk_free_percent"] = 100.0-disk_use_percentage
@@ -257,3 +261,31 @@ class ResourceMonitor(object):
         except ValueError:
             pass
         return titles
+
+    def _get_process_used_memory(self):
+        def mem_usage_children(a_mem_size, pr, parent_mem=None):
+            # add out memory usage
+            our_mem = pr.memory_info()
+            mem_diff = our_mem.rss - parent_mem.rss if parent_mem else our_mem.rss
+            a_mem_size += mem_diff if mem_diff > 0 else 0
+            # now we are the parent
+            for child in pr.children():
+                # get the current memory
+                m = pr.memory_info()
+                mem_diff = m.rss - our_mem.rss
+                a_mem_size += mem_diff if mem_diff > 0 else 0
+                a_mem_size = mem_usage_children(a_mem_size, child, parent_mem=m)
+            return a_mem_size
+
+        # only run the memory usage query once per reporting period
+        # because this memory query is relatively slow, and changes very little.
+        if self._last_process_pool and (time() - self._last_process_pool[0]) < 0.01*self._report_frequency:
+            return self._last_process_pool[1]
+
+        # if we have no parent process, return 0 (it's an error)
+        if not self._process_info:
+            return 0
+
+        mem_size = mem_usage_children(0, self._process_info)
+        self._last_process_pool = time(), mem_size
+        return mem_size

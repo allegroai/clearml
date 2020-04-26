@@ -24,9 +24,26 @@ from ..debugging.log import get_logger
 
 
 def make_message(s, **kwargs):
+    # noinspection PyBroadException
+    try:
+        user = getpass.getuser()
+    except Exception:
+        # noinspection PyBroadException
+        try:
+            import os
+            user = '{}'.format(os.getuid())
+        except Exception:
+            user = 'unknown'
+
+    # noinspection PyBroadException
+    try:
+        host = gethostname()
+    except Exception:
+        host = 'localhost'
+
     args = dict(
-        user=getpass.getuser(),
-        host=gethostname(),
+        user=user,
+        host=host,
         time=datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
     )
     args.update(kwargs)

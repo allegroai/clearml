@@ -3,7 +3,6 @@ from __future__ import absolute_import, division, print_function
 import collections
 import json
 import re
-import threading
 
 import requests
 import six
@@ -11,6 +10,8 @@ if six.PY3:
     from math import inf
 else:
     inf = float('inf')
+
+from ..backend_api.session import Session
 
 
 class InvalidVersion(ValueError):
@@ -314,23 +315,31 @@ class CheckPackageUpdates(object):
 
         # noinspection PyBroadException
         try:
-            from ..version import __version__
             cls._package_version_checked = True
-            cur_version = Version(__version__)
-            update_server_releases = requests.get('https://updates.trains.allegro.ai/updates',
-                                                  data=json.dumps({"versions": {"trains": str(cur_version)}}),
-                                                  timeout=3.0)
+            client, version = Session._client[0]
+            version = Version(version)
+
+            update_server_releases = requests.get(
+                'https://updates.trains.allegro.ai/updates',
+                json={"versions": {c: str(v) for c, v in Session._client}},
+                timeout=3.0
+            )
+
             if update_server_releases.ok:
                 update_server_releases = update_server_releases.json()
             else:
                 return None
-            trains_answer = update_server_releases.get("trains", {})
-            latest_version = Version(trains_answer.get("version"))
 
-            if cur_version >= latest_version:
+            client_answer = update_server_releases.get(client, {})
+            if "version" not in client_answer:
                 return None
-            not_patch_upgrade = latest_version.release[:2] == cur_version.release[:2]
-            return str(latest_version), not_patch_upgrade, trains_answer.get("description").split("\r\n")
+
+            latest_version = Version(client_answer["version"])
+
+            if version >= latest_version:
+                return None
+            not_patch_upgrade = latest_version.release[:2] == version.release[:2]
+            return str(latest_version), not_patch_upgrade, client_answer.get("description").split("\r\n")
         except Exception:
             return None
 

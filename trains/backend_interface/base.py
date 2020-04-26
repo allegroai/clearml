@@ -97,7 +97,6 @@ class InterfaceBase(SessionInterface):
         if not InterfaceBase._default_session:
             InterfaceBase._default_session = Session(
                 initialize_logging=False,
-                client='sdk-%s' % __version__,
                 config=config_obj,
                 api_key=ENV_ACCESS_KEY.get(),
                 secret_key=ENV_SECRET_KEY.get(),

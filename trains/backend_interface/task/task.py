@@ -201,8 +201,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     if not latest_version[1]:
                         sep = os.linesep
                         self.get_logger().report_text(
-                            'TRAINS new package available: UPGRADE to v{} is recommended!\nRelease Notes:\n{}'.format(
-                                latest_version[0], sep.join(latest_version[2])),
+                            '{} new package available: UPGRADE to v{} is recommended!\nRelease Notes:\n{}'.format(
+                                Session._client[0][0].upper(), latest_version[0], sep.join(latest_version[2])),
                         )
                     else:
                         self.get_logger().report_text(

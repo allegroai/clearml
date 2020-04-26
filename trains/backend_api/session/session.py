@@ -51,6 +51,8 @@ class Session(TokenManager):
     _sessions_created = 0
     _ssl_error_count_verbosity = 2
 
+    _client = [(__package__.partition(".")[0], __version__)]
+
     api_version = '2.1'
     default_host = "https://demoapi.trains.allegro.ai"
     default_web = "https://demoapp.trains.allegro.ai"
@@ -91,7 +93,6 @@ class Session(TokenManager):
         logger=None,
         verbose=None,
         initialize_logging=True,
-        client=None,
         config=None,
         http_retries_config=None,
         **kwargs
@@ -150,7 +151,7 @@ class Session(TokenManager):
         if not self.__max_req_size:
             raise ValueError("missing max request size")
 
-        self.client = client or "api-{}".format(__version__)
+        self.client = ", ".join("{}-{}".format(*x) for x in self._client)
 
         self.refresh_token()
 

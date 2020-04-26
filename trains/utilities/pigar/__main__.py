@@ -23,14 +23,29 @@ class GenerateReqs(object):
         self._local_mods = dict()
         self._comparison_operator = comparison_operator
 
-    def extract_reqs(self, module_callback=None):
+    def extract_reqs(self, module_callback=None, entry_point_filename=None):
         """Extract requirements from project."""
 
         reqs = ReqsModules()
         guess = ReqsModules()
         local = ReqsModules()
-        modules, try_imports, local_mods = project_import_modules(
-            self._project_path, self._ignores)
+
+        # make the entry point absolute (relative to the root path)
+        if entry_point_filename and not os.path.isabs(entry_point_filename):
+            entry_point_filename = os.path.join(self._project_path, entry_point_filename) \
+                if os.path.isdir(self._project_path) else None
+
+        # check if the entry point script is self contained, i.e. does not use the rest of the project
+        if entry_point_filename and os.path.isfile(entry_point_filename):
+            modules, try_imports, local_mods = project_import_modules(entry_point_filename, self._ignores)
+            # if we have any module/package we cannot find, take no chances and scan the entire project
+            if try_imports or local_mods:
+                modules, try_imports, local_mods = project_import_modules(
+                    self._project_path, self._ignores)
+        else:
+            modules, try_imports, local_mods = project_import_modules(
+                self._project_path, self._ignores)
+
         if module_callback:
             modules = module_callback(modules)
 

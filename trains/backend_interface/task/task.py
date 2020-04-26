@@ -231,7 +231,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self.reload()
             # if jupyter is present, requirements will be created in the background, when saving a snapshot
             if result.script and script_requirements:
-                requirements, conda_requirements = script_requirements.get_requirements()
+                entry_point_filename = None if config.get('development.force_analyze_entire_repo', False) else \
+                    os.path.join(result.script['working_dir'], result.script['entry_point'])
+                requirements, conda_requirements = script_requirements.get_requirements(
+                    entry_point_filename=entry_point_filename)
+
                 if requirements:
                     if not result.script['requirements']:
                         result.script['requirements'] = {}

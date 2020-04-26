@@ -26,7 +26,7 @@ class ScriptRequirements(object):
     def __init__(self, root_folder):
         self._root_folder = root_folder
 
-    def get_requirements(self):
+    def get_requirements(self, entry_point_filename=None):
         try:
             from ....utilities.pigar.reqs import get_installed_pkgs_detail
             from ....utilities.pigar.__main__ import GenerateReqs
@@ -34,7 +34,8 @@ class ScriptRequirements(object):
             gr = GenerateReqs(save_path='', project_path=self._root_folder, installed_pkgs=installed_pkgs,
                               ignores=['.git', '.hg', '.idea', '__pycache__', '.ipynb_checkpoints',
                                        'site-packages', 'dist-packages'])
-            reqs, try_imports, guess, local_pks = gr.extract_reqs(module_callback=ScriptRequirements.add_trains_used_packages)
+            reqs, try_imports, guess, local_pks = gr.extract_reqs(
+                module_callback=ScriptRequirements.add_trains_used_packages, entry_point_filename=entry_point_filename)
             return self.create_requirements_txt(reqs, local_pks)
         except Exception:
             return '', ''
@@ -492,7 +493,6 @@ class ScriptInfo(object):
                 requirements, conda_requirements = script_requirements.get_requirements()
         else:
             script_requirements = None
-
 
         script_info = dict(
             repository=furl(repo_info.url).remove(username=True, password=True).tostr(),

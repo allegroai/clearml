@@ -60,6 +60,13 @@ class ScriptRequirements(object):
             modules.add('azure_storage_blob', 'trains.storage', 0)
         except Exception:
             pass
+
+        # bugfix, replace sklearn with scikit-learn name
+        if 'sklearn' in modules:
+            sklearn = modules.pop('sklearn', {})
+            for fname, lines in sklearn.items():
+                modules.add('scikit_learn', fname, lines)
+
         # if we have torch and it supports tensorboard, we should add that as well
         # (because it will not be detected automatically)
         if 'torch' in modules and 'tensorboard' not in modules:

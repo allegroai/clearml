@@ -230,6 +230,12 @@ class _JupyterObserver(object):
         except:
             our_module = None
 
+        try:
+            import re
+            replace_ipython_pattern = re.compile('\\n([ \\t]*)get_ipython\(\)')
+        except:
+            replace_ipython_pattern = None
+
         # main observer loop, check if we need to exit
         while not cls._exit_event.wait(timeout=0.):
             # wait for timeout or sync event
@@ -265,6 +271,12 @@ class _JupyterObserver(object):
                 current_script_hash = hash(script_code)
                 if prev_script_hash and prev_script_hash == current_script_hash:
                     continue
+
+                # remove ipython direct access from the script code
+                # we will not be able to run them anyhow
+                if replace_ipython_pattern:
+                    script_code = replace_ipython_pattern.sub('\n# \g<1>get_ipython()', script_code)
+
                 requirements_txt = ''
                 conda_requirements = ''
                 # parse jupyter python script and prepare pip requirements (pigar)

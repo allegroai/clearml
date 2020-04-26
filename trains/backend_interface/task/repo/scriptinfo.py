@@ -223,6 +223,13 @@ class _JupyterObserver(object):
         last_update_ts = None
         counter = 0
         prev_script_hash = None
+
+        try:
+            from ....version import __version__
+            our_module = cls.__module__.split('.')[0], __version__
+        except:
+            our_module = None
+
         # main observer loop, check if we need to exit
         while not cls._exit_event.wait(timeout=0.):
             # wait for timeout or sync event
@@ -266,6 +273,10 @@ class _JupyterObserver(object):
                     fmodules, _ = file_import_modules(notebook.parts[-1], script_code)
                     fmodules = ScriptRequirements.add_trains_used_packages(fmodules)
                     installed_pkgs = get_installed_pkgs_detail()
+                    # make sure we are in installed packages
+                    if our_module and (our_module[0] not in installed_pkgs):
+                        installed_pkgs[our_module[0]] = our_module
+
                     reqs = ReqsModules()
                     for name in fmodules:
                         if name in installed_pkgs:

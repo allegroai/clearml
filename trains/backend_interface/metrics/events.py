@@ -221,7 +221,9 @@ class UploadEvent(MetricsEventAdapter):
         # always add file extension to the uploaded target file
         if filename_ext and filename_ext[0] != '.':
             filename_ext = '.' + filename_ext
-        self._upload_filename = pathlib2.Path(self._filename).as_posix() + filename_ext
+        self._upload_filename = pathlib2.Path(self._filename).as_posix()
+        if self._filename.rpartition(".")[2] != filename_ext.rpartition(".")[2]:
+            self._upload_filename += filename_ext
 
         self._override_storage_key_prefix = kwargs.pop('override_storage_key_prefix', None)
 

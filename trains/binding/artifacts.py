@@ -157,22 +157,11 @@ class Artifact(object):
         :return: a local path to a downloaded copy of the artifact
         """
         from trains.storage import StorageManager
-        local_path = StorageManager.get_local_copy(self.url)
-        if local_path and extract_archive and self.type == 'archive':
-            temp_folder = None
-            try:
-                temp_folder = mkdtemp(prefix='artifact_', suffix='.archive_'+self.name)
-                ZipFile(local_path).extractall(path=temp_folder)
-            except Exception:
-                try:
-                    if temp_folder:
-                        Path(temp_folder).rmdir()
-                except Exception:
-                    pass
-                return local_path
-            return temp_folder
-
-        return local_path
+        return StorageManager.get_local_copy(
+            remote_url=self.url,
+            extract_archive=extract_archive and self.type == 'archive',
+            name=self.name
+        )
 
     def __repr__(self):
         return str({'name': self.name, 'size': self.size, 'type': self.type, 'mode': self.mode, 'url': self.url,

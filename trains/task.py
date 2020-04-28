@@ -1793,7 +1793,7 @@ class Task(_Task):
                 if self._detect_repo_async_thread.is_alive():
                     # if negative timeout, just kill the thread:
                     if timeout is not None and timeout < 0:
-                        from .utilities.os.lowlevel import kill_thread
+                        from .utilities.lowlevel.threads import kill_thread
                         kill_thread(self._detect_repo_async_thread)
                     else:
                         self.log.info('Waiting for repository detection and full package requirement analysis')
@@ -1803,7 +1803,7 @@ class Task(_Task):
                             self.log.info('Repository and package analysis timed out ({} sec), '
                                           'giving up'.format(timeout))
                             # done waiting, kill the thread
-                            from .utilities.os.lowlevel import kill_thread
+                            from .utilities.lowlevel.threads import kill_thread
                             kill_thread(self._detect_repo_async_thread)
                         else:
                             self.log.info('Finished repository detection and package analysis')

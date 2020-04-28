@@ -39,7 +39,7 @@ class GenerateReqs(object):
                 from ...version import __version__
                 self._force_modules_reqs[our_module] = __version__
 
-        # make the entry point absolute (relative o the root path)
+        # make the entry point absolute (relative to the root path)
         if entry_point_filename and not os.path.isabs(entry_point_filename):
             entry_point_filename = os.path.join(self._project_path, entry_point_filename) \
                 if os.path.isdir(self._project_path) else None

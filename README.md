@@ -12,6 +12,8 @@
 [![PyPI version shields.io](https://img.shields.io/pypi/v/trains.svg)](https://img.shields.io/pypi/v/trains.svg)
 [![PyPI status](https://img.shields.io/pypi/status/trains.svg)](https://pypi.python.org/pypi/trains/)
 
+### Help improve Trains by filling our 2-min [user survey](https://allegro.ai/lp/trains-user-survey/)
+
 TRAINS is our solution to a problem we share with countless other researchers and developers in the machine
 learning/deep learning universe: Training production-grade deep learning models is a glorious but messy process.
 TRAINS tracks and controls the process by associating code version control, research projects,

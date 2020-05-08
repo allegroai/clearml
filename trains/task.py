@@ -12,7 +12,7 @@ try:
 except ImportError:
     from collections import Callable, Sequence as CollectionsSequence
 
-from typing import Optional, Union, Mapping, Sequence, Any, Dict, List
+from typing import Optional, Union, Mapping, Sequence, Any, Dict, List, TYPE_CHECKING
 
 import psutil
 import six
@@ -50,6 +50,12 @@ from .utilities.proxy_object import ProxyDictPreWrite, ProxyDictPostWrite, flatt
     nested_from_flat_dictionary, naive_nested_from_flat_dictionary
 from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
+
+
+if TYPE_CHECKING:
+    import pandas
+    import numpy
+    from PIL import Image
 
 
 class Task(_Task):
@@ -157,17 +163,17 @@ class Task(_Task):
 
     @classmethod
     def init(
-            cls,
-            project_name=None,
-            task_name=None,
-            task_type=TaskTypes.training,
-            reuse_last_task_id=True,
-            output_uri=None,
-            auto_connect_arg_parser=True,
-            auto_connect_frameworks=True,
-            auto_resource_monitoring=True,
+        cls,
+        project_name=None,  # type: Optional[str]
+        task_name=None,  # type: Optional[str]
+        task_type=TaskTypes.training,  # type: Task.TaskTypes
+        reuse_last_task_id=True,  # type: bool
+        output_uri=None,  # type: Optional[str]
+        auto_connect_arg_parser=True,  # type: bool
+        auto_connect_frameworks=True,  # type: Union[bool, Mapping[str, bool]]
+        auto_resource_monitoring=True,  # type: bool
     ):
-        # type: (Optional[str], Optional[str], TaskTypes, bool, Optional[str], bool, Union[bool, Mapping[str, bool]], bool) -> Task
+        # type: (...) -> Task
         """
         Creates a new Task (experiment), or returns the existing Task, depending upon the following:
 
@@ -464,12 +470,7 @@ class Task(_Task):
         return task
 
     @classmethod
-    def create(
-            cls,
-            project_name=None,
-            task_name=None,
-            task_type=TaskTypes.training,
-    ):
+    def create(cls, project_name=None, task_name=None, task_type=TaskTypes.training):
         # type: (Optional[str], Optional[str], TaskTypes) -> Task
         """
         Create a new, non-reproducible Task (experiment). This is called a sub-task.
@@ -523,8 +524,8 @@ class Task(_Task):
         """
         Get a Task by Id, or project name / task name combination.
 
-        :param str task_id: The Id (system UUID) of the experiment to get. If specified, ``project_name`` and ``task_name``
-            are ignored.
+        :param str task_id: The Id (system UUID) of the experiment to get.
+            If specified, ``project_name`` and ``task_name`` are ignored.
         :param str project_name: The project name of the Task to get.
         :param str task_name: The name of the Task within ``project_name`` to get.
 
@@ -1028,7 +1029,7 @@ class Task(_Task):
             self.__register_at_exit(None)
 
     def register_artifact(self, name, artifact, metadata=None, uniqueness_columns=True):
-        # type: (str, "pandas.DataFrame", Dict, Union[bool, Sequence[str]]) -> None
+        # type: (str, pandas.DataFrame, Dict, Union[bool, Sequence[str]]) -> None
         """
         Register (add) an artifact for the current Task. Registered artifacts are dynamically sychronized with the
         **Trains Server** (backend). If a registered artifact is updated, the update is stored in the
@@ -1089,8 +1090,14 @@ class Task(_Task):
         """
         return self._artifacts_manager.registered_artifacts
 
-    def upload_artifact(self, name, artifact_object, metadata=None, delete_after_upload=False):
-        # type: (str, Union[str, Mapping, "pandas.DataFrame", "numpy.ndarray", "PIL.Image.Image"], Optional[Mapping], bool) -> bool
+    def upload_artifact(
+        self,
+        name,  # type: str
+        artifact_object,  # type: Union[str, Mapping, pandas.DataFrame, numpy.ndarray, Image.Image]
+        metadata=None,  # type: Optional[Mapping]
+        delete_after_upload=False  # type: bool
+    ):
+        # type: (...) -> bool
         """
         Upload (add) a static artifact to a Task object. The artifact is uploaded in the background.
 
@@ -1416,8 +1423,9 @@ class Task(_Task):
             task._dev_worker = None
 
     @classmethod
-    def _create_dev_task(cls, default_project_name, default_task_name, default_task_type, reuse_last_task_id,
-                         detect_repo=True):
+    def _create_dev_task(
+        cls, default_project_name, default_task_name, default_task_type, reuse_last_task_id, detect_repo=True
+    ):
         if not default_project_name or not default_task_name:
             # get project name and task name from repository name and entry_point
             result, _ = ScriptInfo.get(create_requirements=False, check_uncommitted=False)

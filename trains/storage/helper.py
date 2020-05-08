@@ -1587,7 +1587,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
             container.blob_service.create_blob_from_bytes(
                 container.name,
                 object_name,
-                bytes(iterator),
+                iterator.read() if hasattr(iterator, "read") else bytes(iterator),
                 # timeout=300,
                 max_connections=2,
             )

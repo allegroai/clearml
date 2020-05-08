@@ -206,7 +206,7 @@ class Logger(object):
         .. code-block:: py
 
            vector_series = np.random.randint(10, size=10).reshape(2,5)
-           logger.report_vector(title='histogram example', series='histogram series', values=vector_series, iteration=0,
+           logger.report_histogram(title='histogram example', series='histogram series', values=vector_series, iteration=0,
                 labels=['A','B'], xaxis='X axis label', yaxis='Y axis label')
 
         You can view the reported histograms in the **Trains Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
@@ -380,8 +380,8 @@ class Logger(object):
         .. code-block:: py
 
            scatter2d = np.hstack((np.atleast_2d(np.arange(0, 10)).T, np.random.randint(10, size=(10, 1))))
-           logger.report_scatter2d(title='example_scatter', series='series', iteration=0, scatter=scatter2d,
-                xaxis="title x', yaxis="title y")
+           logger.report_scatter2d(title="example_scatter", series="series", iteration=0, scatter=scatter2d,
+                xaxis="title x", yaxis="title y")
 
         Plot multiple 2D scatter series on the same plot by passing the same ``title`` and ``iteration`` values
         to this method:
@@ -389,12 +389,12 @@ class Logger(object):
         .. code-block:: py
 
            scatter2d_1 = np.hstack((np.atleast_2d(np.arange(0, 10)).T, np.random.randint(10, size=(10, 1))))
-           logger.report_scatter2d(title='example_scatter', series='series_1', iteration=1, scatter=scatter2d_1,
-                xaxis="title x', yaxis="title y")
+           logger.report_scatter2d(title="example_scatter", series="series_1", iteration=1, scatter=scatter2d_1,
+                xaxis="title x", yaxis="title y")
 
            scatter2d_2 = np.hstack((np.atleast_2d(np.arange(0, 10)).T, np.random.randint(10, size=(10, 1))))
-           logger.report_scatter2d("example_scatter', "series_2', iteration=1, scatter=scatter2d_2,
-                xaxis="title x', yaxis="title y")
+           logger.report_scatter2d("example_scatter", "series_2", iteration=1, scatter=scatter2d_2,
+                xaxis="title x", yaxis="title y")
 
         :param str title: The title of the plot.
         :param str series: The title of the series.
@@ -476,8 +476,8 @@ class Logger(object):
         .. code-block:: py
 
            scatter3d = np.random.randint(10, size=(10, 3))
-           logger.report_scatter3d(title='example_scatter_3d', series='series_xyz', iteration=1, scatter=scatter3d,
-                xaxis='title x', yaxis="title y', zaxis="title z")
+           logger.report_scatter3d(title="example_scatter_3d", series="series_xyz", iteration=1, scatter=scatter3d,
+                xaxis="title x", yaxis="title y", zaxis="title z")
 
         :param bool fill: Fill the area under the curve?
 
@@ -548,8 +548,8 @@ class Logger(object):
         .. code-block:: py
 
            confusion = np.random.randint(10, size=(10, 10))
-           logger.report_confusion_matrix("example confusion matrix', "ignored', iteration=1, matrix=confusion,
-                xaxis='title X', yaxis='title Y")
+           logger.report_confusion_matrix("example confusion matrix", "ignored", iteration=1, matrix=confusion,
+                xaxis="title X", yaxis="title Y")
 
         :param str title: The title of the plot.
         :param str series: The title of the series.
@@ -634,8 +634,8 @@ class Logger(object):
         .. code-block:: py
 
            surface_matrix = np.random.randint(10, size=(10, 10))
-           logger.report_surface("example surface', "series', iteration=0, matrix=surface_matrix,
-                xaxis='title X', yaxis='title Y', zaxis="title Z")
+           logger.report_surface("example surface", "series", iteration=0, matrix=surface_matrix,
+                xaxis="title X", yaxis="title Y", zaxis="title Z")
 
         :param str title: The title of the plot.
         :param str series: The title of the series.
@@ -694,10 +694,10 @@ class Logger(object):
 
            matrix = np.eye(256, 256, dtype=np.uint8)*255
            matrix = np.concatenate((np.atleast_3d(matrix), np.zeros((256, 256, 2), dtype=np.uint8)), axis=2)
-           logger.report_image("test case', "image color red', iteration=1, image=m)
+           logger.report_image("test case", "image color red", iteration=1, image=m)
 
-           image_open = Image.open(os.path.join("<image_path>', "<image_filename>"))
-           logger.report_image("test case', "image PIL', iteration=1, image=image_open)
+           image_open = Image.open(os.path.join("<image_path>", "<image_filename>"))
+           logger.report_image("test case", "image PIL", iteration=1, image=image_open)
 
         One and only one of the following parameters must be provided.
 

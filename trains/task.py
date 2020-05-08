@@ -439,11 +439,10 @@ class Task(_Task):
                     parser, parsed_args = get_argparser_last_args()
                     task._connect_argparse(parser=parser, parsed_args=parsed_args)
             elif argparser_parseargs_called():
-                # parse_args was automatically patched, but auto_connect_arg_parser is False...
-                raise UsageError("ArgumentParser.parse_args() was automatically connected to this task, "
-                                 "although auto_connect_arg_parser is turned off!\n"
-                                 "When turning off auto_connect_arg_parser, call Task.init(...) "
-                                 "before calling ArgumentParser.parse_args()")
+                # actually we have nothing to do, in remote running, the argparser will ignore
+                # all non argparser parameters, only caveat if parameter connected with the same name
+                # as the argparser this will be solved once sections are introduced to parameters
+                pass
 
         # Make sure we start the logger, it will patch the main logging object and pipe all output
         # if we are running locally and using development mode worker, we will pipe all stdout to logger.

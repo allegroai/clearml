@@ -12,6 +12,7 @@ except ImportError:
 from PIL import Image
 from pathlib2 import Path
 
+from .backend_api.services import tasks
 from .backend_interface.logger import StdStreamPatch, LogFlusher
 from .backend_interface.task import Task as _Task
 from .backend_interface.task.development.worker import DevWorker
@@ -152,10 +153,11 @@ class Logger(object):
         labels=None,  # type: Optional[List[str]]
         xlabels=None,  # type: Optional[List[str]]
         xaxis=None,  # type: Optional[str]
-        yaxis=None  # type: Optional[str]
+        yaxis=None,  # type: Optional[str]
+        mode=None  # type: Optional[str]
     ):
         """
-        For explicit reporting, plot a vector as (stacked) histogram.
+        For explicit reporting, plot a vector as (default stacked) histogram.
 
         For example:
 
@@ -178,10 +180,11 @@ class Logger(object):
             for each histogram bar on the x-axis. (Optional)
         :param str xaxis: The x-axis title. (Optional)
         :param str yaxis: The y-axis title. (Optional)
+        :param str mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
         """
         self._touch_title_series(title, series)
         return self.report_histogram(title, series, values, iteration, labels=labels, xlabels=xlabels,
-                                     xaxis=xaxis, yaxis=yaxis)
+                                     xaxis=xaxis, yaxis=yaxis, mode=mode)
 
     def report_histogram(
         self,
@@ -192,10 +195,11 @@ class Logger(object):
         labels=None,  # type: Optional[List[str]]
         xlabels=None,  # type: Optional[List[str]]
         xaxis=None,  # type: Optional[str]
-        yaxis=None  # type: Optional[str]
+        yaxis=None,  # type: Optional[str]
+        mode=None  # type: Optional[str]
     ):
         """
-        For explicit reporting, plot a (stacked) histogram.
+        For explicit reporting, plot a (default stacked) histogram.
 
         For example:
 
@@ -218,6 +222,7 @@ class Logger(object):
             for each histogram bar on the x-axis. (Optional)
         :param str xaxis: The x-axis title. (Optional)
         :param str yaxis: The y-axis title. (Optional)
+        :param str mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
         """
 
         if not isinstance(values, np.ndarray):
@@ -235,6 +240,7 @@ class Logger(object):
             xlabels=xlabels,
             xtitle=xaxis,
             ytitle=yaxis,
+            mode=mode or 'group'
         )
 
     def report_table(

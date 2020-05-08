@@ -10,7 +10,7 @@ from attr import attrs, attrib
 
 
 def create_2d_histogram_plot(np_row_wise, labels, title=None, xtitle=None, ytitle=None, series=None, xlabels=None,
-                             comment=None):
+                             comment=None, mode='group'):
     """
     Create a 2D Plotly histogram chart from a 2D numpy array
     :param np_row_wise: 2D numpy data array
@@ -19,8 +19,11 @@ def create_2d_histogram_plot(np_row_wise, labels, title=None, xtitle=None, ytitl
     :param xtitle: X-Series title
     :param ytitle: Y-Series title
     :param comment: comment underneath the title
+    :param mode: multiple histograms mode. valid options are: stack / group / relative. Default is 'group'.
     :return: Plotly chart dict
     """
+    assert mode in ('stack', 'group', 'relative')
+
     np_row_wise = np.atleast_2d(np_row_wise)
     assert len(np_row_wise.shape) == 2, "Expected a 2D numpy array"
     # using labels without xlabels leads to original behavior
@@ -36,7 +39,7 @@ def create_2d_histogram_plot(np_row_wise, labels, title=None, xtitle=None, ytitl
 
     data = [_np_row_to_plotly_data_item(np_row=np_row_wise[i, :], label=labels[i] if labels else None, xlabels=xlabels)
             for i in range(np_row_wise.shape[0])]
-    return _plotly_hist_dict(title=title, xtitle=xtitle, ytitle=ytitle, data=data, comment=comment)
+    return _plotly_hist_dict(title=title, xtitle=xtitle, ytitle=ytitle, mode=mode, data=data, comment=comment)
 
 
 def _to_np_array(value):
@@ -334,16 +337,19 @@ def _get_z_colorbar_data(z_data=None, values=None, colors=None):
     return colorscale, colorbar
 
 
-def _plotly_hist_dict(title, xtitle, ytitle, data=None, comment=None):
+def _plotly_hist_dict(title, xtitle, ytitle, mode='group', data=None, comment=None):
     """
     Create a basic Plotly chart dictionary
     :param title: Chart title
     :param xtitle: X-Series title
     :param ytitle: Y-Series title
+    :param mode: multiple histograms mode. optionals stack / group / relative. Default is 'group'.
     :param data: Data items
     :type data: list
     :return: Plotly chart dict
     """
+    assert mode in ('stack', 'group', 'relative')
+
     return {
         "data": data or [],
         "layout": {
@@ -354,7 +360,7 @@ def _plotly_hist_dict(title, xtitle, ytitle, data=None, comment=None):
             "yaxis": {
                 "title": ytitle
             },
-            "barmode": "stack",
+            "barmode": mode,
             "bargap": 0.08,
             "bargroupgap": 0
         }

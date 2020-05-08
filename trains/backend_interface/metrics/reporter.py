@@ -284,7 +284,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._report(ev)
 
     def report_histogram(self, title, series, histogram, iter, labels=None, xlabels=None,
-                         xtitle=None, ytitle=None, comment=None):
+                         xtitle=None, ytitle=None, comment=None, mode='group'):
         """
         Report an histogram bar plot
         :param title: Title (AKA metric)
@@ -304,7 +304,11 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param str ytitle: optional y-axis title
         :param comment: comment underneath the title
         :type comment: str
+        :param mode: multiple histograms mode. valid options are: stack / group / relative. Default is 'group'.
+        :type mode: str
         """
+        assert mode in ('stack', 'group', 'relative')
+
         plotly_dict = create_2d_histogram_plot(
             np_row_wise=histogram,
             title=title,
@@ -314,6 +318,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=series,
             xlabels=xlabels,
             comment=comment,
+            mode=mode,
         )
 
         return self.report_plot(

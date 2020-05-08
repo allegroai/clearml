@@ -2144,16 +2144,11 @@ class Task(_Task):
         if task_ids:
             if isinstance(task_ids, six.string_types):
                 task_ids = [task_ids]
-            return [
-                cls(private=cls.__create_protection, task_id=task, log_to_backend=False)
-                for task in task_ids
-            ]
+            return [cls(private=cls.__create_protection, task_id=task_id, log_to_backend=False)
+                    for task_id in task_ids]
 
-        return cls._query_tasks(
-            project_name=project_name,
-            task_name=task_name,
-            **kwargs
-        )
+        return [cls(private=cls.__create_protection, task_id=task.id, log_to_backend=False)
+                for task in cls._query_tasks(project_name=project_name, task_name=task_name, **kwargs)]
 
     @classmethod
     def _query_tasks(cls, task_ids=None, project_name=None, task_name=None, **kwargs):

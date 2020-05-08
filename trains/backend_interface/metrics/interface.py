@@ -141,13 +141,14 @@ class Metrics(InterfaceBase):
 
         # prepare event needing file upload
         entries = []
-        for ev in events:
+        for ev in events[:]:
             try:
                 e = update_and_get_file_entry(ev)
                 if e:
                     entries.append(e)
             except Exception as ex:
                 log.warning(str(ex))
+                events.remove(ev)
 
         # upload the needed files
         if entries:

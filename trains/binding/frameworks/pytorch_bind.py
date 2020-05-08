@@ -54,12 +54,17 @@ class PatchPyTorchModelIO(PatchBaseModelIO):
             elif hasattr(f, 'as_posix'):
                 filename = f.as_posix()
             elif hasattr(f, 'name'):
-                filename = f.name
                 # noinspection PyBroadException
                 try:
                     f.flush()
                 except Exception:
                     pass
+
+                if not isinstance(f.name, six.string_types):
+                    # Probably a BufferedRandom object that has no meaningful name (still no harm flushing)
+                    return ret
+
+                filename = f.name
             else:
                 filename = None
         except Exception:

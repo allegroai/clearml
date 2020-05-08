@@ -2,6 +2,7 @@
 
 from __future__ import print_function, division, absolute_import
 
+import json
 import os
 import sys
 import fnmatch
@@ -344,14 +345,33 @@ def _search_path(path):
     for file in os.listdir(path):
         # Install from PYPI.
         if fnmatch.fnmatch(file, '*-info'):
-            top_level = os.path.join(path, file, 'top_level.txt')
             pkg_name, version = file.split('-')[:2]
             if version.endswith('dist'):
                 version = version.rsplit('.', 1)[0]
             # Issue for ubuntu: sudo pip install xxx
             elif version.endswith('egg'):
                 version = version.rsplit('.', 1)[0]
+
+            # pep610 support. add support for new pip>=20.1 git reference feature
+            git_direct_json = os.path.join(path, file, 'direct_url.json')
+            if os.path.isfile(git_direct_json):
+                # noinspection PyBroadException
+                try:
+                    with open(git_direct_json, 'r') as f:
+                        vcs_info = json.load(f)
+                    git_url = '{vcs}+{url}@{commit}#egg={package}'.format(
+                        vcs=vcs_info['vcs_info']['vcs'], url=vcs_info['url'],
+                        commit=vcs_info['vcs_info']['commit_id'], package=pkg_name)
+                    mapping[pkg_name] = ('-e', git_url)
+                    continue
+                except Exception:
+                    pass
+
+            # default
             mapping[pkg_name] = (pkg_name, version)
+
+            # analyze 'top_level.txt' if it exists
+            top_level = os.path.join(path, file, 'top_level.txt')
             if not os.path.isfile(top_level):
                 continue
             with open(top_level, 'r') as f:

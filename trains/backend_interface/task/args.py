@@ -255,6 +255,10 @@ class _Arguments(object):
                     try:
                         if current_action.default is None and current_action.type != str and not v:
                             arg_parser_argeuments[k] = v = None
+                        elif current_action.default == current_action.type(v):
+                            # this will make sure that if we have type float and default value int,
+                            # we will keep the type as int, just like the original argparser
+                            arg_parser_argeuments[k] = v = current_action.default
                         else:
                             arg_parser_argeuments[k] = v = current_action.type(v)
                     except:
@@ -275,14 +279,6 @@ class _Arguments(object):
                             current_action.nargs = '?'
                     else:
                         # do not add parameters that do not exist in argparser, they might be the dict
-                        # # add new parameters to arg parser
-                        # parent_parser.add_argument(
-                        #     '--%s' % k,
-                        #     default=v,
-                        #     type=type(v),
-                        #     required=False,
-                        #     help='Task parameter %s (default %s)' % (k, v),
-                        # )
                         pass
                 except ArgumentError:
                     pass

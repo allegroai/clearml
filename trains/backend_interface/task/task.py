@@ -109,6 +109,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             # this is an existing task, let's try to verify stuff
             self._validate()
 
+        if self.data is None:
+            raise ValueError("Task ID \"{}\" could not be found".format(self.id))
+
         self._project_name = (self.project, project_name)
 
         if running_remotely() or DevWorker.report_stdout:

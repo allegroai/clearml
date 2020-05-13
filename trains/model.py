@@ -862,7 +862,7 @@ class OutputModel(BaseModel):
 
     def __init__(
         self,
-        task,  # type: Task
+        task=None,  # type: Optional[Task]
         config_text=None,  # type: Optional[str]
         config_dict=None,  # type: Optional[dict]
         label_enumeration=None,  # type: Optional[Dict[str, int]]
@@ -904,6 +904,12 @@ class OutputModel(BaseModel):
         :type framework: str or Framework object
         :param base_model_id: optional, model id to be reused
         """
+        if not task:
+            from .task import Task
+            task = Task.current_task()
+            if not task:
+                raise ValueError("task object was not provided, and no current task was found")
+
         super(OutputModel, self).__init__(task=task)
 
         config_text = self._resolve_config(config_text=config_text, config_dict=config_dict)

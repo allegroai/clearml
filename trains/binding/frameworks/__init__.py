@@ -54,7 +54,7 @@ class WeightsFileHandler(object):
             return filepath
 
         if not filepath:
-            get_logger(TrainsFrameworkAdapter).debug("Could retrieve model file location, model is not logged")
+            get_logger(TrainsFrameworkAdapter).debug("Could not retrieve model file location, model is not logged")
             return filepath
 
         try:
@@ -147,7 +147,8 @@ class WeightsFileHandler(object):
                 trains_out_model, ref_model = None, None
 
             if not saved_path:
-                get_logger(TrainsFrameworkAdapter).warning("Could retrieve model location, skipping auto model logging")
+                get_logger(TrainsFrameworkAdapter).warning(
+                    "Could not retrieve model location, skipping auto model logging")
                 return saved_path
 
             # check if we have output storage, and generate list of files to upload

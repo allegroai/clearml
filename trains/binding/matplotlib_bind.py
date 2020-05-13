@@ -107,6 +107,7 @@ class PatchedMatplotlib:
                 import warnings
                 warnings.filterwarnings(action='ignore', category=matplotlib.MatplotlibDeprecationWarning,
                                         module='plotly')
+                warnings.filterwarnings(action='ignore', category=UserWarning, module='plotly')
             except Exception:
                 pass
 

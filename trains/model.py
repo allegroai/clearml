@@ -47,6 +47,7 @@ class Framework(Options):
     paddlepaddle = 'PaddlePaddle'
     scikitlearn = 'ScikitLearn'
     xgboost = 'XGBoost'
+    parquet = 'Parquet'
 
     __file_extensions_mapping = {
         '.pb': (tensorflow, tensorflowjs, onnx, ),
@@ -74,6 +75,7 @@ class Framework(Options):
         '.cfg': (darknet, ),
         '__model__': (paddlepaddle, ),
         '.pkl': (scikitlearn, keras, xgboost),
+        '.parquet': (parquet),
     }
 
     @classmethod

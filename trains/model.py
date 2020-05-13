@@ -1201,7 +1201,7 @@ class OutputModel(BaseModel):
             raise ValueError('Model update weights package should get either directory path to pack or a list of files')
 
         if not weights_filenames:
-            weights_filenames = list(map(six.text_type, Path(weights_path).glob('*')))
+            weights_filenames = list(map(six.text_type, Path(weights_path).rglob('*')))
 
         # create packed model from all the files
         fd, zip_file = mkstemp(prefix='model_package.', suffix='.zip')

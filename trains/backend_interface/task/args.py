@@ -40,6 +40,10 @@ class _Arguments(object):
     def __init__(self, task):
         super(_Arguments, self).__init__()
         self._task = task
+        self._exclude_parser_args = {}
+
+    def exclude_parser_args(self, excluded_args):
+        self._exclude_parser_args = excluded_args or {}
 
     def set_defaults(self, *dicts, **kwargs):
         self._task.set_parameters(*dicts, **kwargs)
@@ -126,9 +130,11 @@ class _Arguments(object):
                     task_defaults[k] = str(v)
             except Exception:
                 del task_defaults[k]
-        # Add prefix, TODO: add argparse prefix
-        # task_defaults = dict([(self._prefix_args + k, v) for k, v in task_defaults.items()])
-        task_defaults = dict([(k, v) for k, v in task_defaults.items()])
+
+        # Skip excluded arguments, Add prefix, TODO: add argparse prefix
+        # task_defaults = dict([(self._prefix_args + k, v) for k, v in task_defaults.items()
+        #                       if k not in self._exclude_parser_args])
+        task_defaults = dict([(k, v) for k, v in task_defaults.items() if self._exclude_parser_args.get(k, True)])
         # Store to task
         self._task.update_parameters(task_defaults)
 
@@ -154,7 +160,7 @@ class _Arguments(object):
         # task_arguments = dict([(k[len(self._prefix_args):], v) for k, v in self._task.get_parameters().items()
         #                        if k.startswith(self._prefix_args)])
         task_arguments = dict([(k, v) for k, v in self._task.get_parameters().items()
-                               if not k.startswith(self._prefix_tf_defines)])
+                               if not k.startswith(self._prefix_tf_defines) and self._exclude_parser_args.get(k, True)])
         arg_parser_argeuments = {}
         for k, v in task_arguments.items():
             # python2 unicode support

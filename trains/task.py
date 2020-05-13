@@ -169,7 +169,7 @@ class Task(_Task):
         task_type=TaskTypes.training,  # type: Task.TaskTypes
         reuse_last_task_id=True,  # type: bool
         output_uri=None,  # type: Optional[str]
-        auto_connect_arg_parser=True,  # type: bool
+        auto_connect_arg_parser=True,  # type: Union[bool, Mapping[str, bool]]
         auto_connect_frameworks=True,  # type: Union[bool, Mapping[str, bool]]
         auto_resource_monitoring=True,  # type: bool
     ):
@@ -236,12 +236,22 @@ class Task(_Task):
                `Trains Python Client Extras <./references/trains_extras_storage/>`_ in the "Trains Python Client
                Reference" section.
 
-        :param bool auto_connect_arg_parser: Automatically connect an argparse object to the Task?
+        :param auto_connect_arg_parser: Automatically connect an argparse object to the Task?
 
             The values are:
 
             - ``True`` - Automatically connect. (Default)
             -  ``False`` - Do not automatically connect.
+            - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
+              arguments. The dictionary keys are argparse variable names and the values are booleans,
+              False value will exclude the specified argument from the Task's parameter section.
+              Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
+
+            For example:
+
+            .. code-block:: py
+
+               auto_connect_arg_parser={'do_not_include_me': False, }
 
             .. note::
                To manually connect an argparse, use :meth:`Task.connect`.
@@ -256,6 +266,7 @@ class Task(_Task):
             -  ``False`` - Do not automatically connect
             - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
               frameworks. The dictionary keys are frameworks and the values are booleans.
+              Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
 
             For example:
 
@@ -264,7 +275,6 @@ class Task(_Task):
                auto_connect_frameworks={'matplotlib': True, 'tensorflow': True, 'pytorch': True,
                     'xgboost': True, 'scikit': True}
 
-              Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
         :type auto_connect_frameworks: bool or dict
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots? These plots appear in
             in the **Trains Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab, with a title of **:resource monitor:**.
@@ -440,6 +450,11 @@ class Task(_Task):
 
                 # Patch ArgParser to be aware of the current task
                 argparser_update_currenttask(Task.__main_task)
+
+                # set excluded arguments
+                if isinstance(auto_connect_arg_parser, dict):
+                    task._arguments.exclude_parser_args(auto_connect_arg_parser)
+
                 # Check if parse args already called. If so, sync task parameters with parser
                 if argparser_parseargs_called():
                     parser, parsed_args = get_argparser_last_args()

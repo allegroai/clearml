@@ -24,7 +24,7 @@ class MetricsEventAdapter(object):
     _default_nan_value = 0.
     """ Default value used when a np.nan value is encountered """
 
-    @attr.attrs(cmp=False, slots=True)
+    @attr.attrs(eq=False, order=False, slots=True)
     class FileEntry(object):
         """ File entry used to report on file data that needs to be uploaded prior to sending the event """
 

@@ -415,7 +415,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             # remove non existing model file
             Model._local_model_to_id_uri.pop(dl_file, None)
 
-        local_download = StorageManager.get_local_copy(uri)
+        local_download = StorageManager.get_local_copy(uri, extract_archive=False)
 
         # save local model, so we can later query what was the original one
         if local_download is not None:

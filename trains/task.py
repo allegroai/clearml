@@ -370,12 +370,10 @@ class Task(_Task):
             # was not specified, keep legacy default value of TaskTypes.training
             task_type = cls.TaskTypes.training
         elif isinstance(task_type, six.string_types):
-            task_type_lookup = {'testing': cls.TaskTypes.testing, 'inference': cls.TaskTypes.testing,
-                                'train': cls.TaskTypes.training, 'training': cls.TaskTypes.training,}
-            if task_type not in task_type_lookup:
-                raise ValueError("Task type '{}' not supported, options are: {}".format(task_type,
-                                                                                      list(task_type_lookup.keys())))
-            task_type = task_type_lookup[task_type]
+            if task_type not in Task.TaskTypes.__members__:
+                raise ValueError("Task type '{}' not supported, options are: {}".format(
+                    task_type, Task.TaskTypes.__members__.keys()))
+            task_type = Task.TaskTypes.__members__[task_type]
 
         try:
             if not running_remotely():

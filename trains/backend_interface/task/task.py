@@ -54,8 +54,30 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     class TaskTypes(Enum):
         def __str__(self):
             return str(self.value)
+
+        def __eq__(self, other):
+            return str(self) == str(other)
+
         training = 'training'
         testing = 'testing'
+
+    class TaskStatusEnum(Enum):
+        def __str__(self):
+            return str(self.value)
+
+        def __eq__(self, other):
+            return str(self) == str(other)
+
+        created = "created"
+        queued = "queued"
+        in_progress = "in_progress"
+        stopped = "stopped"
+        published = "published"
+        publishing = "publishing"
+        closed = "closed"
+        failed = "failed"
+        completed = "completed"
+        unknown = "unknown"
 
     def __init__(self, session=None, task_id=None, log=None, project_name=None,
                  task_name=None, task_type=TaskTypes.training, log_to_backend=True,
@@ -345,11 +367,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     @property
     def status(self):
         """
-        The Task's status. To keep the Task updated, Trains reloads the Task information when this value
-        is accessed.
+        The Task's status. To keep the Task updated.
+        Trains reloads the Task status information only, when this value is accessed.
+
+        return str: TaskStatusEnum status
         """
-        self.reload()
-        return self._status
+        return self.get_status()
 
     @property
     def _status(self):
@@ -826,6 +849,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self._set_task_property("tags", tags)
             self._edit(tags=self.data.tags)
 
+    def get_system_tags(self):
+        return self._get_task_property("system_tags" if Session.check_min_api_version('2.3') else "tags")
+
     def set_tags(self, tags):
         assert isinstance(tags, (list, tuple))
         if not Session.check_min_api_version('2.3'):
@@ -888,6 +914,20 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :rtype: int
         """
         return self._initial_iteration_offset
+
+    def get_status(self):
+        """
+        Return The task status without refreshing the entire Task object object (only the status property)
+
+        TaskStatusEnum: ["created", "in_progress", "stopped", "closed", "failed", "completed",
+                         "queued", "published", "publishing", "unknown"]
+
+        :return str: Task status as string (TaskStatusEnum)
+        """
+        status = self._get_status()[0]
+        if self._data:
+            self._data.status = status
+        return str(status)
 
     def _get_models(self, model_type='output'):
         model_type = model_type.lower().strip()
@@ -1029,7 +1069,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # clear all artifacts
         execution['artifacts'] = [e for e in execution['artifacts'] if e.get('mode') == 'input']
 
-        if not tags and task.tags:
+        if not hasattr(task, 'system_tags') and not tags and task.tags:
             tags = [t for t in task.tags if t != cls._development_tag]
 
         req = tasks.CreateRequest(
@@ -1037,7 +1077,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             type=task.type,
             input=task.input if hasattr(task, 'input') else {'view': {}},
             tags=tags,
-            comment=comment or task.comment,
+            comment=comment if comment is not None else task.comment,
             parent=parent,
             project=project if project else task.project,
             output_dest=output_dest,

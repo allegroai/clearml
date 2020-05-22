@@ -446,7 +446,7 @@ def create_plotly_table(table_plot, title, series):
     headers_values = list([col] for col in table_plot.columns)
     cells_values = table_plot.T.values.tolist()
     if index_added:
-        headers_values.insert(0, "")
+        headers_values.insert(0, table_plot.index.name or "")
         cells_values.insert(0, table_plot.index.values.tolist())
 
     ret = {

@@ -1034,8 +1034,16 @@ class Task(_Task):
         .. warning::
            Only call :meth:`Task.close` if you are certain the Task is not needed.
         """
+        if self._at_exit_called:
+            return
+
         # store is main before we call at_exit, because will will Null it
         is_main = self.is_main_task()
+
+        # wait for repository detection (5 minutes should be reasonable time to detect all packages)
+        if self._logger and not self.__is_subprocess():
+            self._wait_for_repo_detection(timeout=300.)
+
         self.__shutdown()
         # unregister atexit callbacks and signal hooks, if we are the main task
         if is_main:

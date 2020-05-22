@@ -145,7 +145,7 @@ class Session(TokenManager):
         http_retries_config["status_forcelist"] = self._retry_codes
         self.__http_session = get_http_session_with_retry(**http_retries_config)
 
-        self.__worker = worker or gethostname()
+        self.__worker = worker or self.get_worker_host_name()
 
         self.__max_req_size = self.config.get("api.http.max_req_size", None)
         if not self.__max_req_size:
@@ -529,6 +529,11 @@ class Session(TokenManager):
                 pass
 
         return version_tuple(cls.api_version) >= version_tuple(str(min_api_version))
+
+    @classmethod
+    def get_worker_host_name(cls):
+        from ...config import dev_worker_name
+        return dev_worker_name() or gethostname()
 
     def _do_refresh_token(self, old_token, exp=None):
         """ TokenManager abstract method implementation.

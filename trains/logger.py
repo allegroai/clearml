@@ -1,4 +1,5 @@
 import logging
+import math
 import warnings
 from typing import Any, Sequence, Union, List, Optional, Tuple
 
@@ -299,10 +300,19 @@ class Logger(object):
             elif csv:
                 table = pd.read_csv(csv)
 
+        def replace(dst, *srcs):
+            for src in srcs:
+                reporter_table.replace(src, dst, inplace=True)
+
+        reporter_table = table.fillna(str(np.nan))
+        replace("NaN", np.nan, math.nan)
+        replace("Inf", np.inf, math.inf)
+        replace("-Inf", -np.inf, np.NINF, -math.inf)
+
         return self._task.reporter.report_table(
             title=title,
             series=series,
-            table=table,
+            table=reporter_table,
             iteration=iteration
         )
 

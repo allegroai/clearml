@@ -48,6 +48,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     _anonymous_dataview_id = '__anonymous__'
     _development_tag = 'development'
+    _force_requirements = {}
 
     _store_diff = config.get('development.store_uncommitted_code_diff', False)
 

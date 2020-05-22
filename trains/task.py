@@ -1489,7 +1489,7 @@ class Task(_Task):
                     task_tags = task.data.system_tags if hasattr(task.data, 'system_tags') else task.data.tags
                     task_artifacts = task.data.execution.artifacts \
                         if hasattr(task.data.execution, 'artifacts') else None
-                    if ((str(task.status) in (str(tasks.TaskStatusEnum.published), str(tasks.TaskStatusEnum.closed)))
+                    if ((str(task._status) in (str(tasks.TaskStatusEnum.published), str(tasks.TaskStatusEnum.closed)))
                             or task.output_model_id or (ARCHIVED_TAG in task_tags)
                             or (cls._development_tag not in task_tags)
                             or task_artifacts):
@@ -1499,20 +1499,16 @@ class Task(_Task):
                         default_task_id = None
                         task = None
                     else:
-                        # reset the task, so we can update it
-                        task.reset(set_started_on_success=False, force=False)
-                        # set development tags
-                        task.set_system_tags([cls._development_tag])
-                        # clear task parameters, they are not cleared by the Task reset
-                        task.set_parameters({}, __update=False)
-                        # clear the comment, it is not cleared on reset
-                        task.set_comment(make_message('Auto-generated at %(time)s by %(user)s@%(host)s'))
-                        # clear the input model (and task model design/labels)
-                        task.set_input_model(model_id='', update_task_design=False, update_task_labels=False)
-                        task._set_model_config(config_text='')
-                        task.set_model_label_enumeration({})
-                        task.set_artifacts([])
-                        task._set_storage_uri(None)
+                        with task._edit_lock:
+                            # from now on, there is no need to reload, we just clear stuff,
+                            # this flag will be cleared off once we actually refresh at the end of the function
+                            task._reload_skip_flag = True
+                            # reset the task, so we can update it
+                            task.reset(set_started_on_success=False, force=False)
+                            # clear the heaviest stuff first
+                            task._clear_task(
+                                system_tags=[cls._development_tag],
+                                comment=make_message('Auto-generated at %(time)s by %(user)s@%(host)s'))
 
                 except (Exception, ValueError):
                     # we failed reusing task, create a new one
@@ -1527,6 +1523,8 @@ class Task(_Task):
                 task_type=default_task_type,
                 log_to_backend=True,
             )
+            # no need to reload yet, we clear this before the end of the function
+            task._reload_skip_flag = True
 
         if in_dev_mode:
             # update this session, for later use
@@ -1536,6 +1534,10 @@ class Task(_Task):
 
         # mark the task as started
         task.started()
+        # reload, making sure we are synced
+        task._reload_skip_flag = False
+        task.reload()
+
         # force update of base logger to this current task (this is the main logger task)
         task._setup_log(replace_existing=True)
         logger = task.get_logger()
@@ -1556,12 +1558,11 @@ class Task(_Task):
             else:
                 task._update_repository()
 
-        # make sure everything is in sync
-        task.reload()
         # make sure we see something in the UI
         thread = threading.Thread(target=LoggerRoot.flush)
         thread.daemon = True
         thread.start()
+        
         return task
 
     def _get_logger(self, flush_period=NotSet):

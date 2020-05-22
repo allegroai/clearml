@@ -124,6 +124,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._app_server = None
         self._files_server = None
         self._initial_iteration_offset = 0
+        self._reload_skip_flag = False
 
         if not task_id:
             # generate a new task
@@ -456,6 +457,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def _reload(self):
         """ Reload the task object from the backend """
         with self._edit_lock:
+            if self._reload_skip_flag and self._data:
+                return self._data
             res = self.send(tasks.GetByIdRequest(task=self.id))
             return res.response.task
 
@@ -464,6 +467,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self.send(tasks.ResetRequest(task=self.id))
         if set_started_on_success:
             self.started()
+        elif self._data:
+            # if not started, make sure the current cached state is synced
+            self._data.status = self.TaskStatusEnum.created
+
         self.reload()
 
     def started(self, ignore_errors=True):
@@ -1055,6 +1062,29 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         except Exception:
             return None
 
+    def _clear_task(self, system_tags=None, comment=None):
+        self._data.script = tasks.Script(
+            binary='', repository='', tag='', branch='', version_num='', entry_point='',
+            working_dir='', requirements={}, diff='',
+        )
+        self._data.execution = tasks.Execution(
+            artifacts=[], dataviews=[], model='', model_desc={}, model_labels={}, parameters={}, docker_cmd='')
+        self._data.comment = str(comment)
+
+        self._storage_uri = None
+        self._data.output.destination = self._storage_uri
+
+        self._update_requirements('')
+
+        if Session.check_min_api_version('2.3'):
+            self._set_task_property("system_tags", system_tags)
+            self._edit(system_tags=self._data.system_tags, comment=self._data.comment,
+                       script=self._data.script, execution=self._data.execution, output_dest='')
+        else:
+            self._set_task_property("tags", system_tags)
+            self._edit(tags=self._data.tags, comment=self._data.comment,
+                       script=self._data.script, execution=self._data.execution, output_dest=None)
+
     @classmethod
     def _get_api_server(cls):
         return Session.get_api_server_host()
@@ -1067,8 +1097,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def _edit(self, **kwargs):
         with self._edit_lock:
             # Since we ae using forced update, make sure he task status is valid
-            if not self._data or (str(self.data.status) not in (str(tasks.TaskStatusEnum.created),
-                                                                str(tasks.TaskStatusEnum.in_progress))):
+            status = self._data.status if self._data and self._reload_skip_flag else self.data.status
+            if status not in (tasks.TaskStatusEnum.created, tasks.TaskStatusEnum.in_progress):
                 # the exception being name/comment that we can always change.
                 if kwargs and all(k in ('name', 'comment') for k in kwargs.keys()):
                     pass

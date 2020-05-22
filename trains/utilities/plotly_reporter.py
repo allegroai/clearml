@@ -36,6 +36,8 @@ def create_2d_histogram_plot(np_row_wise, labels, title=None, xtitle=None, ytitl
         if len(labels) == 1:
             labels = [labels] * np_row_wise.shape[0]
         assert len(xlabels) == np_row_wise.shape[1]
+    elif not labels and xlabels:
+        labels = [series]
 
     data = [_np_row_to_plotly_data_item(np_row=np_row_wise[i, :], label=labels[i] if labels else None, xlabels=xlabels)
             for i in range(np_row_wise.shape[0])]

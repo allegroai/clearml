@@ -86,8 +86,6 @@ class Logger(object):
            logger = Logger.current_logger()
 
         :return: The Logger object (a singleton) for the current running Task.
-
-        :rtype: Logger object
         """
         from .task import Task
         task = Task.current_task()
@@ -200,7 +198,9 @@ class Logger(object):
         mode=None  # type: Optional[str]
     ):
         """
-        For explicit reporting, plot a (default stacked) histogram.
+        For explicit reporting, plot a (default grouped) histogram.
+        Notice this function will not calculate the histogram,
+        it assumes the histogram was already calculated in `values`
 
         For example:
 
@@ -899,8 +899,6 @@ class Logger(object):
         :return: The default upload destination URI.
 
             For example, ``s3://bucket/directory/`` or ``file:///tmp/debug/``.
-
-        :rtype: str
         """
         return self._default_upload_destination or self._task._get_default_report_storage_uri()
 
@@ -927,8 +925,6 @@ class Logger(object):
         Get the Logger flush period.
 
         :return: The logger flush period in seconds.
-
-        :rtype: int
         """
         if self._flusher:
             return self._flusher.period

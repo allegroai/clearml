@@ -24,6 +24,8 @@ class ScriptInfoError(Exception):
 
 
 class ScriptRequirements(object):
+    _max_requirements_size = 512*1024
+
     def __init__(self, root_folder):
         self._root_folder = root_folder
 
@@ -158,6 +160,9 @@ class ScriptRequirements(object):
             else:
                 requirements_txt += '{0}\n'.format(k)
 
+        requirements_txt_packages_only = \
+            requirements_txt + '\n# Skipping detailed import analysis, it is too large\n'
+
         # requirements details (in comments)
         requirements_txt += '\n' + \
                             '# Detailed import analysis\n' \
@@ -177,7 +182,10 @@ class ScriptRequirements(object):
                 requirements_txt += '# IMPORT PACKAGE {0}\n'.format(k)
             requirements_txt += ''.join(['# {0}\n'.format(c) for c in v.comments.sorted_items()])
 
-        return requirements_txt, conda_requirements
+        # make sure we do not exceed the size a size limit
+        return (requirements_txt if len(requirements_txt) < ScriptRequirements._max_requirements_size
+                else requirements_txt_packages_only,
+                conda_requirements)
 
 
 class _JupyterObserver(object):

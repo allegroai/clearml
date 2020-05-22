@@ -12,6 +12,7 @@ from six.moves.urllib.parse import urlparse, urlunparse
 from ...backend_api.services import events
 from ...config import config
 from ...storage.util import quote_url
+from ...utilities.attrs import attrs
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -24,7 +25,7 @@ class MetricsEventAdapter(object):
     _default_nan_value = 0.
     """ Default value used when a np.nan value is encountered """
 
-    @attr.attrs(eq=False, order=False, slots=True)
+    @attrs(cmp=False, slots=True)
     class FileEntry(object):
         """ File entry used to report on file data that needs to be uploaded prior to sending the event """
 

@@ -725,7 +725,7 @@ class Task(_Task):
         task_id = task if isinstance(task, six.string_types) else task.id
         session = cls._get_default_session()
         if not queue_id:
-            req = queues.GetAllRequest(name=queue_name, only_fields=["id"])
+            req = queues.GetAllRequest(name=exact_match_regex(queue_name), only_fields=["id"])
             res = cls._send(session=session, req=req)
             if not res.response.queues:
                 raise ValueError('Could not find queue named "{}"'.format(queue_name))

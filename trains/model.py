@@ -1375,7 +1375,11 @@ class OutputModel(BaseModel):
         self._floating_data = None
 
         # now we have to update the creator task so it points to us
-        self._base_model.update_for_task(task_id=self._task.id, override_model_id=self.id)
+        if self._task.status not in (self._task.TaskStatusEnum.created, self._task.TaskStatusEnum.in_progress):
+            self._log.warning('Could not update last created model in Task {}, '
+                              'Task status \'{}\' cannot be updated'.format(self._task.id, self._task.status))
+        else:
+            self._base_model.update_for_task(task_id=self._task.id, override_model_id=self.id)
 
         return self._base_model
 

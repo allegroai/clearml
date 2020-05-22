@@ -263,7 +263,8 @@ class StorageHelper(object):
             log.error(str(ex))
             return None
         except Exception as ex:
-            log.error("Failed credentials for {}. Reason: {}".format(base_url or url, ex))
+            log.error("Failed creating storage object {} Reason: {}".format(
+                base_url or url, ex))
             return None
 
         cls._helpers[instance_key] = instance
@@ -361,14 +362,16 @@ class StorageHelper(object):
             # url2pathname is specifically intended to operate on (urlparse result).path
             # and returns a cross-platform compatible result
             driver_uri = url2pathname(url)
-            if Path(driver_uri).is_file():
-                driver_uri = str(Path(driver_uri).parent)
-            elif not Path(driver_uri).exists():
-                # assume a folder and create
-                Path(driver_uri).mkdir(parents=True, exist_ok=True)
+            path_driver_uri = Path(driver_uri)
+            # if path_driver_uri.is_file():
+            #     driver_uri = str(path_driver_uri.parent)
+            # elif not path_driver_uri.exists():
+            #     # assume a folder and create
+            #     # Path(driver_uri).mkdir(parents=True, exist_ok=True)
+            #     pass
 
-            self._driver = _FileStorageDriver(driver_uri)
-            self._container = self._driver.get_container(container_name='.')
+            self._driver = _FileStorageDriver(str(path_driver_uri.root))
+            self._container = None
 
     @classmethod
     def terminate_uploads(cls, force=True, timeout=2.0):
@@ -910,8 +913,8 @@ class StorageHelper(object):
             except Exception as e:
                 self._log.error("Calling upload callback when starting upload: %s" % str(e))
         if verbose:
-            msg = 'Starting upload: {} => {}{}'.format(src_path, self._container.name if self._container else '',
-                                                       object_name)
+            msg = 'Starting upload: {} => {}{}'.format(
+                src_path, self._container.name if self._container else '', object_name)
             if object_name.startswith('file://') or object_name.startswith('/'):
                 self._log.debug(msg)
             else:
@@ -946,7 +949,8 @@ class StorageHelper(object):
     def _get_object(self, path):
         object_name = self._normalize_object_name(path)
         try:
-            return self._driver.get_object(container_name=self._container.name, object_name=object_name)
+            return self._driver.get_object(
+                container_name=self._container.name if self._container else '', object_name=object_name)
         except ConnectionError as ex:
             raise DownloadError
         except Exception as e:
@@ -1757,9 +1761,6 @@ class _FileStorageDriver(_Driver):
         # Use the key as the path to the storage
         self.base_path = key
 
-        if not os.path.isdir(self.base_path):
-            raise ValueError('The base path is not a directory')
-
     def _make_path(self, path, ignore_existing=True):
         """
         Create a path by checking if it already exists
@@ -1781,7 +1782,7 @@ class _FileStorageDriver(_Driver):
         """
 
         if '/' in container_name or '\\' in container_name:
-            raise ValueError(value=None, driver=self, container_name=container_name)
+            raise ValueError("Container name \"{}\" cannot contain \\ or / ".format(container_name))
 
     def _make_container(self, container_name):
         """
@@ -1793,7 +1794,7 @@ class _FileStorageDriver(_Driver):
         :return: Container instance.
         :rtype: :class:`Container`
         """
-
+        container_name = container_name or '.'
         self._check_container_name(container_name)
 
         full_path = os.path.realpath(os.path.join(self.base_path, container_name))
@@ -1801,14 +1802,15 @@ class _FileStorageDriver(_Driver):
         try:
             stat = os.stat(full_path)
             if not os.path.isdir(full_path):
-                raise OSError('Target path is not a directory')
+                raise OSError("Target path \"{}\" is not a directory".format(full_path))
         except OSError:
-            raise ValueError(value=None, driver=self, container_name=container_name)
+            raise OSError("Target path \"{}\" is not accessible or does not exist".format(full_path))
 
-        extra = {}
-        extra['creation_time'] = stat.st_ctime
-        extra['access_time'] = stat.st_atime
-        extra['modify_time'] = stat.st_mtime
+        extra = {
+            'creation_time': stat.st_ctime,
+            'access_time': stat.st_atime,
+            'modify_time': stat.st_mtime,
+        }
 
         return self._Container(name=container_name, extra=extra, driver=self)
 
@@ -1826,20 +1828,21 @@ class _FileStorageDriver(_Driver):
         :rtype: :class:`Object`
         """
 
-        full_path = os.path.realpath(os.path.join(self.base_path, container.name, object_name))
+        full_path = os.path.realpath(os.path.join(self.base_path, container.name if container else '.', object_name))
 
         if os.path.isdir(full_path):
-            raise ValueError(value=None, driver=self, object_name=object_name)
+            raise ValueError("Target path \"{}\" already exist".format(full_path))
 
         try:
             stat = os.stat(full_path)
         except Exception:
-            raise ValueError(value=None, driver=self, object_name=object_name)
+            raise ValueError("Cannot access target path \"{}\"".format(full_path))
 
-        extra = {}
-        extra['creation_time'] = stat.st_ctime
-        extra['access_time'] = stat.st_atime
-        extra['modify_time'] = stat.st_mtime
+        extra = {
+            'creation_time': stat.st_ctime,
+            'access_time': stat.st_atime,
+            'modify_time': stat.st_mtime,
+        }
 
         return self.Object(name=object_name, size=stat.st_size, extra=extra,
                            driver=self, container=container, hash=None, meta_data=None)
@@ -1914,10 +1917,10 @@ class _FileStorageDriver(_Driver):
         :return: A CDN URL for this container.
         :rtype: ``str``
         """
-        path = os.path.realpath(os.path.join(self.base_path, container.name))
+        path = os.path.realpath(os.path.join(self.base_path, container.name if container else '.'))
 
         if check and not os.path.isdir(path):
-            raise ValueError(value=None, driver=self, container_name=container.name)
+            raise ValueError("Target path \"{}\" does not exist".format(path))
 
         return path
 
@@ -1977,9 +1980,7 @@ class _FileStorageDriver(_Driver):
         base_name = os.path.basename(destination_path)
 
         if not base_name and not os.path.exists(destination_path):
-            raise ValueError(
-                value='Path %s does not exist' % (destination_path),
-                driver=self)
+            raise ValueError('Path \"%s\" does not exist'.format(destination_path))
 
         if not base_name:
             file_path = os.path.join(destination_path, obj.name)
@@ -1987,7 +1988,7 @@ class _FileStorageDriver(_Driver):
             file_path = destination_path
 
         if os.path.exists(file_path) and not overwrite_existing:
-            raise ValueError('File %s already exists, but ' % (file_path) + 'overwrite_existing=False')
+            raise ValueError('File \"{}\" already exists, but overwrite_existing=False'.format(file_path))
 
         try:
             shutil.copy(obj_path, file_path)
@@ -2146,7 +2147,7 @@ class _FileStorageDriver(_Driver):
         :return: :class:`Container` instance on success.
         :rtype: :class:`Container`
         """
-
+        container_name = container_name or '.'
         self._check_container_name(container_name)
 
         path = os.path.join(self.base_path, container_name)
@@ -2156,13 +2157,13 @@ class _FileStorageDriver(_Driver):
         except OSError:
             exp = sys.exc_info()[1]
             if exp.errno == errno.EEXIST:
-                raise ValueError('Container %s with this name already exists. The name '
+                raise ValueError('Container \"{}\" with this name already exists. The name '
                                  'must be unique among all the containers in the '
-                                 'system' % container_name)
+                                 'system'.format(container_name))
             else:
-                raise ValueError( 'Error creating container %s' % container_name)
+                raise ValueError('Error creating container \"{}\"'.format(container_name))
         except Exception:
-            raise ValueError('Error creating container %s' % container_name)
+            raise ValueError('Error creating container \"{}\"'.format(container_name))
 
         return self._make_container(container_name)
 
@@ -2179,7 +2180,7 @@ class _FileStorageDriver(_Driver):
 
         # Check if there are any objects inside this
         for obj in self._get_objects(container):
-            raise ValueError(value='Container %s is not empty' % container.name)
+            raise ValueError('Container \"%s\" is not empty'.format(container.name))
 
         path = self.get_container_cdn_url(container, check=True)
 
@@ -2259,7 +2260,10 @@ class _FileStorageDriver(_Driver):
         # this will always make sure we have full path and file:// prefix
         full_url = StorageHelper.conform_url(remote_path)
         # now get rid of the file:// prefix
-        return Path(full_url[7:]).as_posix()
+        path = Path(full_url[7:])
+        if not path.exists():
+            raise ValueError("Requested path does not exist: {}".format(path))
+        return path.as_posix()
 
     def test_upload(self, test_path, config, **kwargs):
         return True

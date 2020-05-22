@@ -75,6 +75,7 @@ try:
         },
         index=['falcon', 'dog', 'spider', 'fish']
     )
+    df.index.name = 'id'
     logger.report_table("test table pd", "PD with index", 1, table_plot=df)
 
     # Report table - CSV from path

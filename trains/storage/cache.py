@@ -27,11 +27,17 @@ class CacheManager(object):
         def get_local_copy(self, remote_url):
             helper = StorageHelper.get(remote_url)
             if not helper:
-                raise ValueError("Remote storage not supported: {}".format(remote_url))
+                raise ValueError("Storage access failed: {}".format(remote_url))
             # check if we need to cache the file
-            direct_access = helper._driver.get_direct_access(remote_url)
+            try:
+                direct_access = helper._driver.get_direct_access(remote_url)
+            except (OSError, ValueError):
+                LoggerRoot.get_base_logger().warning("Failed accessing local file: {}".format(remote_url))
+                return None
+
             if direct_access:
                 return direct_access
+
             # check if we already have the file in our cache
             cached_file, cached_size = self._get_cache_file(remote_url)
             if cached_size is not None:

@@ -156,8 +156,6 @@ class Task(_Task):
         object.
 
         :return: The current running Task (experiment).
-
-        :rtype: Task() object or ``None``
         """
         return cls.__main_task
 
@@ -285,8 +283,6 @@ class Task(_Task):
             - ``False`` - Do not automatically create.
 
         :return: The main execution Task (Task context).
-
-        :rtype: Task object
         """
 
         def verify_defaults_match():
@@ -509,8 +505,6 @@ class Task(_Task):
 
         :type task_type: TaskTypeEnum(value)
         :return: A new experiment.
-
-        :rtype: Task() object
         """
         if not project_name:
             if not cls.__main_task:
@@ -543,8 +537,6 @@ class Task(_Task):
         :param str task_name: The name of the Task within ``project_name`` to get.
 
         :return: The Task specified by Id, or project name / experiment name combination.
-
-        :rtype: Task object
         """
         return cls.__get_task(task_id=task_id, project_name=project_name, task_name=task_name)
 
@@ -574,8 +566,6 @@ class Task(_Task):
             If None is passed, returns all tasks within the project
         :param dict task_filter: filter and order Tasks. See service.tasks.GetAllRequest for details
         :return: The Tasks specified by the parameter combinations (see the parameters).
-
-        :rtype: List of Task objects
         """
         return cls.__get_tasks(task_ids=task_ids, project_name=project_name, task_name=task_name, **(task_filter or {}))
 
@@ -604,8 +594,6 @@ class Task(_Task):
         A read-only dictionary of Task artifacts (name, artifact).
 
         :return: The artifacts.
-
-        :rtype: dict
         """
         if not Session.check_min_api_version('2.3'):
             return ReadOnlyDict()
@@ -649,8 +637,6 @@ class Task(_Task):
             If ``None``, the new task inherits the original Task's project. (Optional)
 
         :return: The new cloned Task (experiment).
-
-        :rtype: Task object
         """
         assert isinstance(source_task, (six.string_types, Task))
         if not Session.check_min_api_version('2.4'):
@@ -685,7 +671,7 @@ class Task(_Task):
         :param str queue_name: The name of the queue. If not specified, then ``queue_id`` must be specified.
         :param str queue_id: The Id of the queue. If not specified, then ``queue_name`` must be specified.
 
-        :return: An enqueue response.
+        :return: An enqueue JSON response.
 
             .. code-block:: javascript
 
@@ -713,8 +699,6 @@ class Task(_Task):
               - ``last_update`` - The last Task update time, including Task creation, update, change, or events for
                 this task (ISO 8601 format).
               - ``execution.queue`` - The Id of the queue where the Task is enqueued. ``null`` indicates not enqueued.
-
-        :rtype: JSON
         """
         assert isinstance(task, (six.string_types, Task))
         if not Session.check_min_api_version('2.4'):
@@ -746,7 +730,7 @@ class Task(_Task):
         :param task: The Task to dequeue. Specify a Task object or Task Id.
         :type task: Task object / str
 
-        :return: A dequeue response.
+        :return: A dequeue JSON response.
 
         .. code-block:: javascript
 
@@ -774,8 +758,6 @@ class Task(_Task):
           - ``execution.queue`` - The Id of the queue where the Task is enqueued. ``null`` indicates not enqueued.
 
         - ``updated`` - The number of Tasks updated (an integer or ``null``).
-
-        :rtype: JSON
         """
         assert isinstance(task, (six.string_types, Task))
         if not Session.check_min_api_version('2.4'):
@@ -871,10 +853,8 @@ class Task(_Task):
 
         :type configuration: dict, pathlib.Path/str
 
-        :return: If a dictictonary is specified, then a dictionary is returned. If pathlib2.Path / string is
-            specified, then a path to a local configuration file is returned.
-
-        :rtype: Configuration object
+        :return: If a dictionary is specified, then a dictionary is returned. If pathlib2.Path / string is
+            specified, then a path to a local configuration file is returned. Configuration object.
         """
         if not isinstance(configuration, (dict, Path, six.string_types)):
             raise ValueError("connect_configuration supports `dict`, `str` and 'Path' types, "
@@ -936,9 +916,7 @@ class Task(_Task):
                     'person': 1
                }
 
-        :return: The label enumeration dictionary.
-
-        :rtype: JSON
+        :return: The label enumeration dictionary (JSON).
         """
         if not isinstance(enumeration, dict):
             raise ValueError("connect_label_enumeration supports only `dict` type, "
@@ -960,8 +938,6 @@ class Task(_Task):
         **Trains Web-App (UI)**.
 
         :return: The Logger for the Task (experiment).
-
-        :rtype: Logger object
         """
         return self._get_logger()
 
@@ -1106,8 +1082,6 @@ class Task(_Task):
            After calling ``get_registered_artifacts``, you can still modify the registered artifacts.
 
         :return: The registered (dynamically synchronized) artifacts.
-
-        :rtype: dict
         """
         return self._artifacts_manager.registered_artifacts
 
@@ -1149,8 +1123,6 @@ class Task(_Task):
         - ``True`` - Upload succeeded.
         - ``False`` - Upload failed.
 
-        :rtype: bool
-
         :raise: If the artifact object type is not supported, raise a ``ValueError``.
         """
         return self._artifacts_manager.upload_artifact(name=name, artifact_object=artifact_object,
@@ -1183,8 +1155,6 @@ class Task(_Task):
 
             - ``True`` - Is the main execution Task.
             - ``False`` - Is not the main execution Task.
-
-        :rtype: bool
         """
         return self.is_main_task()
 
@@ -1205,8 +1175,6 @@ class Task(_Task):
 
             - ``True`` - Is the main execution Task.
             - ``False`` - Is not the main execution Task.
-
-        :rtype: bool
         """
         return self is self.__main_task
 
@@ -1263,8 +1231,6 @@ class Task(_Task):
            sends a request to the **Trains Server** (backend).
 
         :return: The last reported iteration number.
-
-        :rtype: int
         """
         self._reload_last_iteration()
         return max(self.data.last_iteration, self._reporter.max_iteration if self._reporter else 0)
@@ -1320,8 +1286,6 @@ class Task(_Task):
             }
 
         :return: The last scalar metrics.
-
-        :rtype: dict
         """
         self.reload()
         metrics = self.data.last_metrics
@@ -1339,8 +1303,6 @@ class Task(_Task):
 
         .. note::
            The values are not parsed. They are returned as is.
-
-        :rtype: str
         """
         return naive_nested_from_flat_dictionary(self.get_parameters())
 

@@ -161,6 +161,8 @@ class Session(TokenManager):
             api_version = token_dict.get('api_version')
             if not api_version:
                 api_version = '2.2' if token_dict.get('env', '') == 'prod' else Session.api_version
+            if token_dict.get('server_version'):
+                Session._client.append(('trains-server', token_dict.get('server_version'), ))
 
             Session.api_version = str(api_version)
         except (jwt.DecodeError, ValueError):

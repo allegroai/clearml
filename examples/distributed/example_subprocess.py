@@ -9,6 +9,7 @@ from argparse import ArgumentParser
 
 from trains import Task
 
+# fake data for us to "process"
 data = (
     ['a', '2'], ['b', '4'], ['c', '6'], ['d', '8'],
     ['e', '1'], ['f', '3'], ['g', '5'], ['h', '7'],
@@ -39,17 +40,18 @@ def mp_handler(use_subprocess):
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--num_workers', help='integer value', type=int, default=3)
-    parser.add_argument('--counter', help='integer value', type=int, default=-1)
     parser.add_argument('--use_subprocess', help='integer value', type=int, default=1)
+    # this argument we will not be logging, see below Task.init
+    parser.add_argument('--counter', help='integer value', type=int, default=-1)
 
     args = parser.parse_args()
     print(os.getpid(), 'ARGS:', args)
 
     # We have to initialize the task in the master process,
     # it will make sure that any sub-process calling Task.init will get the master task object
-    # notice that we exclude the counter argument, so we can launch multiple sub-processes with trains-agent
-    # otherwise, the counter will always be set to the original value
-    task = Task.init('examples', 'POpen example', auto_connect_arg_parser={'counter': False})
+    # notice that we exclude the `counter` argument, so we can launch multiple sub-processes with trains-agent
+    # otherwise, the `counter` will always be set to the original value.
+    task = Task.init('examples', 'Popen example', auto_connect_arg_parser={'counter': False})
 
     # we can connect multiple dictionaries, each from different process, as long as the keys have different names
     param = {'args_{}'.format(args.num_workers): 'some value {}'.format(args.num_workers)}
@@ -59,6 +61,8 @@ if __name__ == '__main__':
     counter = args.num_workers if args.counter < 0 else args.counter
 
     p = None
+    # launch sub-process, every subprocess will launch the next in the chain, until we launch them all.
+    # We could also launch all of them here, but that would have been to simple for us J
     if counter > 0:
         cmd = [sys.executable, sys.argv[0],
                '--counter', str(counter - 1),
@@ -67,8 +71,13 @@ if __name__ == '__main__':
         print(cmd)
         p = subprocess.Popen(cmd, cwd=os.getcwd())
 
+    # the actual "processing" is done here
     mp_handler(args.use_subprocess)
     print('Done logging')
+
+    # wait for the process we launched
+    # this means every subprocess will be waiting for the process it launched and
+    # the master process will exit after all of them are completed
     if p and counter > 0:
         p.wait()
     print('Exiting')

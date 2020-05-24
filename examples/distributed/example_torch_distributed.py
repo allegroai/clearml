@@ -143,10 +143,16 @@ if __name__ == "__main__":
     parser = ArgumentParser()
     parser.add_argument('--nodes', help='number of nodes', type=int, default=10)
     parser.add_argument('--workers_in_node', help='number of workers per node', type=int, default=3)
+    # this argument we will not be logging, see below Task.init
     parser.add_argument('--rank', help='current rank', type=int)
 
     args = parser.parse_args()
-    task = Task.init("examples", "test torch distributed")
+
+    # We have to initialize the task in the master process,
+    # it will make sure that any sub-process calling Task.init will get the master task object
+    # notice that we exclude the `rank` argument, so we can launch multiple sub-processes with trains-agent
+    # otherwise, the `rank` will always be set to the original value.
+    task = Task.init("examples", "test torch distributed", auto_connect_arg_parser={'rank': False})
 
     if os.environ.get('MASTER_ADDR'):
         dist.init_process_group(backend='gloo', rank=args.rank, world_size=args.nodes)

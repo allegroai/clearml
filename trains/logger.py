@@ -13,7 +13,6 @@ except ImportError:
 from PIL import Image
 from pathlib2 import Path
 
-from .backend_api.services import tasks
 from .backend_interface.logger import StdStreamPatch, LogFlusher
 from .backend_interface.task import Task as _Task
 from .backend_interface.task.development.worker import DevWorker
@@ -144,16 +143,17 @@ class Logger(object):
         return self._task.reporter.report_scalar(title=title, series=series, value=float(value), iter=iteration)
 
     def report_vector(
-        self,
-        title,  # type: str
-        series,  # type: str
-        values,  # type: Sequence[Union[int, float]]
-        iteration,  # type: int
-        labels=None,  # type: Optional[List[str]]
-        xlabels=None,  # type: Optional[List[str]]
-        xaxis=None,  # type: Optional[str]
-        yaxis=None,  # type: Optional[str]
-        mode=None  # type: Optional[str]
+            self,
+            title,  # type: str
+            series,  # type: str
+            values,  # type: Sequence[Union[int, float]]
+            iteration,  # type: int
+            labels=None,  # type: Optional[List[str]]
+            xlabels=None,  # type: Optional[List[str]]
+            xaxis=None,  # type: Optional[str]
+            yaxis=None,  # type: Optional[str]
+            mode=None,  # type: Optional[str]
+            extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, plot a vector as (default stacked) histogram.
@@ -180,22 +180,25 @@ class Logger(object):
         :param str xaxis: The x-axis title. (Optional)
         :param str yaxis: The y-axis title. (Optional)
         :param str mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
+        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
         self._touch_title_series(title, series)
         return self.report_histogram(title, series, values, iteration, labels=labels, xlabels=xlabels,
-                                     xaxis=xaxis, yaxis=yaxis, mode=mode)
+                                     xaxis=xaxis, yaxis=yaxis, mode=mode, extra_layout=extra_layout)
 
     def report_histogram(
-        self,
-        title,  # type: str
-        series,  # type: str
-        values,  # type: Sequence[Union[int, float]]
-        iteration,  # type: int
-        labels=None,  # type: Optional[List[str]]
-        xlabels=None,  # type: Optional[List[str]]
-        xaxis=None,  # type: Optional[str]
-        yaxis=None,  # type: Optional[str]
-        mode=None  # type: Optional[str]
+            self,
+            title,  # type: str
+            series,  # type: str
+            values,  # type: Sequence[Union[int, float]]
+            iteration,  # type: int
+            labels=None,  # type: Optional[List[str]]
+            xlabels=None,  # type: Optional[List[str]]
+            xaxis=None,  # type: Optional[str]
+            yaxis=None,  # type: Optional[str]
+            mode=None,  # type: Optional[str]
+            extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, plot a (default grouped) histogram.
@@ -207,8 +210,8 @@ class Logger(object):
         .. code-block:: py
 
            vector_series = np.random.randint(10, size=10).reshape(2,5)
-           logger.report_histogram(title='histogram example', series='histogram series', values=vector_series, iteration=0,
-                labels=['A','B'], xaxis='X axis label', yaxis='Y axis label')
+           logger.report_histogram(title='histogram example', series='histogram series',
+                values=vector_series, iteration=0, labels=['A','B'], xaxis='X axis label', yaxis='Y axis label')
 
         You can view the reported histograms in the **Trains Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
 
@@ -224,6 +227,8 @@ class Logger(object):
         :param str xaxis: The x-axis title. (Optional)
         :param str yaxis: The y-axis title. (Optional)
         :param str mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
+        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
 
         if not isinstance(values, np.ndarray):
@@ -241,17 +246,19 @@ class Logger(object):
             xlabels=xlabels,
             xtitle=xaxis,
             ytitle=yaxis,
-            mode=mode or 'group'
+            mode=mode or 'group',
+            layout_config=extra_layout,
         )
 
     def report_table(
-        self,
-        title,  # type: str
-        series,  # type: str
-        iteration,  # type: int
-        table_plot=None,  # type: Optional[pd.DataFrame]
-        csv=None,  # type: Optional[str]
-        url=None  # type: Optional[str]
+            self,
+            title,  # type: str
+            series,  # type: str
+            iteration,  # type: int
+            table_plot=None,  # type: Optional[pd.DataFrame]
+            csv=None,  # type: Optional[str]
+            url=None,  # type: Optional[str]
+            extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit report, report a table plot.
@@ -284,6 +291,9 @@ class Logger(object):
         :type csv: str
         :param url: A URL to the location of csv file.
         :type url: str
+        :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+        :type extra_layout: dict
         """
         mutually_exclusive(
             UsageError, _check_none=True,
@@ -293,7 +303,8 @@ class Logger(object):
         if url or csv:
             if not pd:
                 raise UsageError(
-                    "pandas is required in order to support reporting tables using CSV or a URL, please install the pandas python package"
+                    "pandas is required in order to support reporting tables using CSV or a URL, "
+                    "please install the pandas python package"
                 )
             if url:
                 table = pd.read_csv(url)
@@ -313,19 +324,21 @@ class Logger(object):
             title=title,
             series=series,
             table=reporter_table,
-            iteration=iteration
+            iteration=iteration,
+            layout_config=extra_layout,
         )
 
     def report_line_plot(
-        self,
-        title,  # type: str
-        series,  # type: str
-        iteration,  # type: int
-        xaxis,  # type: str
-        yaxis,  # type: str
-        mode='lines',  # type: str
-        reverse_xaxis=False,  # type: bool
-        comment=None  # type: Optional[str]
+            self,
+            title,  # type: str
+            series,  # type: str
+            iteration,  # type: int
+            xaxis,  # type: str
+            yaxis,  # type: str
+            mode='lines',  # type: str
+            reverse_xaxis=False,  # type: bool
+            comment=None,  # type: Optional[str]
+            extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, plot one or more series as lines.
@@ -352,6 +365,8 @@ class Logger(object):
             - ``False`` - The x-axis is low to high  (not reversed). (Default)
 
         :param str comment: A comment displayed with the plot, underneath the title.
+        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
 
         series = [self.SeriesInfo(**s) if isinstance(s, dict) else s for s in series]
@@ -368,19 +383,21 @@ class Logger(object):
             mode=mode,
             reverse_xaxis=reverse_xaxis,
             comment=comment,
+            layout_config=extra_layout,
         )
 
     def report_scatter2d(
-        self,
-        title,  # type: str
-        series,  # type: str
-        scatter,  # type: Union[Sequence[Tuple[float, float]], np.ndarray]
-        iteration,  # type: int
-        xaxis=None,  # type: Optional[str]
-        yaxis=None,  # type: Optional[str]
-        labels=None,  # type: Optional[List[str]]
-        mode='lines',  # type: str
-        comment=None  # type: Optional[str]
+            self,
+            title,  # type: str
+            series,  # type: str
+            scatter,  # type: Union[Sequence[Tuple[float, float]], np.ndarray]
+            iteration,  # type: int
+            xaxis=None,  # type: Optional[str]
+            yaxis=None,  # type: Optional[str]
+            labels=None,  # type: Optional[List[str]]
+            mode='lines',  # type: str
+            comment=None,  # type: Optional[str]
+            extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, report a 2d scatter plot.
@@ -408,8 +425,7 @@ class Logger(object):
 
         :param str title: The title of the plot.
         :param str series: The title of the series.
-        :param scatter: The scatter data.
-        :type numpy.ndarray, list of (pairs of x,y) scatter:
+        :param list scatter: The scatter data. numpy.ndarray or list of (pairs of x,y) scatter:
         :param int iteration: The iteration number. To set an initial iteration, for example to continue a previously
         :param str xaxis: The x-axis title. (Optional)
         :param str yaxis: The y-axis title. (Optional)
@@ -424,6 +440,8 @@ class Logger(object):
             - ``lines+markers``
 
         :param str comment: A comment displayed with the plot, underneath the title.
+        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
 
         if not isinstance(scatter, np.ndarray):
@@ -444,21 +462,23 @@ class Logger(object):
             ytitle=yaxis,
             labels=labels,
             comment=comment,
+            layout_config=extra_layout,
         )
 
     def report_scatter3d(
-        self,
-        title,  # type: str
-        series,  # type: str
-        scatter,  # type: Union[Sequence[Tuple[float, float, float]], np.ndarray]
-        iteration,  # type: int
-        xaxis=None,  # type: Optional[str]
-        yaxis=None,  # type: Optional[str]
-        zaxis=None,  # type: Optional[str]
-        labels=None,  # type: Optional[List[str]]
-        mode='markers',  # type: str
-        fill=False,  # type: bool
-        comment=None  # type: Optional[str]
+            self,
+            title,  # type: str
+            series,  # type: str
+            scatter,  # type: Union[Sequence[Tuple[float, float, float]], np.ndarray]
+            iteration,  # type: int
+            xaxis=None,  # type: Optional[str]
+            yaxis=None,  # type: Optional[str]
+            zaxis=None,  # type: Optional[str]
+            labels=None,  # type: Optional[List[str]]
+            mode='markers',  # type: str
+            fill=False,  # type: bool
+            comment=None,  # type: Optional[str]
+            extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, plot a 3d scatter graph (with markers).
@@ -466,7 +486,7 @@ class Logger(object):
         :param str title: The title of the plot.
         :param str series: The title of the series.
         :param Union[numpy.ndarray, list] scatter: The scatter data.
-        :type scatter: list of (pairs of x,y,z), list of series [[(x1,y1,z1)...]], or numpy.ndarray
+            list of (pairs of x,y,z), list of series [[(x1,y1,z1)...]], or numpy.ndarray
         :param int iteration: The iteration number.
         :param str xaxis: The x-axis title. (Optional)
         :param str yaxis: The y-axis title. (Optional)
@@ -497,18 +517,20 @@ class Logger(object):
             - ``False`` - Do not fill (Default)
 
         :param str comment: A comment displayed with the plot, underneath the title.
+        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
         # check if multiple series
         multi_series = (
-            isinstance(scatter, list)
-            and (
-                isinstance(scatter[0], np.ndarray)
-                or (
-                     scatter[0]
-                     and isinstance(scatter[0], list)
-                     and isinstance(scatter[0][0], list)
+                isinstance(scatter, list)
+                and (
+                        isinstance(scatter[0], np.ndarray)
+                        or (
+                                scatter[0]
+                                and isinstance(scatter[0], list)
+                                and isinstance(scatter[0][0], list)
+                        )
                 )
-            )
         )
 
         if not multi_series:
@@ -536,19 +558,21 @@ class Logger(object):
             xtitle=xaxis,
             ytitle=yaxis,
             ztitle=zaxis,
+            layout_config=extra_layout,
         )
 
     def report_confusion_matrix(
-        self,
-        title,  # type: str
-        series,  # type: str
-        matrix,  # type: np.ndarray
-        iteration,  # type: int
-        xaxis=None,  # type: Optional[str]
-        yaxis=None,  # type: Optional[str]
-        xlabels=None,  # type: Optional[List[str]]
-        ylabels=None,  # type: Optional[List[str]]
-        comment=None  # type: Optional[str]
+            self,
+            title,  # type: str
+            series,  # type: str
+            matrix,  # type: np.ndarray
+            iteration,  # type: int
+            xaxis=None,  # type: Optional[str]
+            yaxis=None,  # type: Optional[str]
+            xlabels=None,  # type: Optional[List[str]]
+            ylabels=None,  # type: Optional[List[str]]
+            comment=None,  # type: Optional[str]
+            extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, plot a heat-map matrix.
@@ -570,6 +594,8 @@ class Logger(object):
         :param list(str) xlabels: Labels for each column of the matrix. (Optional)
         :param list(str) ylabels: Labels for each row of the matrix. (Optional)
         :param str comment: A comment displayed with the plot, underneath the title.
+        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
 
         if not isinstance(matrix, np.ndarray):
@@ -588,18 +614,20 @@ class Logger(object):
             xlabels=xlabels,
             ylabels=ylabels,
             comment=comment,
+            layout_config=extra_layout,
         )
 
     def report_matrix(
-        self,
-        title,  # type: str
-        series,  # type: str
-        matrix,  # type: np.ndarray
-        iteration,  # type: int
-        xaxis=None,  # type: Optional[str]
-        yaxis=None,  # type: Optional[str]
-        xlabels=None,  # type: Optional[List[str]]
-        ylabels=None  # type: Optional[List[str]]
+            self,
+            title,  # type: str
+            series,  # type: str
+            matrix,  # type: np.ndarray
+            iteration,  # type: int
+            xaxis=None,  # type: Optional[str]
+            yaxis=None,  # type: Optional[str]
+            xlabels=None,  # type: Optional[List[str]]
+            ylabels=None,  # type: Optional[List[str]]
+            extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, plot a confusion matrix.
@@ -615,24 +643,28 @@ class Logger(object):
         :param str yaxis: The y-axis title. (Optional)
         :param list(str) xlabels: Labels for each column of the matrix. (Optional)
         :param list(str) ylabels: Labels for each row of the matrix. (Optional)
+        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
         self._touch_title_series(title, series)
         return self.report_confusion_matrix(title, series, matrix, iteration,
-                                            xaxis=xaxis, yaxis=yaxis, xlabels=xlabels, ylabels=ylabels)
+                                            xaxis=xaxis, yaxis=yaxis, xlabels=xlabels, ylabels=ylabels,
+                                            extra_layout=extra_layout)
 
     def report_surface(
-        self,
-        title,  # type: str
-        series,  # type: str
-        matrix,  # type: np.ndarray
-        iteration,  # type: int
-        xaxis=None,  # type: Optional[str]
-        yaxis=None,  # type: Optional[str]
-        zaxis=None,  # type: Optional[str]
-        xlabels=None,  # type: Optional[List[str]]
-        ylabels=None,  # type: Optional[List[str]]
-        camera=None,  # type: Optional[Sequence[float]]
-        comment=None  # type: Optional[str]
+            self,
+            title,  # type: str
+            series,  # type: str
+            matrix,  # type: np.ndarray
+            iteration,  # type: int
+            xaxis=None,  # type: Optional[str]
+            yaxis=None,  # type: Optional[str]
+            zaxis=None,  # type: Optional[str]
+            xlabels=None,  # type: Optional[List[str]]
+            ylabels=None,  # type: Optional[List[str]]
+            camera=None,  # type: Optional[Sequence[float]]
+            comment=None,  # type: Optional[str]
+            extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, report a 3d surface plot.
@@ -658,6 +690,8 @@ class Logger(object):
         :param list(str) ylabels: Labels for each row of the matrix. (Optional)
         :param list(float) camera: X,Y,Z coordinates indicating the camera position. The default value is ``(1,1,1)``.
         :param str comment: A comment displayed with the plot, underneath the title.
+        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
 
         if not isinstance(matrix, np.ndarray):
@@ -678,19 +712,20 @@ class Logger(object):
             ztitle=zaxis,
             camera=camera,
             comment=comment,
+            layout_config=extra_layout,
         )
 
     def report_image(
-        self,
-        title,  # type: str
-        series,  # type: str
-        iteration,  # type: int
-        local_path=None,  # type: Optional[str]
-        image=None,  # type: Optional[Union[np.ndarray, Image.Image]]
-        matrix=None,  # type: Optional[np.ndarray]
-        max_image_history=None,  # type: Optional[int]
-        delete_after_upload=False,  # type: bool
-        url=None  # type: Optional[str]
+            self,
+            title,  # type: str
+            series,  # type: str
+            iteration,  # type: int
+            local_path=None,  # type: Optional[str]
+            image=None,  # type: Optional[Union[np.ndarray, Image.Image]]
+            matrix=None,  # type: Optional[np.ndarray]
+            max_image_history=None,  # type: Optional[int]
+            delete_after_upload=False,  # type: bool
+            url=None  # type: Optional[str]
     ):
         """
         For explicit reporting, report an image and upload its contents.
@@ -787,16 +822,16 @@ class Logger(object):
             )
 
     def report_media(
-        self,
-        title,  # type: str
-        series,  # type: str
-        iteration,  # type: int
-        local_path=None,  # type: Optional[str]
-        stream=None,  # type: Optional[six.BytesIO]
-        file_extension=None,  # type: Optional[str]
-        max_history=None,  # type: Optional[int]
-        delete_after_upload=False,  # type: bool
-        url=None  # type: Optional[str]
+            self,
+            title,  # type: str
+            series,  # type: str
+            iteration,  # type: int
+            local_path=None,  # type: Optional[str]
+            stream=None,  # type: Optional[six.BytesIO]
+            file_extension=None,  # type: Optional[str]
+            max_history=None,  # type: Optional[int]
+            delete_after_upload=False,  # type: bool
+            url=None  # type: Optional[str]
     ):
         """
         Report an image and upload its contents.
@@ -805,7 +840,8 @@ class Logger(object):
         describing the task ID, title, series and iteration.
 
         .. note::
-            :paramref:`~.Logger.report_image.local_path`, :paramref:`~.Logger.report_image.url`, :paramref:`~.Logger.report_image.image` and :paramref:`~.Logger.report_image.matrix`
+            :paramref:`~.Logger.report_image.local_path`, :paramref:`~.Logger.report_image.url`,
+            :paramref:`~.Logger.report_image.image` and :paramref:`~.Logger.report_image.matrix`
             are mutually exclusive, and at least one must be provided.
 
         :param str title: Title (AKA metric)
@@ -953,14 +989,14 @@ class Logger(object):
             self._flusher.start()
 
     def report_image_and_upload(
-        self,
-        title,  # type: str
-        series,  # type: str
-        iteration,  # type: int
-        path=None,  # type: Optional[str]
-        matrix=None,  # type: # type: Optional[Union[np.ndarray, Image.Image]]
-        max_image_history=None,  # type: Optional[int]
-        delete_after_upload=False  # type: bool
+            self,
+            title,  # type: str
+            series,  # type: str
+            iteration,  # type: int
+            path=None,  # type: Optional[str]
+            matrix=None,  # type: # type: Optional[Union[np.ndarray, Image.Image]]
+            max_image_history=None,  # type: Optional[int]
+            delete_after_upload=False  # type: bool
     ):
         """
         .. deprecated:: 0.13.0
@@ -1054,7 +1090,7 @@ class Logger(object):
                 # noinspection PyBroadException
                 try:
                     # make sure we are writing to the original stdout
-                    StdStreamPatch.stdout_original_write(str(msg)+'\n')
+                    StdStreamPatch.stdout_original_write(str(msg) + '\n')
                 except Exception:
                     pass
             else:
@@ -1064,14 +1100,14 @@ class Logger(object):
         self._start_task_if_needed()
 
     def _report_image_plot_and_upload(
-        self,
-        title,  # type: str
-        series,  # type: str
-        iteration,  # type: int
-        path=None,  # type: Optional[str]
-        matrix=None,  # type: Optional[np.ndarray]
-        max_image_history=None,  # type: Optional[int]
-        delete_after_upload=False  # type: bool
+            self,
+            title,  # type: str
+            series,  # type: str
+            iteration,  # type: int
+            path=None,  # type: Optional[str]
+            matrix=None,  # type: Optional[np.ndarray]
+            max_image_history=None,  # type: Optional[int]
+            delete_after_upload=False  # type: bool
     ):
         """
         Report an image, upload its contents, and present in plots section using plotly
@@ -1119,13 +1155,13 @@ class Logger(object):
         )
 
     def _report_file_and_upload(
-        self,
-        title,  # type: str
-        series,  # type: str
-        iteration,  # type: int
-        path=None,  # type: Optional[str]
-        max_file_history=None,  # type: Optional[int]
-        delete_after_upload=False  # type: bool
+            self,
+            title,  # type: str
+            series,  # type: str
+            iteration,  # type: int
+            path=None,  # type: Optional[str]
+            max_file_history=None,  # type: Optional[int]
+            delete_after_upload=False  # type: bool
     ):
         """
         Upload a file and report it as link in the debug images section.

@@ -142,7 +142,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param iter: Iteration number
         :type value: int
         """
-        ev = ScalarEvent(metric=self._normalize_name(title), variant=self._normalize_name(series), value=value, iter=iter)
+        ev = ScalarEvent(metric=self._normalize_name(title), variant=self._normalize_name(series), value=value,
+                         iter=iter)
         self._report(ev)
 
     def report_vector(self, title, series, values, iter):
@@ -159,7 +160,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         """
         if not isinstance(values, Iterable):
             raise ValueError('values: expected an iterable')
-        ev = VectorEvent(metric=self._normalize_name(title), variant=self._normalize_name(series), values=values, iter=iter)
+        ev = VectorEvent(metric=self._normalize_name(title), variant=self._normalize_name(series), values=values,
+                         iter=iter)
         self._report(ev)
 
     def report_plot(self, title, series, plot, iter):
@@ -185,7 +187,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             plot = json.dumps(plot, default=default)
         elif not isinstance(plot, six.string_types):
             raise ValueError('Plot should be a string or a dict')
-        ev = PlotEvent(metric=self._normalize_name(title), variant=self._normalize_name(series), plot_str=plot, iter=iter)
+        ev = PlotEvent(metric=self._normalize_name(title), variant=self._normalize_name(series), plot_str=plot,
+                       iter=iter)
         self._report(ev)
 
     def report_image(self, title, series, src, iter):
@@ -201,7 +204,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param iter: Iteration number
         :type value: int
         """
-        ev = ImageEventNoUpload(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter, src=src)
+        ev = ImageEventNoUpload(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter,
+                                src=src)
         self._report(ev)
 
     def report_media(self, title, series, src, iter):
@@ -217,7 +221,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param iter: Iteration number
         :type value: int
         """
-        ev = ImageEventNoUpload(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter, src=src)
+        ev = ImageEventNoUpload(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter,
+                                src=src)
         self._report(ev)
 
     def report_image_and_upload(self, title, series, iter, path=None, image=None, upload_uri=None,
@@ -245,7 +250,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             raise ValueError('Upload configuration is required (use setup_upload())')
         if len([x for x in (path, image) if x is not None]) != 1:
             raise ValueError('Expected only one of [filename, image]')
-        kwargs = dict(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter, file_history_size=max_image_history)
+        kwargs = dict(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter,
+                      file_history_size=max_image_history)
         ev = ImageEvent(image_data=image, upload_uri=upload_uri, local_image_path=path,
                         delete_after_upload=delete_after_upload, **kwargs)
         self._report(ev)
@@ -284,7 +290,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._report(ev)
 
     def report_histogram(self, title, series, histogram, iter, labels=None, xlabels=None,
-                         xtitle=None, ytitle=None, comment=None, mode='group'):
+                         xtitle=None, ytitle=None, comment=None, mode='group', layout_config=None):
         """
         Report an histogram bar plot
         :param title: Title (AKA metric)
@@ -306,6 +312,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type comment: str
         :param mode: multiple histograms mode. valid options are: stack / group / relative. Default is 'group'.
         :type mode: str
+        :param layout_config: optional dictionary for layout configuration, passed directly to plotly
+        :type layout_config: dict or None
         """
         assert mode in ('stack', 'group', 'relative')
 
@@ -319,6 +327,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             xlabels=xlabels,
             comment=comment,
             mode=mode,
+            layout_config=layout_config,
         )
 
         return self.report_plot(
@@ -328,7 +337,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             iter=iter,
         )
 
-    def report_table(self, title, series, table, iteration):
+    def report_table(self, title, series, table, iteration, layout_config=None):
         """
         Report a table plot.
 
@@ -340,8 +349,10 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type table: pandas.DataFrame
         :param iteration: Iteration number
         :type iteration: int
+        :param layout_config: optional dictionary for layout configuration, passed directly to plotly
+        :type layout_config: dict or None
         """
-        table_output = create_plotly_table(table, title, series)
+        table_output = create_plotly_table(table, title, series, layout_config=layout_config)
         return self.report_plot(
             title=self._normalize_name(title),
             series=self._normalize_name(series),
@@ -349,7 +360,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             iter=iteration,
         )
 
-    def report_line_plot(self, title, series, iter, xtitle, ytitle, mode='lines', reverse_xaxis=False, comment=None):
+    def report_line_plot(self, title, series, iter, xtitle, ytitle, mode='lines', reverse_xaxis=False,
+                         comment=None, layout_config=None):
         """
         Report a (possibly multiple) line plot.
 
@@ -369,6 +381,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type reverse_xaxis: bool
         :param comment: comment underneath the title
         :type comment: str
+        :param layout_config: optional dictionary for layout configuration, passed directly to plotly
+        :type layout_config: dict or None
         """
 
         plotly_dict = create_line_plot(
@@ -379,6 +393,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             mode=mode,
             reverse_xaxis=reverse_xaxis,
             comment=comment,
+            layout_config=layout_config,
         )
 
         return self.report_plot(
@@ -389,7 +404,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         )
 
     def report_2d_scatter(self, title, series, data, iter, mode='lines', xtitle=None, ytitle=None, labels=None,
-                          comment=None):
+                          comment=None, layout_config=None):
         """
         Report a 2d scatter graph (with lines)
 
@@ -407,6 +422,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param labels: label (text) per point in the scatter (in the same order)
         :param comment: comment underneath the title
         :type comment: str
+        :param layout_config: optional dictionary for layout configuration, passed directly to plotly
+        :type layout_config: dict or None
         """
         plotly_dict = create_2d_scatter_series(
             np_row_wise=data,
@@ -417,6 +434,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             ytitle=ytitle,
             labels=labels,
             comment=comment,
+            layout_config=layout_config,
         )
 
         return self.report_plot(
@@ -428,7 +446,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
 
     def report_3d_scatter(self, title, series, data, iter, labels=None, mode='lines', color=((217, 217, 217, 0.14),),
                           marker_size=5, line_width=0.8, xtitle=None, ytitle=None, ztitle=None, fill=None,
-                          comment=None):
+                          comment=None, layout_config=None):
         """
         Report a 3d scatter graph (with markers)
 
@@ -450,6 +468,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param ytitle: optional y-axis title
         :param ztitle: optional z-axis title
         :param comment: comment underneath the title
+        :param layout_config: optional dictionary for layout configuration, passed directly to plotly
+        :type layout_config: dict or None
         """
         data_series = data if isinstance(data, list) else [data]
 
@@ -469,6 +489,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             yaxis_title=ytitle,
             zaxis_title=ztitle,
             comment=comment,
+            layout_config=layout_config,
         )
 
         for i, values in enumerate(data_series):
@@ -492,7 +513,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             iter=iter,
         )
 
-    def report_value_matrix(self, title, series, data, iter, xtitle=None, ytitle=None, xlabels=None, ylabels=None, comment=None):
+    def report_value_matrix(self, title, series, data, iter, xtitle=None, ytitle=None, xlabels=None, ylabels=None,
+                            comment=None, layout_config=None):
         """
         Report a heat-map matrix
 
@@ -509,6 +531,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param xlabels: optional label per column of the matrix
         :param ylabels: optional label per row of the matrix
         :param comment: comment underneath the title
+        :param layout_config: optional dictionary for layout configuration, passed directly to plotly
+        :type layout_config: dict or None
         """
 
         plotly_dict = create_value_matrix(
@@ -520,6 +544,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             comment=comment,
             xtitle=xtitle,
             ytitle=ytitle,
+            layout_config=layout_config,
         )
 
         return self.report_plot(
@@ -530,7 +555,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         )
 
     def report_value_surface(self, title, series, data, iter, xlabels=None, ylabels=None,
-                             xtitle=None, ytitle=None, ztitle=None, camera=None, comment=None):
+                             xtitle=None, ytitle=None, ztitle=None, camera=None, comment=None, layout_config=None):
         """
         Report a 3d surface (same data as heat-map matrix, only presented differently)
 
@@ -549,6 +574,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param ztitle: optional z-axis title
         :param camera: X,Y,Z camera position. def: (1,1,1)
         :param comment: comment underneath the title
+        :param layout_config: optional dictionary for layout configuration, passed directly to plotly
+        :type layout_config: dict or None
         """
 
         plotly_dict = create_3d_surface(
@@ -562,6 +589,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             ztitle=ztitle,
             camera=camera,
             comment=comment,
+            layout_config=layout_config,
         )
 
         return self.report_plot(
@@ -588,6 +616,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type path: str
         :param matrix: A 3D numpy.ndarray object containing image data (RGB). Required unless filename is provided.
         :type matrix: str
+        :param upload_uri: upload image destination (str)
+        :type upload_uri: str
         :param max_image_history: maximum number of image to store per metric/variant combination
         use negative value for unlimited. default is set in global configuration (default=5)
         :param delete_after_upload: if True, one the file was uploaded the local copy will be deleted
@@ -597,7 +627,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             raise ValueError('Upload configuration is required (use setup_upload())')
         if len([x for x in (path, matrix) if x is not None]) != 1:
             raise ValueError('Expected only one of [filename, matrix]')
-        kwargs = dict(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter, file_history_size=max_image_history)
+        kwargs = dict(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter,
+                      file_history_size=max_image_history)
         ev = UploadEvent(image_data=matrix, upload_uri=upload_uri, local_image_path=path,
                          delete_after_upload=delete_after_upload, **kwargs)
         _, url = ev.get_target_full_upload_uri(upload_uri or self._storage_uri, self._metrics.storage_key_prefix)

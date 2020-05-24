@@ -7,10 +7,15 @@ from ..parameters import (
 from ...task import Task
 
 try:
+    # noinspection PyPackageRequirements
     from hpbandster.core.worker import Worker
+    # noinspection PyPackageRequirements
     from hpbandster.optimizers import BOHB
+    # noinspection PyPackageRequirements
     import hpbandster.core.nameserver as hpns
+    # noinspection PyPackageRequirements, PyPep8Naming
     import ConfigSpace as CS
+    # noinspection PyPackageRequirements, PyPep8Naming
     import ConfigSpace.hyperparameters as CSH
 
     Task.add_requirements('hpbandster')
@@ -91,11 +96,12 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
             objective_metric,  # type: Objective
             execution_queue,  # type: str
             num_concurrent_workers,  # type: int
-            total_max_jobs,  # type: Optional[int]
             min_iteration_per_job,  # type: Optional[int]
             max_iteration_per_job,  # type: Optional[int]
+            total_max_jobs,  # type: Optional[int]
             pool_period_min=2.,  # type: float
             max_job_execution_minutes=None,  # type: Optional[float]
+            local_port=9090,  # type: int
             **bohb_kwargs,  # type: Any
     ):
         # type: (...) -> OptimizerBOHB
@@ -129,8 +135,13 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
             not the maximum reported iteration of the Task.
         :param int total_max_jobs: total maximum job for the optimization process.
             Must be provided in order to calculate the total budget for the optimization process.
+            The total budget is measured by "iterations" (see above)
+            and will be set to `max_iteration_per_job * total_max_jobs`
+            This means more than total_max_jobs could be created, as long as the cumulative iterations
+            (summed over all created jobs) will not exceed `max_iteration_per_job * total_max_jobs`
         :param float pool_period_min: time in minutes between two consecutive pools
         :param float max_job_execution_minutes: maximum time per single job in minutes, if exceeded job is aborted
+        :param int local_port: default port 9090 tcp, this is a must for the BOHB workers to communicate, even locally.
         :param bohb_kwargs: arguments passed directly yo the BOHB object
         """
         super(OptimizerBOHB, self).__init__(
@@ -145,6 +156,7 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         self._namespace = None
         self._bohb = None
         self._res = None
+        self._nameserver_port = local_port
 
     def set_optimization_args(
             self,
@@ -233,7 +245,8 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         """
         # Step 1: Start a NameServer
         fake_run_id = 'OptimizerBOHB_{}'.format(time())
-        self._namespace = hpns.NameServer(run_id=fake_run_id, host='127.0.0.1', port=0)
+        # default port is 9090, we must have one, this is how BOHB workers communicate (even locally)
+        self._namespace = hpns.NameServer(run_id=fake_run_id, host='127.0.0.1', port=self._nameserver_port)
         self._namespace.start()
 
         # we have to scale the budget to the iterations per job, otherwise numbers might be too high
@@ -249,7 +262,7 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
                 base_task_id=self._base_task_id,
                 objective=self._objective_metric,
                 queue_name=self._execution_queue,
-                nameserver='127.0.0.1', run_id=fake_run_id, id=i)
+                nameserver='127.0.0.1', nameserver_port=self._nameserver_port, run_id=fake_run_id, id=i)
             w.run(background=True)
             workers.append(w)
 

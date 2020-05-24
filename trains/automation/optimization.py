@@ -661,7 +661,7 @@ class HyperParameterOptimizer(object):
             objective_metric_title,  # type: str
             objective_metric_series,  # type: str
             objective_metric_sign='min',  # type: Union['min', 'max', 'min_global', 'max_global']
-            optimizer_class=RandomSearch,  # type: SearchStrategy
+            optimizer_class=RandomSearch,  # type: type(SearchStrategy)
             max_number_of_concurrent_tasks=10,  # type: int
             execution_queue='default',  # type: str
             optimization_time_limit=None,  # type: Optional[float]

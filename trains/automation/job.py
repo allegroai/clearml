@@ -2,16 +2,26 @@ import hashlib
 from datetime import datetime
 from logging import getLogger
 from time import time, sleep
+from typing import Optional, Mapping, Sequence, Any
 
 from ..task import Task
 from ..backend_api.services import tasks as tasks_service
-from ..backend_api.services import events as events_service
+
 
 logger = getLogger('trains.automation.job')
 
 
 class TrainsJob(object):
-    def __init__(self, base_task_id, parameter_override=None, task_overrides=None, tags=None, parent=None, **kwargs):
+    def __init__(
+            self,
+            base_task_id,  # type: str
+            parameter_override=None,  # type: Optional[Mapping[str, str]]
+            task_overrides=None,  # type: Optional[Mapping[str, str]]
+            tags=None,  # type: Optional[Sequence[str]]
+            parent=None,  # type: Optional[str]
+            **kwargs  # type: Any
+    ):
+        # type: (...) -> TrainsJob
         """
         Create a new Task based in a base_task_id with a different set of parameters
 
@@ -32,11 +42,12 @@ class TrainsJob(object):
         if task_overrides:
             # todo: make sure it works
             # noinspection PyProtectedMember
-            self.task._edit(task_overrides)
+            self.task._edit(**task_overrides)
         self.task_started = False
         self._worker = None
 
     def get_metric(self, title, series):
+        # type: (str, str) -> (float, float, float)
         """
         Retrieve a specific scalar metric from the running Task.
 
@@ -63,6 +74,7 @@ class TrainsJob(object):
         return tuple(response.response_data['tasks'][0]['last_metrics'][title][series][v] for v in values)
 
     def launch(self, queue_name=None):
+        # type: (str) -> ()
         """
         Send Job for execution on the requested execution queue
 
@@ -74,6 +86,7 @@ class TrainsJob(object):
             logger.warning(ex)
 
     def abort(self):
+        # type: () -> ()
         """
         Abort currently running job (can be called multiple times)
         """
@@ -83,6 +96,7 @@ class TrainsJob(object):
             logger.warning(ex)
 
     def elapsed(self):
+        # type: () -> float
         """
         Return the time in seconds since job started. Return -1 if job is still pending
 
@@ -94,6 +108,7 @@ class TrainsJob(object):
         return (datetime.now() - self.task.data.started).timestamp()
 
     def iterations(self):
+        # type: () -> int
         """
         Return the last iteration value of the current job. -1 if job has not started yet
 
@@ -105,6 +120,7 @@ class TrainsJob(object):
         return self.task.get_last_iteration()
 
     def task_id(self):
+        # type: () -> str
         """
         Return the Task id.
 
@@ -113,6 +129,7 @@ class TrainsJob(object):
         return self.task.id
 
     def status(self):
+        # type: () -> Task.TaskStatusEnum
         """
         Return the Job Task current status, see Task.TaskStatusEnum
 
@@ -121,6 +138,7 @@ class TrainsJob(object):
         return self.task.status
 
     def wait(self, timeout=None, pool_period=30.):
+        # type: (Optional[float], float) -> bool
         """
         Wait until the task is fully executed (i.e. aborted/completed/failed)
 
@@ -129,7 +147,7 @@ class TrainsJob(object):
         :return bool: Return True is Task finished.
         """
         tic = time()
-        while timeout is None or time()-tic < timeout*60.:
+        while timeout is None or time() - tic < timeout * 60.:
             if self.is_stopped():
                 return True
             sleep(pool_period)
@@ -137,6 +155,7 @@ class TrainsJob(object):
         return self.is_stopped()
 
     def get_console_output(self, number_of_reports=1):
+        # type: (int) -> Sequence[str]
         """
         Return a list of console outputs reported by the Task.
         Returned console outputs are retrieved from the most updated console outputs.
@@ -147,6 +166,7 @@ class TrainsJob(object):
         return self.task.get_reported_console_output(number_of_reports=number_of_reports)
 
     def worker(self):
+        # type: () -> str
         """
         Return the current worker id executing this Job. If job is pending, returns None
 
@@ -165,6 +185,7 @@ class TrainsJob(object):
         return self._worker
 
     def is_running(self):
+        # type: () -> bool
         """
         Return True if job is currently running (pending is considered False)
 
@@ -173,6 +194,7 @@ class TrainsJob(object):
         return self.task.status == Task.TaskStatusEnum.in_progress
 
     def is_stopped(self):
+        # type: () -> bool
         """
         Return True if job is has executed and is not any more
 
@@ -183,6 +205,7 @@ class TrainsJob(object):
             Task.TaskStatusEnum.failed, Task.TaskStatusEnum.published)
 
     def is_pending(self):
+        # type: () -> bool
         """
         Return True if job is waiting for execution
 
@@ -191,8 +214,20 @@ class TrainsJob(object):
         return self.task.status in (Task.TaskStatusEnum.queued, Task.TaskStatusEnum.created)
 
 
-class JobStub(object):
-    def __init__(self, base_task_id, parameter_override=None, task_overrides=None, tags=None, **_):
+# noinspection PyMethodMayBeStatic, PyUnusedLocal
+class _JobStub(object):
+    """
+    This is a Job Stub, use only for debugging
+    """
+    def __init__(
+            self,
+            base_task_id,  # type: str
+            parameter_override=None,  # type: Optional[Mapping[str, str]]
+            task_overrides=None,  # type: Optional[Mapping[str, str]]
+            tags=None,  # type: Optional[Sequence[str]]
+            **kwargs  # type: Any
+     ):
+        # type: (...) -> _JobStub
         self.task = None
         self.base_task_id = base_task_id
         self.parameter_override = parameter_override
@@ -202,14 +237,17 @@ class JobStub(object):
         self.task_started = None
 
     def launch(self, queue_name=None):
+        # type: (str) -> ()
         self.iteration = 0
         self.task_started = time()
         print('launching', self.parameter_override, 'in', queue_name)
 
     def abort(self):
+        # type: () -> ()
         self.task_started = -1
 
     def elapsed(self):
+        # type: () -> float
         """
         Return the time in seconds since job started. Return -1 if job is still pending
 
@@ -220,6 +258,7 @@ class JobStub(object):
         return time() - self.task_started
 
     def iterations(self):
+        # type: () -> int
         """
         Return the last iteration value of the current job. -1 if job has not started yet
         :return int: Task last iteration
@@ -229,6 +268,7 @@ class JobStub(object):
         return self.iteration
 
     def get_metric(self, title, series):
+        # type: (str, str) -> (float, float, float)
         """
         Retrieve a specific scalar metric from the running Task.
 
@@ -239,15 +279,19 @@ class JobStub(object):
         return 0, 1.0, 0.123
 
     def task_id(self):
+        # type: () -> str
         return 'stub'
 
     def worker(self):
+        # type: () -> ()
         return None
 
     def status(self):
+        # type: () -> str
         return 'in_progress'
 
     def wait(self, timeout=None, pool_period=30.):
+        # type: (Optional[float], float) -> bool
         """
         Wait for the task to be processed (i.e. aborted/completed/failed)
 
@@ -258,6 +302,7 @@ class JobStub(object):
         return True
 
     def get_console_output(self, number_of_reports=1):
+        # type: (int) -> Sequence[str]
         """
         Return a list of console outputs reported by the Task.
         Returned console outputs are retrieved from the most updated console outputs.
@@ -269,11 +314,13 @@ class JobStub(object):
         return []
 
     def is_running(self):
+        # type: () -> bool
         return self.task_started is not None and self.task_started > 0
 
     def is_stopped(self):
+        # type: () -> bool
         return self.task_started is not None and self.task_started < 0
 
     def is_pending(self):
+        # type: () -> bool
         return self.task_started is None
-

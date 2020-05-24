@@ -37,7 +37,7 @@ import threading
 import string
 
 ## C Type mappings ##
-## Enums
+# Enums
 _nvmlEnableState_t = c_uint
 NVML_FEATURE_DISABLED = 0
 NVML_FEATURE_ENABLED = 1
@@ -347,7 +347,7 @@ def _nvmlGetFunctionPointer(name):
         libLoadLock.release()
 
 
-## Alternative object
+# Alternative object
 # Allows the object to be printed
 # Allows mismatched types to be assigned
 #  - like None when the Structure variant requires c_uint
@@ -379,7 +379,7 @@ def nvmlFriendlyObjectToStruct(obj, model):
     return model
 
 
-## Unit structures
+# Unit structures
 class struct_c_nvmlUnit_t(Structure):
     pass  # opaque handle
 
@@ -461,7 +461,7 @@ class c_nvmlUnitFanSpeeds_t(_PrintableStructure):
     ]
 
 
-## Device structures
+# Device structures
 class struct_c_nvmlDevice_t(Structure):
     pass  # opaque handle
 
@@ -591,7 +591,7 @@ class c_nvmlViolationTime_t(_PrintableStructure):
     ]
 
 
-## Event structures
+# Event structures
 class struct_c_nvmlEventSet_t(Structure):
     pass  # opaque handle
 
@@ -605,29 +605,30 @@ nvmlEventTypeXidCriticalError = 0x0000000000000008
 nvmlEventTypeClock = 0x0000000000000010
 nvmlEventTypeNone = 0x0000000000000000
 nvmlEventTypeAll = (
-        nvmlEventTypeNone |
-        nvmlEventTypeSingleBitEccError |
-        nvmlEventTypeDoubleBitEccError |
-        nvmlEventTypePState |
-        nvmlEventTypeClock |
-        nvmlEventTypeXidCriticalError
+    nvmlEventTypeNone |
+    nvmlEventTypeSingleBitEccError |
+    nvmlEventTypeDoubleBitEccError |
+    nvmlEventTypePState |
+    nvmlEventTypeClock |
+    nvmlEventTypeXidCriticalError
 )
 
-## Clock Throttle Reasons defines
+# Clock Throttle Reasons defines
 nvmlClocksThrottleReasonGpuIdle = 0x0000000000000001
 nvmlClocksThrottleReasonApplicationsClocksSetting = 0x0000000000000002
-nvmlClocksThrottleReasonUserDefinedClocks = nvmlClocksThrottleReasonApplicationsClocksSetting  # deprecated, use nvmlClocksThrottleReasonApplicationsClocksSetting
+# deprecated, use nvmlClocksThrottleReasonApplicationsClocksSetting
+nvmlClocksThrottleReasonUserDefinedClocks = nvmlClocksThrottleReasonApplicationsClocksSetting
 nvmlClocksThrottleReasonSwPowerCap = 0x0000000000000004
 nvmlClocksThrottleReasonHwSlowdown = 0x0000000000000008
 nvmlClocksThrottleReasonUnknown = 0x8000000000000000
 nvmlClocksThrottleReasonNone = 0x0000000000000000
 nvmlClocksThrottleReasonAll = (
-        nvmlClocksThrottleReasonNone |
-        nvmlClocksThrottleReasonGpuIdle |
-        nvmlClocksThrottleReasonApplicationsClocksSetting |
-        nvmlClocksThrottleReasonSwPowerCap |
-        nvmlClocksThrottleReasonHwSlowdown |
-        nvmlClocksThrottleReasonUnknown
+    nvmlClocksThrottleReasonNone |
+    nvmlClocksThrottleReasonGpuIdle |
+    nvmlClocksThrottleReasonApplicationsClocksSetting |
+    nvmlClocksThrottleReasonSwPowerCap |
+    nvmlClocksThrottleReasonHwSlowdown |
+    nvmlClocksThrottleReasonUnknown
 )
 
 
@@ -785,7 +786,7 @@ def nvmlSystemGetHicVersion():
     return hics
 
 
-## Unit get functions
+# Unit get functions
 def nvmlUnitGetCount():
     c_count = c_uint()
     fn = _nvmlGetFunctionPointer("nvmlUnitGetCount")
@@ -865,7 +866,7 @@ def nvmlUnitGetDevices(unit):
     return c_devices
 
 
-## Device get functions
+# Device get functions
 def nvmlDeviceGetCount():
     c_count = c_uint()
     fn = _nvmlGetFunctionPointer("nvmlDeviceGetCount_v2")
@@ -919,7 +920,7 @@ def nvmlDeviceGetName(handle):
 
 
 def nvmlDeviceGetBoardId(handle):
-    c_id = c_uint();
+    c_id = c_uint()
     fn = _nvmlGetFunctionPointer("nvmlDeviceGetBoardId")
     ret = fn(handle, byref(c_id))
     _nvmlCheckReturn(ret)
@@ -927,7 +928,7 @@ def nvmlDeviceGetBoardId(handle):
 
 
 def nvmlDeviceGetMultiGpuBoard(handle):
-    c_multiGpu = c_uint();
+    c_multiGpu = c_uint()
     fn = _nvmlGetFunctionPointer("nvmlDeviceGetMultiGpuBoard")
     ret = fn(handle, byref(c_multiGpu))
     _nvmlCheckReturn(ret)
@@ -1480,7 +1481,7 @@ def nvmlDeviceGetAutoBoostedClocksEnabled(handle):
     # Throws NVML_ERROR_NOT_SUPPORTED if hardware doesn't support setting auto boosted clocks
 
 
-## Set functions
+# Set functions
 def nvmlUnitSetLedState(unit, color):
     fn = _nvmlGetFunctionPointer("nvmlUnitSetLedState")
     ret = fn(unit, _nvmlLedColor_t(color))
@@ -1800,7 +1801,7 @@ def nvmlDeviceGetSamples(device, sampling_type, timeStamp):
     c_sample_value_type = _nvmlValueType_t()
     fn = _nvmlGetFunctionPointer("nvmlDeviceGetSamples")
 
-    ## First Call gets the size
+    # First Call gets the size
     ret = fn(device, c_sampling_type, c_time_stamp, byref(c_sample_value_type), byref(c_sample_count), None)
 
     # Stop if this fails
@@ -1819,7 +1820,7 @@ def nvmlDeviceGetViolationStatus(device, perfPolicyType):
     c_violTime = c_nvmlViolationTime_t()
     fn = _nvmlGetFunctionPointer("nvmlDeviceGetViolationStatus")
 
-    ## Invoke the method to get violation time
+    # Invoke the method to get violation time
     ret = fn(device, c_perfPolicy_type, byref(c_violTime))
     _nvmlCheckReturn(ret)
     return c_violTime

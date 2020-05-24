@@ -199,6 +199,7 @@ class Artifacts(object):
 
     class _ProxyDictWrite(dict):
         """ Dictionary wrapper that updates an arguments instance on any item set in the dictionary """
+
         def __init__(self, artifacts_manager, *args, **kwargs):
             super(Artifacts._ProxyDictWrite, self).__init__(*args, **kwargs)
             self._artifacts_manager = artifacts_manager
@@ -303,8 +304,8 @@ class Artifacts(object):
             artifact_type_data.content_type = 'application/numpy'
             artifact_type_data.preview = str(artifact_object.__repr__())
             override_filename_ext_in_uri = '.npz'
-            override_filename_in_uri = name+override_filename_ext_in_uri
-            fd, local_filename = mkstemp(prefix=quote(name, safe="")+'.', suffix=override_filename_ext_in_uri)
+            override_filename_in_uri = name + override_filename_ext_in_uri
+            fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
             os.close(fd)
             np.savez_compressed(local_filename, **{name: artifact_object})
             delete_after_upload = True
@@ -314,7 +315,7 @@ class Artifacts(object):
             artifact_type_data.preview = str(artifact_object.__repr__())
             override_filename_ext_in_uri = self._save_format
             override_filename_in_uri = name
-            fd, local_filename = mkstemp(prefix=quote(name, safe="")+'.', suffix=override_filename_ext_in_uri)
+            fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
             os.close(fd)
             artifact_object.to_csv(local_filename, compression=self._compression)
             delete_after_upload = True
@@ -325,7 +326,7 @@ class Artifacts(object):
             artifact_type_data.preview = desc[1:desc.find(' at ')]
             override_filename_ext_in_uri = '.png'
             override_filename_in_uri = name + override_filename_ext_in_uri
-            fd, local_filename = mkstemp(prefix=quote(name, safe="")+'.', suffix=override_filename_ext_in_uri)
+            fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
             os.close(fd)
             artifact_object.save(local_filename)
             delete_after_upload = True
@@ -335,7 +336,7 @@ class Artifacts(object):
             preview = json.dumps(artifact_object, sort_keys=True, indent=4)
             override_filename_ext_in_uri = '.json'
             override_filename_in_uri = name + override_filename_ext_in_uri
-            fd, local_filename = mkstemp(prefix=quote(name, safe="")+'.', suffix=override_filename_ext_in_uri)
+            fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
             os.write(fd, bytes(preview.encode()))
             os.close(fd)
             artifact_type_data.preview = preview
@@ -374,7 +375,7 @@ class Artifacts(object):
                 override_filename_ext_in_uri = '.zip'
                 override_filename_in_uri = folder.parts[-1] + override_filename_ext_in_uri
                 fd, zip_file = mkstemp(
-                    prefix=quote(folder.parts[-1], safe="")+'.', suffix=override_filename_ext_in_uri
+                    prefix=quote(folder.parts[-1], safe="") + '.', suffix=override_filename_ext_in_uri
                 )
                 try:
                     artifact_type_data.content_type = 'application/zip'
@@ -571,7 +572,8 @@ class Artifacts(object):
 
             artifact_type_data.data_hash = current_sha2
             artifact_type_data.content_type = "text/csv"
-            artifact_type_data.preview = str(pd_artifact.__repr__())+'\n\n'+self._get_statistics({name: pd_artifact})
+            artifact_type_data.preview = str(pd_artifact.__repr__(
+            )) + '\n\n' + self._get_statistics({name: pd_artifact})
 
             artifact.type_data = artifact_type_data
             artifact.uri = uri
@@ -657,11 +659,11 @@ class Artifacts(object):
             # build intersection summary
             for i, (name, shape, unique_hash) in enumerate(artifacts_summary):
                 summary += '[{name}]: shape={shape}, {unique} unique rows, {percentage:.1f}% uniqueness\n'.format(
-                    name=name, shape=shape, unique=len(unique_hash), percentage=100*len(unique_hash)/float(shape[0]))
-                for name2, shape2, unique_hash2 in artifacts_summary[i+1:]:
+                    name=name, shape=shape, unique=len(unique_hash), percentage=100 * len(unique_hash) / float(shape[0]))
+                for name2, shape2, unique_hash2 in artifacts_summary[i + 1:]:
                     intersection = len(unique_hash & unique_hash2)
                     summary += '\tIntersection with [{name2}] {intersection} rows: {percentage:.1f}%\n'.format(
-                        name2=name2, intersection=intersection, percentage=100*intersection/float(len(unique_hash2)))
+                        name2=name2, intersection=intersection, percentage=100 * intersection / float(len(unique_hash2)))
         except Exception as e:
             LoggerRoot.get_base_logger().warning(str(e))
         finally:

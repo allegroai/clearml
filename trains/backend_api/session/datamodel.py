@@ -59,7 +59,7 @@ class DataModel(object):
             props = {}
             for c in cls.__mro__:
                 props.update({k: getattr(v, 'name', k) for k, v in vars(c).items()
-                             if isinstance(v, property)})
+                              if isinstance(v, property)})
             cls._data_props_list = props
         return props.copy()
 
@@ -150,6 +150,7 @@ class NonStrictDataModelMixin(object):
 
     :summary: supplies an __init__ method that warns about unused keywords
     """
+
     def __init__(self, **kwargs):
         # unexpected = [key for key in kwargs if not key.startswith('_')]
         # if unexpected:

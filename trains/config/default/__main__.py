@@ -127,7 +127,8 @@ def main():
         # this is our demo server
         api_host = parsed_host.scheme + "://" + parsed_host.netloc.replace('demoapp.', 'demoapi.', 1) + parsed_host.path
         web_host = parsed_host.scheme + "://" + parsed_host.netloc + parsed_host.path
-        files_host = parsed_host.scheme + "://" + parsed_host.netloc.replace('demoapp.', 'demofiles.', 1) + parsed_host.path
+        files_host = parsed_host.scheme + "://" + parsed_host.netloc.replace(
+            'demoapp.', 'demofiles.', 1) + parsed_host.path
     elif parsed_host.netloc.startswith('app.'):
         # this is our application server
         api_host = parsed_host.scheme + "://" + parsed_host.netloc.replace('app.', 'api.', 1) + parsed_host.path
@@ -138,7 +139,8 @@ def main():
             parsed_host.netloc))
         api_host = parsed_host.scheme + "://" + parsed_host.netloc + parsed_host.path
         web_host = parsed_host.scheme + "://" + parsed_host.netloc.replace('demoapi.', 'demoapp.', 1) + parsed_host.path
-        files_host = parsed_host.scheme + "://" + parsed_host.netloc.replace('demoapi.', 'demofiles.', 1) + parsed_host.path
+        files_host = parsed_host.scheme + "://" + parsed_host.netloc.replace(
+            'demoapi.', 'demofiles.', 1) + parsed_host.path
     elif parsed_host.netloc.startswith('api.'):
         print('{} is the api server, we need the web server. Replacing \'api.\' with \'app.\''.format(
             parsed_host.netloc))

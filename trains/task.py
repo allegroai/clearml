@@ -618,16 +618,22 @@ class Task(_Task):
         return self.get_models()
 
     @classmethod
-    def clone(cls, source_task=None, name=None, comment=None, parent=None, project=None):
-        # type: (Optional[Task], Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]) -> Task
+    def clone(
+            cls,
+            source_task=None,  # type: Optional[Union[Task, str]]
+            name=None,  # type: Optional[str]
+            comment=None,  # type: Optional[str]
+            parent=None,  # type: Optional[str]
+            project=None,  # type: Optional[str]
+    ):
+        # type: (...) -> Task
         """
         Create a duplicate (a clone) of a Task (experiment). The status of the cloned Task is ``Draft``
         and modifiable.
 
         Use this method to manage experiments and for autoML.
 
-        :param source_task: The Task to clone. Specify a Task object or a Task Id. (Optional)
-        :type source_task: Task/str
+        :param str source_task: The Task to clone. Specify a Task object or a Task Id. (Optional)
         :param str name: The name of the new cloned Task. (Optional)
         :param str comment: A comment / description for the new cloned Task. (Optional)
         :param str parent: The Id of the parent Task of the new Task.

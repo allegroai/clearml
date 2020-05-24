@@ -1,8 +1,7 @@
 import sys
 from itertools import product
 from random import Random as BaseRandom
-
-import numpy as np
+from typing import Mapping, Any, Sequence, Optional, Union
 
 
 class RandomSeed(object):
@@ -14,6 +13,7 @@ class RandomSeed(object):
 
     @staticmethod
     def set_random_seed(seed=1337):
+        # type: (int) -> ()
         """
         Set global seed for all hyper parameter strategy random number sampling
 
@@ -24,6 +24,7 @@ class RandomSeed(object):
 
     @staticmethod
     def get_random_seed():
+        # type: () -> int
         """
         Get the global seed for all hyper parameter strategy random number sampling
 
@@ -38,9 +39,16 @@ class Parameter(RandomSeed):
     """
 
     def __init__(self, name):
+        # type: (Optional[str]) -> Parameter
+        """
+        Create a new Parameter for hyper-parameter optimization
+
+        :param str name: give a name to the parameter, this is the parameter name that will be passed to a Task
+        """
         self.name = name
 
     def get_value(self):
+        # type: () -> Mapping[str, Any]
         """
         Return a dict with the Parameter name and a sampled value for the Parameter
 
@@ -49,16 +57,20 @@ class Parameter(RandomSeed):
         pass
 
     def to_list(self):
+        # type: () -> Sequence[Mapping[str, Any]]
         """
         Return a list of all the valid values of the Parameter
-        :return list: list of dicts {name: values}
+
+        :return list: list of dicts {name: value}
         """
         pass
 
     def to_dict(self):
+        # type: () -> Mapping[str, Union[str, Parameter]]
         """
-        Return a dict representation of the parameter object
-        :return:  dict
+        Return a dict representation of the parameter object. Used for serialization of the Parameter object.
+
+        :return dict:  dict representation of the object (serialization)
         """
         serialize = {'__class__': str(self.__class__).split('.')[-1][:-2]}
         serialize.update(dict(((k, v.to_dict() if hasattr(v, 'to_dict') else v) for k, v in self.__dict__.items())))
@@ -66,9 +78,11 @@ class Parameter(RandomSeed):
 
     @classmethod
     def from_dict(cls, a_dict):
+        # type: (Mapping[str, str]) -> Parameter
         """
-        Construct parameter object from a dict representation
-        :return:  Parameter
+        Construct parameter object from a dict representation (deserialize from dict)
+
+        :return Parameter:  Parameter object
         """
         a_dict = a_dict.copy()
         a_cls = a_dict.pop('__class__', None)
@@ -89,7 +103,15 @@ class UniformParameterRange(Parameter):
     Uniform randomly sampled Hyper-Parameter object
     """
 
-    def __init__(self, name, min_value, max_value, step_size=None, include_max_value=True):
+    def __init__(
+            self,
+            name,  # type: str
+            min_value,  # type: float
+            max_value,  # type: float
+            step_size=None,  # type: Optional[float]
+            include_max_value=True  # type: bool
+    ):
+        # type: (...) -> UniformParameterRange
         """
         Create a parameter to be sampled by the SearchStrategy
 
@@ -106,6 +128,7 @@ class UniformParameterRange(Parameter):
         self.include_max = include_max_value
 
     def get_value(self):
+        # type: () -> Mapping[str, Any]
         """
         Return uniformly sampled value based on object sampling definitions
 
@@ -117,14 +140,15 @@ class UniformParameterRange(Parameter):
         return {self.name: self.min_value + (self._random.randrange(start=0, stop=round(steps)) * self.step_size)}
 
     def to_list(self):
+        # type: () -> Sequence[Mapping[str, float]]
         """
         Return a list of all the valid values of the Parameter
         if self.step_size is not defined, return 100 points between minmax values
         :return list: list of dicts {name: float}
         """
-        values = np.arange(start=self.min_value, stop=self.max_value,
-                           step=self.step_size or (self.max_value - self.min_value) / 100.,
-                           dtype=type(self.min_value)).tolist()
+        step_size = self.step_size or (self.max_value - self.min_value) / 100.
+        steps = (self.max_value - self.min_value) / self.step_size
+        values = [v*step_size for v in range(0, int(steps))]
         if self.include_max and (not values or values[-1] < self.max_value):
             values.append(self.max_value)
         return [{self.name: v} for v in values]
@@ -152,6 +176,7 @@ class UniformIntegerParameterRange(Parameter):
         self.include_max = include_max_value
 
     def get_value(self):
+        # type: () -> Mapping[str, Any]
         """
         Return uniformly sampled value based on object sampling definitions
 
@@ -162,10 +187,12 @@ class UniformIntegerParameterRange(Parameter):
             stop=self.max_value + (0 if not self.include_max else self.step_size))}
 
     def to_list(self):
+        # type: () -> Sequence[Mapping[str, int]]
         """
         Return a list of all the valid values of the Parameter
         if self.step_size is not defined, return 100 points between minmax values
-        :return list: list of dicts {name: float}
+
+        :return list: list of dicts {name: int}
         """
         values = list(range(self.min_value, self.max_value, self.step_size))
         if self.include_max and (not values or values[-1] < self.max_value):
@@ -189,6 +216,7 @@ class DiscreteParameterRange(Parameter):
         self.values = values
 
     def get_value(self):
+        # type: () -> Mapping[str, Any]
         """
         Return uniformly sampled value from the valid list of values
 
@@ -197,8 +225,10 @@ class DiscreteParameterRange(Parameter):
         return {self.name: self._random.choice(self.values)}
 
     def to_list(self):
+        # type: () -> Sequence[Mapping[str, Any]]
         """
         Return a list of all the valid values of the Parameter
+
         :return list: list of dicts {name: value}
         """
         return [{self.name: v} for v in self.values]
@@ -210,6 +240,7 @@ class ParameterSet(Parameter):
     """
 
     def __init__(self, parameter_combinations=()):
+        # type: (Sequence[Mapping[str, Union[float, int, str, Parameter]]]) -> ParameterSet
         """
         Uniformly sample values form a list of discrete options (combinations) of parameters
 
@@ -225,6 +256,7 @@ class ParameterSet(Parameter):
         self.values = parameter_combinations
 
     def get_value(self):
+        # type: () -> Mapping[str, Any]
         """
         Return uniformly sampled value from the valid list of values
 
@@ -233,8 +265,10 @@ class ParameterSet(Parameter):
         return self._get_value(self._random.choice(self.values))
 
     def to_list(self):
+        # type: () -> Sequence[Mapping[str, Any]]
         """
         Return a list of all the valid values of the Parameter
+
         :return list: list of dicts {name: value}
         """
         combinations = []
@@ -253,6 +287,7 @@ class ParameterSet(Parameter):
 
     @staticmethod
     def _get_value(combination):
+        # type: (dict) -> dict
         value_dict = {}
         for k, v in combination.items():
             if isinstance(v, Parameter):

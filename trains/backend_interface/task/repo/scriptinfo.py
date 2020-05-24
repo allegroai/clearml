@@ -24,7 +24,7 @@ class ScriptInfoError(Exception):
 
 
 class ScriptRequirements(object):
-    _max_requirements_size = 512*1024
+    _max_requirements_size = 512 * 1024
 
     def __init__(self, root_folder):
         self._root_folder = root_folder
@@ -365,7 +365,7 @@ class ScriptInfo(object):
 
     @classmethod
     def _get_jupyter_notebook_filename(cls):
-        if not (sys.argv[0].endswith(os.path.sep+'ipykernel_launcher.py') or
+        if not (sys.argv[0].endswith(os.path.sep + 'ipykernel_launcher.py') or
                 sys.argv[0].endswith(os.path.join(os.path.sep, 'ipykernel', '__main__.py'))) \
                 or len(sys.argv) < 3 or not sys.argv[2].endswith('.json'):
             return None

@@ -119,7 +119,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._curr_label_stats = {}
         self._raise_on_validation_errors = raise_on_validation_errors
         self._parameters_allowed_types = (
-                six.string_types + six.integer_types + (six.text_type, float, list, tuple, dict, type(None))
+            six.string_types + six.integer_types + (six.text_type, float, list, tuple, dict, type(None))
         )
         self._app_server = None
         self._files_server = None
@@ -683,7 +683,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     "Only builtin types ({}) are allowed for values (got {})".format(
                         ', '.join(t.__name__ for t in self._parameters_allowed_types),
                         ', '.join('%s=>%s' % p for p in not_allowed.items())),
-                    )
+                )
 
             # force cast all variables to strings (so that we can later edit them in UI)
             parameters = {k: str(v) if v is not None else "" for k, v in parameters.items()}
@@ -1300,5 +1300,5 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def __is_subprocess(cls):
         # notice this class function is called from Task.ExitHooks, do not rename/move it.
         is_subprocess = PROC_MASTER_ID_ENV_VAR.get() and \
-                        PROC_MASTER_ID_ENV_VAR.get().split(':')[0] != str(os.getpid())
+            PROC_MASTER_ID_ENV_VAR.get().split(':')[0] != str(os.getpid())
         return is_subprocess

@@ -1,6 +1,9 @@
 from time import sleep, time
-from ..parameters import DiscreteParameterRange, UniformParameterRange, RandomSeed, UniformIntegerParameterRange
+from typing import Any, Optional, Sequence
+
 from ..optimization import Objective, SearchStrategy
+from ..parameters import (
+    DiscreteParameterRange, UniformParameterRange, RandomSeed, UniformIntegerParameterRange, Parameter, )
 from ...task import Task
 
 try:
@@ -9,16 +12,27 @@ try:
     import hpbandster.core.nameserver as hpns
     import ConfigSpace as CS
     import ConfigSpace.hyperparameters as CSH
+
     Task.add_requirements('hpbandster')
 except ImportError:
     raise ValueError("OptimizerBOHB requires 'hpbandster' package, it was not found\n"
                      "install with: pip install hpbandster")
 
 
-class TrainsBandsterWorker(Worker):
-    def __init__(self, *args, optimizer, base_task_id, queue_name, objective,
-                 sleep_interval=0, budget_iteration_scale=1., **kwargs):
-        super(TrainsBandsterWorker, self).__init__(*args, **kwargs)
+class _TrainsBandsterWorker(Worker):
+    def __init__(
+            self,
+            *args,  # type: Any
+            optimizer,  # type: OptimizerBOHB
+            base_task_id,  # type: str
+            queue_name,  # type: str
+            objective,  # type: Objective
+            sleep_interval=0,  # type: float
+            budget_iteration_scale=1.,  # type: float
+            **kwargs  # type: Any
+    ):
+        # type: (...) -> _TrainsBandsterWorker
+        super(_TrainsBandsterWorker, self).__init__(*args, **kwargs)
         self.optimizer = optimizer
         self.base_task_id = base_task_id
         self.queue_name = queue_name
@@ -28,6 +42,7 @@ class TrainsBandsterWorker(Worker):
         self._current_job = None
 
     def compute(self, config, budget, **kwargs):
+        # type: (dict, float, Any) -> dict
         """
         Simple example for a compute function
         The loss is just a the config + some noise (that decreases with the budget)
@@ -43,10 +58,12 @@ class TrainsBandsterWorker(Worker):
                 'info' (dict)
         """
         self._current_job = self.optimizer.helper_create_job(self.base_task_id, parameter_override=config)
+        # noinspection PyProtectedMember
         self.optimizer._current_jobs.append(self._current_job)
         self._current_job.launch(self.queue_name)
         iteration_value = None
         while not self._current_job.is_stopped():
+            # noinspection PyProtectedMember
             iteration_value = self.optimizer._objective_metric.get_current_raw_objective(self._current_job)
             if iteration_value and iteration_value[0] >= self.budget_iteration_scale * budget:
                 self._current_job.abort()
@@ -56,33 +73,65 @@ class TrainsBandsterWorker(Worker):
         result = {
             # this is the a mandatory field to run hyperband
             # remember: HpBandSter always minimizes!
-            'loss': float(self.objective.get_normalized_objective(self._current_job)*-1.),
+            'loss': float(self.objective.get_normalized_objective(self._current_job) * -1.),
             # can be used for any user-defined information - also mandatory
             'info': self._current_job.task_id()
         }
         print('TrainsBandsterWorker result {}, iteration {}'.format(result, iteration_value))
+        # noinspection PyProtectedMember
         self.optimizer._current_jobs.remove(self._current_job)
         return result
 
 
 class OptimizerBOHB(SearchStrategy, RandomSeed):
-    def __init__(self, base_task_id, hyper_parameters, objective_metric,
-                 execution_queue, num_concurrent_workers, min_iteration_per_job, max_iteration_per_job, total_max_jobs,
-                 pool_period_min=2.0, max_job_execution_minutes=None, **bohb_kargs):
+    def __init__(
+            self,
+            base_task_id,  # type: str
+            hyper_parameters,  # type: Sequence[Parameter]
+            objective_metric,  # type: Objective
+            execution_queue,  # type: str
+            num_concurrent_workers,  # type: int
+            total_max_jobs,  # type: Optional[int]
+            min_iteration_per_job,  # type: Optional[int]
+            max_iteration_per_job,  # type: Optional[int]
+            pool_period_min=2.,  # type: float
+            max_job_execution_minutes=None,  # type: Optional[float]
+            **bohb_kwargs,  # type: Any
+    ):
+        # type: (...) -> OptimizerBOHB
         """
-        Initialize a search strategy optimizer
+        Initialize a BOHB search strategy optimizer
+        BOHB performs robust and efficient hyperparameter optimization at scale by combining
+        the speed of Hyperband searches with the guidance and guarantees of convergence of Bayesian
+        Optimization. Instead of sampling new configurations at random,
+        BOHB uses kernel density estimators to select promising candidates.
+
+        For reference: ::
+
+            @InProceedings{falkner-icml-18,
+              title =        {{BOHB}: Robust and Efficient Hyperparameter Optimization at Scale},
+              author =       {Falkner, Stefan and Klein, Aaron and Hutter, Frank},
+              booktitle =    {Proceedings of the 35th International Conference on Machine Learning},
+              pages =        {1436--1445},
+              year =         {2018},
+            }
 
         :param str base_task_id: Task ID (str)
         :param list hyper_parameters: list of Parameter objects to optimize over
         :param Objective objective_metric: Objective metric to maximize / minimize
         :param str execution_queue: execution queue to use for launching Tasks (experiments).
-        :param int num_concurrent_workers: Limit number of concurrent running machines
-        :param float min_iteration_per_job: minimum number of iterations for a job to run.
+        :param int num_concurrent_workers: Limit number of concurrent running Tasks (machines)
+        :param int min_iteration_per_job: minimum number of iterations for a job to run.
+            'iterations' are the reported iterations for the specified objective,
+            not the maximum reported iteration of the Task.
         :param int max_iteration_per_job: number of iteration per job
-        :param int total_max_jobs: total maximum job for the optimization process. Default None, unlimited
+            'iterations' are the reported iterations for the specified objective,
+            not the maximum reported iteration of the Task.
+        :param int total_max_jobs: total maximum job for the optimization process.
+            Must be provided in order to calculate the total budget for the optimization process.
         :param float pool_period_min: time in minutes between two consecutive pools
         :param float max_job_execution_minutes: maximum time per single job in minutes, if exceeded job is aborted
-        :param ** bohb_kargs: arguments passed directly yo the BOHB object
+        :param bohb_kwargs: arguments passed directly yo the BOHB object
         """
         super(OptimizerBOHB, self).__init__(
             base_task_id=base_task_id, hyper_parameters=hyper_parameters, objective_metric=objective_metric,
@@ -91,16 +140,25 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
             total_max_jobs=total_max_jobs)
         self._max_iteration_per_job = max_iteration_per_job
         self._min_iteration_per_job = min_iteration_per_job
-        self._bohb_kwargs = bohb_kargs or {}
+        self._bohb_kwargs = bohb_kwargs or {}
         self._param_iterator = None
         self._namespace = None
         self._bohb = None
         self._res = None
 
-    def set_optimization_args(self, eta=3, min_budget=None, max_budget=None,
-                              min_points_in_model=None, top_n_percent=15,
-                              num_samples=None, random_fraction=1/3., bandwidth_factor=3,
-                              min_bandwidth=1e-3):
+    def set_optimization_args(
+            self,
+            eta=3,  # type: float
+            min_budget=None,  # type: Optional[float]
+            max_budget=None,  # type: Optional[float]
+            min_points_in_model=None,  # type: Optional[int]
+            top_n_percent=15,  # type: Optional[int]
+            num_samples=None,  # type: Optional[int]
+            random_fraction=1 / 3.,  # type: Optional[float]
+            bandwidth_factor=3,  # type: Optional[float]
+            min_bandwidth=1e-3,  # type: Optional[float]
+    ):
+        # type: (...) -> ()
         """
         Defaults copied from BOHB constructor, see details in BOHB.__init__
 
@@ -134,7 +192,7 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
             max_budget : float (1)
                 The largest budget to consider. Needs to be larger than min_budget!
                 The budgets will be geometrically distributed
-                            :math:`a^2 + b^2 = c^2 \sim \eta^k` for :math:`k\in [0, 1, ... , num\_subsets - 1]`.
+                            :math:`a^2 + b^2 = c^2 /sim /eta^k` for :math:`k/in [0, 1, ... , num/_subsets - 1]`.
             min_points_in_model: int (None)
                 number of observations to start building a KDE. Default 'None' means
                 dim+1, the bare minimum.
@@ -166,9 +224,16 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         self._bohb_kwargs['min_bandwidth'] = min_bandwidth
 
     def start(self):
-        # Step 1: Start a nameserver
+        # type: () -> ()
+        """
+        Start the Optimizer controller function loop()
+        If the calling process is stopped, the controller will stop as well.
+
+        Notice: This function returns only after optimization is completed! or stop() was called.
+        """
+        # Step 1: Start a NameServer
         fake_run_id = 'OptimizerBOHB_{}'.format(time())
-        self._namespace = hpns.NameServer(run_id=fake_run_id, host='127.0.0.1', port=None)
+        self._namespace = hpns.NameServer(run_id=fake_run_id, host='127.0.0.1', port=0)
         self._namespace.start()
 
         # we have to scale the budget to the iterations per job, otherwise numbers might be too high
@@ -177,21 +242,22 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         # Step 2: Start the workers
         workers = []
         for i in range(self._num_concurrent_workers):
-            w = TrainsBandsterWorker(optimizer=self,
-                                     sleep_interval=int(self.pool_period_minutes*60),
-                                     budget_iteration_scale=budget_iteration_scale,
-                                     base_task_id=self._base_task_id,
-                                     objective=self._objective_metric,
-                                     queue_name=self._execution_queue,
-                                     nameserver='127.0.0.1', run_id=fake_run_id, id=i)
+            w = _TrainsBandsterWorker(
+                optimizer=self,
+                sleep_interval=int(self.pool_period_minutes * 60),
+                budget_iteration_scale=budget_iteration_scale,
+                base_task_id=self._base_task_id,
+                objective=self._objective_metric,
+                queue_name=self._execution_queue,
+                nameserver='127.0.0.1', run_id=fake_run_id, id=i)
             w.run(background=True)
             workers.append(w)
 
         # Step 3: Run an optimizer
-        self._bohb = BOHB(configspace=self.convert_hyper_parameters_to_cs(),
+        self._bohb = BOHB(configspace=self._convert_hyper_parameters_to_cs(),
                           run_id=fake_run_id,
                           num_samples=self.total_max_jobs,
-                          min_budget=float(self._min_iteration_per_job)/float(self._max_iteration_per_job),
+                          min_budget=float(self._min_iteration_per_job) / float(self._max_iteration_per_job),
                           **self._bohb_kwargs)
         self._res = self._bohb.run(n_iterations=self.total_max_jobs, min_n_workers=self._num_concurrent_workers)
 
@@ -199,6 +265,11 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         self.stop()
 
     def stop(self):
+        # type: () -> ()
+        """
+        Stop the current running optimization loop,
+        Called from a different thread than the start()
+        """
         # After the optimizer run, we must shutdown the master and the nameserver.
         self._bohb.shutdown(shutdown_workers=True)
         self._namespace.shutdown()
@@ -216,13 +287,14 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         print('A total of {} unique configurations where sampled.'.format(len(id2config.keys())))
         print('A total of {} runs where executed.'.format(len(self._res.get_all_runs())))
         print('Total budget corresponds to {:.1f} full function evaluations.'.format(
-                    sum([r.budget for r in all_runs]) / self._bohb_kwargs.get('max_budget', 1.0)))
+            sum([r.budget for r in all_runs]) / self._bohb_kwargs.get('max_budget', 1.0)))
         print('Total budget corresponds to {:.1f} full function evaluations.'.format(
-                    sum([r.budget for r in all_runs]) / self._bohb_kwargs.get('max_budget', 1.0)))
+            sum([r.budget for r in all_runs]) / self._bohb_kwargs.get('max_budget', 1.0)))
         print('The run took {:.1f} seconds to complete.'.format(
-                    all_runs[-1].time_stamps['finished'] - all_runs[0].time_stamps['started']))
+            all_runs[-1].time_stamps['finished'] - all_runs[0].time_stamps['started']))
 
-    def convert_hyper_parameters_to_cs(self):
+    def _convert_hyper_parameters_to_cs(self):
+        # type: () -> CS.ConfigurationSpace
         cs = CS.ConfigurationSpace(seed=self._seed)
         for p in self._hyper_parameters:
             if isinstance(p, UniformParameterRange):

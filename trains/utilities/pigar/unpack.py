@@ -92,7 +92,7 @@ class Archive(object):
     def is_safe(self, filename):
         return not (filename.startswith(("/", "\\")) or
                     (len(filename) > 1 and filename[1] == ":" and
-                    filename[0] in string.ascii_letter) or
+                     filename[0] in string.ascii_letter) or
                     re.search(r"[.][.][/\\]", filename))
 
     def __enter__(self):

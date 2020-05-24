@@ -20,7 +20,7 @@ except NameError:
 class HOCONConverter(object):
     _number_re = r'[+-]?(\d*\.\d+|\d+(\.\d+)?)([eE][+\-]?\d+)?(?=$|[ \t]*([\$\}\],#\n\r]|//))'
     _number_re_matcher = re.compile(_number_re)
-    
+
     @classmethod
     def to_json(cls, config, compact=False, indent=2, level=0):
         """Convert HOCON input into a JSON output
@@ -150,7 +150,7 @@ class HOCONConverter(object):
                     new_line = cls.to_hocon(item, compact, indent, level + 1)
                     lines += new_line
                     if '\n' in new_line or len(lines) - base_len > 80:
-                        if i < len(config)-1:
+                        if i < len(config) - 1:
                             lines += ',\n{indent}'.format(indent=''.rjust(level * indent, ' '))
                         base_len = len(lines)
                         skip_comma = True

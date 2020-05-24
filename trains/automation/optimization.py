@@ -6,10 +6,11 @@ from itertools import product
 from logging import getLogger
 from threading import Thread, Event
 from time import time
+from typing import Union, Any, Sequence, Optional, Mapping, Callable
 
 from .job import TrainsJob
-from ..task import Task
 from .parameters import Parameter
+from ..task import Task
 
 logger = getLogger('trains.automation.optimization')
 
@@ -32,6 +33,7 @@ class Objective(object):
     """
 
     def __init__(self, title, series, order='max', extremum=False):
+        # type: (str, str, Union['max', 'min'], bool) -> Objective
         """
         Construct objective object that will return the scalar value for a specific task ID
 
@@ -45,12 +47,12 @@ class Objective(object):
         self.series = series
         assert order in ('min', 'max',)
         # normalize value so we always look for the highest objective value
-        self.sign = -1 if (isinstance(order, str) and order.lower().strip() == 'min') or \
-                          (not isinstance(order, str) and order < 0) else +1
+        self.sign = -1 if (isinstance(order, str) and order.lower().strip() == 'min') else +1
         self._metric = None
         self.extremum = extremum
 
     def get_objective(self, task_id):
+        # type: (Union[str, Task, TrainsJob]) -> Optional[float]
         """
         Return a specific task scalar value based on the objective settings (title/series)
 
@@ -58,7 +60,7 @@ class Objective(object):
         :return float: scalar value
         """
         # create self._metric
-        self.get_last_metrics_encode_field()
+        self._get_last_metrics_encode_field()
 
         if isinstance(task_id, Task):
             task_id = task_id.id
@@ -85,6 +87,7 @@ class Objective(object):
             return None
 
     def get_current_raw_objective(self, task):
+        # type: (Union[TrainsJob, Task]) -> (int, float)
         """
         Return the current raw value (without sign normalization) of the objective
 
@@ -103,12 +106,14 @@ class Objective(object):
         # todo: replace with more efficient code
         scalars = task.get_reported_scalars()
 
+        # noinspection PyBroadException
         try:
             return scalars[self.title][self.series]['x'][-1], scalars[self.title][self.series]['y'][-1]
         except Exception:
             return None
 
     def get_objective_sign(self):
+        # type: () -> float
         """
         Return the sign of the objective (i.e. +1 if maximizing, and -1 if minimizing)
 
@@ -117,6 +122,7 @@ class Objective(object):
         return self.sign
 
     def get_objective_metric(self):
+        # type: () -> (str, str)
         """
         Return the metric title, series pair of the objective
 
@@ -125,6 +131,7 @@ class Objective(object):
         return self.title, self.series
 
     def get_normalized_objective(self, task_id):
+        # type: (Union[str, Task, TrainsJob]) -> Optional[float]
         """
         Return a normalized task scalar value based on the objective settings (title/series)
         I.e. objective is always to maximize the returned value
@@ -138,7 +145,13 @@ class Objective(object):
         # normalize value so we always look for the highest objective value
         return self.sign * objective
 
-    def get_last_metrics_encode_field(self):
+    def _get_last_metrics_encode_field(self):
+        # type: () -> str
+        """
+        Return encoded representation of title/series metric
+
+        :return str: string representing the objective title/series
+        """
         if not self._metric:
             title = hashlib.md5(str(self.title).encode('utf-8')).hexdigest()
             series = hashlib.md5(str(self.series).encode('utf-8')).hexdigest()
@@ -153,11 +166,21 @@ class SearchStrategy(object):
     Base Search strategy class, inherit to implement your custom strategy
     """
     _tag = 'optimization'
-    _job_class = TrainsJob
+    _job_class = TrainsJob  # type: TrainsJob
 
-    def __init__(self, base_task_id, hyper_parameters, objective_metric,
-                 execution_queue, num_concurrent_workers, pool_period_min=2.,
-                 max_job_execution_minutes=None, total_max_jobs=None, **_):
+    def __init__(
+            self,
+            base_task_id,  # type: str
+            hyper_parameters,  # type: Sequence[Parameter]
+            objective_metric,  # type: Objective
+            execution_queue,  # type: str
+            num_concurrent_workers,  # type: int
+            pool_period_min=2.,  # type: float
+            max_job_execution_minutes=None,  # type: Optional[float]
+            total_max_jobs=None,  # type: Optional[int]
+            **_  # type: Any
+    ):
+        # type: (...) -> SearchStrategy
         """
         Initialize a search strategy optimizer
 
@@ -189,6 +212,7 @@ class SearchStrategy(object):
         self._validate_base_task()
 
     def start(self):
+        # type: () -> ()
         """
         Start the Optimizer controller function loop()
         If the calling process is stopped, the controller will stop as well.
@@ -205,6 +229,7 @@ class SearchStrategy(object):
             counter += 1
 
     def stop(self):
+        # type: () -> ()
         """
         Stop the current running optimization loop,
         Called from a different thread than the start()
@@ -212,6 +237,7 @@ class SearchStrategy(object):
         self._stop_event.set()
 
     def process_step(self):
+        # type: () -> bool
         """
         Abstract helper function, not a must to implement, default use in start default implementation
         Main optimization loop, called from the daemon thread created by start()
@@ -248,6 +274,7 @@ class SearchStrategy(object):
         return bool(self._current_jobs)
 
     def create_job(self):
+        # type: () -> Optional[TrainsJob]
         """
         Abstract helper function, not a must to implement, default use in process_step default implementation
         Create a new job if needed. return the newly created job.
@@ -258,17 +285,19 @@ class SearchStrategy(object):
         return None
 
     def monitor_job(self, job):
+        # type: (TrainsJob) -> bool
         """
         Abstract helper function, not a must to implement, default use in process_step default implementation
         Check if the job needs to be aborted or already completed
         if return False, the job was aborted / completed, and should be taken off the current job list
 
         :param TrainsJob job: a TrainsJob object to monitor
-        :return: boolean, If False, job is no longer relevant
+        :return bool: If False, job is no longer relevant
         """
         return not job.is_stopped()
 
     def get_running_jobs(self):
+        # type: () -> Sequence[TrainsJob]
         """
         Return the current running TrainsJobs
 
@@ -277,28 +306,32 @@ class SearchStrategy(object):
         return self._current_jobs
 
     def get_created_jobs_ids(self):
+        # type: () -> Mapping[str, dict]
         """
         Return a task ids dict created ny this optimizer until now, including completed and running jobs.
         The values of the returned dict are the parameters used in the specific job
 
-        :return dict(str): dict of task ids (str) as keys, and their parameters dict as value
+        :return dict: dict of task ids (str) as keys, and their parameters dict as value
         """
         return self._created_jobs_ids
 
     def get_top_experiments(self, top_k):
+        # type: (int) -> Sequence[Task]
         """
         Return a list of Tasks of the top performing experiments, based on the controller Objective object
 
         :param int top_k: Number of Tasks (experiments) to return
         :return list: List of Task objects, ordered by performance, where index 0 is the best performing Task.
         """
-        # metric_filter =
-        top_tasks = self._get_child_tasks(parent_task_id=self._job_parent_id or self._base_task_id,
-                                          order_by=self._objective_metric.get_last_metrics_encode_field(),
-                                          additional_filters={'page_size': int(top_k), 'page': 0})
+        # noinspection PyProtectedMember
+        top_tasks = self._get_child_tasks(
+            parent_task_id=self._job_parent_id or self._base_task_id,
+            order_by=self._objective_metric._get_last_metrics_encode_field(),
+            additional_filters={'page_size': int(top_k), 'page': 0})
         return top_tasks
 
     def get_objective_metric(self):
+        # type: () -> (str, str)
         """
         Return the metric title, series pair of the objective
 
@@ -306,10 +339,19 @@ class SearchStrategy(object):
         """
         return self._objective_metric.get_objective_metric()
 
-    def helper_create_job(self, base_task_id, parameter_override=None,
-                          task_overrides=None, tags=None, parent=None, **kwargs):
+    def helper_create_job(
+            self,
+            base_task_id,  # type: str
+            parameter_override=None,  # type: Optional[Mapping[str, str]]
+            task_overrides=None,  # type: Optional[Mapping[str, str]]
+            tags=None,  # type: Optional[Sequence[str]]
+            parent=None,  # type: Optional[str]
+            **kwargs  # type: Any
+    ):
+        # type: (...) -> TrainsJob
         """
         Create a Job using the specified arguments, TrainsJob for details
+
         :return TrainsJob: Returns a newly created Job instance
         """
         if parameter_override:
@@ -334,6 +376,7 @@ class SearchStrategy(object):
         return new_job
 
     def set_job_class(self, job_class):
+        # type: (TrainsJob) -> ()
         """
         Set the class to use for the helper_create_job function
 
@@ -342,6 +385,7 @@ class SearchStrategy(object):
         self._job_class = job_class
 
     def set_job_default_parent(self, job_parent_task_id):
+        # type: (str) -> ()
         """
         Set the default parent for all Jobs created by the helper_create_job method
         :param str job_parent_task_id: Parent task id
@@ -349,6 +393,7 @@ class SearchStrategy(object):
         self._job_parent_id = job_parent_task_id
 
     def set_job_naming_scheme(self, naming_function):
+        # type: (Optional[Callable[[str, dict], str]]) -> ()
         """
         Set the function used to name a newly created job
 
@@ -357,6 +402,7 @@ class SearchStrategy(object):
         self._naming_function = naming_function
 
     def _validate_base_task(self):
+        # type: () -> ()
         """
         Check the base task exists and contains the requested objective metric and hyper parameters
         """
@@ -378,6 +424,7 @@ class SearchStrategy(object):
                 self._objective_metric.get_objective_metric(), self._base_task_id))
 
     def _get_task_project(self, parent_task_id):
+        # type: (str) -> (Optional[str])
         if not parent_task_id:
             return
         if parent_task_id not in self._job_project:
@@ -387,7 +434,14 @@ class SearchStrategy(object):
         return self._job_project.get(parent_task_id)
 
     @classmethod
-    def _get_child_tasks(cls, parent_task_id, status=None, order_by=None, additional_filters=None):
+    def _get_child_tasks(
+            cls,
+            parent_task_id,  # type: str
+            status=None,  # type: Optional[Task.TaskStatusEnum]
+            order_by=None,  # type: Optional[str]
+            additional_filters=None  # type: Optional[dict]
+    ):
+        # type: (...) -> (Sequence[Task])
         """
         Helper function, return a list of tasks tagged automl with specific status ordered by sort_field
 
@@ -401,7 +455,7 @@ class SearchStrategy(object):
                 "execution.parameters.name"
                 "updated"
         :param dict additional_filters: Additional task filters
-        :return List(Task): List of Task objects
+        :return list(Task): List of Task objects
         """
         task_filter = {'parent': parent_task_id,
                        # 'tags': [cls._tag],
@@ -432,8 +486,19 @@ class GridSearch(SearchStrategy):
     Full grid sampling of every hyper-parameter combination
     """
 
-    def __init__(self, base_task_id, hyper_parameters, objective_metric,
-                 execution_queue, num_concurrent_workers, pool_period_min=2.0, max_job_execution_minutes=None, **_):
+    def __init__(
+            self,
+            base_task_id,  # type: str
+            hyper_parameters,  # type: Sequence[Parameter]
+            objective_metric,  # type: Objective
+            execution_queue,  # type: str
+            num_concurrent_workers,  # type: int
+            pool_period_min=2.,  # type: float
+            max_job_execution_minutes=None,  # type: Optional[float]
+            total_max_jobs=None,  # type: Optional[int]
+            **_  # type: Any
+    ):
+        # type: (...) -> GridSearch
         """
         Initialize a grid search optimizer
 
@@ -444,14 +509,17 @@ class GridSearch(SearchStrategy):
         :param int num_concurrent_workers: Limit number of concurrent running machines
         :param float pool_period_min: time in minutes between two consecutive pools
         :param float max_job_execution_minutes: maximum time per single job in minutes, if exceeded job is aborted
+        :param int total_max_jobs: total maximum job for the optimization process. Default None, unlimited
         """
         super(GridSearch, self).__init__(
             base_task_id=base_task_id, hyper_parameters=hyper_parameters, objective_metric=objective_metric,
             execution_queue=execution_queue, num_concurrent_workers=num_concurrent_workers,
-            pool_period_min=pool_period_min, max_job_execution_minutes=max_job_execution_minutes)
+            pool_period_min=pool_period_min, max_job_execution_minutes=max_job_execution_minutes,
+            total_max_jobs=total_max_jobs, **_)
         self._param_iterator = None
 
     def create_job(self):
+        # type: () -> Optional[TrainsJob]
         """
         Create a new job if needed. return the newly created job.
         If no job needs to be created, return None
@@ -466,6 +534,7 @@ class GridSearch(SearchStrategy):
         return self.helper_create_job(base_task_id=self._base_task_id, parameter_override=parameters)
 
     def monitor_job(self, job):
+        # type: (TrainsJob) -> bool
         """
         Check if the job needs to be aborted or already completed
         if return False, the job was aborted / completed, and should be taken off the current job list
@@ -480,6 +549,7 @@ class GridSearch(SearchStrategy):
         return not job.is_stopped()
 
     def _next_configuration(self):
+        # type: () -> Mapping[str, str]
         def param_iterator_fn():
             hyper_params_values = [p.to_list() for p in self._hyper_parameters]
             for state in product(*hyper_params_values):
@@ -499,9 +569,19 @@ class RandomSearch(SearchStrategy):
     # Number of already chosen random samples before assuming we covered the entire hyper-parameter space
     _hp_space_cover_samples = 42
 
-    def __init__(self, base_task_id, hyper_parameters, objective_metric,
-                 execution_queue, num_concurrent_workers, pool_period_min=2.0,
-                 max_job_execution_minutes=None, total_max_jobs=None, **_):
+    def __init__(
+            self,
+            base_task_id,  # type: str
+            hyper_parameters,  # type: Sequence[Parameter]
+            objective_metric,  # type: Objective
+            execution_queue,  # type: str
+            num_concurrent_workers,  # type: int
+            pool_period_min=2.,  # type: float
+            max_job_execution_minutes=None,  # type: Optional[float]
+            total_max_jobs=None,  # type: Optional[int]
+            **_  # type: Any
+    ):
+        # type: (...) -> RandomSearch
         """
         Initialize a random search optimizer
 
@@ -518,10 +598,11 @@ class RandomSearch(SearchStrategy):
             base_task_id=base_task_id, hyper_parameters=hyper_parameters, objective_metric=objective_metric,
             execution_queue=execution_queue, num_concurrent_workers=num_concurrent_workers,
             pool_period_min=pool_period_min,
-            max_job_execution_minutes=max_job_execution_minutes, total_max_jobs=total_max_jobs)
+            max_job_execution_minutes=max_job_execution_minutes, total_max_jobs=total_max_jobs, **_)
         self._hyper_parameters_collection = set()
 
     def create_job(self):
+        # type: () -> Optional[TrainsJob]
         """
         Create a new job if needed. return the newly created job.
         If no job needs to be created, return None
@@ -551,6 +632,7 @@ class RandomSearch(SearchStrategy):
         return self.helper_create_job(base_task_id=self._base_task_id, parameter_override=parameters)
 
     def monitor_job(self, job):
+        # type: (TrainsJob) -> bool
         """
         Check if the job needs to be aborted or already completed
         if return False, the job was aborted / completed, and should be taken off the current job list
@@ -572,18 +654,22 @@ class HyperParameterOptimizer(object):
     """
     _tag = 'optimization'
 
-    def __init__(self, base_task_id,
-                 hyper_parameters,
-                 objective_metric_title,
-                 objective_metric_series,
-                 objective_metric_sign='min',
-                 optimizer_class=RandomSearch,
-                 max_number_of_concurrent_tasks=10,
-                 execution_queue='default',
-                 optimization_time_limit=None,
-                 auto_connect_task=True,
-                 always_create_task=False,
-                 **optimizer_kwargs):
+    def __init__(
+            self,
+            base_task_id,  # type: str
+            hyper_parameters,  # type: Sequence[Parameter]
+            objective_metric_title,  # type: str
+            objective_metric_series,  # type: str
+            objective_metric_sign='min',  # type: Union['min', 'max', 'min_global', 'max_global']
+            optimizer_class=RandomSearch,  # type: SearchStrategy
+            max_number_of_concurrent_tasks=10,  # type: int
+            execution_queue='default',  # type: str
+            optimization_time_limit=None,  # type: Optional[float]
+            auto_connect_task=True,  # type: bool
+            always_create_task=False,  # type: bool
+            **optimizer_kwargs  # type: Any
+    ):
+        # type: (...) -> HyperParameterOptimizer
         """
         Create a new hyper-parameter controller. The newly created object will launch and monitor the new experiments.
 
@@ -702,6 +788,7 @@ class HyperParameterOptimizer(object):
         self.set_time_limit(in_minutes=opts['optimization_time_limit'])
 
     def get_num_active_experiments(self):
+        # type: () -> int
         """
         Return the number of current active experiments
 
@@ -712,6 +799,7 @@ class HyperParameterOptimizer(object):
         return len(self.optimizer.get_running_jobs())
 
     def get_active_experiments(self):
+        # type: () -> Sequence[Task]
         """
         Return a list of Tasks of the current active experiments
 
@@ -722,6 +810,7 @@ class HyperParameterOptimizer(object):
         return [j.task for j in self.optimizer.get_running_jobs()]
 
     def start(self, job_complete_callback=None):
+        # type: (Optional[Callable[[str, float, int, dict, str], None]]) -> bool
         """
         Start the HyperParameterOptimizer controller.
         If the calling process is stopped, the controller will stop as well.
@@ -755,6 +844,7 @@ class HyperParameterOptimizer(object):
         return True
 
     def stop(self, timeout=None):
+        # type: (Optional[float]) -> ()
         """
         Stop the HyperParameterOptimizer controller and  optimization thread,
 
@@ -770,7 +860,7 @@ class HyperParameterOptimizer(object):
 
         # wait for optimizer thread
         if timeout is not None:
-            _thread.join(timeout=timeout*60.)
+            _thread.join(timeout=timeout * 60.)
 
         # stop all running tasks:
         for j in self.optimizer.get_running_jobs():
@@ -782,6 +872,7 @@ class HyperParameterOptimizer(object):
         self._thread_reporter.join()
 
     def is_active(self):
+        # type: () -> bool
         """
         Return True if the optimization procedure is still running
         Note, if the daemon thread has not yet started, it will still return True
@@ -791,6 +882,7 @@ class HyperParameterOptimizer(object):
         return self._stop_event is None or self._thread is not None
 
     def is_running(self):
+        # type: () -> bool
         """
         Return True if the optimization controller is running
 
@@ -799,6 +891,7 @@ class HyperParameterOptimizer(object):
         return self._thread is not None
 
     def wait(self, timeout=None):
+        # type: (Optional[float]) -> bool
         """
         Wait for the optimizer to finish.
         It will not stop the optimizer in any case. Call stop() to terminate the optimizer.
@@ -825,6 +918,7 @@ class HyperParameterOptimizer(object):
         return True
 
     def set_time_limit(self, in_minutes=None, specific_time=None):
+        # type: (Optional[float], Optional[datetime]) -> ()
         """
         Set a time limit for the HyperParameterOptimizer controller,
         i.e. if we reached the time limit, stop the optimization process
@@ -835,9 +929,10 @@ class HyperParameterOptimizer(object):
         if specific_time:
             self.optimization_timeout = specific_time.timestamp()
         else:
-            self.optimization_timeout = (in_minutes*60.) + time() if in_minutes else None
+            self.optimization_timeout = (in_minutes * 60.) + time() if in_minutes else None
 
     def get_time_limit(self):
+        # type: () -> datetime
         """
         Return the controller optimization time limit.
 
@@ -846,6 +941,7 @@ class HyperParameterOptimizer(object):
         return datetime.fromtimestamp(self.optimization_timeout)
 
     def elapsed(self):
+        # type: () -> float
         """
         Return minutes elapsed from controller stating time stamp
 
@@ -853,9 +949,10 @@ class HyperParameterOptimizer(object):
         """
         if self.optimization_start_time is None:
             return -1.0
-        return (time() - self.optimization_start_time)/60.
+        return (time() - self.optimization_start_time) / 60.
 
     def reached_time_limit(self):
+        # type: () -> bool
         """
         Return True if we passed the time limit. Function returns immediately, it does not wait for the optimizer.
 
@@ -869,6 +966,7 @@ class HyperParameterOptimizer(object):
         return time() > self.optimization_timeout
 
     def get_top_experiments(self, top_k):
+        # type: (int) -> Sequence[Task]
         """
         Return a list of Tasks of the top performing experiments, based on the controller Objective object
 
@@ -880,9 +978,16 @@ class HyperParameterOptimizer(object):
         return self.optimizer.get_top_experiments(top_k=top_k)
 
     def get_optimizer(self):
+        # type: () -> SearchStrategy
+        """
+        Return the currently used optimizer object
+
+        :return SearchStrategy: Used SearchStrategy object
+        """
         return self.optimizer
 
     def set_default_job_class(self, job_class):
+        # type: (TrainsJob) -> ()
         """
         Set the Job class to use when the optimizer spawns new Jobs
 
@@ -891,6 +996,7 @@ class HyperParameterOptimizer(object):
         self.optimizer.set_job_class(job_class)
 
     def set_report_period(self, report_period_minutes):
+        # type: (float) -> ()
         """
         Set reporting period in minutes, for the accumulated objective report
         This report is sent on the Optimizer Task, and collects objective metric from all running jobs.
@@ -900,6 +1006,7 @@ class HyperParameterOptimizer(object):
         self._report_period_min = float(report_period_minutes)
 
     def _connect_args(self, optimizer_class=None, hyper_param_configuration=None, **kwargs):
+        # type: (SearchStrategy, dict, Any) -> (SearchStrategy, list, dict)
         if not self._task:
             logger.warning('Auto Connect turned on but no Task was found, '
                            'hyper-parameter optimization argument logging disabled')
@@ -937,6 +1044,7 @@ class HyperParameterOptimizer(object):
         return optimizer_class, configuration_dict['parameter_optimization_space'], arguments['opt']
 
     def _daemon(self):
+        # type: () -> ()
         """
         implement the main pooling thread, calling loop every self.pool_period_minutes minutes
         """
@@ -944,6 +1052,7 @@ class HyperParameterOptimizer(object):
         self._thread = None
 
     def _report_daemon(self):
+        # type: () -> ()
         worker_to_series = {}
         title, series = self.objective_metric.get_objective_metric()
         title = '{}/{}'.format(title, series)
@@ -956,8 +1065,8 @@ class HyperParameterOptimizer(object):
             timeout = self.optimization_timeout - time() if self.optimization_timeout else 0.
 
             if timeout >= 0:
-                timeout = min(self._report_period_min*60., timeout if timeout else self._report_period_min*60.)
-                print('Progress report #{} completed, sleeping for {} minutes'.format(counter, timeout/60.))
+                timeout = min(self._report_period_min * 60., timeout if timeout else self._report_period_min * 60.)
+                print('Progress report #{} completed, sleeping for {} minutes'.format(counter, timeout / 60.))
                 if self._stop_event.wait(timeout=timeout):
                     # wait for one last report
                     timeout = -1

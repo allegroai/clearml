@@ -45,7 +45,7 @@ class ResourceMonitor(object):
         else:  # if running_remotely():
             try:
                 active_gpus = os.environ.get('NVIDIA_VISIBLE_DEVICES', '') or \
-                              os.environ.get('CUDA_VISIBLE_DEVICES', '')
+                    os.environ.get('CUDA_VISIBLE_DEVICES', '')
                 if active_gpus:
                     self._active_gpus = [int(g.strip()) for g in active_gpus.split(',')]
             except Exception:
@@ -150,7 +150,7 @@ class ResourceMonitor(object):
                     try:
                         title = self._title_gpu if k.startswith('gpu_') else self._title_machine
                         # 3 points after the dot
-                        value = round(v*1000) / 1000.
+                        value = round(v * 1000) / 1000.
                         self._task.get_logger().report_scalar(title=title, series=k, iteration=iteration, value=value)
                     except Exception:
                         pass
@@ -178,7 +178,7 @@ class ResourceMonitor(object):
         return self._num_readouts
 
     def _get_average_readouts(self):
-        average_readouts = dict((k, v/float(self._num_readouts)) for k, v in self._readouts.items())
+        average_readouts = dict((k, v / float(self._num_readouts)) for k, v in self._readouts.items())
         return average_readouts
 
     def _clear_readouts(self):
@@ -205,7 +205,7 @@ class ResourceMonitor(object):
             self._get_process_used_memory() if self._process_info else virtual_memory.used) / 1024
         stats["memory_free_gb"] = bytes_to_megabytes(virtual_memory.available) / 1024
         disk_use_percentage = psutil.disk_usage(Text(Path.home())).percent
-        stats["disk_free_percent"] = 100.0-disk_use_percentage
+        stats["disk_free_percent"] = 100.0 - disk_use_percentage
         with warnings.catch_warnings():
             if logging.root.level > logging.DEBUG:  # If the logging level is bigger than debug, ignore
                 # psutil.sensors_temperatures warnings

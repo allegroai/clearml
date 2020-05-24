@@ -18,7 +18,7 @@ class PatchArgumentParser:
     def add_subparsers(self, **kwargs):
         if 'dest' not in kwargs:
             if kwargs.get('title'):
-                kwargs['dest'] = '/'+kwargs['title']
+                kwargs['dest'] = '/' + kwargs['title']
             else:
                 PatchArgumentParser._add_subparsers_counter += 1
                 kwargs['dest'] = '/subparser%d' % PatchArgumentParser._add_subparsers_counter
@@ -80,14 +80,16 @@ class PatchArgumentParser:
                 # if we do we need to patch the args, because there is no default subparser
                 if PY2:
                     import itertools
+
                     def _get_sub_parsers_defaults(subparser, prev=[]):
-                        actions_grp = [a._actions for a in subparser.choices.values()] if isinstance(subparser, _SubParsersAction) else \
-                            [subparser._actions]
-                        sub_parsers_defaults = [[subparser]] if hasattr(subparser, 'default') and subparser.default else []
+                        actions_grp = [a._actions for a in subparser.choices.values()] if isinstance(
+                            subparser, _SubParsersAction) else [subparser._actions]
+                        sub_parsers_defaults = [[subparser]] if hasattr(
+                            subparser, 'default') and subparser.default else []
                         for actions in actions_grp:
                             sub_parsers_defaults += [_get_sub_parsers_defaults(a, prev)
-                                                    for a in actions if isinstance(a, _SubParsersAction) and
-                                                    hasattr(a, 'default') and a.default]
+                                                     for a in actions if isinstance(a, _SubParsersAction) and
+                                                     hasattr(a, 'default') and a.default]
 
                         return list(itertools.chain.from_iterable(sub_parsers_defaults))
                     sub_parsers_defaults = _get_sub_parsers_defaults(self)

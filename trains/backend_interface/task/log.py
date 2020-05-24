@@ -16,7 +16,7 @@ buffer_capacity = config.get('log.task_log_buffer_capacity', 100)
 class TaskHandler(BufferingHandler):
     __flush_max_history_seconds = 30.
     __wait_for_flush_timeout = 10.
-    __max_event_size = 1024*1024
+    __max_event_size = 1024 * 1024
     __once = False
 
     @property

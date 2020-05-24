@@ -230,8 +230,8 @@ class EventTrainsWriter(object):
         :return: (str, str) variant and metric
         """
         splitted_tag = tag.split(split_char)
-        if auto_reduce_num_split and num_split_parts > len(splitted_tag)-1:
-            num_split_parts = max(1, len(splitted_tag)-1)
+        if auto_reduce_num_split and num_split_parts > len(splitted_tag) - 1:
+            num_split_parts = max(1, len(splitted_tag) - 1)
         series = join_char.join(splitted_tag[-num_split_parts:])
         title = join_char.join(splitted_tag[:-num_split_parts]) or default_title
 
@@ -356,7 +356,7 @@ class EventTrainsWriter(object):
                     val = val[:, :, [0, 1, 2]]
         except Exception:
             LoggerRoot.get_base_logger(TensorflowBinding).warning('Failed decoding debug image [%d, %d, %d]'
-                                                 % (width, height, color_channels))
+                                                                  % (width, height, color_channels))
             val = None
         return val
 
@@ -525,7 +525,7 @@ class EventTrainsWriter(object):
         stream = BytesIO(audio_data)
         if values:
             file_extension = guess_extension(values['contentType']) or \
-                             '.{}'.format(values['contentType'].split('/')[-1])
+                '.{}'.format(values['contentType'].split('/')[-1])
         else:
             # assume wav as default
             file_extension = '.wav'
@@ -548,7 +548,7 @@ class EventTrainsWriter(object):
         wraparound_counter = EventTrainsWriter._title_series_wraparound_counter[key]
         # we decide on wrap around if the current step is less than 10% of the previous step
         # notice since counter is int and we want to avoid rounding error, we have double check in the if
-        if step < wraparound_counter['last_step'] and step < 0.9*wraparound_counter['last_step']:
+        if step < wraparound_counter['last_step'] and step < 0.9 * wraparound_counter['last_step']:
             # adjust step base line
             wraparound_counter['adjust_counter'] += wraparound_counter['last_step'] + (1 if step <= 0 else step)
 
@@ -582,7 +582,8 @@ class EventTrainsWriter(object):
                 msg_dict.pop('wallTime', None)
                 keys_list = [key for key in msg_dict.keys() if len(key) > 0]
                 keys_list = ', '.join(keys_list)
-                LoggerRoot.get_base_logger(TensorflowBinding).debug('event summary not found, message type unsupported: %s' % keys_list)
+                LoggerRoot.get_base_logger(TensorflowBinding).debug(
+                    'event summary not found, message type unsupported: %s' % keys_list)
                 return
             value_dicts = summary.get('value')
             walltime = walltime or msg_dict.get('step')
@@ -594,7 +595,8 @@ class EventTrainsWriter(object):
                     step = int(event.step)
                 else:
                     step = 0
-                    LoggerRoot.get_base_logger(TensorflowBinding).debug('Received event without step, assuming step = {}'.format(step))
+                    LoggerRoot.get_base_logger(TensorflowBinding).debug(
+                        'Received event without step, assuming step = {}'.format(step))
             else:
                 step = int(step)
             self._max_step = max(self._max_step, step)
@@ -1036,7 +1038,7 @@ class PatchModelCheckPointCallback(object):
             name=defaults_dict.get('name'),
             comment=defaults_dict.get('comment'),
             label_enumeration=defaults_dict.get('label_enumeration') or
-                              PatchModelCheckPointCallback.__main_task.get_labels_enumeration(),
+            PatchModelCheckPointCallback.__main_task.get_labels_enumeration(),
             framework=Framework.keras,
         )
         output_model.set_upload_destination(
@@ -1206,7 +1208,7 @@ class PatchTensorFlowEager(object):
             for i in range(2, img_data_np.size):
                 img_data = {'width': -1, 'height': -1,
                             'colorspace': 'RGB', 'encodedImageString': img_data_np[i]}
-                image_tag = str(tag)+'/sample_{}'.format(i-2) if img_data_np.size > 3 else str(tag)
+                image_tag = str(tag) + '/sample_{}'.format(i - 2) if img_data_np.size > 3 else str(tag)
                 event_writer._add_image(tag=image_tag,
                                         step=int(step.numpy()) if not isinstance(step, int) else step,
                                         img_data=img_data)
@@ -1291,7 +1293,7 @@ class PatchKerasModelIO(object):
                                                            PatchKerasModelIO._updated_config)
                 if hasattr(Sequential.from_config, '__func__'):
                     Sequential.from_config = classmethod(_patched_call(Sequential.from_config.__func__,
-                                                         PatchKerasModelIO._from_config))
+                                                                       PatchKerasModelIO._from_config))
                 else:
                     Sequential.from_config = _patched_call(Sequential.from_config, PatchKerasModelIO._from_config)
 

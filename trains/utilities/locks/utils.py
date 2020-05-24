@@ -218,6 +218,7 @@ class RLock(Lock):
     can be acquired multiple times.  When the corresponding number of release()
     calls are made the lock will finally release the underlying file lock.
     """
+
     def __init__(
             self, filename, mode='a', timeout=DEFAULT_TIMEOUT,
             check_interval=DEFAULT_CHECK_INTERVAL, fail_when_locked=False,

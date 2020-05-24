@@ -109,9 +109,7 @@ class BaseModel(object):
         """
         The Id (system UUID) of the model.
 
-        :return: The model id.
-
-        :rtype: str
+        :return str: The model id.
         """
         return self._get_model_data().id
 
@@ -121,9 +119,7 @@ class BaseModel(object):
         """
         The name of the model.
 
-        :return: The model name.
-
-        :rtype: str
+        :return str: The model name.
         """
         return self._get_model_data().name
 
@@ -143,9 +139,7 @@ class BaseModel(object):
         """
         The comment for the model. Also, use for a model description.
 
-        :return: The model comment / description.
-
-        :rtype: str
+        :return str: The model comment / description.
         """
         return self._get_model_data().comment
 
@@ -165,9 +159,7 @@ class BaseModel(object):
         """
         A list of tags describing the model.
 
-        :return: The list of tags.
-
-        :rtype: list(str)
+        :return list(str): The list of tags.
         """
         return self._get_model_data().tags
 
@@ -189,9 +181,7 @@ class BaseModel(object):
         """
         The configuration as a string. For example, prototxt, an ini file, or Python code to evaluate.
 
-        :return: The configuration.
-
-        :rtype: str
+        :return str: The configuration.
         """
         return _Model._unwrap_design(self._get_model_data().design)
 
@@ -202,9 +192,7 @@ class BaseModel(object):
         The configuration as a dictionary, parsed from the design text. This usually represents the model configuration.
         For example, prototxt, an ini file, or Python code to evaluate.
 
-        :return: The configuration.
-
-        :rtype: dict
+        :return str: The configuration.
         """
         return self._text_to_config_dict(self.config_text)
 
@@ -215,9 +203,7 @@ class BaseModel(object):
         The label enumeration of string (label) to integer (value) pairs.
 
 
-        :return: A dictionary containing labels enumeration, where the keys are labels and the values as integers.
-
-        :rtype: dict
+        :return dict: A dictionary containing labels enumeration, where the keys are labels and the values as integers.
         """
         return self._get_model_data().labels
 
@@ -266,9 +252,7 @@ class BaseModel(object):
         :param bool raise_on_error: If True and the artifact could not be downloaded,
             raise ValueError, otherwise return None on failure and output log warning.
 
-        :return: The locally stored file.
-
-        :rtype: str
+        :return str: The locally stored file.
         """
         # download model (synchronously) and return local file
         return self._get_base_model().download_model_weights(raise_on_error=raise_on_error)
@@ -288,8 +272,6 @@ class BaseModel(object):
             raise ValueError, otherwise return None on failure and output log warning.
 
         :return: The model weights, or a list of the locally stored filenames.
-
-        :rtype: package or path
         """
         # check if model was packaged
         if self._package_tag not in self._get_model_data().tags:
@@ -508,7 +490,7 @@ class InputModel(Model):
         :type config_text: unconstrained text string
         :param dict config_dict: The configuration as a dictionary. Specify ``config_text`` or ``config_dict``,
             but not both.
-        :param dict label_enumeration: The label enumeration dictionary of string (label) to integer (value) pairs. (Optional)
+        :param dict label_enumeration: Optional label enumeration dictionary of string (label) to integer (value) pairs.
 
             For example:
 
@@ -538,8 +520,6 @@ class InputModel(Model):
         :type framework: str or Framework object
 
         :return: The imported model or existing model (see above).
-
-        :rtype: A model object.
         """
         config_text = cls._resolve_config(config_text=config_text, config_dict=config_dict)
         weights_url = StorageHelper.conform_url(weights_url)
@@ -578,7 +558,7 @@ class InputModel(Model):
         from .task import Task
         task = Task.current_task()
         if task:
-            comment = 'Imported by task id: {}'.format(task.id) + ('\n'+comment if comment else '')
+            comment = 'Imported by task id: {}'.format(task.id) + ('\n' + comment if comment else '')
             project_id = task.project
             task_id = task.id
         else:
@@ -776,9 +756,7 @@ class OutputModel(BaseModel):
         """
         Get the published state of this model.
 
-        :return: ``True`` if the model is published, ``False`` otherwise.
-
-        :rtype: bool
+        :return bool: ``True`` if the model is published, ``False`` otherwise.
         """
         if not self.id:
             return False
@@ -790,9 +768,7 @@ class OutputModel(BaseModel):
         """
         Get the configuration as a string. For example, prototxt, an ini file, or Python code to evaluate.
 
-        :return: The configuration.
-
-        :rtype: str
+        :return str: The configuration.
         """
         return _Model._unwrap_design(self._get_model_data().design)
 
@@ -811,9 +787,7 @@ class OutputModel(BaseModel):
         Get the configuration as a dictionary parsed from the ``config_text`` text. This usually represents the model
         configuration. For example, from prototxt to ini file or python code to evaluate.
 
-        :return: The configuration.
-
-        :rtype: dict
+        :return dict: The configuration.
         """
         return self._text_to_config_dict(self.config_text)
 
@@ -842,9 +816,7 @@ class OutputModel(BaseModel):
                 'person': 1
            }
 
-        :return: The label enumeration.
-
-        :rtype: dict
+        :return dict: The label enumeration.
         """
         return self._get_model_data().labels
 
@@ -889,7 +861,8 @@ class OutputModel(BaseModel):
         Create a new model and immediately connect it to a task.
 
         We do not allow for Model creation without a task, so we always keep track on how we created the models
-        In remote execution, Model parameters can be overridden by the Task (such as model configuration & label enumerator)
+        In remote execution, Model parameters can be overridden by the Task
+        (such as model configuration & label enumerator)
 
         :param task: The Task object with which the OutputModel object is associated.
         :type task: Task
@@ -979,12 +952,12 @@ class OutputModel(BaseModel):
         if running_remotely() and task.is_main_task():
             if self._floating_data:
                 self._floating_data.design = _Model._wrap_design(self._task._get_model_config_text()) or \
-                                             self._floating_data.design
+                    self._floating_data.design
                 self._floating_data.labels = self._task.get_labels_enumeration() or \
-                                             self._floating_data.labels
+                    self._floating_data.labels
             elif self._base_model:
                 self._base_model.update(design=_Model._wrap_design(self._task._get_model_config_text()) or
-                                               self._base_model.design)
+                                        self._base_model.design)
                 self._base_model.update(labels=self._task.get_labels_enumeration() or self._base_model.labels)
 
         elif self._floating_data is not None:
@@ -1005,8 +978,8 @@ class OutputModel(BaseModel):
     def set_upload_destination(self, uri):
         # type: (str) -> None
         """
-        Set the URI of the storage destination for uploaded model weight files. Supported storage destinations include
-        S3, Google Cloud Storage), and file locations.
+        Set the URI of the storage destination for uploaded model weight files.
+        Supported storage destinations include S3, Google Cloud Storage), and file locations.
 
         Using this method, files uploads are separate and then a link to each is stored in the model object.
 
@@ -1021,12 +994,10 @@ class OutputModel(BaseModel):
             - ``s3://bucket/directory/``
             - ``file:///tmp/debug/``
 
-        :return: The status of whether the storage destination schema is supported.
+        :return bool: The status of whether the storage destination schema is supported.
 
             - ``True`` - The storage destination scheme is supported.
             - ``False`` - The storage destination scheme is not supported.
-
-        :rtype: bool
         """
         if not uri:
             return
@@ -1063,8 +1034,8 @@ class OutputModel(BaseModel):
         .. note::
            Uploading the model is a background process. A call to this method returns immediately.
 
-        :param str weights_filename: The name of the locally stored weights file to upload. Specify ``weights_filename``
-            or ``register_uri``, but not both.
+        :param str weights_filename: The name of the locally stored weights file to upload.
+            Specify ``weights_filename`` or ``register_uri``, but not both.
         :param str upload_uri: The URI of the storage destination for model weights upload. The default value
             is the previously used URI. (Optional)
         :param str target_filename: The newly created filename in the storage destination location. The default value
@@ -1083,9 +1054,7 @@ class OutputModel(BaseModel):
             - ``True`` - Update model comment (Default)
             - ``False`` - Do not update
 
-        :return: The uploaded URI.
-
-        :rtype: str
+        :return str: The uploaded URI.
         """
 
         def delete_previous_weights_file(filename=weights_filename):
@@ -1120,7 +1089,8 @@ class OutputModel(BaseModel):
         if not model:
             raise ValueError('Failed creating internal output model')
 
-        # select the correct file extension based on the framework, or update the framework based on the file extension
+        # select the correct file extension based on the framework,
+        # or update the framework based on the file extension
         framework, file_ext = Framework._get_file_ext(
             framework=self._get_model_data().framework,
             filename=target_filename or weights_filename or register_uri
@@ -1211,13 +1181,12 @@ class OutputModel(BaseModel):
 
         :param int iteration: The iteration number.
 
-        :return: The uploaded URI for the weights package.
-
-        :rtype: str
+        :return str: The uploaded URI for the weights package.
         """
         # create list of files
         if (not weights_filenames and not weights_path) or (weights_filenames and weights_path):
-            raise ValueError('Model update weights package should get either directory path to pack or a list of files')
+            raise ValueError('Model update weights package should get either '
+                             'directory path to pack or a list of files')
 
         if not weights_filenames:
             weights_filenames = list(map(six.text_type, Path(weights_path).rglob('*')))
@@ -1276,14 +1245,13 @@ class OutputModel(BaseModel):
         :param dict config_dict: The configuration as a dictionary. Specify ``config_text`` or ``config_dict``,
             but not both.
 
-        :return: The status of the update.
+        :return bool: The status of the update.
 
             - ``True`` - Update successful.
             - ``False`` - Update not successful.
-        :rtype: bool
         """
         if not self._validate_update():
-            return
+            return False
 
         config_text = self._resolve_config(config_text=config_text, config_dict=config_dict)
 

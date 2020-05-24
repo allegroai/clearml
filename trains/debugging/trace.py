@@ -42,8 +42,9 @@ def _log_stderr(name, fnc, args, kwargs, is_return):
         # get a nicer thread id
         h = int(__thread_id())
         ts = time.time() - __trace_start
-        __stream_write('{}{:<9.3f}:{:5}:{:8x}: [{}] {}\n'.format('-' if is_return else '',
-                                                              ts, os.getpid(), h, threading.current_thread().name, t))
+        __stream_write('{}{:<9.3f}:{:5}:{:8x}: [{}] {}\n'.format(
+            '-' if is_return else '', ts, os.getpid(),
+            h, threading.current_thread().name, t))
         if __stream_flush:
             __stream_flush()
     except:
@@ -167,7 +168,7 @@ def _patch_module(module, prefix='', basepath=None, basemodule=None):
                 # check if this is even in our module
                 if hasattr(fnc, '__module__') and fnc.__module__ != module.__module__:
                     pass  # print('not ours {} {}'.format(module, fnc))
-                elif hasattr(fnc, '__qualname__') and fnc.__qualname__.startswith(module.__name__+'.'):
+                elif hasattr(fnc, '__qualname__') and fnc.__qualname__.startswith(module.__name__ + '.'):
                     if isinstance(module.__dict__[fn], classmethod):
                         setattr(module, fn, _traced_call_cls(prefix + fn, fnc))
                     elif isinstance(module.__dict__[fn], staticmethod):
@@ -176,7 +177,7 @@ def _patch_module(module, prefix='', basepath=None, basemodule=None):
                         setattr(module, fn, _traced_call_method(prefix + fn, fnc))
                 else:
                     # probably not ours hopefully static function
-                    if hasattr(fnc, '__qualname__') and not fnc.__qualname__.startswith(module.__name__+'.'):
+                    if hasattr(fnc, '__qualname__') and not fnc.__qualname__.startswith(module.__name__ + '.'):
                         pass  # print('not ours {} {}'.format(module, fnc))
                     else:
                         # we should not get here
@@ -232,7 +233,7 @@ def trace_trains(stream=None, level=1):
     # store to stream
     __stream_write(msg)
     __stream_write('{:9}:{:5}:{:8}: {:14}\n'.format('seconds', 'pid', 'tid', 'self'))
-    __stream_write('{:9}:{:5}:{:8}:{:15}\n'.format('-'*9, '-'*5, '-'*8, '-'*15))
+    __stream_write('{:9}:{:5}:{:8}:{:15}\n'.format('-' * 9, '-' * 5, '-' * 8, '-' * 15))
     __trace_start = time.time()
 
     _patch_module('trains')
@@ -267,6 +268,7 @@ def print_traced_files(glob_mask, lines_per_tid=5, stream=sys.stdout, specify_pi
     :param specify_pids: optional list of pids to include
     """
     from glob import glob
+
     def hash_line(a_line):
         return hash(':'.join(a_line.split(':')[1:]))
 
@@ -304,7 +306,7 @@ def print_traced_files(glob_mask, lines_per_tid=5, stream=sys.stdout, specify_pi
     by_time = {}
     for p, tids in pids.items():
         for t, lines in tids.items():
-            ts = float(lines[-1].split(':')[0].strip()) + 0.000001*len(by_time)
+            ts = float(lines[-1].split(':')[0].strip()) + 0.000001 * len(by_time)
             if print_orphans:
                 for i, l in enumerate(lines):
                     if i > 0 and hash_line(l) in orphan_calls:
@@ -313,7 +315,7 @@ def print_traced_files(glob_mask, lines_per_tid=5, stream=sys.stdout, specify_pi
 
     out_stream = open(stream, 'w') if isinstance(stream, str) else stream
     for k in sorted(by_time.keys()):
-        out_stream.write(by_time[k]+'\n')
+        out_stream.write(by_time[k] + '\n')
     if isinstance(stream, str):
         out_stream.close()
 
@@ -321,6 +323,7 @@ def print_traced_files(glob_mask, lines_per_tid=5, stream=sys.stdout, specify_pi
 def end_of_program():
     # stub
     pass
+
 
 if __name__ == '__main__':
     # from trains import Task

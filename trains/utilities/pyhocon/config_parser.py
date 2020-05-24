@@ -366,7 +366,7 @@ class ConfigParser(object):
             null_expr = Keyword("null", caseless=True).setParseAction(replaceWith(NoneValue()))
             # key = QuotedString('"', escChar='\\', unquoteResults=False) | Word(alphanums + alphas8bit + '._- /')
             key = QuotedString('"', escChar='\\', unquoteResults=False) | \
-                  Word("0123456789.").setParseAction(safe_convert_number) | Word(alphanums + alphas8bit + '._- /')
+                Word("0123456789.").setParseAction(safe_convert_number) | Word(alphanums + alphas8bit + '._- /')
 
             eol = Word('\n\r').suppress()
             eol_comma = Word('\n\r,').suppress()
@@ -390,13 +390,15 @@ class ConfigParser(object):
             # line1  \
             # line2 \
             # so a backslash precedes the \n
-            unquoted_string = Regex(r'(?:[^^`+?!@*&"\[\{\s\]\}#,=\$\\]|\\.)+[ \t]*', re.UNICODE).setParseAction(unescape_string)
+            unquoted_string = Regex(r'(?:[^^`+?!@*&"\[\{\s\]\}#,=\$\\]|\\.)+[ \t]*',
+                                    re.UNICODE).setParseAction(unescape_string)
             substitution_expr = Regex(r'[ \t]*\$\{[^\}]+\}[ \t]*').setParseAction(create_substitution)
             string_expr = multiline_string | quoted_string | unquoted_string
 
             value_expr = period_expr | number_expr | true_expr | false_expr | null_expr | string_expr
 
-            include_content = (quoted_string | ((Keyword('url') | Keyword('file')) - Literal('(').suppress() - quoted_string - Literal(')').suppress()))
+            include_content = (quoted_string | ((Keyword('url') | Keyword(
+                'file')) - Literal('(').suppress() - quoted_string - Literal(')').suppress()))
             include_expr = (
                 Keyword("include", caseless=True).suppress() + (
                     include_content | (
@@ -408,33 +410,34 @@ class ConfigParser(object):
             root_dict_expr = Forward()
             dict_expr = Forward()
             list_expr = Forward()
-            multi_value_expr = ZeroOrMore(comment_eol | include_expr | substitution_expr | dict_expr | list_expr | value_expr | (Literal(
-                '\\') - eol).suppress())
+            multi_value_expr = ZeroOrMore(comment_eol | include_expr | substitution_expr |
+                                          dict_expr | list_expr | value_expr | (Literal('\\') - eol).suppress())
             # for a dictionary : or = is optional
             # last zeroOrMore is because we can have t = {a:4} {b: 6} {c: 7} which is dictionary concatenation
             inside_dict_expr = ConfigTreeParser(ZeroOrMore(comment_eol | include_expr | assign_expr | eol_comma))
-            inside_root_dict_expr = ConfigTreeParser(ZeroOrMore(comment_eol | include_expr | assign_expr | eol_comma), root=True)
+            inside_root_dict_expr = ConfigTreeParser(ZeroOrMore(
+                comment_eol | include_expr | assign_expr | eol_comma), root=True)
             dict_expr << Suppress('{') - inside_dict_expr - Suppress('}')
             root_dict_expr << Suppress('{') - inside_root_dict_expr - Suppress('}')
             list_entry = ConcatenatedValueParser(multi_value_expr)
             list_expr << Suppress('[') - ListParser(list_entry - ZeroOrMore(eol_comma - list_entry)) - Suppress(']')
 
             # special case when we have a value assignment where the string can potentially be the remainder of the line
-            assign_expr << Group(
-                key - ZeroOrMore(comment_no_comma_eol) - (dict_expr | (Literal('=') | Literal(':') | Literal('+=')) - ZeroOrMore(
-                    comment_no_comma_eol) - ConcatenatedValueParser(multi_value_expr))
-            )
+            assign_expr << Group(key - ZeroOrMore(comment_no_comma_eol) -
+                                 (dict_expr | (Literal('=') | Literal(':') | Literal('+=')) -
+                                  ZeroOrMore(comment_no_comma_eol) - ConcatenatedValueParser(multi_value_expr)))
 
             # the file can be { ... } where {} can be omitted or []
-            config_expr = ZeroOrMore(comment_eol | eol) + (list_expr | root_dict_expr | inside_root_dict_expr) + ZeroOrMore(
-                comment_eol | eol_comma)
+            config_expr = ZeroOrMore(comment_eol | eol) + (list_expr | root_dict_expr |
+                                                           inside_root_dict_expr) + ZeroOrMore(comment_eol | eol_comma)
             config = config_expr.parseString(content, parseAll=True)[0]
 
             if resolve:
                 allow_unresolved = resolve and unresolved_value is not DEFAULT_SUBSTITUTION and unresolved_value is not MANDATORY_SUBSTITUTION
                 has_unresolved = cls.resolve_substitutions(config, allow_unresolved)
                 if has_unresolved and unresolved_value is MANDATORY_SUBSTITUTION:
-                    raise ConfigSubstitutionException('resolve cannot be set to True and unresolved_value to MANDATORY_SUBSTITUTION')
+                    raise ConfigSubstitutionException(
+                        'resolve cannot be set to True and unresolved_value to MANDATORY_SUBSTITUTION')
 
             if unresolved_value is not NO_SUBSTITUTION and unresolved_value is not DEFAULT_SUBSTITUTION:
                 cls.unresolve_substitutions_to_value(config, unresolved_value)
@@ -485,14 +488,16 @@ class ConfigParser(object):
                         if len(prop_path) > 1 and config.get(substitution.variable, None) is not None:
                             continue  # If value is present in latest version, don't do anything
                         if prop_path[0] == key:
-                            if isinstance(previous_item, ConfigValues) and not accept_unresolved:  # We hit a dead end, we cannot evaluate
+                            if isinstance(
+                                    previous_item, ConfigValues) and not accept_unresolved:  # We hit a dead end, we cannot evaluate
                                 raise ConfigSubstitutionException(
                                     "Property {variable} cannot be substituted. Check for cycles.".format(
                                         variable=substitution.variable
                                     )
                                 )
                             else:
-                                value = previous_item if len(prop_path) == 1 else previous_item.get(".".join(prop_path[1:]))
+                                value = previous_item if len(
+                                    prop_path) == 1 else previous_item.get(".".join(prop_path[1:]))
                                 _, _, current_item = cls._do_substitute(substitution, value)
                     previous_item = current_item
 
@@ -632,7 +637,8 @@ class ConfigParser(object):
                         # self resolution, backtrack
                         resolved_value = substitution.parent.overriden_value
 
-                    unresolved, new_substitutions, result = cls._do_substitute(substitution, resolved_value, is_optional_resolved)
+                    unresolved, new_substitutions, result = cls._do_substitute(
+                        substitution, resolved_value, is_optional_resolved)
                     any_unresolved = unresolved or any_unresolved
                     substitutions.extend(new_substitutions)
                     if not isinstance(result, ConfigValues):

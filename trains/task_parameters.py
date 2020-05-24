@@ -37,7 +37,7 @@ def range_validator(min_value, max_value):
     """
     def _range_validator(instance, attribute, value):
         if ((min_value is not None) and (value < min_value)) or \
-          ((max_value is not None) and (value > max_value)):
+                ((max_value is not None) and (value > max_value)):
             raise ValueError("{} must be in range [{}, {}]".format(attribute.name, min_value, max_value))
 
     return _range_validator
@@ -159,5 +159,3 @@ class TaskParameters(object):
         """
 
         return task.connect(self)
-
-

@@ -249,7 +249,7 @@ class PatchedMatplotlib:
                 # check if this is an imshow
                 if hasattr(stored_figure, '_trains_is_imshow'):
                     # flag will be cleared when calling clf() (object will be replaced)
-                    stored_figure._trains_is_imshow = max(0, stored_figure._trains_is_imshow-1)
+                    stored_figure._trains_is_imshow = max(0, stored_figure._trains_is_imshow - 1)
                     force_save_as_image = True
                 # get current figure
                 mpl_fig = stored_figure.canvas.figure  # plt.gcf()
@@ -342,7 +342,7 @@ class PatchedMatplotlib:
                         a_plt.savefig(buffer_, dpi=fig_dpi, format=image_format, bbox_inches='tight', pad_inches=0,
                                       facecolor=None)
                     buffer_.seek(0)
-                fd, image = mkstemp(suffix='.'+image_format)
+                fd, image = mkstemp(suffix='.' + image_format)
                 os.write(fd, buffer_.read())
                 os.close(fd)
 

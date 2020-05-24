@@ -273,7 +273,7 @@ class UploadEvent(MetricsEventAdapter):
             image_data = np.atleast_3d(image_data)
             if image_data.dtype != np.uint8:
                 if np.issubdtype(image_data.dtype, np.floating) and image_data.max() <= 1.0:
-                    image_data = (image_data*255).astype(np.uint8)
+                    image_data = (image_data * 255).astype(np.uint8)
                 else:
                     image_data = image_data.astype(np.uint8)
             shape = image_data.shape
@@ -318,7 +318,7 @@ class UploadEvent(MetricsEventAdapter):
         url = '/'.join(x.strip('/') for x in (e_storage_uri, key))
         # make sure we preserve local path root
         if e_storage_uri.startswith('/'):
-            url = '/'+url
+            url = '/' + url
 
         if quote_uri:
             url = quote_url(url)

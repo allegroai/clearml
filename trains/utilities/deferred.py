@@ -118,4 +118,3 @@ class DeferredExecution(object):
                 return func(instance, *args, **kwargs)
             return wrapper
         return decorator
-

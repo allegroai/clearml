@@ -56,7 +56,7 @@ def project_import_modules(project_path, ignores):
                 continue
             # Hack detect if this is a virtual-env folder, if so add it to the uignore list
             if set(dirnames) == venv_subdirs:
-                ignore_absolute.append(Path(dirpath).as_posix()+os.sep)
+                ignore_absolute.append(Path(dirpath).as_posix() + os.sep)
                 continue
 
             py_files = list()
@@ -132,7 +132,7 @@ class ImportChecker(object):
             level -= 1
             mod_name = ''
         for alias in node.names:
-            name = level*'.' + mod_name + '.' + alias.name
+            name = level * '.' + mod_name + '.' + alias.name
             self._modules.add(name, self._fpath, node.lineno + self._lineno)
             if try_:
                 self._try_imports.add(name)

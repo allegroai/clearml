@@ -155,7 +155,7 @@ class Metrics(InterfaceBase):
             # upload files
             def upload(e):
                 upload_uri = e.upload_uri or storage_uri
-                
+
                 try:
                     storage = self._get_storage(upload_uri)
                     url = storage.upload_from_stream(e.stream, e.url, retries=self._file_upload_retries)
@@ -234,4 +234,3 @@ class Metrics(InterfaceBase):
                 pool.join()
             except:
                 pass
-

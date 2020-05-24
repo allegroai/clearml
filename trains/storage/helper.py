@@ -575,27 +575,27 @@ class StorageHelper(object):
     def list(self, prefix=None):
         """
         List entries in the helper base path.
-        
+
         Return a list of names inside this helper base path. The base path is
         determined at creation time and is specific for each storage medium.
         For Google Storage and S3 it is the bucket of the path.
         For local files it is the root directory.
-        
+
         This operation is not supported for http and https protocols.
-        
+
         :param prefix: If None, return the list as described above. If not, it
             must be a string - the path of a sub directory under the base path.
             the returned list will include only objects under that subdir.
-            
+
         :return: List of strings - the paths of all the objects in the storage base
             path under prefix. Listed relative to the base path.
-            
+
         """
-        
+
         if prefix:
             if prefix.startswith(self._base_url):
                 prefix = prefix[len(self.base_url):].lstrip("/")
-                
+
             try:
                 res = self._driver.list_container_objects(self._container, ex_prefix=prefix)
             except TypeError:
@@ -943,7 +943,7 @@ class StorageHelper(object):
                 cb(dest_path)
             except Exception as e:
                 self._log.warning("Exception on upload callback: %s" % str(e))
-        
+
         return dest_path
 
     def _get_object(self, path):
@@ -1012,8 +1012,8 @@ class _HttpDriver(_Driver):
 
     def upload_object_via_stream(self, iterator, container, object_name, extra=None, **kwargs):
         url = object_name[:object_name.index('/')]
-        url_path = object_name[len(url)+1:]
-        full_url = container.name+url
+        url_path = object_name[len(url) + 1:]
+        full_url = container.name + url
         # when sending data in post, there is no connection timeout, just an entire upload timeout
         timeout = self.timeout[-1]
         if hasattr(iterator, 'tell') and hasattr(iterator, 'seek'):
@@ -1668,7 +1668,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
 
         def callback_func(current, total):
             if callback:
-                chunk = current-download_done.counter
+                chunk = current - download_done.counter
                 download_done.counter += chunk
                 callback(chunk)
             if current >= total:

@@ -74,7 +74,7 @@ class ProxyDictPreWrite(dict):
         return key_value
 
     def _nested_callback(self, prefix, key_value):
-        return self._set_callback((prefix+'.'+key_value[0], key_value[1],))
+        return self._set_callback((prefix + '.' + key_value[0], key_value[1],))
 
 
 def flatten_dictionary(a_dict, prefix=''):
@@ -84,15 +84,15 @@ def flatten_dictionary(a_dict, prefix=''):
     for k, v in a_dict.items():
         k = str(k)
         if isinstance(v, (float, int, bool, six.string_types)):
-            flat_dict[prefix+k] = v
+            flat_dict[prefix + k] = v
         elif isinstance(v, (list, tuple)) and all([isinstance(i, basic_types) for i in v]):
-            flat_dict[prefix+k] = v
+            flat_dict[prefix + k] = v
         elif isinstance(v, dict):
-            flat_dict.update(flatten_dictionary(v, prefix=prefix+k+sep))
+            flat_dict.update(flatten_dictionary(v, prefix=prefix + k + sep))
         else:
             # this is a mixture of list and dict, or any other object,
             # leave it as is, we have nothing to do with it.
-            flat_dict[prefix+k] = v
+            flat_dict[prefix + k] = v
     return flat_dict
 
 
@@ -102,15 +102,15 @@ def nested_from_flat_dictionary(a_dict, flat_dict, prefix=''):
     for k, v in a_dict.items():
         k = str(k)
         if isinstance(v, (float, int, bool, six.string_types)):
-            a_dict[k] = flat_dict.get(prefix+k, v)
+            a_dict[k] = flat_dict.get(prefix + k, v)
         elif isinstance(v, (list, tuple)) and all([isinstance(i, basic_types) for i in v]):
-            a_dict[k] = flat_dict.get(prefix+k, v)
+            a_dict[k] = flat_dict.get(prefix + k, v)
         elif isinstance(v, dict):
-            a_dict[k] = nested_from_flat_dictionary(v, flat_dict, prefix=prefix+k+sep) or v
+            a_dict[k] = nested_from_flat_dictionary(v, flat_dict, prefix=prefix + k + sep) or v
         else:
             # this is a mixture of list and dict, or any other object,
             # leave it as is, we have nothing to do with it.
-            a_dict[k] = flat_dict.get(prefix+k, v)
+            a_dict[k] = flat_dict.get(prefix + k, v)
     return a_dict
 
 
@@ -123,7 +123,7 @@ def naive_nested_from_flat_dictionary(flat_dict, sep='/'):
             bucket[0][1] if (len(bucket) == 1 and sub_prefix == bucket[0][0])
             else naive_nested_from_flat_dictionary(
                 {
-                    k[len(sub_prefix)+1:]: v
+                    k[len(sub_prefix) + 1:]: v
                     for k, v in bucket
                     if len(k) > len(sub_prefix)
                 }

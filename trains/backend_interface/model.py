@@ -210,7 +210,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         ))
         self.reload()
 
-    def edit(self,  design=None, labels=None, name=None, comment=None, tags=None,
+    def edit(self, design=None, labels=None, name=None, comment=None, tags=None,
              uri=None, framework=None, iteration=None):
         if tags:
             extra = {'system_tags': tags or self.data.system_tags} \
@@ -318,7 +318,8 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             callback = partial(
                 self._complete_update_for_task, task_id=task_id, name=name, comment=comment, tags=tags,
                 override_model_id=override_model_id, cb=cb)
-            uri = self._upload_model(model_file, target_filename=target_filename, async_enable=async_enable, cb=callback)
+            uri = self._upload_model(model_file, target_filename=target_filename,
+                                     async_enable=async_enable, cb=callback)
             return uri
         else:
             uri = self._upload_model(model_file, target_filename=target_filename, async_enable=async_enable)

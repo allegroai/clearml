@@ -522,15 +522,15 @@ class Logger(object):
         """
         # check if multiple series
         multi_series = (
-                isinstance(scatter, list)
-                and (
-                        isinstance(scatter[0], np.ndarray)
-                        or (
-                                scatter[0]
-                                and isinstance(scatter[0], list)
-                                and isinstance(scatter[0][0], list)
-                        )
+            isinstance(scatter, list)
+            and (
+                isinstance(scatter[0], np.ndarray)
+                or (
+                    scatter[0]
+                    and isinstance(scatter[0], list)
+                    and isinstance(scatter[0][0], list)
                 )
+            )
         )
 
         if not multi_series:

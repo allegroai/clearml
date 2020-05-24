@@ -102,11 +102,11 @@ def create_line_plot(title, series, xtitle, ytitle, mode='lines', reverse_xaxis=
         for s in series:
             # if we need to down-sample, use low-pass average filter and sampling
             if s.data.size >= base_size:
-                budget = int(leftover * s.data.size/(total_size-baseused_size))
+                budget = int(leftover * s.data.size / (total_size - baseused_size))
                 step = int(np.ceil(s.data.size / float(budget)))
                 x = s.data[:, 0][::-step][::-1]
                 y = s.data[:, 1]
-                y_low_pass = np.convolve(y, np.ones(shape=(step,), dtype=y.dtype)/float(step), mode='same')
+                y_low_pass = np.convolve(y, np.ones(shape=(step,), dtype=y.dtype) / float(step), mode='same')
                 y = y_low_pass[::-step][::-1]
                 s.data = np.array([x, y], dtype=s.data.dtype).T
 
@@ -186,7 +186,8 @@ def create_3d_scatter_series(np_row_wise, title="Scatter", series_name="Series",
     :return:
     """
     if not plotly_obj:
-        plotly_obj = plotly_scatter3d_layout_dict(title=title, xaxis_title=xtitle, yaxis_title=ytitle, zaxis_title=ztitle)
+        plotly_obj = plotly_scatter3d_layout_dict(
+            title=title, xaxis_title=xtitle, yaxis_title=ytitle, zaxis_title=ztitle)
     assert np_row_wise.ndim == 2, "Expected a 2D numpy array"
     assert np_row_wise.shape[1] == 3, "Expected three columns X/Y/Z e.g. [(x0,y0,z0), (x1,y1,z1) ...]"
 
@@ -282,7 +283,7 @@ def create_3d_surface(np_value_matrix, title="3D Surface", xlabels=None, ylabels
                 "yaxis": {
                     "title": ytitle,
                     "showgrid": False,
-                    "nticks":  10,
+                    "nticks": 10,
                     "ticktext": ylabels,
                     "tickvals": list(range(len(ylabels))) if ylabels else ylabels,
                 },

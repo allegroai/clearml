@@ -23,12 +23,12 @@ class ApiServiceProxy(object):
             if not ApiServiceProxy._max_available_version:
                 from ..backend_api import services
                 ApiServiceProxy._max_available_version = max([
-                        Version(name[1:].replace("_", "."))
-                        for name in [
-                            module_name
-                            for _, module_name, _ in pkgutil.iter_modules(services.__path__)
-                            if re.match(r"^v[0-9]+_[0-9]+$", module_name)
-                        ]])
+                    Version(name[1:].replace("_", "."))
+                    for name in [
+                        module_name
+                        for _, module_name, _ in pkgutil.iter_modules(services.__path__)
+                        if re.match(r"^v[0-9]+_[0-9]+$", module_name)
+                    ]])
 
             version = str(min(Version(Session.api_version), ApiServiceProxy._max_available_version))
             self.__dict__["__wrapped_version__"] = Session.api_version

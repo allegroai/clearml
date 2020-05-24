@@ -39,8 +39,8 @@ def get_percentage(config, key, required=True, default=None):
 
 def get_human_size_default(config, key, default=None):
     raw_value = config.get(key, default)
-    
+
     if raw_value is None:
         return default
-    
+
     return parse_human_size(raw_value)

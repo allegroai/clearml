@@ -16,6 +16,7 @@ class _Arguments(object):
 
     class _ProxyDictWrite(dict):
         """ Dictionary wrapper that updates an arguments instance on any item set in the dictionary """
+
         def __init__(self, arguments, *args, **kwargs):
             super(_Arguments._ProxyDictWrite, self).__init__(*args, **kwargs)
             self._arguments = arguments
@@ -27,6 +28,7 @@ class _Arguments(object):
 
     class _ProxyDictReadOnly(dict):
         """ Dictionary wrapper that prevents modifications to the dictionary """
+
         def __init__(self, arguments, *args, **kwargs):
             super(_Arguments._ProxyDictReadOnly, self).__init__(*args, **kwargs)
             self._arguments = arguments

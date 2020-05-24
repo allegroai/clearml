@@ -148,4 +148,3 @@ elif os.name == 'posix':  # pragma: no cover
 
 else:  # pragma: no cover
     raise RuntimeError('PortaLocker only defined for nt and posix platforms')
-

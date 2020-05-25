@@ -501,9 +501,6 @@ class Task(_Task):
 
             - ``TaskTypes.training`` (default)
             - ``TaskTypes.testing``
-            - ``TaskTypes.dataset_import``
-            - ``TaskTypes.annotation``
-            - ``TaskTypes.annotation_manual``
 
         :type task_type: TaskTypeEnum(value)
         :return: A new experiment.

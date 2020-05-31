@@ -122,4 +122,4 @@ def validate_dict(obj, key_types, value_types, desc=''):
 
 def exact_match_regex(name):
     """ Convert string to a regex representing an exact match """
-    return '^%s$' % re.escape(name)
+    return '^%s$' % re.escape(name or '')

@@ -537,6 +537,10 @@ class Session(TokenManager):
         from ...config import dev_worker_name
         return dev_worker_name() or gethostname()
 
+    @classmethod
+    def get_clients(cls):
+        return cls._client
+
     def _do_refresh_token(self, old_token, exp=None):
         """ TokenManager abstract method implementation.
             Here we ignore the old token and simply obtain a new token.

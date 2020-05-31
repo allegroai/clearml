@@ -105,7 +105,9 @@ class TrainsJob(object):
         if not self.task_started and str(self.task.status) != Task.TaskStatusEnum.in_progress:
             return -1
         self.task_started = True
-        return (datetime.now() - self.task.data.started).timestamp()
+        if not self.task.data.started:
+            return -1
+        return (datetime.now(tz=self.task.data.started.tzinfo) - self.task.data.started).total_seconds()
 
     def iterations(self):
         # type: () -> int

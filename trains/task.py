@@ -506,6 +506,15 @@ class Task(_Task):
 
             - ``TaskTypes.training`` (default)
             - ``TaskTypes.testing``
+            - ``TaskTypes.inference``
+            - ``TaskTypes.data_processing``
+            - ``TaskTypes.application``
+            - ``TaskTypes.monitor``
+            - ``TaskTypes.controller``
+            - ``TaskTypes.optimizer``
+            - ``TaskTypes.service``
+            - ``TaskTypes.qc``
+            - ``TaskTypes.custom``
 
         :type task_type: TaskTypeEnum(value)
         :return: A new experiment.
@@ -2349,6 +2358,14 @@ class Task(_Task):
 
             if project:
                 project_name = project.name
+
+        if task_data.get('type') and \
+                task_data.get('type') not in (cls.TaskTypes.training, cls.TaskTypes.testing) and \
+                not Session.check_min_api_version(2.8):
+            print('WARNING: Changing task type to "{}" : '
+                  'trains-server does not support task type "{}", '
+                  'please upgrade trains-server.'.format(cls.TaskTypes.training, task_data['type'].value))
+            task_data['type'] = cls.TaskTypes.training
 
         compares = (
             (task.name, 'name'),

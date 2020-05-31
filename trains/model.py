@@ -6,7 +6,7 @@ from tempfile import mkdtemp, mkstemp
 
 import pyparsing
 import six
-from typing import List, Dict, Union, Optional, TYPE_CHECKING
+from typing import List, Dict, Union, Optional, TYPE_CHECKING, Sequence
 
 from .backend_api import Session
 from .backend_api.services import models
@@ -1150,7 +1150,7 @@ class OutputModel(BaseModel):
 
     def update_weights_package(
         self,
-        weights_filenames=None,  # type: Optional[str]
+        weights_filenames=None,  # type: Optional[Sequence[str]]
         weights_path=None,  # type: Optional[str]
         upload_uri=None,  # type: Optional[str]
         target_filename=None,  # type: Optional[str]

@@ -64,6 +64,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         training = 'training'
         testing = 'testing'
+        inference = "inference"
+        data_processing = "data_processing"
+        application = "application"
+        monitor = "monitor"
+        controller = "controller"
+        optimizer = "optimizer"
+        service = "service"
+        qc = "qc"
+        custom = "custom"
 
     class TaskStatusEnum(Enum):
         def __str__(self):
@@ -291,6 +300,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def _auto_generate(self, project_name=None, task_name=None, task_type=TaskTypes.training):
         created_msg = make_message('Auto-generated at %(time)s by %(user)s@%(host)s')
+
+        if task_type.value not in (self.TaskTypes.training, self.TaskTypes.testing) and \
+                not Session.check_min_api_version('2.8'):
+            print('WARNING: Changing task type to "{}" : '
+                  'trains-server does not support task type "{}", '
+                  'please upgrade trains-server.'.format(self.TaskTypes.training, task_type.value))
+            task_type = self.TaskTypes.training
 
         project_id = None
         if project_name:

@@ -9,7 +9,7 @@ from ..utilities.check_updates import Version
 
 class ApiServiceProxy(object):
     _main_services_module = "trains.backend_api.services"
-    _max_available_version = None
+    _available_versions = None
 
     def __init__(self, module):
         self.__wrapped_name__ = module
@@ -20,17 +20,18 @@ class ApiServiceProxy(object):
             return self.__dict__.get(attr)
 
         if not self.__dict__.get("__wrapped__") or self.__dict__.get("__wrapped_version__") != Session.api_version:
-            if not ApiServiceProxy._max_available_version:
+            if not ApiServiceProxy._available_versions:
                 from ..backend_api import services
-                ApiServiceProxy._max_available_version = max([
+                ApiServiceProxy._available_versions = [
                     Version(name[1:].replace("_", "."))
                     for name in [
                         module_name
                         for _, module_name, _ in pkgutil.iter_modules(services.__path__)
                         if re.match(r"^v[0-9]+_[0-9]+$", module_name)
-                    ]])
+                    ]]
 
-            version = str(min(Version(Session.api_version), ApiServiceProxy._max_available_version))
+            # get the most advanced service version that supports our api
+            version = [str(v) for v in ApiServiceProxy._available_versions if Version(Session.api_version) >= v][-1]
             self.__dict__["__wrapped_version__"] = Session.api_version
             name = ".v{}.{}".format(
                 version.replace(".", "_"), self.__dict__.get("__wrapped_name__")

@@ -2,6 +2,7 @@
 import itertools
 import logging
 import os
+import sys
 import re
 from enum import Enum
 from tempfile import gettempdir
@@ -247,20 +248,28 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             check_package_update_thread.start()
             # do not request requirements, because it might be a long process, and we first want to update the git repo
             result, script_requirements = ScriptInfo.get(
+                filepaths=[self._calling_filename, sys.argv[0], ],
                 log=self.log, create_requirements=False, check_uncommitted=self._store_diff
             )
             for msg in result.warning_messages:
                 self.get_logger().report_text(msg)
 
+            # store original entry point
+            entry_point = result.script.get('entry_point') if result.script else None
+
+            # check if we are running inside a module, then we should set our entrypoint
+            # to the module call including all argv's
+            result.script = ScriptInfo.detect_running_module(result.script)
+
             self.data.script = result.script
-            # Since we might run asynchronously, don't use self.data (lest someone else
+            # Since we might run asynchronously, don't use self.data (let someone else
             # overwrite it before we have a chance to call edit)
             self._edit(script=result.script)
             self.reload()
             # if jupyter is present, requirements will be created in the background, when saving a snapshot
             if result.script and script_requirements:
                 entry_point_filename = None if config.get('development.force_analyze_entire_repo', False) else \
-                    os.path.join(result.script['working_dir'], result.script['entry_point'])
+                    os.path.join(result.script['working_dir'], entry_point)
                 requirements, conda_requirements = script_requirements.get_requirements(
                     entry_point_filename=entry_point_filename)
 

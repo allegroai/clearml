@@ -333,10 +333,22 @@ def get_installed_pkgs_detail():
             mapping = new_mapping
 
     # HACK: prefer tensorflow_gpu over tensorflow
-    if 'tensorflow_gpu' in new_mapping:
-        new_mapping['tensorflow'] = new_mapping['tensorflow_gpu']
+    if 'tensorflow_gpu' in mapping:
+        mapping['tensorflow'] = mapping['tensorflow_gpu']
 
     return mapping
+
+
+def is_base_module(module_path):
+    python_base = '{}python{}.{}'.format(os.sep, sys.version_info.major, sys.version_info.minor)
+    for path in sys.path:
+        if os.path.isdir(path) and path.rstrip('/').endswith(
+                (python_base, )):
+            if not path[-1] == os.sep:
+                path += os.sep
+            if module_path.startswith(path):
+                return True
+    return False
 
 
 def _search_path(path):
@@ -424,4 +436,5 @@ def _search_path(path):
                 with open(top_level, 'r') as f:
                     for line in f:
                         mapping[line.strip()] = ('-e', git_url)
+
     return mapping

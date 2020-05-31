@@ -83,6 +83,10 @@ class ScriptRequirements(object):
             except Exception:
                 pass
 
+        # remove setuptools, we should not specify this module version. It is installed by default
+        if 'setuptools' in modules:
+            modules.pop('setuptools', {})
+
         # add forced requirements:
         # noinspection PyBroadException
         try:
@@ -494,18 +498,18 @@ class ScriptInfo(object):
         return ''
 
     @classmethod
-    def _get_script_info(cls, filepath, check_uncommitted=True, create_requirements=True, log=None):
+    def _get_script_info(cls, filepaths, check_uncommitted=True, create_requirements=True, log=None):
         jupyter_filepath = cls._get_jupyter_notebook_filename()
         if jupyter_filepath:
-            script_path = Path(os.path.normpath(jupyter_filepath)).absolute()
+            scripts_path = [Path(os.path.normpath(jupyter_filepath)).absolute()]
         else:
-            script_path = Path(os.path.normpath(filepath)).absolute()
-            if not script_path.is_file():
+            scripts_path = [Path(os.path.normpath(f)).absolute() for f in filepaths if f]
+            if all(not f.is_file() for f in scripts_path):
                 raise ScriptInfoError(
-                    "Script file [{}] could not be found".format(filepath)
+                    "Script file {} could not be found".format(scripts_path)
                 )
 
-        script_dir = script_path.parent
+        scripts_dir = [f.parent for f in scripts_path]
 
         def _log(msg, *args, **kwargs):
             if not log:
@@ -516,18 +520,25 @@ class ScriptInfo(object):
                 )
             )
 
-        plugin = next((p for p in cls.plugins if p.exists(script_dir)), None)
+        plugin = next((p for p in cls.plugins if any(p.exists(d) for d in scripts_dir)), None)
         repo_info = DetectionResult()
+        script_dir = scripts_dir[0]
+        script_path = scripts_path[0]
         if not plugin:
             log.info("No repository found, storing script code instead")
         else:
             try:
-                repo_info = plugin.get_info(str(script_dir), include_diff=check_uncommitted)
+                for i, d in enumerate(scripts_dir):
+                    repo_info = plugin.get_info(str(d), include_diff=check_uncommitted)
+                    if not repo_info.is_empty():
+                        script_dir = d
+                        script_path = scripts_path[i]
+                        break
             except Exception as ex:
-                _log("no info for {} ({})", script_dir, ex)
+                _log("no info for {} ({})", scripts_dir, ex)
             else:
                 if repo_info.is_empty():
-                    _log("no info for {}", script_dir)
+                    _log("no info for {}", scripts_dir)
 
         repo_root = repo_info.root or script_dir
         if not plugin:
@@ -564,6 +575,8 @@ class ScriptInfo(object):
             diff=diff,
             requirements={'pip': requirements, 'conda': conda_requirements} if requirements else None,
             binary='python{}.{}'.format(sys.version_info.major, sys.version_info.minor),
+            repo_root=repo_root,
+            jupyter_filepath=jupyter_filepath,
         )
 
         messages = []
@@ -581,15 +594,43 @@ class ScriptInfo(object):
                 script_requirements)
 
     @classmethod
-    def get(cls, filepath=sys.argv[0], check_uncommitted=True, create_requirements=True, log=None):
+    def get(cls, filepaths=None, check_uncommitted=True, create_requirements=True, log=None):
         try:
+            if not filepaths:
+                filepaths = [sys.argv[0], ]
             return cls._get_script_info(
-                filepath=filepath, check_uncommitted=check_uncommitted,
+                filepaths=filepaths, check_uncommitted=check_uncommitted,
                 create_requirements=create_requirements, log=log)
         except Exception as ex:
             if log:
                 log.warning("Failed auto-detecting task repository: {}".format(ex))
         return ScriptInfoResult(), None
+
+    @classmethod
+    def detect_running_module(cls, script_dict):
+        # noinspection PyBroadException
+        try:
+            # If this is jupyter, do not try to detect the running module, we know what we have.
+            if script_dict.get('jupyter_filepath'):
+                return script_dict
+
+            if '__main__' in sys.modules and vars(sys.modules['__main__'])['__package__']:
+                argvs = ''
+                git_root = os.path.abspath(script_dict['repo_root']) if script_dict['repo_root'] else None
+                for a in sys.argv[1:]:
+                    if git_root and os.path.exists(a):
+                        # check if common to project:
+                        a_abs = os.path.abspath(a)
+                        if os.path.commonpath([a_abs, git_root]) == git_root:
+                            # adjust path relative to working dir inside git repo
+                            a = ' ' + os.path.relpath(a_abs, os.path.join(git_root, script_dict['working_dir']))
+                    argvs += ' {}'.format(a)
+                # update the script entry point to match the real argv and module call
+                script_dict['entry_point'] = '-m {}{}'.format(
+                    vars(sys.modules['__main__'])['__package__'], (' ' + argvs) if argvs else '')
+        except Exception:
+            pass
+        return script_dict
 
     @classmethod
     def close(cls):

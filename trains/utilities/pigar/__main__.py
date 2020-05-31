@@ -5,7 +5,7 @@ from __future__ import print_function, division, absolute_import
 import os
 import codecs
 
-from .reqs import project_import_modules, is_std_or_local_lib
+from .reqs import project_import_modules, is_std_or_local_lib, is_base_module
 from .utils import lines_diff
 from .log import logger
 from .modules import ReqsModules
@@ -82,16 +82,20 @@ class GenerateReqs(object):
                 guess.add(name, 0, modules[name])
 
         # add local modules, so we know what is used but not installed.
+        project_path = os.path.realpath(self._project_path)
         for name in self._local_mods:
             if name in modules:
                 if name in self._force_modules_reqs:
                     reqs.add(name, self._force_modules_reqs[name], modules[name])
                     continue
 
+                # if this is a base module, we have it in installed modules but package name is None
+                mod_path = os.path.realpath(self._local_mods[name])
+                if is_base_module(mod_path):
+                    continue
+
                 # if this is a folder of our project, we can safely ignore it
-                if os.path.commonpath([os.path.realpath(self._project_path)]) == \
-                        os.path.commonpath([os.path.realpath(self._project_path),
-                                            os.path.realpath(self._local_mods[name])]):
+                if os.path.commonpath([project_path]) == os.path.commonpath([project_path, mod_path]):
                     continue
 
                 relpath = os.path.relpath(self._local_mods[name], self._project_path)

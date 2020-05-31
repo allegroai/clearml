@@ -147,6 +147,7 @@ class Task(_Task):
         self._detect_repo_async_thread = None
         self._resource_monitor = None
         self._artifacts_manager = Artifacts(self)
+        self._calling_filename = None
         # register atexit, so that we mark the task as stopped
         self._at_exit_called = False
 
@@ -1542,6 +1543,18 @@ class Task(_Task):
 
         # update current repository and put warning into logs
         if detect_repo:
+            # noinspection PyBroadException
+            try:
+                import traceback
+                stack = traceback.extract_stack(limit=10)
+                # NOTICE WE ARE ALWAYS 3 down from caller in stack!
+                for i in range(len(stack)-1, 0, -1):
+                    # look for the Task.init call, then the one above it is the callee module
+                    if stack[i].name == 'init':
+                        task._calling_filename = os.path.abspath(stack[i-1].filename)
+                        break
+            except Exception:
+                pass
             if in_dev_mode and cls.__detect_repo_async:
                 task._detect_repo_async_thread = threading.Thread(target=task._update_repository)
                 task._detect_repo_async_thread.daemon = True

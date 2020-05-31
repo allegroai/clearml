@@ -35,6 +35,10 @@ try:
     import numpy as np
 except ImportError:
     np = None
+try:
+    from pathlib import Path as pathlib_Path
+except ImportError:
+    pathlib_Path = None
 
 
 class Artifact(object):
@@ -353,7 +357,8 @@ class Artifacts(object):
             uri = artifact_object
             artifact_type = 'custom'
             artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
-        elif isinstance(artifact_object, six.string_types + (Path,)):
+        elif isinstance(
+                artifact_object, six.string_types + (Path, pathlib_Path,) if pathlib_Path is not None else (Path,)):
             # check if single file
             artifact_object = Path(artifact_object)
 

@@ -1037,6 +1037,20 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self._data.status = status
         return str(status)
 
+    def get_output_log_web_page(self):
+        # type: () -> str
+        """
+        Return the Task results & outputs web page address.
+        For example: https://demoapp.trains.allegro.ai/projects/216431/experiments/60763e04/output/log
+
+        :return: http/s url link
+        """
+        return '{}/projects/{}/experiments/{}/output/log'.format(
+            self._get_app_server(),
+            self.project if self.project is not None else '*',
+            self.id,
+        )
+
     def get_reported_scalars(
             self,
             max_samples=0,  # type: int
@@ -1097,6 +1111,16 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         lines = [r.get('msg', '') for r in response.response_data['events']]
         return lines
+
+    @staticmethod
+    def running_locally():
+        # type: () -> bool
+        """
+        If the task is not executed by trains-agent, return True (i.e. running locally)
+
+        :return: True if not executed by trains-agent
+        """
+        return not running_remotely()
 
     @classmethod
     def add_requirements(cls, package_name, package_version=None):

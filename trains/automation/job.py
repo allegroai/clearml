@@ -21,7 +21,7 @@ class TrainsJob(object):
             parent=None,  # type: Optional[str]
             **kwargs  # type: Any
     ):
-        # type: (...) -> TrainsJob
+        # type: (...) -> ()
         """
         Create a new Task based in a base_task_id with a different set of parameters
 
@@ -131,7 +131,7 @@ class TrainsJob(object):
         return self.task.id
 
     def status(self):
-        # type: () -> Task.TaskStatusEnum
+        # type: () -> str
         """
         Return the Job Task current status, see Task.TaskStatusEnum
 
@@ -229,7 +229,7 @@ class _JobStub(object):
             tags=None,  # type: Optional[Sequence[str]]
             **kwargs  # type: Any
      ):
-        # type: (...) -> _JobStub
+        # type: (...) -> ()
         self.task = None
         self.base_task_id = base_task_id
         self.parameter_override = parameter_override

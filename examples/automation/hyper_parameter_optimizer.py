@@ -31,11 +31,13 @@ def job_complete_callback(
 # Connecting TRAINS
 task = Task.init(project_name='Hyper-Parameter Optimization',
                  task_name='Automatic Hyper-Parameter Optimization',
+                 task_type=Task.TaskTypes.optimizer,
                  reuse_last_task_id=False)
 
 # experiment template to optimize in the hyper-parameter optimization
 args = {
     'template_task_id': None,
+    'run_as_service': False,
 }
 args = task.connect(args)
 
@@ -70,9 +72,9 @@ an_optimizer = HyperParameterOptimizer(
     optimizer_class=Our_SearchStrategy,
     # Select an execution queue to schedule the experiments for execution
     execution_queue='default',
-    # Limit the execution time of a single experiment
+    # Optional: Limit the execution time of a single experiment, in minutes.
     # (this is optional, and if using  OptimizerBOHB, it is ignored)
-    max_job_execution_minutes=10.,
+    time_limit_per_job=10.,
     # Check the experiments every 6 seconds is way too often, we should probably set it to 5 min,
     # assuming a single experiment is usually hours...
     pool_period_min=0.1,
@@ -83,10 +85,16 @@ an_optimizer = HyperParameterOptimizer(
     # This is only applicable for OptimizerBOHB and ignore by the rest
     # set the minimum number of iterations for an experiment, before early stopping
     min_iteration_per_job=10,
-    # This is only applicable for OptimizerBOHB and ignore by the rest
-    # set the maximum number of iterations for an experiment to execute
+    # Set the maximum number of iterations for an experiment to execute
+    # (This is optional, unless using OptimizerBOHB where this is a must)
     max_iteration_per_job=30,
 )
+
+# if we are running as a service, just enqueue ourselves into the services queue and let it run the optimization
+if args['run_as_service']:
+    # if this code is executed by `trains-agent` the function call does nothing.
+    # if executed locally, the local process will be terminated, and a remote copy will be executed instead
+    task.execute_remotely(queue_name='services', exit_process=True)
 
 # report every 12 seconds, this is way too often, but we are testing here J
 an_optimizer.set_report_period(0.2)

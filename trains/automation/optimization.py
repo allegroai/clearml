@@ -33,7 +33,7 @@ class Objective(object):
     """
 
     def __init__(self, title, series, order='max', extremum=False):
-        # type: (str, str, Union['max', 'min'], bool) -> Objective
+        # type: (str, str, Union['max', 'min'], bool) -> ()
         """
         Construct objective object that will return the scalar value for a specific task ID
 
@@ -161,6 +161,49 @@ class Objective(object):
             ('min_value' if self.sign < 0 else 'max_value') if self.extremum else 'value')
 
 
+class Budget(object):
+    class Field(object):
+        def __init__(self, limit=None):
+            # type: (Optional[float]) -> ()
+            self.limit = limit
+            self.current = {}
+
+        def update(self, uid, value):
+            # type: (Union[str, int], float) -> ()
+            if value is not None:
+                try:
+                    self.current[uid] = float(value)
+                except (TypeError, ValueError):
+                    pass
+
+        @property
+        def used(self):
+            # type: () -> (Optional[float])
+            if self.limit is None or not self.current:
+                return None
+            return sum(self.current.values())/float(self.limit)
+
+    def __init__(self, jobs_limit, iterations_limit, compute_time_limit):
+        # type: (Optional[int], Optional[int], Optional[float]) -> ()
+        self.jobs = self.Field(jobs_limit)
+        self.iterations = self.Field(iterations_limit)
+        self.compute_time = self.Field(compute_time_limit)
+
+    def to_dict(self):
+        # type: () -> (Mapping[Union['jobs', 'iterations', 'compute_time'], Mapping[Union['limit', 'used'], float]])
+        current_budget = {}
+        jobs = self.jobs.used
+        if jobs:
+            current_budget['jobs'] = {'limit': self.jobs.limit, 'used': jobs}
+        iterations = self.iterations.used
+        if iterations:
+            current_budget['iterations'] = {'limit': self.iterations.limit, 'used': iterations}
+        compute_time = self.compute_time.used
+        if compute_time:
+            current_budget['compute_time'] = {'limit': self.compute_time.limit, 'used': compute_time}
+        return current_budget
+
+
 class SearchStrategy(object):
     """
     Base Search strategy class, inherit to implement your custom strategy
@@ -176,11 +219,12 @@ class SearchStrategy(object):
             execution_queue,  # type: str
             num_concurrent_workers,  # type: int
             pool_period_min=2.,  # type: float
-            max_job_execution_minutes=None,  # type: Optional[float]
+            time_limit_per_job=None,  # type: Optional[float]
+            max_iteration_per_job=None,  # type: Optional[int]
             total_max_jobs=None,  # type: Optional[int]
             **_  # type: Any
     ):
-        # type: (...) -> SearchStrategy
+        # type: (...) -> ()
         """
         Initialize a search strategy optimizer
 
@@ -190,8 +234,11 @@ class SearchStrategy(object):
         :param str execution_queue: execution queue to use for launching Tasks (experiments).
         :param int num_concurrent_workers: Limit number of concurrent running machines
         :param float pool_period_min: time in minutes between two consecutive pools
-        :param float max_job_execution_minutes: maximum time per single job in minutes, if exceeded job is aborted
-        :param int total_max_jobs: total maximum job for the optimization process. Default None, unlimited
+        :param float time_limit_per_job: Optional, maximum execution time per single job in minutes,
+            when time limit is exceeded job is aborted
+        :param int max_iteration_per_job: Optional, maximum iterations (of the objective metric)
+            per single job, when exceeded job is aborted.
+        :param int total_max_jobs: total maximum jobs for the optimization process. Default None, unlimited
         """
         super(SearchStrategy, self).__init__()
         self._base_task_id = base_task_id
@@ -200,15 +247,24 @@ class SearchStrategy(object):
         self._execution_queue = execution_queue
         self._num_concurrent_workers = num_concurrent_workers
         self.pool_period_minutes = pool_period_min
-        self.max_job_execution_minutes = max_job_execution_minutes
+        self.time_limit_per_job = time_limit_per_job
+        self.max_iteration_per_job = max_iteration_per_job
         self.total_max_jobs = total_max_jobs
         self._stop_event = Event()
         self._current_jobs = []
+        self._pending_jobs = []
         self._num_jobs = 0
         self._job_parent_id = None
         self._created_jobs_ids = {}
         self._naming_function = None
         self._job_project = {}
+        self.budget = Budget(
+            jobs_limit=self.total_max_jobs,
+            compute_time_limit=self.total_max_jobs * self.time_limit_per_job if
+            self.time_limit_per_job and self.total_max_jobs else None,
+            iterations_limit=self.total_max_jobs * self.max_iteration_per_job if
+            self.max_iteration_per_job and self.total_max_jobs else None
+        )
         self._validate_base_task()
 
     def start(self):
@@ -256,6 +312,15 @@ class SearchStrategy(object):
 
         self._current_jobs = updated_jobs
 
+        pending_jobs = []
+        for job in self._pending_jobs:
+            if job.is_pending():
+                pending_jobs.append(job)
+            else:
+                self.budget.jobs.update(job.task_id(), 1)
+
+        self._pending_jobs = pending_jobs
+
         free_workers = self._num_concurrent_workers - len(self._current_jobs)
 
         # do not create more jobs if we hit the limit
@@ -270,6 +335,7 @@ class SearchStrategy(object):
             self._num_jobs += 1
             new_job.launch(self._execution_queue)
             self._current_jobs.append(new_job)
+            self._pending_jobs.append(new_job)
 
         return bool(self._current_jobs)
 
@@ -287,13 +353,34 @@ class SearchStrategy(object):
     def monitor_job(self, job):
         # type: (TrainsJob) -> bool
         """
-        Abstract helper function, not a must to implement, default use in process_step default implementation
+        Helper function, not a must to implement, default use in process_step default implementation
         Check if the job needs to be aborted or already completed
         if return False, the job was aborted / completed, and should be taken off the current job list
+
+        If there is a budget limitation,
+        this call should update self.budget.time.update() / self.budget.iterations.update()
 
         :param TrainsJob job: a TrainsJob object to monitor
         :return bool: If False, job is no longer relevant
         """
+        abort_job = False
+
+        if self.time_limit_per_job:
+            elapsed = job.elapsed() / 60.
+            self.budget.compute_time.update(job.task_id(), elapsed)
+            if elapsed > self.time_limit_per_job:
+                abort_job = True
+
+        if self.max_iteration_per_job:
+            iterations = self._get_job_iterations(job)
+            self.budget.iterations.update(job.task_id(), iterations)
+            if iterations > self.max_iteration_per_job:
+                abort_job = True
+
+        if abort_job:
+            job.abort()
+            return False
+
         return not job.is_stopped()
 
     def get_running_jobs(self):
@@ -433,6 +520,11 @@ class SearchStrategy(object):
 
         return self._job_project.get(parent_task_id)
 
+    def _get_job_iterations(self, job):
+        # type: (Union[TrainsJob, Task]) -> int
+        iteration_value = self._objective_metric.get_current_raw_objective(job)
+        return iteration_value[0] if iteration_value else -1
+
     @classmethod
     def _get_child_tasks(
             cls,
@@ -494,11 +586,12 @@ class GridSearch(SearchStrategy):
             execution_queue,  # type: str
             num_concurrent_workers,  # type: int
             pool_period_min=2.,  # type: float
-            max_job_execution_minutes=None,  # type: Optional[float]
+            time_limit_per_job=None,  # type: Optional[float]
+            max_iteration_per_job=None,  # type: Optional[int]
             total_max_jobs=None,  # type: Optional[int]
             **_  # type: Any
     ):
-        # type: (...) -> GridSearch
+        # type: (...) -> ()
         """
         Initialize a grid search optimizer
 
@@ -508,14 +601,17 @@ class GridSearch(SearchStrategy):
         :param str execution_queue: execution queue to use for launching Tasks (experiments).
         :param int num_concurrent_workers: Limit number of concurrent running machines
         :param float pool_period_min: time in minutes between two consecutive pools
-        :param float max_job_execution_minutes: maximum time per single job in minutes, if exceeded job is aborted
-        :param int total_max_jobs: total maximum job for the optimization process. Default None, unlimited
+        :param float time_limit_per_job: Optional, maximum execution time per single job in minutes,
+            when time limit is exceeded job is aborted
+        :param int max_iteration_per_job: maximum iterations (of the objective metric)
+            per single job, when exceeded job is aborted.
+        :param int total_max_jobs: total maximum jobs for the optimization process. Default None, unlimited
         """
         super(GridSearch, self).__init__(
             base_task_id=base_task_id, hyper_parameters=hyper_parameters, objective_metric=objective_metric,
             execution_queue=execution_queue, num_concurrent_workers=num_concurrent_workers,
-            pool_period_min=pool_period_min, max_job_execution_minutes=max_job_execution_minutes,
-            total_max_jobs=total_max_jobs, **_)
+            pool_period_min=pool_period_min, time_limit_per_job=time_limit_per_job,
+            max_iteration_per_job=max_iteration_per_job, total_max_jobs=total_max_jobs, **_)
         self._param_iterator = None
 
     def create_job(self):
@@ -532,21 +628,6 @@ class GridSearch(SearchStrategy):
             return None
 
         return self.helper_create_job(base_task_id=self._base_task_id, parameter_override=parameters)
-
-    def monitor_job(self, job):
-        # type: (TrainsJob) -> bool
-        """
-        Check if the job needs to be aborted or already completed
-        if return False, the job was aborted / completed, and should be taken off the current job list
-
-        :param TrainsJob job: a TrainsJob object to monitor
-        :return: boolean, If False, job is no longer relevant
-        """
-        if self.max_job_execution_minutes and job.elapsed() / 60. > self.max_job_execution_minutes:
-            job.abort()
-            return False
-
-        return not job.is_stopped()
 
     def _next_configuration(self):
         # type: () -> Mapping[str, str]
@@ -577,11 +658,12 @@ class RandomSearch(SearchStrategy):
             execution_queue,  # type: str
             num_concurrent_workers,  # type: int
             pool_period_min=2.,  # type: float
-            max_job_execution_minutes=None,  # type: Optional[float]
+            time_limit_per_job=None,  # type: Optional[float]
+            max_iteration_per_job=None,  # type: Optional[int]
             total_max_jobs=None,  # type: Optional[int]
             **_  # type: Any
     ):
-        # type: (...) -> RandomSearch
+        # type: (...) -> ()
         """
         Initialize a random search optimizer
 
@@ -591,14 +673,17 @@ class RandomSearch(SearchStrategy):
         :param str execution_queue: execution queue to use for launching Tasks (experiments).
         :param int num_concurrent_workers: Limit number of concurrent running machines
         :param float pool_period_min: time in minutes between two consecutive pools
-        :param float max_job_execution_minutes: maximum time per single job in minutes, if exceeded job is aborted
-        :param int total_max_jobs: total maximum job for the optimization process. Default None, unlimited
+        :param float time_limit_per_job: Optional, maximum execution time per single job in minutes,
+            when time limit is exceeded job is aborted
+        :param int max_iteration_per_job: maximum iterations (of the objective metric)
+            per single job, when exceeded job is aborted.
+        :param int total_max_jobs: total maximum jobs for the optimization process. Default None, unlimited
         """
         super(RandomSearch, self).__init__(
             base_task_id=base_task_id, hyper_parameters=hyper_parameters, objective_metric=objective_metric,
             execution_queue=execution_queue, num_concurrent_workers=num_concurrent_workers,
-            pool_period_min=pool_period_min,
-            max_job_execution_minutes=max_job_execution_minutes, total_max_jobs=total_max_jobs, **_)
+            pool_period_min=pool_period_min, time_limit_per_job=time_limit_per_job,
+            max_iteration_per_job=max_iteration_per_job, total_max_jobs=total_max_jobs, **_)
         self._hyper_parameters_collection = set()
 
     def create_job(self):
@@ -631,21 +716,6 @@ class RandomSearch(SearchStrategy):
 
         return self.helper_create_job(base_task_id=self._base_task_id, parameter_override=parameters)
 
-    def monitor_job(self, job):
-        # type: (TrainsJob) -> bool
-        """
-        Check if the job needs to be aborted or already completed
-        if return False, the job was aborted / completed, and should be taken off the current job list
-
-        :param TrainsJob job: a TrainsJob object to monitor
-        :return: boolean, If False, job is no longer relevant
-        """
-        if self.max_job_execution_minutes and job.elapsed() / 60. > self.max_job_execution_minutes:
-            job.abort()
-            return False
-
-        return not job.is_stopped()
-
 
 class HyperParameterOptimizer(object):
     """
@@ -669,7 +739,7 @@ class HyperParameterOptimizer(object):
             always_create_task=False,  # type: bool
             **optimizer_kwargs  # type: Any
     ):
-        # type: (...) -> HyperParameterOptimizer
+        # type: (...) -> ()
         """
         Create a new hyper-parameter controller. The newly created object will launch and monitor the new experiments.
 
@@ -717,7 +787,7 @@ class HyperParameterOptimizer(object):
                     objective_metric_sign='min',
                     max_number_of_concurrent_tasks=5,
                     optimizer_class=RandomSearch,
-                    execution_queue='workers', max_job_execution_minutes=0.1, pool_period_min=0.1)
+                    execution_queue='workers', time_limit_per_job=120, pool_period_min=0.2)
 
                 # This will automatically create and print the optimizer new task id
                 # for later use. if a Task was already created, it will use it.
@@ -1092,6 +1162,25 @@ class HyperParameterOptimizer(object):
                         task_logger.report_scalar(
                             title=title, series='{}{}'.format(series, machine_id),
                             iteration=counter, value=value)
+
+                # noinspection PyBroadException
+                try:
+                    budget = self.optimizer.budget.to_dict()
+                except Exception:
+                    budget = {}
+
+                # report remaining budget
+                for budget_part, value in budget.items():
+                    task_logger.report_scalar(
+                        title='remaining budget', series='{} %'.format(budget_part),
+                        iteration=counter, value=round(100 - value['used'] * 100., ndigits=1))
+                if self.optimization_timeout and self.optimization_start_time:
+                    task_logger.report_scalar(
+                        title='remaining budget', series='time %',
+                        iteration=counter,
+                        value=round(100 - (100. * (time() - self.optimization_start_time) /
+                                           (self.optimization_timeout - self.optimization_start_time)), ndigits=1)
+                    )
 
                 # collect a summary of all the jobs and their final objective values
                 cur_completed_jobs = set(self.optimizer.get_created_jobs_ids().keys()) - running_job_ids

@@ -67,13 +67,34 @@ class _TrainsBandsterWorker(Worker):
         self.optimizer._current_jobs.append(self._current_job)
         self._current_job.launch(self.queue_name)
         iteration_value = None
+        is_pending = True
+
         while not self._current_job.is_stopped():
+            if is_pending and not self._current_job.is_pending():
+                is_pending = False
+                # noinspection PyProtectedMember
+                self.optimizer.budget.jobs.update(
+                    self._current_job.task_id(),
+                    float(self.optimizer._min_iteration_per_job)/self.optimizer._max_iteration_per_job)
+
             # noinspection PyProtectedMember
             iteration_value = self.optimizer._objective_metric.get_current_raw_objective(self._current_job)
-            if iteration_value and iteration_value[0] >= self.budget_iteration_scale * budget:
-                self._current_job.abort()
-                break
+            if iteration_value:
+                # update budget
+                self.optimizer.budget.iterations.update(self._current_job.task_id(), iteration_value[0])
+
+                # check if we exceeded this job budget
+                if iteration_value[0] >= self.budget_iteration_scale * budget:
+                    self._current_job.abort()
+                    break
+
             sleep(self.sleep_interval)
+
+        if iteration_value:
+            # noinspection PyProtectedMember
+            self.optimizer.budget.jobs.update(
+                self._current_job.task_id(),
+                float(iteration_value[0]) / self.optimizer._max_iteration_per_job)
 
         result = {
             # this is the a mandatory field to run hyperband
@@ -100,11 +121,11 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
             max_iteration_per_job,  # type: Optional[int]
             total_max_jobs,  # type: Optional[int]
             pool_period_min=2.,  # type: float
-            max_job_execution_minutes=None,  # type: Optional[float]
+            time_limit_per_job=None,  # type: Optional[float]
             local_port=9090,  # type: int
             **bohb_kwargs,  # type: Any
     ):
-        # type: (...) -> OptimizerBOHB
+        # type: (...) -> None
         """
         Initialize a BOHB search strategy optimizer
         BOHB performs robust and efficient hyperparameter optimization at scale by combining
@@ -140,15 +161,24 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
             This means more than total_max_jobs could be created, as long as the cumulative iterations
             (summed over all created jobs) will not exceed `max_iteration_per_job * total_max_jobs`
         :param float pool_period_min: time in minutes between two consecutive pools
-        :param float max_job_execution_minutes: maximum time per single job in minutes, if exceeded job is aborted
+        :param float time_limit_per_job: Optional, maximum execution time per single job in minutes,
+            when time limit is exceeded job is aborted
         :param int local_port: default port 9090 tcp, this is a must for the BOHB workers to communicate, even locally.
         :param bohb_kwargs: arguments passed directly yo the BOHB object
         """
+        if not max_iteration_per_job or not min_iteration_per_job or not total_max_jobs:
+            raise ValueError(
+                "OptimizerBOHB is missing a defined budget.\n"
+                "The following arguments must be defined: "
+                "max_iteration_per_job, min_iteration_per_job, total_max_jobs.\n"
+                "Maximum optimization budget is: max_iteration_per_job * total_max_jobs\n"
+            )
+
         super(OptimizerBOHB, self).__init__(
             base_task_id=base_task_id, hyper_parameters=hyper_parameters, objective_metric=objective_metric,
             execution_queue=execution_queue, num_concurrent_workers=num_concurrent_workers,
-            pool_period_min=pool_period_min, max_job_execution_minutes=max_job_execution_minutes,
-            total_max_jobs=total_max_jobs)
+            pool_period_min=pool_period_min, time_limit_per_job=time_limit_per_job,
+            max_iteration_per_job=max_iteration_per_job, total_max_jobs=total_max_jobs)
         self._max_iteration_per_job = max_iteration_per_job
         self._min_iteration_per_job = min_iteration_per_job
         self._bohb_kwargs = bohb_kwargs or {}

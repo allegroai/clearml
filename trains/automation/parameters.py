@@ -39,7 +39,7 @@ class Parameter(RandomSeed):
     """
 
     def __init__(self, name):
-        # type: (Optional[str]) -> Parameter
+        # type: (Optional[str]) -> ()
         """
         Create a new Parameter for hyper-parameter optimization
 
@@ -73,6 +73,7 @@ class Parameter(RandomSeed):
         :return dict:  dict representation of the object (serialization)
         """
         serialize = {'__class__': str(self.__class__).split('.')[-1][:-2]}
+        # noinspection PyCallingNonCallable
         serialize.update(dict(((k, v.to_dict() if hasattr(v, 'to_dict') else v) for k, v in self.__dict__.items())))
         return serialize
 
@@ -111,7 +112,7 @@ class UniformParameterRange(Parameter):
             step_size=None,  # type: Optional[float]
             include_max_value=True  # type: bool
     ):
-        # type: (...) -> UniformParameterRange
+        # type: (...) -> ()
         """
         Create a parameter to be sampled by the SearchStrategy
 
@@ -160,6 +161,7 @@ class UniformIntegerParameterRange(Parameter):
     """
 
     def __init__(self, name, min_value, max_value, step_size=1, include_max_value=True):
+        # type: (str, int, int, int, bool) -> ()
         """
         Create a parameter to be sampled by the SearchStrategy
 
@@ -206,6 +208,7 @@ class DiscreteParameterRange(Parameter):
     """
 
     def __init__(self, name, values=()):
+        # type: (str, Sequence[Any]) -> ()
         """
         Uniformly sample values form a list of discrete options
 
@@ -240,7 +243,7 @@ class ParameterSet(Parameter):
     """
 
     def __init__(self, parameter_combinations=()):
-        # type: (Sequence[Mapping[str, Union[float, int, str, Parameter]]]) -> ParameterSet
+        # type: (Sequence[Mapping[str, Union[float, int, str, Parameter]]]) -> ()
         """
         Uniformly sample values form a list of discrete options (combinations) of parameters
 

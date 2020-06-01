@@ -299,9 +299,15 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         # Step 3: Run an optimizer
         self._bohb = BOHB(configspace=self._convert_hyper_parameters_to_cs(),
                           run_id=fake_run_id,
-                          num_samples=self.total_max_jobs,
+                          # num_samples=self.total_max_jobs, # will be set by self._bohb_kwargs
                           min_budget=float(self._min_iteration_per_job) / float(self._max_iteration_per_job),
                           **self._bohb_kwargs)
+        # scale the budget according to the successive halving iterations
+        if self.budget.jobs.limit:
+            self.budget.jobs.limit *= len(self._bohb.budgets)
+        if self.budget.iterations.limit:
+            self.budget.iterations.limit *= len(self._bohb.budgets)
+        # start optimization
         self._res = self._bohb.run(n_iterations=self.total_max_jobs, min_n_workers=self._num_concurrent_workers)
 
         # Step 4: if we get here, Shutdown

@@ -106,7 +106,9 @@ class TrainsJob(object):
             return -1
         self.task_started = True
         if not self.task.data.started:
-            return -1
+            self.task.reload()
+            if not self.task.data.started:
+                return -1
         return (datetime.now(tz=self.task.data.started.tzinfo) - self.task.data.started).total_seconds()
 
     def iterations(self):
@@ -214,6 +216,20 @@ class TrainsJob(object):
         :return bool: True the task is currently is currently queued
         """
         return self.task.status in (Task.TaskStatusEnum.queued, Task.TaskStatusEnum.created)
+
+    def started(self):
+        # type: () -> bool
+        """
+        Return True if job already started, or ended (or False if created/pending)
+
+        :return bool: False if the task is currently in draft mode or pending
+        """
+        if not self.task_started and self.task.status in (
+                Task.TaskStatusEnum.in_progress, Task.TaskStatusEnum.created):
+            return False
+
+        self.task_started = True
+        return True
 
 
 # noinspection PyMethodMayBeStatic, PyUnusedLocal
@@ -326,3 +342,7 @@ class _JobStub(object):
     def is_pending(self):
         # type: () -> bool
         return self.task_started is None
+
+    def started(self):
+        # type: () -> bool
+        return not self.is_pending()

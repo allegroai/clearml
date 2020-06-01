@@ -369,15 +369,17 @@ class SearchStrategy(object):
 
         if self.time_limit_per_job:
             elapsed = job.elapsed() / 60.
-            self.budget.compute_time.update(job.task_id(), elapsed)
-            if elapsed > self.time_limit_per_job:
-                abort_job = True
+            if elapsed > 0:
+                self.budget.compute_time.update(job.task_id(), elapsed)
+                if elapsed > self.time_limit_per_job:
+                    abort_job = True
 
         if self.max_iteration_per_job:
             iterations = self._get_job_iterations(job)
-            self.budget.iterations.update(job.task_id(), iterations)
-            if iterations > self.max_iteration_per_job:
-                abort_job = True
+            if iterations > 0:
+                self.budget.iterations.update(job.task_id(), iterations)
+                if iterations > self.max_iteration_per_job:
+                    abort_job = True
 
         if abort_job:
             job.abort()
@@ -1139,6 +1141,9 @@ class HyperParameterOptimizer(object):
 
             if timeout >= 0:
                 timeout = min(self._report_period_min * 60., timeout if timeout else self._report_period_min * 60.)
+                # make sure that we have the first report fired before we actually go to sleep, wait for 15 sec.
+                if counter <= 0:
+                    timeout = 15
                 print('Progress report #{} completed, sleeping for {} minutes'.format(counter, timeout / 60.))
                 if self._stop_event.wait(timeout=timeout):
                     # wait for one last report

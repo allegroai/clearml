@@ -331,8 +331,6 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         print('A total of {} runs where executed.'.format(len(self._res.get_all_runs())))
         print('Total budget corresponds to {:.1f} full function evaluations.'.format(
             sum([r.budget for r in all_runs]) / self._bohb_kwargs.get('max_budget', 1.0)))
-        print('Total budget corresponds to {:.1f} full function evaluations.'.format(
-            sum([r.budget for r in all_runs]) / self._bohb_kwargs.get('max_budget', 1.0)))
         print('The run took {:.1f} seconds to complete.'.format(
             all_runs[-1].time_stamps['finished'] - all_runs[0].time_stamps['started']))
 

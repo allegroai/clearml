@@ -1054,7 +1054,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def get_reported_scalars(
             self,
             max_samples=0,  # type: int
-            x_axis='iter'  # type: Union['iter', 'timestamp', 'iso_time']
+            x_axis='iter'  # type: str
     ):
         # type: (...) -> Mapping[str, Mapping[str, Mapping[str, Sequence[float]]]]
         """
@@ -1133,7 +1133,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         cls._force_requirements[package_name] = package_version
 
     def _get_models(self, model_type='output'):
-        # type: (Union['output', 'input']) -> Sequence[Model]
+        # type: (str) -> Sequence[Model]
+        # model_type is either 'output' or 'input'
         model_type = model_type.lower().strip()
         assert model_type == 'output' or model_type == 'input'
 

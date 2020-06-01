@@ -33,7 +33,7 @@ class Objective(object):
     """
 
     def __init__(self, title, series, order='max', extremum=False):
-        # type: (str, str, Union['max', 'min'], bool) -> ()
+        # type: (str, str, str, bool) -> ()
         """
         Construct objective object that will return the scalar value for a specific task ID
 
@@ -190,7 +190,9 @@ class Budget(object):
         self.compute_time = self.Field(compute_time_limit)
 
     def to_dict(self):
-        # type: () -> (Mapping[Union['jobs', 'iterations', 'compute_time'], Mapping[Union['limit', 'used'], float]])
+        # type: () -> (Mapping[str, Mapping[str, float]])
+
+        # returned dict is Mapping[Union['jobs', 'iterations', 'compute_time'], Mapping[Union['limit', 'used'], float]]
         current_budget = {}
         jobs = self.jobs.used
         if jobs:
@@ -358,7 +360,7 @@ class SearchStrategy(object):
         if return False, the job was aborted / completed, and should be taken off the current job list
 
         If there is a budget limitation,
-        this call should update self.budget.time.update() / self.budget.iterations.update()
+        this call should update self.budget.compute_time.update() / self.budget.iterations.update()
 
         :param TrainsJob job: a TrainsJob object to monitor
         :return bool: If False, job is no longer relevant
@@ -730,7 +732,7 @@ class HyperParameterOptimizer(object):
             hyper_parameters,  # type: Sequence[Parameter]
             objective_metric_title,  # type: str
             objective_metric_series,  # type: str
-            objective_metric_sign='min',  # type: Union['min', 'max', 'min_global', 'max_global']
+            objective_metric_sign='min',  # type: str
             optimizer_class=RandomSearch,  # type: type(SearchStrategy)
             max_number_of_concurrent_tasks=10,  # type: int
             execution_queue='default',  # type: str
@@ -747,7 +749,8 @@ class HyperParameterOptimizer(object):
         :param list hyper_parameters: list of Parameter objects to optimize over
         :param str objective_metric_title: Objective metric title to maximize / minimize (example: 'validation')
         :param str objective_metric_series: Objective metric series to maximize / minimize (example: 'loss')
-        :param str objective_metric_sign: Objective to maximize / minimize. Valid options:
+        :param str objective_metric_sign: Objective to maximize / minimize.
+            Valid options: ['min', 'max', 'min_global', 'max_global']
             'min'/'max': Minimize/Maximize the last reported value for the specified title/series scalar
             'min_global'/'max_global': Minimize/Maximize the min/max value
                 of *all* reported values for the specific title/series scalar

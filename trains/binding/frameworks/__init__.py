@@ -57,7 +57,9 @@ class WeightsFileHandler(object):
 
     @staticmethod
     def add_pre_callback(callback_function):
-        # type: (Callable[[Union['load', 'save'], str, str, Task], str]) -> int
+        # type: (Callable[[str, str, str, Task], str]) -> int
+
+        # callback is Callable[[Union['load', 'save'], str, str, Task], str]
         if callback_function in WeightsFileHandler._model_pre_callbacks.values():
             return [k for k, v in WeightsFileHandler._model_pre_callbacks.items() if v == callback_function][0]
 
@@ -70,7 +72,9 @@ class WeightsFileHandler(object):
 
     @staticmethod
     def add_post_callback(callback_function):
-        # type: (Callable[[Union['load', 'save'], Model, str, str, str, Task], Model]) -> int
+        # type: (Callable[[str, Model, str, str, str, Task], Model]) -> int
+
+        # callback is Callable[[Union['load', 'save'], Model, str, str, str, Task], Model]
         if callback_function in WeightsFileHandler._model_post_callbacks.values():
             return [k for k, v in WeightsFileHandler._model_post_callbacks.items() if v == callback_function][0]
 

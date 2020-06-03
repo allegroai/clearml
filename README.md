@@ -1,9 +1,9 @@
 # TRAINS
 ## Auto-Magical Experiment Manager & Version Control for AI
 
-## :tada: Now with Full DevOps - check the latest addition [TRAINS AGENT](https://github.com/allegroai/trains-agent)
+## :confetti_ball: Now with Full ML/DL DevOps - See [TRAINS AGENT](https://github.com/allegroai/trains-agent) and [Services](https://github.com/allegroai/trains-server#trains-agent-services--)
 ## :station: [Documentation is here!](https://allegro.ai/docs) `wubba lubba dub dub` and a [Slack Channel](https://join.slack.com/t/allegroai-trains/shared_invite/enQtOTQyMTI1MzQxMzE4LTY5NTUxOTY1NmQ1MzQ5MjRhMGRhZmM4ODE5NTNjMTg2NTBlZGQzZGVkMWU3ZDg1MGE1MjQxNDEzMWU2NmVjZmY) :train2: 
-## There is also an updated :sparkle: [TRAINS AWS autoscaler](https://github.com/allegroai/trains-agent/blob/master/examples/dynamic_cloud_cluster.ipynb)
+## Features: [AWS autoscaler](https://github.com/allegroai/trains-agent/blob/master/examples/dynamic_cloud_cluster.ipynb) :robot: [Hyper-Parameter Optimization](https://github.com/allegroai/trains/blob/master/examples/automation/hyper_parameter_optimizer.py) and :electric_plug: [Pipelines](https://github.com/allegroai/trains/blob/master/examples/automation/task_piping_example.py)
 
 "Because it’s a jungle out there"
 

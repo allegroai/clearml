@@ -3,27 +3,31 @@ TRAINS - Artificial Intelligence Version Control
 https://github.com/allegroai/trains
 """
 
+import os.path
 # Always prefer setuptools over distutils
 from setuptools import setup, find_packages
-from six import exec_
-from pathlib2 import Path
 
+def read_text(filepath):
+    with open(filepath, "r") as f:
+        return f.read()
 
-here = Path(__file__).resolve().parent
-
+here = os.path.dirname(__file__)
 # Get the long description from the README file
-long_description = (here / 'README.md').read_text()
+long_description = read_text(os.path.join(here, 'README.md'))
 
 
-def read_version_string():
-    result = {}
-    exec_((here / 'trains/version.py').read_text(), result)
-    return result['__version__']
+def read_version_string(version_file):
+    for line in read_text(version_file).splitlines():
+        if line.startswith('__version__'):
+            delim = '"' if '"' in line else "'"
+            return line.split(delim)[1]
+    else:
+        raise RuntimeError("Unable to find version string.")
 
 
-version = read_version_string()
+version = read_version_string("trains/version.py")
 
-requirements = (here / 'requirements.txt').read_text().splitlines()
+requirements = read_text(os.path.join(here, 'requirements.txt')).splitlines()
 
 setup(
     name='trains',

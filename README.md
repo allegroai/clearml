@@ -144,7 +144,7 @@ Apache License, Version 2.0 (see the [LICENSE](https://www.apache.org/licenses/L
 
 More information in the [official documentation](https://allegro.ai/docs) and [on YouTube](https://www.youtube.com/c/AllegroAI).
 
-For examples and use cases, check [examples](https://github.com/allegroai/trains/blob/master/docs/trains_examples.md).
+For examples and use cases, check [examples folder](https://github.com/allegroai/trains/tree/master/examples) and [readme](https://github.com/allegroai/trains/blob/master/docs/trains_examples.md).
 
 If you have any questions: post on our [Slack Channel](https://join.slack.com/t/allegroai-trains/shared_invite/enQtOTQyMTI1MzQxMzE4LTY5NTUxOTY1NmQ1MzQ5MjRhMGRhZmM4ODE5NTNjMTg2NTBlZGQzZGVkMWU3ZDg1MGE1MjQxNDEzMWU2NmVjZmY), or tag your questions on [stackoverflow](https://stackoverflow.com/questions/tagged/trains) with '**trains**' tag.
 

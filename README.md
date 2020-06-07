@@ -12,7 +12,7 @@
 [![PyPI version shields.io](https://img.shields.io/pypi/v/trains.svg)](https://img.shields.io/pypi/v/trains.svg)
 [![PyPI status](https://img.shields.io/pypi/status/trains.svg)](https://pypi.python.org/pypi/trains/)
 
-### Help improve Trains by filling our 2-min [user survey](https://allegro.ai/lp/trains-user-survey/)
+### :point_right: Help improve Trains by filling our 2-min [user survey](https://allegro.ai/lp/trains-user-survey/)
 
 TRAINS is our solution to a problem we share with countless other researchers and developers in the machine
 learning/deep learning universe: Training production-grade deep learning models is a glorious but messy process.
@@ -24,6 +24,8 @@ and practices. Use it on a daily basis to boost collaboration and visibility, or
 your experimentation logs, outputs, and data to one centralized server.
 
 **We have a demo server up and running at [https://demoapp.trains.allegro.ai](https://demoapp.trains.allegro.ai).**
+
+### :steam_locomotive: [Getting Started Tutorial](https://allegro.ai/blog/setting-up-allegro-ai-platform/) :rocket:
 
 **You can try out TRAINS and [test your code](#integrate-trains), with no additional setup.**
 <a href="https://demoapp.trains.allegro.ai"><img src="https://github.com/allegroai/trains/blob/master/docs/webapp_screenshots.gif?raw=true" width="100%"></a>
@@ -42,7 +44,7 @@ your experimentation logs, outputs, and data to one centralized server.
 * Initial model weights file
 * Model snapshots (With optional automatic upload to central storage: Shared folder, S3, GS, Azure, Http)
 * Artifacts log & store (Shared folder, S3, GS, Azure, Http)
-* Tensorboard/TensorboardX scalars, metrics, histograms, images (with audio coming soon)
+* Tensorboard/TensorboardX scalars, metrics, histograms, **images, audio and video**
 * Matplotlib & Seaborn
 * Supported frameworks: Tensorflow, PyTorch, Keras, XGBoost and Scikit-Learn (MxNet is coming soon)
 * Seamless integration (including version control) with **Jupyter Notebook**

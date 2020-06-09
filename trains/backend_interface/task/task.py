@@ -973,6 +973,16 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         self._set_task_property("name", str(name))
         self._edit(name=self.data.name)
+        
+    def set_parent(self, parent):
+        # type: (str) -> ()
+        """
+        Set the parent task for the Task.
+        :param comment: The parent task id for the Task.
+        :type comment: str
+        """
+        self._set_task_property("parent", str(parent))
+        self._edit(parent=parent)
 
     def set_comment(self, comment):
         # type: (str) -> ()

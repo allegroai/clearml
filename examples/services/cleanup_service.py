@@ -20,7 +20,7 @@ from glob import glob
 from shutil import rmtree
 from time import sleep, time
 
-from trains_agent import APIClient
+from trains.backend_api.session.client import APIClient
 
 from trains import Task
 
@@ -49,6 +49,10 @@ args = task.connect(args)
 
 
 # if we are running as a service, just enqueue ourselves into the services queue and let it run the optimization
+if args["run_as_service"] and task.running_locally():
+    verify = input('Stop local execution and execute remotely [y]/n ?').strip().lower()
+    args["run_as_service"] = not verify or verify.startswith('y')
+
 if args["run_as_service"]:
     # if this code is executed by `trains-agent` the function call does nothing.
     # if executed locally, the local process will be terminated, and a remote copy will be executed instead

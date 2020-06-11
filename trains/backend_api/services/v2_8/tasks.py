@@ -3455,6 +3455,15 @@ class EditRequest(Request):
                 'enum': [
                     'training',
                     'testing',
+                    'inference',
+                    'data_processing',
+                    'application',
+                    'monitor',
+                    'controller',
+                    'optimizer',
+                    'service',
+                    'qc',
+                    'custom'
                 ],
                 'type': 'string',
             },
@@ -4922,6 +4931,15 @@ class GetAllResponse(Response):
                 'enum': [
                     'training',
                     'testing',
+                    'inference',
+                    'data_processing',
+                    'application',
+                    'monitor',
+                    'controller',
+                    'optimizer',
+                    'service',
+                    'qc',
+                    'custom'
                 ],
                 'type': 'string',
             },

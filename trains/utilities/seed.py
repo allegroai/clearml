@@ -68,6 +68,3 @@ def make_deterministic(seed=1337, cudnn_deterministic=False):
                     tf.random.set_random_seed(seed)
                 except Exception:
                     pass
-
-
-make_deterministic()

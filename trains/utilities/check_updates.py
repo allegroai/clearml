@@ -17,7 +17,7 @@ class CheckPackageUpdates(object):
     @classmethod
     def check_new_package_available(cls, only_once=False):
         """
-        :return: true if there is a newer package in PyPI
+        :return: True, if there is a newer package in PyPI.
         """
         if only_once and cls._package_version_checked:
             return None

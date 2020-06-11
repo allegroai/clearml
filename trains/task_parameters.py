@@ -33,7 +33,7 @@ def range_validator(min_value, max_value):
 
     :param min_value: The minimum limit of the range, inclusive. None for no minimum limit.
     :param max_value: The maximum limit of the range, inclusive. None for no maximum limit.
-    :return: A new range validator
+    :return: A new range validator.
     """
     def _range_validator(instance, attribute, value):
         if ((min_value is not None) and (value < min_value)) or \

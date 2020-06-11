@@ -99,7 +99,7 @@ class Task(_Task):
        the Trains.
 
         The exception to this Task behavior is sub-tasks (non-reproducible Tasks), which do not use the main execution
-        Task. Creating a sub-task always creates a new Task with a new Task Id.
+        Task. Creating a sub-task always creates a new Task with a new  Task ID.
     """
 
     TaskTypes = _Task.TaskTypes
@@ -178,13 +178,13 @@ class Task(_Task):
         """
         Creates a new Task (experiment), or returns the existing Task, depending upon the following:
 
-        - if **any** of the following are true, Trains creates a new Task and a new Task Id:
+        - If **any** of the following are true, Trains creates a new Task and a new  Task ID:
 
           - a Task in the same project with same name does not exist, **or**
           - a Task in the same project with same name does exist and its status is ``Published``, **or**
-          - the :paramref:`~.init.reuse_last_task_id` parameter is assigned ``False``.
+          - the ``reuse_last_task_id`` parameter is assigned ``False``.
 
-        - if **all** of the following are true, Trains returns the existing Task with the existing Task Id:
+        - If **all** of the following are true, Trains returns the existing Task with the existing  Task ID:
 
           - a Task in the same project with the same name does exist, **and**
           - the Task's status is ``Draft``, ``Completed``, ``Failed``, or ``Aborted``, **and**
@@ -197,32 +197,39 @@ class Task(_Task):
             not exist, it is created. If ``project_name`` is ``None``, the repository name is used. (Optional)
         :param str task_name: The name of Task (experiment). If ``task_name`` is ``None``, the Python experiment
             script's file name is used. (Optional)
-        :param task_type: The task type.
+        :param TaskTypes task_type: The task type.
 
-            The values are:
+            Valid task types:
 
-            - ``TaskTypes.training`` (Default)
-            - ``TaskTypes.train``
+            - ``TaskTypes.training`` (default)
             - ``TaskTypes.testing``
             - ``TaskTypes.inference``
-        :type task_type: TaskTypeEnum(value)
-        :param bool reuse_last_task_id: Force a new Task (experiment) with a new Task Id, but
+            - ``TaskTypes.data_processing``
+            - ``TaskTypes.application``
+            - ``TaskTypes.monitor``
+            - ``TaskTypes.controller``
+            - ``TaskTypes.optimizer``
+            - ``TaskTypes.service``
+            - ``TaskTypes.qc``
+            - ``TaskTypes.custom``
+
+        :param bool reuse_last_task_id: Force a new Task (experiment) with a new  Task ID, but
             the same project and Task names.
 
             .. note::
-               Trains creates the new Task Id using the previous Id, which is stored in the data cache folder.
+               Trains creates the new  Task ID using the previous Id, which is stored in the data cache folder.
 
             The values are:
 
-            - ``True`` - Reuse the last Task Id. (Default)
+            - ``True`` - Reuse the last  Task ID. (default)
             - ``False`` - Force a new Task (experiment).
-            - A string - In addition to a boolean, you can use a string to set a specific value for Task Id
+            - A string - In addition to a boolean, you can use a string to set a specific value for  Task ID
               (instead of the system generated UUID).
 
         :param str output_uri: The default location for output models and other artifacts. In the default location,
             Trains creates a subfolder for the output. The subfolder structure is the following:
 
-                <output destination name> / <project name> / <task name>.<Task Id>
+                <output destination name> / <project name> / <task name>.< Task ID>
 
             The following are examples of ``output_uri`` values for the supported locations:
 
@@ -241,11 +248,11 @@ class Task(_Task):
 
             The values are:
 
-            - ``True`` - Automatically connect. (Default)
+            - ``True`` - Automatically connect. (default)
             -  ``False`` - Do not automatically connect.
             - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
-              arguments. The dictionary keys are argparse variable names and the values are booleans,
-              False value will exclude the specified argument from the Task's parameter section.
+              arguments. The dictionary keys are argparse variable names and the values are booleans.
+              The ``False`` value excludes the specified argument from the Task's parameter section.
               Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
 
             For example:
@@ -263,7 +270,7 @@ class Task(_Task):
 
             The values are:
 
-            - ``True`` - Automatically connect (Default)
+            - ``True`` - Automatically connect (default)
             -  ``False`` - Do not automatically connect
             - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
               frameworks. The dictionary keys are frameworks and the values are booleans.
@@ -276,14 +283,13 @@ class Task(_Task):
                auto_connect_frameworks={'matplotlib': True, 'tensorflow': True, 'pytorch': True,
                     'xgboost': True, 'scikit': True}
 
-        :type auto_connect_frameworks: bool or dict
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots?
             These plots appear in in the **Trains Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab,
             with a title of **:resource monitor:**.
 
             The values are:
 
-            - ``True`` - Automatically create resource monitoring plots. (Default)
+            - ``True`` - Automatically create resource monitoring plots. (default)
             - ``False`` - Do not automatically create.
 
         :return: The main execution Task (Task context).
@@ -496,9 +502,9 @@ class Task(_Task):
             then the main execution Task's project is used. Otherwise, if the project does
             not exist, it is created. (Optional)
         :param str task_name: The name of Task (experiment).
-        :param task_type: The task type. (Optional)
+        :param TaskTypes task_type: The task type.
 
-            The values are:
+            Valid task types:
 
             - ``TaskTypes.training`` (default)
             - ``TaskTypes.testing``
@@ -512,7 +518,6 @@ class Task(_Task):
             - ``TaskTypes.qc``
             - ``TaskTypes.custom``
 
-        :type task_type: TaskTypeEnum(value)
         :return: A new experiment.
         """
         if not project_name:
@@ -545,7 +550,7 @@ class Task(_Task):
         :param str project_name: The project name of the Task to get.
         :param str task_name: The name of the Task within ``project_name`` to get.
 
-        :return: The Task specified by Id, or project name / experiment name combination.
+        :return: The Task specified by ID, or project name / experiment name combination.
         """
         return cls.__get_task(task_id=task_id, project_name=project_name, task_name=task_name)
 
@@ -555,7 +560,7 @@ class Task(_Task):
         """
         Get a list of Tasks by one of the following:
 
-        - A list of specific Task Ids.
+        - A list of specific  Task IDs.
         - All Tasks in a project matching a full or partial Task name.
         - All Tasks in any project matching a full or partial Task name.
 
@@ -574,6 +579,7 @@ class Task(_Task):
             Return any partial match of task_name, regular expressions matching is also supported
             If None is passed, returns all tasks within the project
         :param dict task_filter: filter and order Tasks. See service.tasks.GetAllRequest for details
+
         :return: The Tasks specified by the parameter combinations (see the parameters).
         """
         return cls.__get_tasks(task_ids=task_ids, project_name=project_name,
@@ -620,7 +626,7 @@ class Task(_Task):
         """
         Read-only dictionary of the Task's loaded/stored models
 
-        :return: dictionary of models loaded/stored {'input': list(Model), 'output': list(Model)}
+        :return: A dictionary of models loaded/stored {'input': list(Model), 'output': list(Model)}.
         """
         return self.get_models()
 
@@ -640,7 +646,7 @@ class Task(_Task):
 
         Use this method to manage experiments and for autoML.
 
-        :param str source_task: The Task to clone. Specify a Task object or a Task Id. (Optional)
+        :param str source_task: The Task to clone. Specify a Task object or a  Task ID. (Optional)
         :param str name: The name of the new cloned Task. (Optional)
         :param str comment: A comment / description for the new cloned Task. (Optional)
         :param str parent: The Id of the parent Task of the new Task.
@@ -683,8 +689,7 @@ class Task(_Task):
            see `Use Case Examples <../trains_agent_ref/#use-case-examples>`_ on the "Trains Agent
            Reference page.
 
-        :param task: The Task to enqueue. Specify a Task object or Task Id.
-        :type task: Task object / str
+        :param Task/str task: The Task to enqueue. Specify a Task object or  Task ID.
         :param str queue_name: The name of the queue. If not specified, then ``queue_id`` must be specified.
         :param str queue_id: The Id of the queue. If not specified, then ``queue_name`` must be specified.
 
@@ -716,6 +721,7 @@ class Task(_Task):
               - ``last_update`` - The last Task update time, including Task creation, update, change, or events for
                 this task (ISO 8601 format).
               - ``execution.queue`` - The Id of the queue where the Task is enqueued. ``null`` indicates not enqueued.
+
         """
         assert isinstance(task, (six.string_types, Task))
         if not Session.check_min_api_version('2.4'):
@@ -748,8 +754,7 @@ class Task(_Task):
         """
         Dequeue (remove) a Task from an execution queue.
 
-        :param task: The Task to dequeue. Specify a Task object or Task Id.
-        :type task: Task object / str
+        :param Task/str task: The Task to dequeue. Specify a Task object or  Task ID.
 
         :return: A dequeue JSON response.
 
@@ -780,6 +785,7 @@ class Task(_Task):
           - ``execution.queue`` - The Id of the queue where the Task is enqueued. ``null`` indicates not enqueued.
 
         - ``updated`` - The number of Tasks updated (an integer or ``null``).
+
         """
         assert isinstance(task, (six.string_types, Task))
         if not Session.check_min_api_version('2.4'):
@@ -800,7 +806,6 @@ class Task(_Task):
         this method has no effect).
 
         :param tags: A list of tags which describe the Task to add.
-        :type tags: str or iterable of str
         """
 
         if not running_remotely() or not self.is_main_task():
@@ -873,8 +878,6 @@ class Task(_Task):
             - A ``pathlib2.Path`` string - A path to the configuration file. Trains stores the content of the file.
               A local path must be relative path. When executing a Task remotely in a worker, the contents brought
               from the **Trains Server** (backend) overwrites the contents of the file.
-
-        :type configuration: dict, pathlib.Path/str
 
         :return: If a dictionary is specified, then a dictionary is returned. If pathlib2.Path / string is
             specified, then a path to a local configuration file is returned. Configuration object.
@@ -990,7 +993,7 @@ class Task(_Task):
         :param bool wait_for_uploads: Wait for all outstanding uploads to complete before existing the flush?
 
             - ``True`` - Wait
-            - ``False`` - Do not wait (Default)
+            - ``False`` - Do not wait (default)
         """
 
         # make sure model upload is done
@@ -1017,12 +1020,12 @@ class Task(_Task):
         :param bool set_started_on_success: If successful, automatically set the Task to started?
 
             - ``True`` - If successful, set to started.
-            - ``False`` - If successful, do not set to started. (Default)
+            - ``False`` - If successful, do not set to started. (default)
 
         :param bool force: Force a Task reset, even when executing the Task (experiment) remotely in a worker?
 
             - ``True`` - Force
-            - ``False`` - Do not force (Default)
+            - ``False`` - Do not force (default)
         """
         if not running_remotely() or not self.is_main_task() or force:
             super(Task, self).reset(set_started_on_success=set_started_on_success)
@@ -1075,7 +1078,6 @@ class Task(_Task):
         :param uniqueness_columns: A Sequence of columns for artifact uniqueness comparison criteria, or the default
             value of ``True``. If ``True``, the artifact uniqueness comparison criteria is all the columns,
             which is the same as ``artifact.columns``.
-        :type uniqueness_columns: sequence, str, ``True``
         """
         if not isinstance(uniqueness_columns, CollectionsSequence) and uniqueness_columns is not True:
             raise ValueError('uniqueness_columns should be a List (sequence) or True')
@@ -1140,7 +1142,7 @@ class Task(_Task):
         :param bool delete_after_upload: After the upload, delete the local copy of the artifact?
 
             - ``True`` - Delete the local copy of the artifact.
-            - ``False`` - Do not delete. (Default)
+            - ``False`` - Do not delete. (default)
 
         :return: The status of the upload.
 
@@ -1160,8 +1162,14 @@ class Task(_Task):
         Output models are files stored in the task, either manually or automatically logged
         Automatically logged frameworks are for example: TensorFlow, Keras, PyTorch, ScikitLearn(joblib) etc.
 
-        :return dict: dict with keys input/output, each is list of Model objects.
-            Example: {'input': [trains.Model()], 'output': [trains.Model()]}
+        :return: A dictionary with keys input/output, each is list of Model objects.
+
+            Example:
+
+            .. code-block:: py
+
+                {'input': [trains.Model()], 'output': [trains.Model()]}
+
         """
         task_models = {'input': self._get_models(model_type='input'),
                        'output': self._get_models(model_type='output')}
@@ -1179,6 +1187,7 @@ class Task(_Task):
 
             - ``True`` - Is the main execution Task.
             - ``False`` - Is not the main execution Task.
+
         """
         return self.is_main_task()
 
@@ -1199,6 +1208,7 @@ class Task(_Task):
 
             - ``True`` - Is the main execution Task.
             - ``False`` - Is not the main execution Task.
+
         """
         return self is self.__main_task
 
@@ -1206,7 +1216,7 @@ class Task(_Task):
         # type: (Optional[str], Optional[Mapping]) -> None
         """
         .. deprecated:: 0.14.1
-            Use :meth:`Task.connect_configuration` instead
+            Use :meth:`Task.connect_configuration` instead.
         """
         self._set_model_config(config_text=config_text, config_dict=config_dict)
 
@@ -1214,7 +1224,7 @@ class Task(_Task):
         # type: () -> str
         """
         .. deprecated:: 0.14.1
-            Use :meth:`Task.connect_configuration` instead
+            Use :meth:`Task.connect_configuration` instead.
         """
         return self._get_model_config_text()
 
@@ -1222,7 +1232,7 @@ class Task(_Task):
         # type: () -> Dict
         """
         .. deprecated:: 0.14.1
-            Use :meth:`Task.connect_configuration` instead
+            Use :meth:`Task.connect_configuration` instead.
         """
         return self._get_model_config_dict()
 
@@ -1264,8 +1274,7 @@ class Task(_Task):
         """
         Forcefully set the last reported iteration, which is the last iteration for which the Task reported a metric.
 
-        :param last_iteration: The last reported iteration number.
-        :type last_iteration: int
+        :param int last_iteration: The last reported iteration number.
         """
         self.data.last_iteration = int(last_iteration)
         self._edit(last_iteration=self.data.last_iteration)
@@ -1276,7 +1285,7 @@ class Task(_Task):
         Set initial iteration, instead of zero. Useful when continuing training from previous checkpoints
 
         :param int offset: Initial iteration (at starting point)
-        :return: newly set initial offset
+        :return: Newly set initial offset.
         """
         return super(Task, self).set_initial_iteration(offset=offset)
 
@@ -1286,7 +1295,7 @@ class Task(_Task):
         Return the initial iteration offset, default is 0
         Useful when continuing training from previous checkpoints
 
-        :return int: initial iteration offset
+        :return: Initial iteration offset.
         """
         return super(Task, self).get_initial_iteration()
 
@@ -1327,6 +1336,7 @@ class Task(_Task):
 
         .. note::
            The values are not parsed. They are returned as is.
+
         """
         return naive_nested_from_flat_dictionary(self.get_parameters())
 
@@ -1405,7 +1415,7 @@ class Task(_Task):
         Get Task model configuration text (before creating an output model)
         When an output model is created it will inherit these properties
 
-        :return: model config_text (unconstrained text string)
+        :return: The model config_text (unconstrained text string).
         """
         return super(Task, self).get_model_design()
 
@@ -1415,7 +1425,7 @@ class Task(_Task):
         Get Task model configuration dictionary (before creating an output model)
         When an output model is created it will inherit these properties
 
-        :return: config_dict: model configuration parameters dictionary
+        :return: config_dict: model configuration parameters dictionary.
         """
         config_text = self._get_model_config_text()
         # noinspection PyProtectedMember
@@ -2327,7 +2337,7 @@ class Task(_Task):
         :param task_data: A mapping from 'id', 'name', 'project', 'type' keys
             to the task's values, as saved in the cache.
 
-        :return: True if the task is relevant for reuse, False if not.
+        :return: True, if the task is relevant for reuse. False, if not.
         """
         if not task_data:
             return False
@@ -2409,19 +2419,31 @@ class Task(_Task):
     def execute_remotely(self, queue_name=None, clone=False, exit_process=True):
         # type: (Optional[str], bool, bool) -> ()
         """
-        If task is running locally (i.e. not by 'trains-agent'),
-        this call will clone the Task and enqueue it for remote execution.
-        Or it will stop the execution of the current task, reset its state, and enqueue it.
-        Finally if exit==True it will *exit* this process!
+        If task is running locally (i.e., not by ``trains-agent``), then clone the Task and enqueue it for remote
+        execution; or, stop the execution of the current Task, reset its state, and enqueue it. If ``exit==True``,
+        *exit* this process.
 
-        If task is executed by trains-agent (i.e. running remotely),
-        this call is a no-op (i.e. does nothing).
+        .. note::
+            If the task is running remotely (i.e., ``trains-agent`` is executing it), this call is a no-op
+            (i.e., does nothing).
 
-        :param queue_name: Queue name used for enqueueing the task.
-            If None, this call will exit the process without enqueuing the task.
-        :param clone: If True a cloned copy of the Task will be created (and enqueued) instead of this Task.
-        :param exit_process: If True, the function call will leave the calling process at the end
-            i.e. If True, exit(0) will be called. If clone==False exit_process must be True.
+        :param queue_name: The queue name used for enqueueing the task. If ``None``, this call exits the process
+            without enqueuing the task.
+        :param clone: Clone the Task and execute the newly cloned Task?
+
+            The values are:
+
+            - ``True`` - A cloned copy of the Task will be created, and enqueued, instead of this Task.
+            - ``False`` - The Task will be enqueued.
+
+        :param exit_process: The function call will leave the calling process at the end?
+
+            - ``True`` - Exit the process (exit(0)).
+            - ``False`` - Do not exit the process.
+
+            .. warning::
+
+                If ``clone==False``, then ``exit_process`` must be ``True``.
         """
         # do nothing, we are running remotely
         if running_remotely():

@@ -333,7 +333,7 @@ class Entity(object):
 
     def __dir__(self):
         """
-        Add ``self._service``'s methods to ``dir()`` result.
+        Add ``self._service``'s methods to ``dir`` result.
         """
         try:
             dir_ = super(Entity, self).__dir__

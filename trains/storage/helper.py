@@ -241,7 +241,7 @@ class StorageHelper(object):
         """
         Get a storage helper instance for the given URL
 
-        :return: StorageHelper instance
+        :return: A StorageHelper instance.
         """
 
         # Handle URL substitution etc before locating the correct storage driver
@@ -500,7 +500,7 @@ class StorageHelper(object):
             url that begins with the base uri of the url used to create the helper.
         :param raise_on_error: Raise an exception if an upload is not possible
         :param log_on_error: Log an error if an upload is not possible
-        :return: True iff an upload to folder_uri is possible.
+        :return: True, if, and only if, an upload to folder_uri is possible.
         """
 
         folder_uri = self._canonize_url(folder_uri)
@@ -587,7 +587,7 @@ class StorageHelper(object):
             must be a string - the path of a sub directory under the base path.
             the returned list will include only objects under that subdir.
 
-        :return: List of strings - the paths of all the objects in the storage base
+        :return: The paths of all the objects in the storage base
             path under prefix. Listed relative to the base path.
 
         """
@@ -785,7 +785,7 @@ class StorageHelper(object):
         :param remote_url: Remote URL. Example: https://example.com/image.jpg or s3://bucket/folder/file.mp4 etc.
         :param local_path: target location for downloaded file. Example: /tmp/image.jpg
         :param overwrite_existing: If True and local_path exists, it will overwrite it, otherwise print warning
-        :return: local_path if download was successful
+        :return: local_path if download was successful.
         """
         helper = cls.get(remote_url)
         if not helper:
@@ -1791,8 +1791,7 @@ class _FileStorageDriver(_Driver):
         :param container_name: Container name.
         :type container_name: ``str``
 
-        :return: Container instance.
-        :rtype: :class:`Container`
+        :return: A Container instance.
         """
         container_name = container_name or '.'
         self._check_container_name(container_name)
@@ -1824,8 +1823,7 @@ class _FileStorageDriver(_Driver):
         :param object_name: Object name.
         :type object_name: ``str``
 
-        :return: Object instance.
-        :rtype: :class:`Object`
+        :return: A Object instance.
         """
 
         full_path = os.path.realpath(os.path.join(self.base_path, container.name if container else '.', object_name))
@@ -1852,7 +1850,6 @@ class _FileStorageDriver(_Driver):
         Return a generator of containers.
 
         :return: A generator of Container instances.
-        :rtype: ``generator`` of :class:`Container`
         """
 
         for container_name in os.listdir(self.base_path):
@@ -1887,7 +1884,6 @@ class _FileStorageDriver(_Driver):
         :type container: :class:`Container`
 
         :return: A generator of Object instances.
-        :rtype: ``generator`` of :class:`Object`
         """
 
         return self._get_objects(container)
@@ -1899,8 +1895,7 @@ class _FileStorageDriver(_Driver):
         :param container_name: Container name.
         :type container_name: ``str``
 
-        :return: :class:`Container` instance.
-        :rtype: :class:`Container`
+        :return: A Container instance.
         """
         return self._make_container(container_name)
 
@@ -1915,7 +1910,6 @@ class _FileStorageDriver(_Driver):
         :type check: ``bool``
 
         :return: A CDN URL for this container.
-        :rtype: ``str``
         """
         path = os.path.realpath(os.path.join(self.base_path, container.name if container else '.'))
 
@@ -1934,8 +1928,7 @@ class _FileStorageDriver(_Driver):
         :param object_name: Object name.
         :type  object_name: ``str``
 
-        :return: :class:`Object` instance.
-        :rtype: :class:`Object`
+        :return: An Object instance.
         """
         container = self._make_container(container_name)
         return self._make_object(container, object_name)
@@ -1948,7 +1941,6 @@ class _FileStorageDriver(_Driver):
         :type  obj: :class:`Object`
 
         :return: A CDN URL for this object.
-        :rtype: ``str``
         """
         return os.path.realpath(os.path.join(self.base_path, obj.container.name, obj.name))
 
@@ -1971,9 +1963,7 @@ class _FileStorageDriver(_Driver):
         the download was not successful (hash mismatch / file size).
         :type delete_on_failure: ``bool``
 
-        :return: True if an object has been successfully downloaded, False
-        otherwise.
-        :rtype: ``bool``
+        :return: True, if an object has been successfully downloaded, False, otherwise.
         """
 
         obj_path = self.get_object_cdn_url(obj)
@@ -2013,7 +2003,6 @@ class _FileStorageDriver(_Driver):
         :type chunk_size: ``int``
 
         :return: A stream of binary chunks of data.
-        :rtype: ``object``
         """
         path = self.get_object_cdn_url(obj)
         with open(path, 'rb') as obj_file:
@@ -2038,8 +2027,6 @@ class _FileStorageDriver(_Driver):
 
         :param extra: (optional) Extra attributes (driver specific).
         :type extra: ``dict``
-
-        :rtype: ``object``
         """
 
         path = self.get_container_cdn_url(container, check=True)
@@ -2086,8 +2073,6 @@ class _FileStorageDriver(_Driver):
         :param extra: (optional) Extra attributes (driver specific). Note:
             This dictionary must contain a 'content_type' key which represents
             a content type of the stored object.
-
-        :rtype: ``object``
         """
         path = self.get_container_cdn_url(container, check=True)
         obj_path = os.path.join(path, object_name)
@@ -2108,8 +2093,7 @@ class _FileStorageDriver(_Driver):
         :type obj: :class:`Object`
         :param obj: Object instance.
 
-        :return: ``bool`` True on success.
-        :rtype: ``bool``
+        :return: True on success.
         """
 
         path = self.get_object_cdn_url(obj)
@@ -2144,8 +2128,7 @@ class _FileStorageDriver(_Driver):
         :type container_name: ``str``
         :param container_name: Container name.
 
-        :return: :class:`Container` instance on success.
-        :rtype: :class:`Container`
+        :return: A Container instance on success.
         """
         container_name = container_name or '.'
         self._check_container_name(container_name)
@@ -2175,7 +2158,6 @@ class _FileStorageDriver(_Driver):
         :param container: Container instance
 
         :return: True on success, False otherwise.
-        :rtype: ``bool``
         """
 
         # Check if there are any objects inside this

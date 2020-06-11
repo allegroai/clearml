@@ -50,7 +50,7 @@ class Artifact(object):
     def url(self):
         # type: () -> str
         """
-        :return: url of uploaded artifact
+        :return: The URL of uploaded artifact.
         """
         return self._url
 
@@ -58,7 +58,7 @@ class Artifact(object):
     def name(self):
         # type: () -> str
         """
-        :return: name of artifact
+        :return: The name of artifact.
         """
         return self._name
 
@@ -66,7 +66,7 @@ class Artifact(object):
     def size(self):
         # type: () -> int
         """
-        :return: size in bytes of artifact
+        :return: The size in bytes of artifact.
         """
         return self._size
 
@@ -74,7 +74,7 @@ class Artifact(object):
     def type(self):
         # type: () -> str
         """
-        :return: type (str) of of artifact
+        :return: The type (str) of of artifact.
         """
         return self._type
 
@@ -82,7 +82,7 @@ class Artifact(object):
     def mode(self):
         # type: () -> Union["input", "output"]
         """
-        :return: mode (str) of of artifact. either "input" or "output"
+        :return: The mode (str) of of artifact: "input" or "output".
         """
         return self._mode
 
@@ -114,7 +114,7 @@ class Artifact(object):
     def preview(self):
         # type: () -> str
         """
-        :return: string (str) representation of the artifact.
+        :return: A string (str) representation of the artifact.
         """
         return self._preview
 
@@ -143,7 +143,7 @@ class Artifact(object):
         Currently supported types: Numpy.array, pandas.DataFrame, PIL.Image, dict (json)
         All other types will return a pathlib2.Path object pointing to a local copy of the artifacts file (or directory)
 
-        :return: One of the following objects Numpy.array, pandas.DataFrame, PIL.Image, dict (json), pathlib2.Path
+        :return: One of the following objects Numpy.array, pandas.DataFrame, PIL.Image, dict (json), or pathlib2.Path.
         """
         if self._object:
             return self._object
@@ -175,7 +175,8 @@ class Artifact(object):
             The returned path will be a temporary folder containing the archive content
         :param bool raise_on_error: If True and the artifact could not be downloaded,
             raise ValueError, otherwise return None on failure and output log warning.
-        :return: a local path to a downloaded copy of the artifact
+        :raise: Raises error if local copy not found.
+        :return: A local path to a downloaded copy of the artifact.
         """
         from trains.storage import StorageManager
         local_copy = StorageManager.get_local_copy(

@@ -472,7 +472,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def reporter(self):
         # type: () -> Reporter
         """
-        Returns a simple metrics reporter instance
+        Returns a simple metrics reporter instance.
         """
         if self._reporter is None:
             self._setup_reporter()
@@ -607,7 +607,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # type: (...) -> str
         """
         Update the Task's output model weights file. First, Trains uploads the file to the preconfigured output
-        destination (see the Task's ``output.destination`` property or call the ``setup_upload()`` method),
+        destination (see the Task's ``output.destination`` property or call the ``setup_upload`` method),
         then Trains updates the model object associated with the Task an API call. The API call uses with the URI
         of the uploaded file, and other values provided by additional arguments.
 
@@ -619,13 +619,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
             - ``True`` - The API call returns immediately, while the upload and update are scheduled in another thread.
             - ``False`` - The API call blocks until the upload completes, and the API call updating the model returns.
-              (Default)
+              (default)
 
         :param callable cb: Asynchronous callback. A callback. If ``async_enable`` is set to ``True``,
             this is a callback that is invoked once the asynchronous upload and update complete.
         :param int iteration: iteration number for the current stored model (Optional)
 
-        :return str: The URI of the uploaded weights file. If ``async_enable`` is set to ``True``,
+        :return: The URI of the uploaded weights file. If ``async_enable`` is set to ``True``,
             this is the expected URI, as the upload is probably still in progress.
         """
         self._conditionally_start_task()
@@ -789,7 +789,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         :param name: Parameter name
         :param default: Default value
-        :return: Parameter value (or default value if parameter is not defined)
+        :return: The Parameter value (or default value if parameter is not defined).
         """
         params = self.get_parameters()
         return params.get(name, default)
@@ -884,7 +884,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         Get the label enumeration dictionary label enumeration dictionary of string (label) to integer (value) pairs.
 
-        :return: dict
+        :return: A dictionary containing the label enumeration.
         """
         if not self.data or not self.data.execution:
             return {}
@@ -895,7 +895,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         Get the model configuration as blob of text.
 
-        :return:
+        :return: The model configuration as blob of text.
         """
         design = self._get_task_property("execution.model_desc", default={}, raise_on_error=False, log_on_error=False)
         # noinspection PyProtectedMember
@@ -973,16 +973,21 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         self._set_task_property("name", str(name))
         self._edit(name=self.data.name)
-        
+
     def set_parent(self, parent):
-        # type: (str) -> ()
+        # type: (Optional[Union[str, Task]]) -> ()
         """
         Set the parent task for the Task.
-        :param comment: The parent task id for the Task.
-        :type comment: str
+        :param parent: The parent task id (or parent Task object) for the Task. Set None for no parent.
+        :type parent: str or Task
         """
-        self._set_task_property("parent", str(parent))
-        self._edit(parent=parent)
+        if parent:
+            assert isinstance(parent, (str, Task))
+            if isinstance(parent, Task):
+                parent = parent.parent
+            assert parent != self.id
+        self._set_task_property("parent", str(parent) if parent else None)
+        self._edit(parent=self.data.parent)
 
     def set_comment(self, comment):
         # type: (str) -> ()
@@ -1010,7 +1015,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Task.set_initial_iteration(100000)
 
         :param int offset: Initial iteration (at starting point)
-        :return: newly set initial offset
+        :return: A newly set initial offset.
         """
         if not isinstance(offset, int):
             raise ValueError("Initial iteration offset must be an integer")
@@ -1027,8 +1032,6 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         from previous checkpoints.
 
         :return: The initial iteration offset.
-
-        :rtype: int
         """
         return self._initial_iteration_offset
 
@@ -1040,7 +1043,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         TaskStatusEnum: ["created", "in_progress", "stopped", "closed", "failed", "completed",
                          "queued", "published", "publishing", "unknown"]
 
-        :return str: Task status as string (TaskStatusEnum)
+        :return: str: Task status as string (TaskStatusEnum)
         """
         status = self._get_status()[0]
         if self._data:
@@ -1053,7 +1056,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Return the Task results & outputs web page address.
         For example: https://demoapp.trains.allegro.ai/projects/216431/experiments/60763e04/output/log
 
-        :return: http/s url link
+        :return: http/s URL link.
         """
         return '{}/projects/{}/experiments/{}/output/log'.format(
             self._get_app_server(),
@@ -1072,19 +1075,24 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         where the first key is the graph title and the second is the series name.
         Value is a dict with 'x': values and 'y': values
 
-        Notice: This call is not cached, any call will retrieve all the scalar reports from the back-end.
-             If the Task has many scalars reported, it might take long for the call to return.
+        .. note::
+           This call is not cached, any call will retrieve all the scalar reports from the back-end.
+           If the Task has many scalars reported, it might take long for the call to return.
 
         Example:
-            {'title': {'series': {
-                        'x': [0, 1 ,2],
-                        'y': [10, 11 ,12],
-            }}}
+
+        .. code-block:: py
+
+          {'title': {'series': {
+                      'x': [0, 1 ,2],
+                      'y': [10, 11 ,12],
+          }}}
+
         :param int max_samples: Maximum samples per series to return. Default is 0 returning all scalars.
             With sample limit, average scalar values inside sampling window.
         :param str x_axis: scalar x_axis, possible values:
             'iter': iteration (default), 'timestamp': seconds from start, 'iso_time': absolute time
-        :return dict: Nested scalar graphs: dict[title(str), dict[series(str), dict[axis(str), list(float)]]]
+        :return: dict: Nested scalar graphs: dict[title(str), dict[series(str), dict[axis(str), list(float)]]]
         """
         if x_axis not in ('iter', 'timestamp', 'iso_time'):
             raise ValueError("Scalar x-axis supported values are: 'iter', 'timestamp', 'iso_time'")
@@ -1102,11 +1110,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def get_reported_console_output(self, number_of_reports=1):
         # type: (int) -> Sequence[str]
         """
-        Return a list of console outputs reported by the Task.
-        Returned console outputs are retrieved from the most updated console outputs.
+        Return a list of console outputs reported by the Task. Retrieved outputs are the most updated console outputs.
 
-        :param int number_of_reports: number of reports to return, default 1, the last (most updated) console output
-        :return list: List of strings each entry corresponds to one report.
+        :param int number_of_reports: The number of reports to return. The default value is ``1``, indicating the
+            last (most updated) console output
+        :return: A list of strings, each entry corresponds to one report.
         """
         res = self.send(
             events.GetTaskLogRequest(
@@ -1126,9 +1134,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def running_locally():
         # type: () -> bool
         """
-        If the task is not executed by trains-agent, return True (i.e. running locally)
+        Is the task running locally (i.e., ``trains-agent`` is not executing it)?
 
-        :return: True if not executed by trains-agent
+        :return: True, if the task is running locally. False, if the task is not running locally.
+
         """
         return not running_remotely()
 
@@ -1136,9 +1145,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def add_requirements(cls, package_name, package_version=None):
         # type: (str, Optional[str]) -> ()
         """
-        Force package in requirements list. If version is not specified, use the installed package version if found.
-        :param str package_name: Package name to add to the "Installed Packages" section of the task
-        :param package_version: Package version requirements. If None use the installed version
+        Force the adding of a package to the requirements list. If ``package_version`` is not specified, use the
+        installed package version, if found.
+
+        :param str package_name: The package name to add to the "Installed Packages" section of the task.
+        :param package_version: The package version requirements. If ``None``, then  use the installed version.
         """
         cls._force_requirements[package_name] = package_version
 
@@ -1307,7 +1318,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             If None, the new task will inherit the cloned task's project.
         :param logging.Logger log: Log object used by the infrastructure.
         :param Session session: Session object used for sending requests to the API
-        :return: The new tasks's ID
+        :return: The new tasks's ID.
         """
 
         session = session if session else cls._get_default_session()

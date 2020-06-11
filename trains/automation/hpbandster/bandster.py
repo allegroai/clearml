@@ -271,7 +271,9 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         Start the Optimizer controller function loop()
         If the calling process is stopped, the controller will stop as well.
 
-        Notice: This function returns only after optimization is completed! or stop() was called.
+        .. important::
+            This function returns only after optimization is completed or :meth:`stop` was called.
+
         """
         # Step 1: Start a NameServer
         fake_run_id = 'OptimizerBOHB_{}'.format(time())
@@ -317,7 +319,7 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         # type: () -> ()
         """
         Stop the current running optimization loop,
-        Called from a different thread than the start()
+        Called from a different thread than the :meth:`start`.
         """
         # After the optimizer run, we must shutdown the master and the nameserver.
         self._bohb.shutdown(shutdown_workers=True)

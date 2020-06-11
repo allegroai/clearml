@@ -333,7 +333,6 @@ class Config(object):
         :param base_url: URL of bucket
         :param extra_configurations:
         :return: bucket config
-        :rtype: bucket config
         """
 
         warnings.warn(

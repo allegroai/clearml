@@ -33,7 +33,7 @@ class StorageManager(object):
         :param bool extract_archive: if True returned path will be a cached folder containing the archive's content,
             currently only zip files are supported.
         :param name: name of artifact.
-        :return str: full path to local copy of the requested url. Return None on Error.
+        :return: Full path to local copy of the requested url. Return None on Error.
         """
         cached_file = CacheManager.get_cache_manager(
             cache_context=cache_context
@@ -47,9 +47,12 @@ class StorageManager(object):
         cls, local_file, remote_url, wait_for_upload=True
     ):  # type: (str, str, bool) -> str
         """
-        Upload a local file to a remote location.
-        remote url is the finale destination of the uploaded file.
+        Upload a local file to a remote location. remote url is the finale destination of the uploaded file.
+
         Examples:
+
+        .. code-block:: py
+
             upload_file('/tmp/artifact.yaml', 'http://localhost:8081/manual_artifacts/my_artifact.yaml')
             upload_file('/tmp/artifact.yaml', 's3://a_bucket/artifacts/my_artifact.yaml')
             upload_file('/tmp/artifact.yaml', '/mnt/share/folder/artifacts/my_artifact.yaml')
@@ -57,7 +60,7 @@ class StorageManager(object):
         :param str local_file: Full path of a local file to be uploaded
         :param str remote_url: Full path or remote url to upload to (including file name)
         :param bool wait_for_upload: If False, return immediately and upload in the background. Default True.
-        :return str: Newly uploaded remote url
+        :return: Newly uploaded remote URL.
         """
         return CacheManager.get_cache_manager().upload_file(
             local_file=local_file,
@@ -75,7 +78,7 @@ class StorageManager(object):
 
         :param int cache_file_limit: New maximum number of cached files
         :param str cache_context: Optional cache context identifier, default global context
-        :return int: Return new cache context file limit
+        :return: The new cache context file limit.
         """
         return CacheManager.get_cache_manager(
             cache_context=cache_context, cache_file_limit=cache_file_limit
@@ -87,7 +90,7 @@ class StorageManager(object):
         Extract cached file zip file to cache folder
         :param str cached_file: local copy of archive file
         :param str name: cache context
-        :return str: cached folder containing the extracted archive content
+        :return: cached folder containing the extracted archive content
         """
         # only zip files
         if not cached_file or not str(cached_file).lower().endswith('.zip'):

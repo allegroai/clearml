@@ -3584,8 +3584,7 @@ class GetAllRequest(Request):
         documents. Use '-' prefix to specify descending order. Optional, recommended
         when using page
     :type order_by: Sequence[str]
-    :param type: List of task types. One or more of: 'import', 'annotation',
-        'training' or 'testing' (case insensitive)
+    :param type: List of task types. One or more of: 'training' or 'testing' (case insensitive)
     :type type: Sequence[str]
     :param tags: List of task user-defined tags. Use '-' prefix to exclude tags
     :type tags: Sequence[str]
@@ -3722,7 +3721,7 @@ class GetAllRequest(Request):
                 'type': ['array', 'null'],
             },
             'type': {
-                'description': "List of task types. One or more of: 'import', 'annotation', 'training' or 'testing' (case insensitive)",
+                'description': "List of task types. One or more of: 'training' or 'testing' (case insensitive)",
                 'items': {'type': 'string'},
                 'type': ['array', 'null'],
             },
@@ -4871,11 +4870,7 @@ class PingResponse(Response):
 
 class PublishRequest(Request):
     """
-    Mark a task status as published.
-
-            For Annotation tasks - if any changes were committed by this task, a new version in the dataset together with an output view are created.
-
-            For Training tasks - if a model was created, it should be set to ready.
+    Mark a task status as published. If a model was created, it should be set to ready.
 
     :param force: If not true, call fails if the task status is not 'stopped'
     :type force: bool

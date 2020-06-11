@@ -109,7 +109,7 @@ class BaseModel(object):
         """
         The Id (system UUID) of the model.
 
-        :return str: The model id.
+        :return: The model ID.
         """
         return self._get_model_data().id
 
@@ -119,7 +119,7 @@ class BaseModel(object):
         """
         The name of the model.
 
-        :return str: The model name.
+        :return: The model name.
         """
         return self._get_model_data().name
 
@@ -139,7 +139,7 @@ class BaseModel(object):
         """
         The comment for the model. Also, use for a model description.
 
-        :return str: The model comment / description.
+        :return: The model comment / description.
         """
         return self._get_model_data().comment
 
@@ -159,7 +159,7 @@ class BaseModel(object):
         """
         A list of tags describing the model.
 
-        :return list(str): The list of tags.
+        :return: The list of tags.
         """
         return self._get_model_data().tags
 
@@ -181,7 +181,7 @@ class BaseModel(object):
         """
         The configuration as a string. For example, prototxt, an ini file, or Python code to evaluate.
 
-        :return str: The configuration.
+        :return: The configuration.
         """
         return _Model._unwrap_design(self._get_model_data().design)
 
@@ -192,7 +192,7 @@ class BaseModel(object):
         The configuration as a dictionary, parsed from the design text. This usually represents the model configuration.
         For example, prototxt, an ini file, or Python code to evaluate.
 
-        :return str: The configuration.
+        :return: The configuration.
         """
         return self._text_to_config_dict(self.config_text)
 
@@ -203,7 +203,7 @@ class BaseModel(object):
         The label enumeration of string (label) to integer (value) pairs.
 
 
-        :return dict: A dictionary containing labels enumeration, where the keys are labels and the values as integers.
+        :return: A dictionary containing labels enumeration, where the keys are labels and the values as integers.
         """
         return self._get_model_data().labels
 
@@ -213,7 +213,7 @@ class BaseModel(object):
         """
         Return the creating task id (str)
 
-        :return str: Task ID
+        :return: The Task ID.
         """
         return self._task or self._get_base_model().task
 
@@ -223,7 +223,7 @@ class BaseModel(object):
         """
         Return the url of the model file (or archived files)
 
-        :return str: Model file URL
+        :return: The model file URL.
         """
         return self._get_base_model().uri
 
@@ -252,7 +252,7 @@ class BaseModel(object):
         :param bool raise_on_error: If True and the artifact could not be downloaded,
             raise ValueError, otherwise return None on failure and output log warning.
 
-        :return str: The locally stored file.
+        :return: The locally stored file.
         """
         # download model (synchronously) and return local file
         return self._get_base_model().download_model_weights(raise_on_error=raise_on_error)
@@ -407,7 +407,8 @@ class Model(BaseModel):
             The returned path will be a temporary folder containing the archive content
         :param bool raise_on_error: If True and the artifact could not be downloaded,
             raise ValueError, otherwise return None on failure and output log warning.
-        :return str: a local path to the model (or a downloaded copy of it)
+
+        :return: A local path to the model (or a downloaded copy of it).
         """
         if extract_archive and self._package_tag in self.tags:
             return self.get_weights_package(return_path=True, raise_on_error=raise_on_error)
@@ -618,7 +619,7 @@ class InputModel(Model):
             - ``True`` - Load the registered Model, if it is archived.
             - ``False`` - Ignore archive models.
 
-        :return: InputModel object, or ``None`` if no model could be found.
+        :return: The InputModel object, or None if no model could be found.
         """
         weights_url = StorageHelper.conform_url(weights_url)
         if not weights_url:
@@ -672,7 +673,7 @@ class InputModel(Model):
                     'person': 1
                }
 
-        :return: Empty model object.
+        :return: An empty model object.
         """
         design = cls._resolve_config(config_text=config_text, config_dict=config_dict)
 
@@ -768,7 +769,8 @@ class OutputModel(BaseModel):
         """
         Get the published state of this model.
 
-        :return bool: ``True`` if the model is published, ``False`` otherwise.
+        :return:
+
         """
         if not self.id:
             return False
@@ -780,7 +782,7 @@ class OutputModel(BaseModel):
         """
         Get the configuration as a string. For example, prototxt, an ini file, or Python code to evaluate.
 
-        :return str: The configuration.
+        :return: The configuration.
         """
         return _Model._unwrap_design(self._get_model_data().design)
 
@@ -799,7 +801,7 @@ class OutputModel(BaseModel):
         Get the configuration as a dictionary parsed from the ``config_text`` text. This usually represents the model
         configuration. For example, from prototxt to ini file or python code to evaluate.
 
-        :return dict: The configuration.
+        :return: The configuration.
         """
         return self._text_to_config_dict(self.config_text)
 
@@ -828,7 +830,7 @@ class OutputModel(BaseModel):
                 'person': 1
            }
 
-        :return dict: The label enumeration.
+        :return: The label enumeration.
         """
         return self._get_model_data().labels
 
@@ -1067,7 +1069,7 @@ class OutputModel(BaseModel):
             - ``True`` - Update model comment (Default)
             - ``False`` - Do not update
 
-        :return str: The uploaded URI.
+        :return: The uploaded URI.
         """
 
         def delete_previous_weights_file(filename=weights_filename):
@@ -1177,7 +1179,7 @@ class OutputModel(BaseModel):
         .. note::
            Uploading the model weights is a background process. A call to this method returns immediately.
 
-        :param weights_filenames: The file names of the locally stored model files. Specify ``weights_filenames``
+        :param weights_filenames: The file names of the locally stored model files. Specify ``weights_filenames``,
             or ``weights_path``, but not both.
         :type weights_filenames: list(str)
         :param weights_path: The directory path to a package. All the files in the directory will be uploaded.
@@ -1194,7 +1196,7 @@ class OutputModel(BaseModel):
 
         :param int iteration: The iteration number.
 
-        :return str: The uploaded URI for the weights package.
+        :return: The uploaded URI for the weights package.
         """
         # create list of files
         if (not weights_filenames and not weights_path) or (weights_filenames and weights_path):
@@ -1258,11 +1260,7 @@ class OutputModel(BaseModel):
         :param dict config_dict: The configuration as a dictionary. Specify ``config_text`` or ``config_dict``,
             but not both.
 
-        :return: The status of the update.
-
-            - ``True`` - Update successful.
-            - ``False`` - Update not successful.
-
+        :return: True, update successful. False, update not successful.
         """
         if not self._validate_update():
             return False

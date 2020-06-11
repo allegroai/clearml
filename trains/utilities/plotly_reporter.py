@@ -22,7 +22,7 @@ def create_2d_histogram_plot(np_row_wise, labels, title=None, xtitle=None, ytitl
     :param comment: comment underneath the title
     :param mode: multiple histograms mode. valid options are: stack / group / relative. Default is 'group'.
     :param layout_config: optional extra layout configuration
-    :return: Plotly chart dict
+    :return: Plotly chart dict.
     """
     assert mode in ('stack', 'group', 'relative')
 
@@ -145,8 +145,7 @@ def create_2d_scatter_series(np_row_wise, title="Scatter", series_name="Series",
     :param labels: label (text) per point on the scatter graph
     :param comment: comment underneath the title
     :param layout_config: optional dictionary for layout configuration, passed directly to plotly
-    :return: Plotly chart dict
-    :return:
+    :return: Plotly chart dict.
     """
     plotly_obj = _plotly_scatter_layout_dict(title=title, xaxis_title=xtitle, yaxis_title=ytitle, comment=comment)
     assert np_row_wise.ndim == 2, "Expected a 2D numpy array"
@@ -182,8 +181,7 @@ def create_3d_scatter_series(np_row_wise, title="Scatter", series_name="Series",
     :param labels: label (text) per point on the scatter graph
     :param fill_axis: fill area under the curve
     :param layout_config: additional layout configuration
-    :return: Plotly chart dict
-    :return:
+    :return: Plotly chart dict.
     """
     if not plotly_obj:
         plotly_obj = plotly_scatter3d_layout_dict(
@@ -376,7 +374,7 @@ def _plotly_hist_dict(title, xtitle, ytitle, mode='group', data=None, comment=No
     :param data: Data items
     :type data: list
     :param layout_config: dict
-    :return: Plotly chart dict
+    :return: Plotly chart dict.
     """
     assert mode in ('stack', 'group', 'relative')
 
@@ -406,7 +404,7 @@ def _np_row_to_plotly_data_item(np_row, label, xlabels=None):
     Convert a numpy data row into a Plotly chart data item
     :param np_row: numpy 1D data row
     :param label: Item label
-    :return: Plotly data item dict
+    :return: A plotly data item dict.
     """
     bins = list(range(np_row.shape[0])) if xlabels is None else list(xlabels)
     # mylabels = ['"' + label + '"'] * len(bins)
@@ -471,12 +469,12 @@ def create_plotly_table(table_plot, title, series, layout_config=None):
     Create a basic Plotly table json style to be sent
 
     :param table_plot: the output table in pandas.DataFrame structure
-    :return: dict with plotly data
     :param title: Title (AKA metric)
     :type title: str
     :param series: Series (AKA variant)
     :type series: str
     :param layout_config: additional configuration layout
+    :return: dict with plotly data.
     """
     if not pd:
         raise UsageError(

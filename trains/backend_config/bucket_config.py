@@ -163,8 +163,7 @@ class S3BucketConfigurations(BaseBucketConfigurations):
         """
         Get the credentials for an AWS S3 bucket from the config
         :param uri: URI of bucket, directory or file
-        :return: bucket config
-        :rtype: S3BucketConfig
+        :return: S3BucketConfig: bucket config
         """
 
         def find_match(uri):
@@ -266,8 +265,7 @@ class GSBucketConfigurations(BaseBucketConfigurations):
         """
         Get the credentials for a Google Storage bucket from the config
         :param uri: URI of bucket, directory or file
-        :return: bucket config
-        :rtype: GSBucketConfig
+        :return: GSBucketConfig: bucket config
         """
 
         res = (
@@ -330,8 +328,7 @@ class AzureContainerConfigurations(object):
         """
         Get the credentials for an Azure Blob Storage container from the config
         :param uri: URI of container or blob
-        :return: container config
-        :rtype: AzureContainerConfig
+        :return: AzureContainerConfig: container config
         """
         f = furl.furl(uri)
         account_name = f.host.partition(".")[0]

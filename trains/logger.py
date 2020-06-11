@@ -38,7 +38,7 @@ class Logger(object):
     diagrams, text logging, tables, and image uploading and reporting.
 
     In the **Trains Web-App (UI)**, ``Logger`` output appears in the **RESULTS** tab, **LOG**, **SCALARS**,
-    **PLOTS**, and **DEBUG IMAGES** sub-tabs. When you compare experiments, ``Logger`` output appears in the
+    **PLOTS**, and **DEBUG SAMPLES** sub-tabs. When you compare experiments, ``Logger`` output appears in the
     comparisons.
 
     .. warning::
@@ -111,7 +111,7 @@ class Logger(object):
 
             The values are:
 
-            - ``True`` - Print to the console. (Default)
+            - ``True`` - Print to the console. (default)
             - ``False`` - Do not print to the console.
         """
         return self._console(msg, level, not print_console, *args, **_)
@@ -362,7 +362,7 @@ class Logger(object):
             The values are:
 
             - ``True`` - The x-axis is high to low  (reversed).
-            - ``False`` - The x-axis is low to high  (not reversed). (Default)
+            - ``False`` - The x-axis is low to high  (not reversed). (default)
 
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
@@ -514,7 +514,7 @@ class Logger(object):
             The values are:
 
             - ``True`` - Fill
-            - ``False`` - Do not fill (Default)
+            - ``False`` - Do not fill (default)
 
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
@@ -746,10 +746,10 @@ class Logger(object):
 
         One and only one of the following parameters must be provided.
 
-        - :paramref:`~.Logger.report_image.local_path`
-        - :paramref:`~.Logger.report_image.url`
-        - :paramref:`~.Logger.report_image.image`
-        - :paramref:`~.Logger.report_image.matrix`
+        - ``local_path``
+        - ``url``
+        - ``image``
+        - ``matrix``
 
         :param str title: The title of the image.
         :param str series: The title of the series of this image.
@@ -771,7 +771,7 @@ class Logger(object):
             The values are:
 
             - ``True`` - Delete after upload.
-            - ``False`` - Do not delete after upload. (Default)
+            - ``False`` - Do not delete after upload. (default)
         """
         mutually_exclusive(
             UsageError, _check_none=True,
@@ -834,26 +834,33 @@ class Logger(object):
             url=None  # type: Optional[str]
     ):
         """
-        Report an image and upload its contents.
+        Report media upload its contents, including images, audio, and video.
 
-        Image is uploaded to a preconfigured bucket (see setup_upload()) with a key (filename)
+        Media is uploaded to a preconfigured bucket (see setup_upload()) with a key (filename)
         describing the task ID, title, series and iteration.
 
-        .. note::
-            :paramref:`~.Logger.report_image.local_path`, :paramref:`~.Logger.report_image.url`,
-            :paramref:`~.Logger.report_image.image` and :paramref:`~.Logger.report_image.matrix`
-            are mutually exclusive, and at least one must be provided.
+        One and only one of the following parameters must be provided
 
-        :param str title: Title (AKA metric)
-        :param str series: Series (AKA variant)
-        :param int iteration: Iteration number
-        :param str local_path: A path to an image file.
-        :param stream: BytesIO stream to upload (must provide file extension if used)
-        :param str url: A URL to the location of a pre-uploaded image.
-        :param file_extension: file extension to use when stream is passed
-        :param int max_history: maximum number of media files to store per metric/variant combination
+        - ``local_path``
+        - ``stream``
+        - ``url``
+
+        If you use ``stream`` for a BytesIO stream to upload, ``file_extension`` must be provided.
+
+        :param str title: The title of the media (metric).
+        :param str series: The title of the series of this (variant).
+        :param int iteration: The iteration number.
+        :param str local_path: A path to an media file.
+        :param stream: BytesIO stream to upload. If provided, ``file_extension`` must also be provided.
+        :param str url: A URL to the location of a pre-uploaded media.
+        :param file_extension: A file extension to use when ``stream`` is passed.
+        :param int max_history: The maximum number of media files to store per metric/variant combination
             use negative value for unlimited. default is set in global configuration (default=5)
-        :param bool delete_after_upload: if True, one the file was uploaded the local copy will be deleted
+        :param bool delete_after_upload: After the file is uploaded, delete the local copyu?
+
+            - ``True`` - Delete
+            - ``False`` - Do not delete
+
         """
         mutually_exclusive(
             UsageError, _check_none=True,
@@ -910,12 +917,9 @@ class Logger(object):
 
         :param str uri: example: 's3://bucket/directory/' or 'file:///tmp/debug/'
 
-        :return: bool
+        :return: True, if the destination scheme is supported (for example, ``s3://``, ``file://``, or ``gc://``).
+            False, if not supported.
 
-            The values are:
-
-            - ``True`` - The destination scheme is supported (for example, ``s3://``, ``file://``, or ``gc://``).
-            - ``False`` - The destination scheme is not supported.
         """
 
         # Create the storage helper
@@ -934,7 +938,7 @@ class Logger(object):
 
         :return: The default upload destination URI.
 
-            For example, ``s3://bucket/directory/`` or ``file:///tmp/debug/``.
+            For example: ``s3://bucket/directory/``, or ``file:///tmp/debug/``.
         """
         return self._default_upload_destination or self._task._get_default_report_storage_uri()
 
@@ -943,12 +947,7 @@ class Logger(object):
         """
         Flush cached reports and console outputs to backend.
 
-        :return: bool
-
-            The values are:
-
-            - ``True`` - Successfully flushed the cache.
-            - ``False`` - Failed.
+        :return: True, if successfully flushed the cache. False, if failed.
         """
         self._flush_stdout_handler()
         if self._task:
@@ -1017,7 +1016,7 @@ class Logger(object):
 
             - ``True`` - Scalars without specific titles are grouped together in the "Scalars" plot, preserving
               backward compatibility with Trains automagical behavior.
-            - ``False`` - TensorBoard scalars without titles get a title/series with the same tag. (Default)
+            - ``False`` - TensorBoard scalars without titles get a title/series with the same tag. (default)
         :type group_scalars: bool
         """
         cls._tensorboard_logging_auto_group_scalars = group_scalars
@@ -1033,7 +1032,7 @@ class Logger(object):
             The values are:
 
             - ``True`` - Generate a separate plot for each TensorBoard scalar series.
-            - ``False`` - Group the TensorBoard scalar series together in the same plot. (Default)
+            - ``False`` - Group the TensorBoard scalar series together in the same plot. (default)
 
         :type single_series: bool
         """
@@ -1054,7 +1053,7 @@ class Logger(object):
         :param bool omit_console: Omit the console output, and only send the ``msg`` value to the log?
 
             - ``True`` - Omit the console output.
-            - ``False`` - Print the console output. (Default)
+            - ``False`` - Print the console output. (default)
 
         """
         try:
@@ -1235,8 +1234,8 @@ class Logger(object):
     @classmethod
     def _get_tensorboard_auto_group_scalars(cls):
         """
-        :return: return True if we preserve Tensorboard backward compatibility behaviour,
-            i.e. Scalars without specific title will be under the "Scalars" graph
+        :return: True, if we preserve Tensorboard backward compatibility behaviour,
+            i.e., scalars without specific title will be under the "Scalars" graph
             default is False: Tensorboard scalars without title will have title/series with the same tag
         """
         return cls._tensorboard_logging_auto_group_scalars
@@ -1244,7 +1243,7 @@ class Logger(object):
     @classmethod
     def _get_tensorboard_single_series_per_graph(cls):
         """
-        :return: return True if we generate a separate graph (plot) for each Tensorboard scalar series
+        :return: True, if we generate a separate graph (plot) for each Tensorboard scalar series
             default is False: Tensorboard scalar series will be grouped according to their title
         """
         return cls._tensorboard_single_series_per_graph

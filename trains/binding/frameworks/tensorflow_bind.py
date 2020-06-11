@@ -666,7 +666,7 @@ class EventTrainsWriter(object):
     def reopen(self):
         """Reopens the EventFileWriter.
 
-        Can be called after `close()` to add more events in the same directory.
+        Can be called after `close` to add more events in the same directory.
         The events will go into a new events file.
 
         Does nothing if the EventFileWriter was not closed.

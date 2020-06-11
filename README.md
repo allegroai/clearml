@@ -46,7 +46,7 @@ your experimentation logs, outputs, and data to one centralized server.
 * Artifacts log & store (Shared folder, S3, GS, Azure, Http)
 * Tensorboard/TensorboardX scalars, metrics, histograms, **images, audio and video**
 * Matplotlib & Seaborn
-* Supported frameworks: Tensorflow, PyTorch, Keras, XGBoost and Scikit-Learn (MxNet is coming soon)
+* Supported frameworks: [Tensorflow](https://allegro.ai/docs/examples/examples_tensorflow), [PyTorch](https://allegro.ai/docs/examples/examples_pytorch), [Keras](https://allegro.ai/docs/examples/examples_keras), XGBoost and [Scikit-Learn](https://allegro.ai/docs/examples/examples_scikit_learn) (MxNet is coming soon)
 * Seamless integration (including version control) with **Jupyter Notebook**
     and [*PyCharm* remote debugging](https://github.com/allegroai/trains-pycharm-plugin)
 

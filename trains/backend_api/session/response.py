@@ -1,10 +1,8 @@
 import requests
 
 import six
-import jsonmodels.models
-import jsonmodels.fields
-import jsonmodels.errors
 
+from . import jsonmodels
 from .apimodel import ApiModel
 from .datamodel import NonStrictDataModelMixin
 

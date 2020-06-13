@@ -6,7 +6,6 @@ furl>=2.0.0
 future>=0.16.0
 futures>=3.0.5 ; python_version < '3'
 humanfriendly>=2.1
-jsonmodels>=2.2
 jsonschema>=2.6.0
 numpy>=1.10
 pathlib2>=2.3.0

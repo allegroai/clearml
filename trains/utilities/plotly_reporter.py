@@ -314,9 +314,9 @@ def create_image_plot(image_src, title, width=640, height=480, series=None, comm
         "data": [],
         "layout": {
             "xaxis": {"visible": False, "range": [0, width]},
-            "yaxis": {"visible": False, "range": [0, height]},
-            # "width": width,
-            # "height": height,
+            "yaxis": {"visible": False, "range": [0, height], "scaleanchor": "x"},
+            "width": width,
+            "height": height,
             "margin": {'l': 0, 'r': 0, 't': 0, 'b': 0},
             "images": [{
                 "sizex": width,
@@ -325,8 +325,9 @@ def create_image_plot(image_src, title, width=640, height=480, series=None, comm
                 "yref": "y",
                 "opacity": 1.0,
                 "x": 0,
-                "y": int(height / 2),
-                "yanchor": "middle",
+                "y": height,
+                # "xanchor": "left",
+                # "yanchor": "bottom",
                 "sizing": "contain",
                 "layer": "below",
                 "source": image_src

@@ -629,6 +629,19 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             raise ValueError('Expected only one of [filename, matrix]')
         kwargs = dict(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter,
                       file_history_size=max_image_history)
+
+        if matrix is not None:
+            width = matrix.shape[1]
+            height = matrix.shape[0]
+        else:
+            # noinspection PyBroadException
+            try:
+                from PIL import Image
+                width, height = Image.open(path).size
+            except Exception:
+                width = 640
+                height = 480
+
         ev = UploadEvent(image_data=matrix, upload_uri=upload_uri, local_image_path=path,
                          delete_after_upload=delete_after_upload, **kwargs)
         _, url = ev.get_target_full_upload_uri(upload_uri or self._storage_uri, self._metrics.storage_key_prefix)
@@ -643,8 +656,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         plotly_dict = create_image_plot(
             image_src=url,
             title=title + '/' + series,
-            width=matrix.shape[1] if matrix is not None else 640,
-            height=matrix.shape[0] if matrix is not None else 480,
+            width=640,
+            height=int(640*float(height or 480)/float(width or 640)),
         )
 
         return self.report_plot(

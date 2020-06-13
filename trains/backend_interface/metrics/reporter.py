@@ -176,10 +176,16 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param iter: Iteration number
         :type value: int
         """
+        # noinspection PyBroadException
         try:
-            def default(o):
-                if isinstance(o, np.int64):
-                    return int(o)
+            # Special json encoder for numpy types
+            def default(obj):
+                if isinstance(obj, (np.integer, np.int64)):
+                    return int(obj)
+                elif isinstance(obj, np.floating):
+                    return float(obj)
+                elif isinstance(obj, np.ndarray):
+                    return obj.tolist()
         except Exception:
             default = None
 

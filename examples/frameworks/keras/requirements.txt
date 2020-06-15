@@ -1,0 +1,3 @@
+Keras
+tensorflow>=2.0
+trains

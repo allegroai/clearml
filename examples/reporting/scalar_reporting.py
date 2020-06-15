@@ -1,0 +1,45 @@
+# TRAINS - Example of manual graphs and statistics reporting
+#
+from trains import Task, Logger
+
+
+def report_scalars(logger):
+    # type: (Logger) -> ()
+    """
+    reporting scalars to scalars section
+    :param logger: The task.logger to use for sending the scalars
+    """
+    # report two scalar series on the same graph
+    for i in range(100):
+        logger.report_scalar("unified graph", "series A", iteration=i, value=1./(i+1))
+        logger.report_scalar("unified graph", "series B", iteration=i, value=10./(i+1))
+
+    # report two scalar series on two different graphs
+    for i in range(100):
+        logger.report_scalar("graph A", "series A", iteration=i, value=1./(i+1))
+        logger.report_scalar("graph B", "series B", iteration=i, value=10./(i+1))
+
+
+def main():
+    # Create the experiment Task
+    task = Task.init(project_name="examples", task_name="scalar reporting")
+
+    print('reporting scalar graphs')
+
+    # Get the task logger,
+    # You can also call Task.current_task().get_logger() from anywhere in your code.
+    logger = task.get_logger()
+
+    # report scalars
+    report_scalars(logger)
+
+    # force flush reports
+    # If flush is not called, reports are flushed in the background every couple of seconds,
+    # and at the end of the process execution
+    logger.flush()
+
+    print('We are done reporting, have a great day :)')
+
+
+if __name__ == "__main__":
+    main()

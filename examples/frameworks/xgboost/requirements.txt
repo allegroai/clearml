@@ -1,0 +1,6 @@
+sklearn
+trains
+xgboost>=0.90 ; python_version >= '3'
+xgboost>=0.82 ; python_version < '3'
+# sudo apt-get install graphviz
+graphviz>=0.8

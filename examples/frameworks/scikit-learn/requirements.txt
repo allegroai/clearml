@@ -1,0 +1,3 @@
+joblib>=0.13.2
+scikit-learn
+trains

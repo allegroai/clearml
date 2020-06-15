@@ -1,0 +1,6 @@
+absl-py>=0.7.1
+bokeh>=2.1.0
+numpy
+pandas
+pillow>=4.0
+trains

@@ -3,7 +3,7 @@
 
 ## :confetti_ball: Now with Full ML/DL DevOps - See [TRAINS AGENT](https://github.com/allegroai/trains-agent) and [Services](https://github.com/allegroai/trains-server#trains-agent-services--)
 ## :station: [Documentation is here!](https://allegro.ai/docs) `wubba lubba dub dub` and a [Slack Channel](https://join.slack.com/t/allegroai-trains/shared_invite/enQtOTQyMTI1MzQxMzE4LTY5NTUxOTY1NmQ1MzQ5MjRhMGRhZmM4ODE5NTNjMTg2NTBlZGQzZGVkMWU3ZDg1MGE1MjQxNDEzMWU2NmVjZmY) :train2: 
-## Features: [AWS autoscaler](https://github.com/allegroai/trains-agent/blob/master/examples/dynamic_cloud_cluster.ipynb) :robot: [Hyper-Parameter Optimization](https://github.com/allegroai/trains/blob/master/examples/automation/hyper_parameter_optimizer.py) and :electric_plug: [Pipelines](https://github.com/allegroai/trains/blob/master/examples/automation/task_piping_example.py)
+## Features: [AWS autoscaler](https://github.com/allegroai/trains-agent/blob/master/examples/dynamic_cloud_cluster.ipynb) :robot: [Hyper-Parameter Optimization](https://github.com/allegroai/trains/tree/master/examples/services/hyper-parameter-optimization) and :electric_plug: [Pipelines](https://github.com/allegroai/trains/blob/master/examples/automation/task_piping_example.py)
 
 "Because it’s a jungle out there"
 
@@ -45,12 +45,12 @@ your experimentation logs, outputs, and data to one centralized server.
 * Model snapshots (With optional automatic upload to central storage: Shared folder, S3, GS, Azure, Http)
 * Artifacts log & store (Shared folder, S3, GS, Azure, Http)
 * Tensorboard/TensorboardX scalars, metrics, histograms, **images, audio and video**
-* Matplotlib & Seaborn
-* Supported frameworks: [Tensorflow](https://allegro.ai/docs/examples/examples_tensorflow), [PyTorch](https://allegro.ai/docs/examples/examples_pytorch), [Keras](https://allegro.ai/docs/examples/examples_keras), XGBoost and [Scikit-Learn](https://allegro.ai/docs/examples/examples_scikit_learn) (MxNet is coming soon)
+* [Matplotlib & Seaborn](https://github.com/allegroai/trains/tree/master/examples/frameworks/matplotlib)
+* Supported frameworks: [PyTorch](https://github.com/allegroai/trains/tree/master/examples/frameworks/pytorch), [Tensorflow](https://github.com/allegroai/trains/tree/master/examples/frameworks/tensorflow), [Keras](https://github.com/allegroai/trains/tree/master/examples/frameworks/keras), [AutoKeras](https://github.com/allegroai/trains/tree/master/examples/frameworks/autokeras), [XGBoost](https://github.com/allegroai/trains/tree/master/examples/frameworks/xgboost) and [Scikit-Learn](https://github.com/allegroai/trains/tree/master/examples/frameworks/scikit-learn) (MxNet is coming soon)
 * Seamless integration (including version control) with **Jupyter Notebook**
     and [*PyCharm* remote debugging](https://github.com/allegroai/trains-pycharm-plugin)
 
-**Additionally, log data explicitly using [TRAINS Explicit Logging](https://github.com/allegroai/trains/blob/master/docs/logger.md).**
+**Additionally, log data explicitly using [TRAINS Explicit Logging](https://allegro.ai/docs/logger.html#module-trains.logger).**
 
 ## Using TRAINS <a name="using-trains"></a>
 

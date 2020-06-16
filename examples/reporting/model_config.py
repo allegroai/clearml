@@ -2,7 +2,7 @@
 #
 import os
 
-from trains import Task
+from trains import Task, OutputModel
 
 
 task = Task.init(project_name='examples', task_name='Model configuration example')
@@ -30,6 +30,9 @@ model_config_dict['value'] *= model_config_dict['new value']
 # store the label enumeration of the training model
 labels = {'background': 0, 'cat': 1, 'dog': 2}
 task.connect_label_enumeration(labels)
+
+# Manually log a local model file
+OutputModel().update_weights('my_best_model.bin')
 
 # storing a model: Any saved model (keras / pytorch / tensorflow / etc.)
 # will have the task network configuration and label enumeration

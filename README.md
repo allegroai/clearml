@@ -50,7 +50,7 @@ your experimentation logs, outputs, and data to one centralized server.
 * Seamless integration (including version control) with **Jupyter Notebook**
     and [*PyCharm* remote debugging](https://github.com/allegroai/trains-pycharm-plugin)
 
-**Additionally, log data explicitly using [TRAINS Explicit Logging](https://allegro.ai/docs/logger.html#module-trains.logger).**
+**Additionally, log data explicitly using [TRAINS Explicit Logging](https://github.com/allegroai/trains/blob/master/docs/logger.md).**
 
 ## Using TRAINS <a name="using-trains"></a>
 
@@ -144,7 +144,7 @@ Apache License, Version 2.0 (see the [LICENSE](https://www.apache.org/licenses/L
 
 More information in the [official documentation](https://allegro.ai/docs) and [on YouTube](https://www.youtube.com/c/AllegroAI).
 
-For examples and use cases, check [examples folder](https://github.com/allegroai/trains/tree/master/examples) and [readme](https://github.com/allegroai/trains/blob/master/docs/trains_examples.md).
+For examples and use cases, check the [examples folder](https://github.com/allegroai/trains/tree/master/examples) and [corresponding documentation](https://allegro.ai/docs/examples/examples_overview/).
 
 If you have any questions: post on our [Slack Channel](https://join.slack.com/t/allegroai-trains/shared_invite/enQtOTQyMTI1MzQxMzE4LTY5NTUxOTY1NmQ1MzQ5MjRhMGRhZmM4ODE5NTNjMTg2NTBlZGQzZGVkMWU3ZDg1MGE1MjQxNDEzMWU2NmVjZmY), or tag your questions on [stackoverflow](https://stackoverflow.com/questions/tagged/trains) with '**trains**' tag.
 

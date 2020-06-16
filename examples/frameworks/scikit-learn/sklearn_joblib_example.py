@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 from trains import Task
 
-task = Task.init(project_name="examples", task_name="joblib test")
+task = Task.init(project_name="examples", task_name="scikit-learn joblib example")
 
 iris = datasets.load_iris()
 X = iris.data

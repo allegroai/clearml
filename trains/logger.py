@@ -1070,7 +1070,7 @@ class Logger(object):
 
         :type single_series: bool
         """
-        cls._tensorboard_logging_single_series_per_graphs = single_series
+        cls._tensorboard_single_series_per_graph = single_series
 
     @classmethod
     def _remove_std_logger(cls):

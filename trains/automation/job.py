@@ -202,11 +202,20 @@ class TrainsJob(object):
         """
         Return True, if job is has executed and is not any more
 
-        :return: True the task is currently one of these states, stopped / completed / failed.
+        :return: True the task is currently one of these states, stopped / completed / failed / published.
         """
         return self.task.status in (
             Task.TaskStatusEnum.stopped, Task.TaskStatusEnum.completed,
             Task.TaskStatusEnum.failed, Task.TaskStatusEnum.published)
+
+    def is_failed(self):
+        # type: () -> bool
+        """
+        Return True, if job is has executed and failed
+
+        :return: True the task is currently in failed state
+        """
+        return self.task.status in (Task.TaskStatusEnum.failed, )
 
     def is_pending(self):
         # type: () -> bool

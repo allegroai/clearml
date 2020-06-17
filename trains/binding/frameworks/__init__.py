@@ -99,13 +99,15 @@ class WeightsFileHandler(object):
 
     @classmethod
     def add_pre_callback(cls, callback_function):
-        # type: (Callable[[str, ModelInfo], ModelInfo]) -> int
+        # type: (Callable[[str, ModelInfo], Optional[ModelInfo]]) -> int
         """
         Add a pre-save/load callback for weights files and return its handle. If the callback was already added,
          return the existing handle.
 
         Use this callback to modify the weights filename registered in the Trains Server. In case Trains is
          configured to upload the weights file, this will affect the uploaded filename as well.
+         Callback returning None will disable the tracking of the current call Model save,
+         it will not disable saving it to disk, just the logging/tracking/uploading.
 
         :param callback_function: A function accepting action type ("load" or "save"),
             callback_function('load' or 'save', WeightsFileHandler.ModelInfo) -> WeightsFileHandler.ModelInfo
@@ -115,7 +117,7 @@ class WeightsFileHandler(object):
 
     @classmethod
     def add_post_callback(cls, callback_function):
-        # type: (Callable[[str, dict], dict]) -> int
+        # type: (Callable[[str, ModelInfo], ModelInfo]) -> int
         """
         Add a post-save/load callback for weights files and return its handle.
         If the callback was already added, return the existing handle.

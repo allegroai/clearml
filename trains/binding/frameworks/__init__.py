@@ -50,8 +50,8 @@ class _Empty(object):
 
 
 class WeightsFileHandler(object):
-    _model_out_store_lookup = {}
-    _model_in_store_lookup = {}
+    # _model_out_store_lookup = {}
+    # _model_in_store_lookup = {}
     _model_store_lookup_lock = threading.Lock()
     _model_pre_callbacks = {}
     _model_post_callbacks = {}
@@ -185,13 +185,15 @@ class WeightsFileHandler(object):
             if model_info.model:
                 trains_in_model = model_info.model
             else:
-                trains_in_model, ref_model = WeightsFileHandler._model_in_store_lookup.get(
-                    id(model) if model is not None else None, (None, None))
-                # noinspection PyCallingNonCallable
-                if ref_model is not None and model != ref_model():
-                    # old id pop it - it was probably reused because the object is dead
-                    WeightsFileHandler._model_in_store_lookup.pop(id(model))
-                    trains_in_model, ref_model = None, None
+                # # disable model reuse, let Model module try to find it for use
+                trains_in_model, ref_model = None, None
+                # trains_in_model, ref_model = WeightsFileHandler._model_in_store_lookup.get(
+                #     id(model) if model is not None else None, (None, None))
+                # # noinspection PyCallingNonCallable
+                # if ref_model is not None and model != ref_model():
+                #     # old id pop it - it was probably reused because the object is dead
+                #     WeightsFileHandler._model_in_store_lookup.pop(id(model))
+                #     trains_in_model, ref_model = None, None
 
             # check if object already has InputModel
             model_name_id = getattr(model, 'name', '') if model else ''
@@ -241,13 +243,15 @@ class WeightsFileHandler(object):
                     pass
             trains_in_model = model_info.model
 
-            if model is not None:
-                # noinspection PyBroadException
-                try:
-                    ref_model = weakref.ref(model)
-                except Exception:
-                    ref_model = None
-                WeightsFileHandler._model_in_store_lookup[id(model)] = (trains_in_model, ref_model)
+            # # disable model reuse, let Model module try to find it for use
+            # if model is not None:
+            #     # noinspection PyBroadException
+            #     try:
+            #         ref_model = weakref.ref(model)
+            #     except Exception:
+            #         ref_model = None
+            #     WeightsFileHandler._model_in_store_lookup[id(model)] = (trains_in_model, ref_model)
+
             # todo: support multiple models for the same task
             task.connect(trains_in_model)
             # if we are running remotely we should deserialize the object
@@ -285,15 +289,17 @@ class WeightsFileHandler(object):
         try:
             WeightsFileHandler._model_store_lookup_lock.acquire()
 
+            # # disable model reuse, let Model module try to find it for use
+            trains_out_model, ref_model = None, None
             # check if object already has InputModel
-            trains_out_model, ref_model = WeightsFileHandler._model_out_store_lookup.get(
-                id(model) if model is not None else None, (None, None))
-            # notice ref_model() is not an error/typo this is a weakref object call
-            # noinspection PyCallingNonCallable
-            if ref_model is not None and model != ref_model():
-                # old id pop it - it was probably reused because the object is dead
-                WeightsFileHandler._model_out_store_lookup.pop(id(model))
-                trains_out_model, ref_model = None, None
+            # trains_out_model, ref_model = WeightsFileHandler._model_out_store_lookup.get(
+            #     id(model) if model is not None else None, (None, None))
+            # # notice ref_model() is not an error/typo this is a weakref object call
+            # # noinspection PyCallingNonCallable
+            # if ref_model is not None and model != ref_model():
+            #     # old id pop it - it was probably reused because the object is dead
+            #     WeightsFileHandler._model_out_store_lookup.pop(id(model))
+            #     trains_out_model, ref_model = None, None
 
             model_info = WeightsFileHandler.ModelInfo(
                 model=trains_out_model, upload_filename=None, local_model_path=saved_path,
@@ -372,13 +378,14 @@ class WeightsFileHandler(object):
                     framework=framework,
                     base_model_id=in_model_id
                 )
-                if model is not None:
-                    # noinspection PyBroadException
-                    try:
-                        ref_model = weakref.ref(model)
-                    except Exception:
-                        ref_model = None
-                    WeightsFileHandler._model_out_store_lookup[id(model)] = (trains_out_model, ref_model)
+                # # disable model reuse, let Model module try to find it for use
+                # if model is not None:
+                #     # noinspection PyBroadException
+                #     try:
+                #         ref_model = weakref.ref(model)
+                #     except Exception:
+                #         ref_model = None
+                #     WeightsFileHandler._model_out_store_lookup[id(model)] = (trains_out_model, ref_model)
 
             model_info.model = trains_out_model
             # call post model callback functions

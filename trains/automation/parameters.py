@@ -79,7 +79,7 @@ class Parameter(RandomSeed):
 
         :return:  dict representation of the object (serialization).
         """
-        serialize = {'__class__': str(self.__class__).split('.')[-1][:-2]}
+        serialize = {'type.': str(self.__class__).split('.')[-1][:-2]}
         # noinspection PyCallingNonCallable
         serialize.update(dict(((k, v.to_dict() if hasattr(v, 'to_dict') else v) for k, v in self.__dict__.items())))
         return serialize
@@ -93,7 +93,7 @@ class Parameter(RandomSeed):
         :return:  The Parameter object.
         """
         a_dict = a_dict.copy()
-        a_cls = a_dict.pop('__class__', None)
+        a_cls = a_dict.pop('type.', None)
         if not a_cls:
             return None
         try:
@@ -101,7 +101,7 @@ class Parameter(RandomSeed):
         except AttributeError:
             return None
         instance = a_cls.__new__(a_cls)
-        instance.__dict__ = dict((k, cls.from_dict(v) if isinstance(v, dict) and '__class__' in v else v)
+        instance.__dict__ = dict((k, cls.from_dict(v) if isinstance(v, dict) and 'type.' in v else v)
                                  for k, v in a_dict.items())
         return instance
 

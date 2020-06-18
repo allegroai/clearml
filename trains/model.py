@@ -11,10 +11,12 @@ from typing import List, Dict, Union, Optional, Mapping, TYPE_CHECKING, Sequence
 from .backend_api import Session
 from .backend_api.services import models
 from pathlib2 import Path
+
 from .utilities.pyhocon import ConfigFactory, HOCONConverter
 
 from .backend_interface.util import validate_dict, get_single_result, mutually_exclusive
 from .debugging.log import get_logger
+from .storage.cache import CacheManager
 from .storage.helper import StorageHelper
 from .utilities.enum import Options
 from .backend_interface import Task as _Task
@@ -526,6 +528,9 @@ class InputModel(Model):
         weights_url = StorageHelper.conform_url(weights_url)
         if not weights_url:
             raise ValueError("Please provide a valid weights_url parameter")
+        # convert local to file to remote one
+        weights_url = CacheManager.get_remote_url(weights_url)
+
         extra = {'system_tags': ["-" + ARCHIVED_TAG]} \
             if Session.check_min_api_version('2.3') else {'tags': ["-" + ARCHIVED_TAG]}
         result = _Model._get_default_session().send(models.GetAllRequest(
@@ -561,7 +566,10 @@ class InputModel(Model):
         if task:
             comment = 'Imported by task id: {}'.format(task.id) + ('\n' + comment if comment else '')
             project_id = task.project
-            task_id = task.id
+            name = name or task.name
+            # do not register the Task, because we do not want it listed after as "output model",
+            # the Task never actually created the Model
+            task_id = None
         else:
             project_id = None
             task_id = None
@@ -624,6 +632,10 @@ class InputModel(Model):
         weights_url = StorageHelper.conform_url(weights_url)
         if not weights_url:
             raise ValueError("Please provide a valid weights_url parameter")
+
+        # convert local to file to remote one
+        weights_url = CacheManager.get_remote_url(weights_url)
+
         if not load_archived:
             extra = {'system_tags': ["-" + ARCHIVED_TAG]} \
                 if Session.check_min_api_version('2.3') else {'tags': ["-" + ARCHIVED_TAG]}
@@ -919,7 +931,7 @@ class OutputModel(BaseModel):
         self._floating_data = create_dummy_model(
             design=_Model._wrap_design(config_text),
             labels=label_enumeration or task.get_labels_enumeration(),
-            name=name,
+            name=name or task.name,
             tags=tags,
             comment='{} by task id: {}'.format('Created' if not base_model_id else 'Overwritten', task.id) +
                     ('\n' + comment if comment else ''),

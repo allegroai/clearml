@@ -513,11 +513,12 @@ class Version(Entity):
 class APIClient(object):
 
     auth = None  # type: Any
-    debug = None  # type: Any
     queues = None  # type: Any
     tasks = None  # type: Any
     workers = None  # type: Any
     events = None  # type: Any
+    models = None  # type: Any
+    projects = None  # type: Any
 
     def __init__(self, session=None, api_version=None):
         self.session = session or StrictSession()

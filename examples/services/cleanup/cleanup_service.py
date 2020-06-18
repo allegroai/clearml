@@ -1,16 +1,16 @@
 """
-This service will archived experiments and their accompanying debug samples, artifacts and models
+This service will delete archived experiments and their accompanying debug samples, artifacts and models
 older than 30 days.
 
 You can configure the run by changing the `args` dictionary:
-- archived_age_cleanup_in_days (float): The earliest day for cleanup.
-                                        Only tasks older to this will be deleted. Default: 30.
+- delete_threshold_days (float): The earliest day for cleanup.
+                                 Only tasks older to this will be deleted. Default: 30.
 - cleanup_period_in_days (float): The time period between cleanups. Default: 1.
 - run_as_service (bool): The script will be execute remotely (Default queue: "services"). Default: True.
 - force_delete (bool): Allows forcing the task deletion (for every task status). Default: False.
 
 Requirements:
-- trains_agent installed -> pip install trains_agent
+- trains_agent installed -> pip install trains-agent
 
 """
 import logging
@@ -38,9 +38,9 @@ task.set_base_docker(
     "ubuntu:18.04 -v /opt/trains/data/fileserver/:{}".format(file_server_mount)
 )
 
-# experiment template to optimize in the hyper-parameter optimization
+# args for the running task
 args = {
-    "archived_age_cleanup_in_days": 30.0,
+    "delete_threshold_days": 30.0,
     "cleanup_period_in_days": 1.0,
     "run_as_service": True,
     "force_delete": False,
@@ -64,7 +64,7 @@ while True:
     print("Starting cleanup")
     client = APIClient()
     # anything that has not changed in the last month
-    timestamp = time() - 60 * 60 * 24 * args["archived_age_cleanup_in_days"]
+    timestamp = time() - 60 * 60 * 24 * args["delete_threshold_days"]
     page = 0
     page_size = 100
     tasks = None

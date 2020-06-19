@@ -136,7 +136,13 @@ class CacheManager(object):
     def get_remote_url(local_copy_path):
         if not CacheManager._local_to_remote_url_lookup:
             return local_copy_path
-        conform_local_copy_path = StorageHelper.conform_url(local_copy_path)
+
+        # noinspection PyBroadException
+        try:
+            conform_local_copy_path = StorageHelper.conform_url(str(local_copy_path))
+        except Exception:
+            return local_copy_path
+
         return CacheManager._local_to_remote_url_lookup.get(hash(conform_local_copy_path), local_copy_path)
 
     @staticmethod
@@ -144,10 +150,23 @@ class CacheManager(object):
         # so that we can disable the cache lookup altogether
         if CacheManager._local_to_remote_url_lookup is None:
             return
-        remote_url = StorageHelper.conform_url(remote_url)
+
+        # noinspection PyBroadException
+        try:
+            remote_url = StorageHelper.conform_url(str(remote_url))
+        except Exception:
+            return
+
         if remote_url.startswith('file://'):
             return
-        local_copy_path = StorageHelper.conform_url(local_copy_path)
+
+        local_copy_path = str(local_copy_path)
+
+        # noinspection PyBroadException
+        try:
+            local_copy_path = StorageHelper.conform_url(local_copy_path)
+        except Exception:
+            pass
         CacheManager._local_to_remote_url_lookup[hash(local_copy_path)] = remote_url
         # protect against overuse, so we do not blowup the memory
         if len(CacheManager._local_to_remote_url_lookup) > CacheManager.__local_to_remote_url_lookup_max_size:

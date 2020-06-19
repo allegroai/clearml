@@ -566,7 +566,7 @@ class InputModel(Model):
         if task:
             comment = 'Imported by task id: {}'.format(task.id) + ('\n' + comment if comment else '')
             project_id = task.project
-            name = name or task.name
+            name = name or 'Imported by {}'.format(task.name or '')
             # do not register the Task, because we do not want it listed after as "output model",
             # the Task never actually created the Model
             task_id = None
@@ -931,7 +931,7 @@ class OutputModel(BaseModel):
         self._floating_data = create_dummy_model(
             design=_Model._wrap_design(config_text),
             labels=label_enumeration or task.get_labels_enumeration(),
-            name=name or task.name,
+            name=name or self._task.name,
             tags=tags,
             comment='{} by task id: {}'.format('Created' if not base_model_id else 'Overwritten', task.id) +
                     ('\n' + comment if comment else ''),
@@ -946,7 +946,7 @@ class OutputModel(BaseModel):
                     design=self._floating_data.design,
                     task_id=self._task.id,
                     project_id=self._task.project,
-                    name=self._floating_data.name or task.name,
+                    name=self._floating_data.name or self._task.name,
                     comment=('{}\n{}'.format(_base_model.comment, self._floating_data.comment)
                              if (_base_model.comment and self._floating_data.comment and
                                  self._floating_data.comment not in _base_model.comment)

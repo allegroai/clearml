@@ -257,7 +257,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             check_package_update_thread.start()
             # do not request requirements, because it might be a long process, and we first want to update the git repo
             result, script_requirements = ScriptInfo.get(
-                filepaths=[self._calling_filename, sys.argv[0], ],
+                filepaths=[self._calling_filename, sys.argv[0], ]
+                if ScriptInfo.is_running_from_module() else [sys.argv[0], self._calling_filename, ],
                 log=self.log, create_requirements=False, check_uncommitted=self._store_diff
             )
             for msg in result.warning_messages:
@@ -266,7 +267,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             # store original entry point
             entry_point = result.script.get('entry_point') if result.script else None
 
-            # check if we are running inside a module, then we should set our entrypoint
+            # check if we are running inside a module, then we should set our entry point
             # to the module call including all argv's
             result.script = ScriptInfo.detect_running_module(result.script)
 

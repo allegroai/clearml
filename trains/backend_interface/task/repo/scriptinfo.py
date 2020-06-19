@@ -674,6 +674,14 @@ class ScriptInfo(object):
         return ScriptInfoResult(), None
 
     @classmethod
+    def is_running_from_module(cls):
+        # noinspection PyBroadException
+        try:
+            return '__main__' in sys.modules and vars(sys.modules['__main__'])['__package__']
+        except Exception:
+            return False
+
+    @classmethod
     def detect_running_module(cls, script_dict):
         # noinspection PyBroadException
         try:
@@ -681,7 +689,7 @@ class ScriptInfo(object):
             if script_dict.get('jupyter_filepath'):
                 return script_dict
 
-            if '__main__' in sys.modules and vars(sys.modules['__main__'])['__package__']:
+            if cls.is_running_from_module():
                 argvs = ''
                 git_root = os.path.abspath(script_dict['repo_root']) if script_dict['repo_root'] else None
                 for a in sys.argv[1:]:

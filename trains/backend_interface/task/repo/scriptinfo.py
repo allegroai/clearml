@@ -7,11 +7,10 @@ from tempfile import mkstemp
 import attr
 import logging
 import json
-from furl import furl
 from pathlib2 import Path
 from threading import Thread, Event
 
-from .util import get_command_output
+from .util import get_command_output, remove_user_pass_from_url
 from ....backend_api import Session
 from ....debugging import get_logger
 from .detectors import GitEnvDetector, GitDetector, HgEnvDetector, HgDetector, Result as DetectionResult
@@ -634,7 +633,7 @@ class ScriptInfo(object):
             script_requirements = None
 
         script_info = dict(
-            repository=furl(repo_info.url).remove(username=True, password=True).tostr(),
+            repository=remove_user_pass_from_url(repo_info.url),
             branch=repo_info.branch,
             version_num=repo_info.commit,
             entry_point=entry_point,

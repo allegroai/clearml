@@ -68,6 +68,9 @@ def report_plots(logger, iteration=0):
         yaxis="title y",
     )
 
+    scatter2d = np.hstack(
+        (np.atleast_2d(np.arange(0, 10)).T, np.random.randint(10, size=(10, 1)))
+    )
     # report 2d scatter plot with markers
     logger.report_scatter2d(
         "example_scatter",
@@ -79,6 +82,9 @@ def report_plots(logger, iteration=0):
         mode='markers'
     )
 
+    scatter2d = np.hstack(
+        (np.atleast_2d(np.arange(0, 10)).T, np.random.randint(10, size=(10, 1)))
+    )
     # report 2d scatter plot with markers
     logger.report_scatter2d(
         "example_scatter",

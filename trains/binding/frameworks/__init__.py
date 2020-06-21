@@ -2,7 +2,6 @@ import os
 import shutil
 import sys
 import threading
-import weakref
 from enum import Enum
 from random import randint
 from tempfile import mkstemp

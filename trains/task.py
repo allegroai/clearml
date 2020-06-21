@@ -2330,7 +2330,7 @@ class Task(_Task):
             cls._get_default_session(),
             tasks.GetAllRequest(
                 id=task_ids,
-                project=[project.id] if project else None,
+                project=[project.id] if project else kwargs.pop('project', None),
                 name=task_name if task_name else None,
                 only_fields=only_fields,
                 **kwargs

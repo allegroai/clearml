@@ -40,7 +40,9 @@ def mp_handler(use_subprocess):
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--num_workers', help='integer value', type=int, default=3)
-    parser.add_argument('--use_subprocess', help='integer value', type=int, default=1)
+    parser.add_argument('--use-subprocess', help="Use sub processes", dest='subprocess', action='store_true')
+    parser.add_argument('--no-subprocess', help="Use threads", dest='subprocess', action='store_false')
+    parser.set_defaults(subprocess=True)
     # this argument we will not be logging, see below Task.init
     parser.add_argument('--counter', help='integer value', type=int, default=-1)
 
@@ -67,12 +69,12 @@ if __name__ == '__main__':
         cmd = [sys.executable, sys.argv[0],
                '--counter', str(counter - 1),
                '--num_workers', str(args.num_workers),
-               '--use_subprocess', str(args.use_subprocess)]
+               '--use-subprocess' if args.subprocess else '--no-subprocess']
         print(cmd)
         p = subprocess.Popen(cmd, cwd=os.getcwd())
 
     # the actual "processing" is done here
-    mp_handler(args.use_subprocess)
+    mp_handler(args.subprocess)
     print('Done logging')
 
     # wait for the process we launched

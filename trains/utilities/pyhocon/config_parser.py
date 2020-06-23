@@ -365,16 +365,17 @@ class ConfigParser(object):
             false_expr = Keyword("false", caseless=True).setParseAction(replaceWith(False))
             null_expr = Keyword("null", caseless=True).setParseAction(replaceWith(NoneValue()))
             # key = QuotedString('"', escChar='\\', unquoteResults=False) | Word(alphanums + alphas8bit + '._- /')
+            regexp_numbers = r'[+-]?(\d*\.\d+|\d+(\.\d+)?)([eE][+\-]?\d+)?(?=$|[ \t]*([\$\}\],#\n\r]|//))'
             key = QuotedString('"', escChar='\\', unquoteResults=False) | \
-                Word("0123456789.").setParseAction(safe_convert_number) | Word(alphanums + alphas8bit + '._- /')
+                Regex(regexp_numbers, re.DOTALL).setParseAction(safe_convert_number) | \
+                Word(alphanums + alphas8bit + '._- /')
 
             eol = Word('\n\r').suppress()
             eol_comma = Word('\n\r,').suppress()
             comment = (Literal('#') | Literal('//')) - SkipTo(eol | StringEnd())
             comment_eol = Suppress(Optional(eol_comma) + comment)
             comment_no_comma_eol = (comment | eol).suppress()
-            number_expr = Regex(r'[+-]?(\d*\.\d+|\d+(\.\d+)?)([eE][+\-]?\d+)?(?=$|[ \t]*([\$\}\],#\n\r]|//))',
-                                re.DOTALL).setParseAction(convert_number)
+            number_expr = Regex(regexp_numbers, re.DOTALL).setParseAction(convert_number)
 
             period_types = itertools.chain.from_iterable(cls.get_supported_period_type_map().values())
             period_expr = Regex(r'(?P<value>\d+)\s*(?P<unit>' + '|'.join(period_types) + ')$'

@@ -111,9 +111,10 @@ class HOCONConverter(object):
                     else:
                         full_key = key
 
-                    if isinstance(full_key, (basestring, unicode)) and cls._number_re_matcher.match(full_key):
+                    if isinstance(full_key, float) or \
+                            (isinstance(full_key, (basestring, unicode)) and cls._number_re_matcher.match(full_key)):
                         # if key can be casted to float, and it is a string, make sure we quote it
-                        full_key = '\"' + full_key + '\"'
+                        full_key = '\"{}\"'.format(full_key)
 
                     bet_line = ('{indent}{key}{assign_sign} '.format(
                         indent=''.rjust(level * indent, ' '),

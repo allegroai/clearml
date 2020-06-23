@@ -88,7 +88,7 @@ class WeightsGradientHistHelper(object):
 
         if isinstance(hist_data, dict):
             pass
-        elif isinstance(hist_data, np.ndarray) and np.atleast_2d(hist_data).shape[1] == 3:
+        elif isinstance(hist_data, np.ndarray) and len(hist_data.shape) == 2 and np.atleast_2d(hist_data).shape[1] == 3:
             # prepare the dictionary, assume numpy
             # hist_data['bucketLimit'] is the histogram bucket right side limit, meaning X axis
             # hist_data['bucket'] is the histogram height, meaning the Y axis
@@ -96,7 +96,7 @@ class WeightsGradientHistHelper(object):
             hist_data = {'bucketLimit': hist_data[:, 0].tolist(), 'bucket': hist_data[:, 2].tolist()}
         else:
             # assume we have to do the histogram on the data
-            hist_data = np.histogram(hist_data)
+            hist_data = np.histogram(hist_data, bins=32)
             hist_data = {'bucketLimit': hist_data[1].tolist(), 'bucket': hist_data[0].tolist()}
 
         self._add_histogram(title=title, series=series, step=step, hist_data=hist_data)
@@ -148,10 +148,11 @@ class WeightsGradientHistHelper(object):
                                    hist_iters.size % self._histogram_update_freq_multiplier != 0):
             return None
 
-        # resample histograms on a unified bin axis
-        _minmax = minmax[0] - 1, minmax[1] + 1
+        # resample histograms on a unified bin axis +- epsilon
+        _epsilon = abs((minmax[1] - minmax[0])/float(self._hist_x_granularity))
+        _minmax = minmax[0] - _epsilon, minmax[1] + _epsilon
         prev_xedge = np.arange(start=_minmax[0],
-                               step=(_minmax[1] - _minmax[0]) / (self._hist_x_granularity - 2), stop=_minmax[1])
+                               step=(_minmax[1] - _minmax[0]) / float(self._hist_x_granularity - 2), stop=_minmax[1])
         # uniformly select histograms and the last one
         cur_idx = self._sample_histograms(hist_iters, self._histogram_granularity)
         report_hist = np.zeros(shape=(len(cur_idx), prev_xedge.size), dtype=np.float32)
@@ -215,19 +216,20 @@ class EventTrainsWriter(object):
         return self.variants.copy()
 
     def tag_splitter(self, tag, num_split_parts, split_char='/', join_char='_', default_title='variant',
-                     logdir_header='series', auto_reduce_num_split=False):
+                     logdir_header='series', auto_reduce_num_split=False, force_add_prefix=None):
         """
         Split a tf.summary tag line to variant and metric.
         Variant is the first part of the split tag, metric is the second.
         :param str tag:
         :param int num_split_parts:
         :param str split_char: a character to split the tag on
-        :param str join_char:  a character to join the the splits
+        :param str join_char: a character to join the the splits
         :param str default_title: variant to use in case no variant can be inferred automatically
         :param str logdir_header: if 'series_last' then series=header: series, if 'series then series=series :header,
             if 'title_last' then title=header title, if 'title' then title=title header
-        :param boolean auto_reduce_num_split: if True and the tag is split for less parts then requested,
+        :param bool auto_reduce_num_split: if True and the tag is split for less parts then requested,
             then requested number of split parts is adjusted.
+        :param str force_add_prefix: always add the prefix to the series name
         :return: (str, str) variant and metric
         """
         splitted_tag = tag.split(split_char)
@@ -235,6 +237,9 @@ class EventTrainsWriter(object):
             num_split_parts = max(1, len(splitted_tag) - 1)
         series = join_char.join(splitted_tag[-num_split_parts:])
         title = join_char.join(splitted_tag[:-num_split_parts]) or default_title
+
+        if force_add_prefix:
+            series = str(force_add_prefix)+series
 
         # check if we already decided that we need to change the title/series
         graph_id = hash((title, series))
@@ -369,8 +374,10 @@ class EventTrainsWriter(object):
         if img_data_np is None:
             return
 
+        # noinspection PyProtectedMember
         title, series = self.tag_splitter(tag, num_split_parts=3, default_title='Images', logdir_header='title',
-                                          auto_reduce_num_split=True)
+                                          auto_reduce_num_split=True,
+                                          force_add_prefix=self._logger._get_tensorboard_series_prefix())
         step = self._fix_step_counter(title, series, step)
 
         if img_data_np.dtype != np.uint8:
@@ -412,9 +419,11 @@ class EventTrainsWriter(object):
         default_title = tag if not self._logger._get_tensorboard_auto_group_scalars() else 'Scalars'
         series_per_graph = self._logger._get_tensorboard_single_series_per_graph()
 
+        # noinspection PyProtectedMember
         title, series = self.tag_splitter(
             tag, num_split_parts=1, default_title=default_title,
-            logdir_header='title' if series_per_graph else 'series_last'
+            logdir_header='title' if series_per_graph else 'series_last',
+            force_add_prefix=self._logger._get_tensorboard_series_prefix()
         )
 
         step = self._fix_step_counter(title, series, step)
@@ -455,8 +464,10 @@ class EventTrainsWriter(object):
         )
 
     def _add_histogram(self, tag, step, hist_data):
+        # noinspection PyProtectedMember
         title, series = self.tag_splitter(tag, num_split_parts=1, default_title='Histograms',
-                                          logdir_header='series')
+                                          logdir_header='series',
+                                          force_add_prefix=self._logger._get_tensorboard_series_prefix())
 
         self._grad_helper.add_histogram(
             title=title,
@@ -519,8 +530,10 @@ class EventTrainsWriter(object):
         if audio_data is None:
             return
 
+        # noinspection PyProtectedMember
         title, series = self.tag_splitter(tag, num_split_parts=3, default_title='Audio', logdir_header='title',
-                                          auto_reduce_num_split=True)
+                                          auto_reduce_num_split=True,
+                                          force_add_prefix=self._logger._get_tensorboard_series_prefix())
         step = self._fix_step_counter(title, series, step)
 
         stream = BytesIO(audio_data)

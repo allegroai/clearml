@@ -69,6 +69,7 @@ class Logger(object):
         self._report_worker = None
         self._task_handler = None
         self._graph_titles = {}
+        self._tensorboard_series_force_prefix = None
 
         StdStreamPatch.patch_std_streams(self)
 
@@ -1263,10 +1264,26 @@ class Logger(object):
         self._graph_titles[title].add(series)
 
     def _get_used_title_series(self):
+        # type: () -> dict
         return self._graph_titles
+
+    def _get_tensorboard_series_prefix(self):
+        # type: () -> Optional[str]
+        """
+        :return str: return a string prefix to put in front of every report combing from tensorboard
+        """
+        return self._tensorboard_series_force_prefix
+
+    def _set_tensorboard_series_prefix(self, prefix):
+        # type: (Optional[str]) -> ()
+        """
+        :param str prefix: Set a string prefix to put in front of every report combing from tensorboard
+        """
+        self._tensorboard_series_force_prefix = str(prefix) if prefix else None
 
     @classmethod
     def _get_tensorboard_auto_group_scalars(cls):
+        # type: () -> bool
         """
         :return: True, if we preserve Tensorboard backward compatibility behaviour,
             i.e., scalars without specific title will be under the "Scalars" graph
@@ -1276,6 +1293,7 @@ class Logger(object):
 
     @classmethod
     def _get_tensorboard_single_series_per_graph(cls):
+        # type: () -> bool
         """
         :return: True, if we generate a separate graph (plot) for each Tensorboard scalar series
             default is False: Tensorboard scalar series will be grouped according to their title

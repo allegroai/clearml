@@ -1,9 +1,9 @@
 import json
 
 try:
-    from collections.abc import Iterable
-except ImportError:
     from collections import Iterable
+except ImportError:
+    from collections.abc import Iterable
 
 import six
 import numpy as np

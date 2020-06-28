@@ -71,7 +71,7 @@ an_optimizer = HyperParameterOptimizer(
     # more are coming soon...
     optimizer_class=Our_SearchStrategy,
     # Select an execution queue to schedule the experiments for execution
-    execution_queue='moshik',
+    execution_queue='1xGPU',
     # Optional: Limit the execution time of a single experiment, in minutes.
     # (this is optional, and if using  OptimizerBOHB, it is ignored)
     time_limit_per_job=10.,

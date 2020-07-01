@@ -41,7 +41,7 @@ from ...storage.helper import StorageHelper, StorageError
 from .access import AccessMixin
 from .log import TaskHandler
 from .repo import ScriptInfo
-from ...config import config, PROC_MASTER_ID_ENV_VAR
+from ...config import config, PROC_MASTER_ID_ENV_VAR, SUPPRESS_UPDATE_MESSAGE_ENV_VAR
 
 
 class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
@@ -235,7 +235,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 # check latest version
                 from ...utilities.check_updates import CheckPackageUpdates
                 latest_version = CheckPackageUpdates.check_new_package_available(only_once=True)
-                if latest_version:
+                if latest_version and not SUPPRESS_UPDATE_MESSAGE_ENV_VAR.get(default=config.get('development.suppress_update_message', False)):
                     if not latest_version[1]:
                         sep = os.linesep
                         self.get_logger().report_text(
@@ -526,15 +526,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         self.reload()
 
-    def started(self, ignore_errors=True):
-        # type: (bool) -> ()
+    def started(self, ignore_errors=True, force=False):
+        # type: (bool, bool) -> ()
         """ The signal that this Task started. """
-        return self.send(tasks.StartedRequest(self.id), ignore_errors=ignore_errors)
+        return self.send(tasks.StartedRequest(self.id, force=force), ignore_errors=ignore_errors)
 
-    def stopped(self, ignore_errors=True):
-        # type: (bool) -> ()
+    def stopped(self, ignore_errors=True, force=False):
+        # type: (bool, bool) -> ()
         """ The signal that this Task stopped. """
-        return self.send(tasks.StoppedRequest(self.id), ignore_errors=ignore_errors)
+        return self.send(tasks.StoppedRequest(self.id, force=force), ignore_errors=ignore_errors)
 
     def completed(self, ignore_errors=True):
         # type: (bool) -> ()

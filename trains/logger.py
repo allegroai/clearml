@@ -71,7 +71,8 @@ class Logger(object):
         self._graph_titles = {}
         self._tensorboard_series_force_prefix = None
 
-        StdStreamPatch.patch_std_streams(self)
+        if self._task.is_main_task():
+            StdStreamPatch.patch_std_streams(self)
 
     @classmethod
     def current_logger(cls):

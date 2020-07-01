@@ -174,7 +174,7 @@ class Objective(object):
             series = hashlib.md5(str(self.series).encode('utf-8')).hexdigest()
             self._metric = title, series
         return '{}last_metrics.{}.{}.{}'.format(
-            '-' if self.sign < 0 else '', self._metric[0], self._metric[1],
+            '-' if self.sign > 0 else '', self._metric[0], self._metric[1],
             ('min_value' if self.sign < 0 else 'max_value') if self.extremum else 'value')
 
 
@@ -1316,7 +1316,9 @@ class HyperParameterOptimizer(object):
                             df = pd.DataFrame(table, index=index)
                             df.sort_values(by='objective', ascending=bool(self.objective_metric.sign < 0), inplace=True)
                             df.index.name = 'task id'
-                            task_logger.report_table("summary", "job", 0, table_plot=df)
+                            task_logger.report_table(
+                                "summary", "job", 0, table_plot=df,
+                                extra_layout={"title": "objective: {}".format(title)})
 
             # if we should leave, stop everything now.
             if timeout < 0:

@@ -150,6 +150,8 @@ class WeightsGradientHistHelper(object):
 
         # resample histograms on a unified bin axis +- epsilon
         _epsilon = abs((minmax[1] - minmax[0])/float(self._hist_x_granularity))
+        if _epsilon == 0:
+            _epsilon = 0.01
         _minmax = minmax[0] - _epsilon, minmax[1] + _epsilon
         prev_xedge = np.arange(start=_minmax[0],
                                step=(_minmax[1] - _minmax[0]) / float(self._hist_x_granularity - 2), stop=_minmax[1])

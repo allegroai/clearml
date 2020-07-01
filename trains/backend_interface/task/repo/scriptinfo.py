@@ -405,6 +405,7 @@ class _JupyterObserver(object):
 
 
 class ScriptInfo(object):
+    max_diff_size_bytes = 500000
 
     plugins = [GitEnvDetector(), HgEnvDetector(), HgDetector(), GitDetector()]
     """ Script info detection plugins, in order of priority """
@@ -590,6 +591,8 @@ class ScriptInfo(object):
         repo_info = DetectionResult()
         script_dir = scripts_dir[0]
         script_path = scripts_path[0]
+        messages = []
+
         if not plugin:
             log.info("No repository found, storing script code instead")
         else:
@@ -617,6 +620,13 @@ class ScriptInfo(object):
         if check_uncommitted:
             diff = cls._get_script_code(script_path.as_posix()) \
                 if not plugin or not repo_info.commit else repo_info.diff
+            # make sure diff is not too big:
+            if len(diff) > cls.max_diff_size_bytes:
+                messages.append(
+                    "======> WARNING! Git diff to large to store "
+                    "({}kb), skipping uncommitted changes <======".format(len(diff)//1024))
+                diff = ''
+
         else:
             diff = ''
         # if this is not jupyter, get the requirements.txt
@@ -645,7 +655,6 @@ class ScriptInfo(object):
             jupyter_filepath=jupyter_filepath,
         )
 
-        messages = []
         if repo_info.modified:
             messages.append(
                 "======> WARNING! UNCOMMITTED CHANGES IN REPOSITORY {} <======".format(

@@ -2,6 +2,7 @@ import hashlib
 import json
 import mimetypes
 import os
+import pickle
 from six.moves.urllib.parse import quote
 from copy import deepcopy
 from datetime import datetime
@@ -160,6 +161,9 @@ class Artifact(object):
         elif self.type == 'JSON':
             with open(local_file, 'rt') as f:
                 self._object = json.load(f)
+        elif self.type == 'pickle':
+            with open(local_file, 'rb') as f:
+                self._object = pickle.load(f)
 
         local_file = Path(local_file)
 
@@ -197,6 +201,8 @@ class Artifact(object):
 
 
 class Artifacts(object):
+    max_preview_size_bytes = 65536
+
     _flush_frequency_sec = 300.
     # notice these two should match
     _save_format = '.csv.gz'
@@ -293,8 +299,8 @@ class Artifacts(object):
         self._unregister_request.add(name)
         self.flush()
 
-    def upload_artifact(self, name, artifact_object=None, metadata=None, delete_after_upload=False):
-        # type: (str, Optional[object], Optional[dict], bool) -> bool
+    def upload_artifact(self, name, artifact_object=None, metadata=None, delete_after_upload=False, auto_pickle=True):
+        # type: (str, Optional[object], Optional[dict], bool, bool) -> bool
         if not Session.check_min_api_version('2.3'):
             LoggerRoot.get_base_logger().warning('Artifacts not supported by your TRAINS-server version, '
                                                  'please upgrade to the latest server version')
@@ -302,6 +308,16 @@ class Artifacts(object):
 
         if name in self._artifacts_container:
             raise ValueError("Artifact by the name of {} is already registered, use register_artifact".format(name))
+
+        # convert string to object if try is a file/folder (dont try to serialize long texts
+        if isinstance(artifact_object, six.string_types) and len(artifact_object) < 2048:
+            # noinspection PyBroadException
+            try:
+                artifact_path = Path(artifact_object)
+                if artifact_path.exists():
+                    artifact_object = artifact_path
+            except Exception:
+                pass
 
         artifact_type_data = tasks.ArtifactTypeData()
         override_filename_in_uri = None
@@ -347,19 +363,15 @@ class Artifacts(object):
             fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
             os.write(fd, bytes(preview.encode()))
             os.close(fd)
-            artifact_type_data.preview = preview
+            if len(preview) < self.max_preview_size_bytes:
+                artifact_type_data.preview = preview
+            else:
+                artifact_type_data.preview = '# full json too large to store, storing first {}kb\n{}'.format(
+                    len(preview)//1024, preview[:self.max_preview_size_bytes]
+                )
+
             delete_after_upload = True
-        elif (
-            isinstance(artifact_object, six.string_types)
-            and urlparse(artifact_object).scheme in remote_driver_schemes
-        ):
-            # we should not upload this, just register
-            local_filename = None
-            uri = artifact_object
-            artifact_type = 'custom'
-            artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
-        elif isinstance(
-                artifact_object, six.string_types + (Path, pathlib_Path,) if pathlib_Path is not None else (Path,)):
+        elif isinstance(artifact_object, (Path, pathlib_Path,) if pathlib_Path is not None else (Path,)):
             # check if single file
             artifact_object = Path(artifact_object)
 
@@ -420,6 +432,32 @@ class Artifacts(object):
                 artifact_type = 'custom'
                 artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
                 local_filename = artifact_object
+        elif (
+                isinstance(artifact_object, six.string_types)
+                and urlparse(artifact_object).scheme in remote_driver_schemes
+        ):
+            # we should not upload this, just register
+            local_filename = None
+            uri = artifact_object
+            artifact_type = 'custom'
+            artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
+        elif auto_pickle:
+            # if we are here it means we do not know what to do with the object, so we serialize it with pickle.
+            artifact_type = 'pickle'
+            artifact_type_data.content_type = 'application/pickle'
+            artifact_type_data.preview = str(artifact_object.__repr__())[:self.max_preview_size_bytes]
+            delete_after_upload = True
+            override_filename_ext_in_uri = '.pkl'
+            override_filename_in_uri = name + override_filename_ext_in_uri
+            fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
+            os.close(fd)
+            try:
+                with open(local_filename, 'wb') as f:
+                    pickle.dump(artifact_object, f)
+            except Exception as ex:
+                # cleanup and raise exception
+                os.unlink(local_filename)
+                raise
         else:
             raise ValueError("Artifact type {} not supported".format(type(artifact_object)))
 

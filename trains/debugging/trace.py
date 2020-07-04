@@ -26,6 +26,7 @@ def _thread_py_id():
 
 def _log_stderr(name, fnc, args, kwargs, is_return):
     global __stream_write, __stream_flush, __trace_level, __trace_start, __thread_id
+    # noinspection PyBroadException
     try:
         if is_return and __trace_level not in (-1, -2):
             return
@@ -47,7 +48,7 @@ def _log_stderr(name, fnc, args, kwargs, is_return):
             h, threading.current_thread().name, t))
         if __stream_flush:
             __stream_flush()
-    except:
+    except Exception:
         pass
 
 
@@ -154,9 +155,10 @@ def _patch_module(module, prefix='', basepath=None, basemodule=None):
     for fn in (m for m in dir(module) if not m.startswith('__')):
         if fn in ('schema_property') or fn.startswith('_PostImportHookPatching__'):
             continue
+        # noinspection PyBroadException
         try:
             fnc = getattr(module, fn)
-        except:
+        except Exception:
             continue
         if inspect.ismodule(fnc):
             _patch_module(fnc, prefix=prefix, basepath=basepath, basemodule=basemodule)
@@ -278,28 +280,29 @@ def print_traced_files(glob_mask, lines_per_tid=5, stream=sys.stdout, specify_pi
     for fname in glob(glob_mask, recursive=False):
         with open(fname, 'rt') as fd:
             lines = fd.readlines()
-        for l in lines:
+        for line in lines:
+            # noinspection PyBroadException
             try:
-                _, pid, tid = l.split(':')[:3]
+                _, pid, tid = line.split(':')[:3]
                 pid = int(pid)
-            except:
+            except Exception:
                 continue
             if specify_pids and pid not in specify_pids:
                 continue
 
-            if l.startswith('-'):
+            if line.startswith('-'):
                 print_orphans = True
-                l = l[1:]
-                h = hash_line(l)
+                line = line[1:]
+                h = hash_line(line)
                 if h in orphan_calls:
                     orphan_calls.remove(h)
                     continue
             else:
-                h = hash_line(l)
+                h = hash_line(line)
                 orphan_calls.add(h)
 
             tids = pids.get(pid) if pid in pids else {}
-            tids[tid] = (tids.get(tid, []) + [l])[-lines_per_tid:]
+            tids[tid] = (tids.get(tid, []) + [line])[-lines_per_tid:]
             pids[pid] = tids
 
     # sort by time stamp
@@ -308,9 +311,9 @@ def print_traced_files(glob_mask, lines_per_tid=5, stream=sys.stdout, specify_pi
         for t, lines in tids.items():
             ts = float(lines[-1].split(':')[0].strip()) + 0.000001 * len(by_time)
             if print_orphans:
-                for i, l in enumerate(lines):
-                    if i > 0 and hash_line(l) in orphan_calls:
-                        lines[i] = ' ### Orphan ### {}'.format(l)
+                for i, line in enumerate(lines):
+                    if i > 0 and hash_line(line) in orphan_calls:
+                        lines[i] = ' ### Orphan ### {}'.format(line)
             by_time[ts] = ''.join(lines) + '\n'
 
     out_stream = open(stream, 'w') if isinstance(stream, str) else stream

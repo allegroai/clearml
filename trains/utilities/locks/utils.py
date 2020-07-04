@@ -167,13 +167,15 @@ class Lock(object):
     def release(self):
         '''Releases the currently locked file handle'''
         if self.fh:
+            # noinspection PyBroadException
             try:
                 portalocker.unlock(self.fh)
-            except:
+            except Exception:
                 pass
+            # noinspection PyBroadException
             try:
                 self.fh.close()
-            except:
+            except Exception:
                 pass
             self.fh = None
 
@@ -240,10 +242,11 @@ class RLock(Lock):
             self._pid = os.getpid()
             self._acquire_count = 0
             if self.fh:
+                # noinspection PyBroadException
                 try:
                     portalocker.unlock(self.fh)
                     self.fh.close()
-                except:
+                except Exception:
                     pass
             self.fh = None
 

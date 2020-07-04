@@ -62,9 +62,10 @@ class ResourceMonitor(object):
         # self._thread.join()
 
     def _run(self):
+        # noinspection PyBroadException
         try:
             self._daemon()
-        except:
+        except Exception:
             pass
 
     def _daemon(self):

@@ -3,14 +3,12 @@ models service
 
 This service provides a management interface for models (results of training tasks) stored in the system.
 """
-import six
-import types
 from datetime import datetime
-import enum
 
+import six
 from dateutil.parser import parse as parse_datetime
 
-from ....backend_api.session import Request, BatchRequest, Response, DataModel, NonStrictDataModel, CompoundRequest, schema_property, StringEnum
+from ....backend_api.session import NonStrictDataModel, Request, Response, schema_property
 
 
 class MultiFieldPatternData(NonStrictDataModel):
@@ -34,6 +32,7 @@ class MultiFieldPatternData(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, pattern=None, fields=None, **kwargs):
         super(MultiFieldPatternData, self).__init__(**kwargs)
@@ -49,7 +48,7 @@ class MultiFieldPatternData(NonStrictDataModel):
         if value is None:
             self._property_pattern = None
             return
-        
+
         self.assert_isinstance(value, "pattern", six.string_types)
         self._property_pattern = value
 
@@ -62,9 +61,9 @@ class MultiFieldPatternData(NonStrictDataModel):
         if value is None:
             self._property_fields = None
             return
-        
+
         self.assert_isinstance(value, "fields", (list, tuple))
-        
+
         self.assert_isinstance(value, "fields", six.string_types, is_array=True)
         self._property_fields = value
 
@@ -169,6 +168,7 @@ class Model(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, name=None, user=None, company=None, created=None, task=None, parent=None, project=None, comment=None, tags=None, framework=None, design=None, labels=None, uri=None, ready=None, ui_cache=None, **kwargs):
         super(Model, self).__init__(**kwargs)
@@ -198,7 +198,7 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_id = None
             return
-        
+
         self.assert_isinstance(value, "id", six.string_types)
         self._property_id = value
 
@@ -211,7 +211,7 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_name = None
             return
-        
+
         self.assert_isinstance(value, "name", six.string_types)
         self._property_name = value
 
@@ -224,7 +224,7 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_user = None
             return
-        
+
         self.assert_isinstance(value, "user", six.string_types)
         self._property_user = value
 
@@ -237,7 +237,7 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_company = None
             return
-        
+
         self.assert_isinstance(value, "company", six.string_types)
         self._property_company = value
 
@@ -250,7 +250,7 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_created = None
             return
-        
+
         self.assert_isinstance(value, "created", six.string_types + (datetime,))
         if not isinstance(value, datetime):
             value = parse_datetime(value)
@@ -265,7 +265,7 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_task = None
             return
-        
+
         self.assert_isinstance(value, "task", six.string_types)
         self._property_task = value
 
@@ -278,7 +278,7 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_parent = None
             return
-        
+
         self.assert_isinstance(value, "parent", six.string_types)
         self._property_parent = value
 
@@ -291,7 +291,7 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_project = None
             return
-        
+
         self.assert_isinstance(value, "project", six.string_types)
         self._property_project = value
 
@@ -304,7 +304,7 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_comment = None
             return
-        
+
         self.assert_isinstance(value, "comment", six.string_types)
         self._property_comment = value
 
@@ -317,9 +317,9 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_tags = None
             return
-        
+
         self.assert_isinstance(value, "tags", (list, tuple))
-        
+
         self.assert_isinstance(value, "tags", six.string_types, is_array=True)
         self._property_tags = value
 
@@ -332,7 +332,7 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_framework = None
             return
-        
+
         self.assert_isinstance(value, "framework", six.string_types)
         self._property_framework = value
 
@@ -345,7 +345,7 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_design = None
             return
-        
+
         self.assert_isinstance(value, "design", (dict,))
         self._property_design = value
 
@@ -358,7 +358,7 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_labels = None
             return
-        
+
         self.assert_isinstance(value, "labels", (dict,))
         self._property_labels = value
 
@@ -371,7 +371,7 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_uri = None
             return
-        
+
         self.assert_isinstance(value, "uri", six.string_types)
         self._property_uri = value
 
@@ -384,7 +384,7 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_ready = None
             return
-        
+
         self.assert_isinstance(value, "ready", (bool,))
         self._property_ready = value
 
@@ -397,7 +397,7 @@ class Model(NonStrictDataModel):
         if value is None:
             self._property_ui_cache = None
             return
-        
+
         self.assert_isinstance(value, "ui_cache", (dict,))
         self._property_ui_cache = value
 
@@ -482,6 +482,7 @@ class CreateRequest(Request):
         'required': ['uri', 'name', 'labels'],
         'type': 'object',
     }
+
     def __init__(
             self, uri, name, labels, comment=None, tags=None, framework=None, design=None, ready=False, public=False, project=None, parent=None, task=None, **kwargs):
         super(CreateRequest, self).__init__(**kwargs)
@@ -507,7 +508,7 @@ class CreateRequest(Request):
         if value is None:
             self._property_uri = None
             return
-        
+
         self.assert_isinstance(value, "uri", six.string_types)
         self._property_uri = value
 
@@ -520,7 +521,7 @@ class CreateRequest(Request):
         if value is None:
             self._property_name = None
             return
-        
+
         self.assert_isinstance(value, "name", six.string_types)
         self._property_name = value
 
@@ -533,7 +534,7 @@ class CreateRequest(Request):
         if value is None:
             self._property_comment = None
             return
-        
+
         self.assert_isinstance(value, "comment", six.string_types)
         self._property_comment = value
 
@@ -546,9 +547,9 @@ class CreateRequest(Request):
         if value is None:
             self._property_tags = None
             return
-        
+
         self.assert_isinstance(value, "tags", (list, tuple))
-        
+
         self.assert_isinstance(value, "tags", six.string_types, is_array=True)
         self._property_tags = value
 
@@ -561,7 +562,7 @@ class CreateRequest(Request):
         if value is None:
             self._property_framework = None
             return
-        
+
         self.assert_isinstance(value, "framework", six.string_types)
         self._property_framework = value
 
@@ -574,7 +575,7 @@ class CreateRequest(Request):
         if value is None:
             self._property_design = None
             return
-        
+
         self.assert_isinstance(value, "design", (dict,))
         self._property_design = value
 
@@ -587,7 +588,7 @@ class CreateRequest(Request):
         if value is None:
             self._property_labels = None
             return
-        
+
         self.assert_isinstance(value, "labels", (dict,))
         self._property_labels = value
 
@@ -600,7 +601,7 @@ class CreateRequest(Request):
         if value is None:
             self._property_ready = None
             return
-        
+
         self.assert_isinstance(value, "ready", (bool,))
         self._property_ready = value
 
@@ -613,7 +614,7 @@ class CreateRequest(Request):
         if value is None:
             self._property_public = None
             return
-        
+
         self.assert_isinstance(value, "public", (bool,))
         self._property_public = value
 
@@ -626,7 +627,7 @@ class CreateRequest(Request):
         if value is None:
             self._property_project = None
             return
-        
+
         self.assert_isinstance(value, "project", six.string_types)
         self._property_project = value
 
@@ -639,7 +640,7 @@ class CreateRequest(Request):
         if value is None:
             self._property_parent = None
             return
-        
+
         self.assert_isinstance(value, "parent", six.string_types)
         self._property_parent = value
 
@@ -652,7 +653,7 @@ class CreateRequest(Request):
         if value is None:
             self._property_task = None
             return
-        
+
         self.assert_isinstance(value, "task", six.string_types)
         self._property_task = value
 
@@ -681,6 +682,7 @@ class CreateResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, created=None, **kwargs):
         super(CreateResponse, self).__init__(**kwargs)
@@ -696,7 +698,7 @@ class CreateResponse(Response):
         if value is None:
             self._property_id = None
             return
-        
+
         self.assert_isinstance(value, "id", six.string_types)
         self._property_id = value
 
@@ -709,7 +711,7 @@ class CreateResponse(Response):
         if value is None:
             self._property_created = None
             return
-        
+
         self.assert_isinstance(value, "created", (bool,))
         self._property_created = value
 
@@ -740,6 +742,7 @@ class DeleteRequest(Request):
         'required': ['model'],
         'type': 'object',
     }
+
     def __init__(
             self, model, force=None, **kwargs):
         super(DeleteRequest, self).__init__(**kwargs)
@@ -755,7 +758,7 @@ class DeleteRequest(Request):
         if value is None:
             self._property_model = None
             return
-        
+
         self.assert_isinstance(value, "model", six.string_types)
         self._property_model = value
 
@@ -768,7 +771,7 @@ class DeleteRequest(Request):
         if value is None:
             self._property_force = None
             return
-        
+
         self.assert_isinstance(value, "force", (bool,))
         self._property_force = value
 
@@ -794,6 +797,7 @@ class DeleteResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, deleted=None, **kwargs):
         super(DeleteResponse, self).__init__(**kwargs)
@@ -808,7 +812,7 @@ class DeleteResponse(Response):
         if value is None:
             self._property_deleted = None
             return
-        
+
         self.assert_isinstance(value, "deleted", (bool,))
         self._property_deleted = value
 
@@ -893,6 +897,7 @@ class EditRequest(Request):
         'required': ['model'],
         'type': 'object',
     }
+
     def __init__(
             self, model, uri=None, name=None, comment=None, tags=None, framework=None, design=None, labels=None, ready=None, project=None, parent=None, task=None, iteration=None, **kwargs):
         super(EditRequest, self).__init__(**kwargs)
@@ -919,7 +924,7 @@ class EditRequest(Request):
         if value is None:
             self._property_model = None
             return
-        
+
         self.assert_isinstance(value, "model", six.string_types)
         self._property_model = value
 
@@ -932,7 +937,7 @@ class EditRequest(Request):
         if value is None:
             self._property_uri = None
             return
-        
+
         self.assert_isinstance(value, "uri", six.string_types)
         self._property_uri = value
 
@@ -945,7 +950,7 @@ class EditRequest(Request):
         if value is None:
             self._property_name = None
             return
-        
+
         self.assert_isinstance(value, "name", six.string_types)
         self._property_name = value
 
@@ -958,7 +963,7 @@ class EditRequest(Request):
         if value is None:
             self._property_comment = None
             return
-        
+
         self.assert_isinstance(value, "comment", six.string_types)
         self._property_comment = value
 
@@ -971,9 +976,9 @@ class EditRequest(Request):
         if value is None:
             self._property_tags = None
             return
-        
+
         self.assert_isinstance(value, "tags", (list, tuple))
-        
+
         self.assert_isinstance(value, "tags", six.string_types, is_array=True)
         self._property_tags = value
 
@@ -986,7 +991,7 @@ class EditRequest(Request):
         if value is None:
             self._property_framework = None
             return
-        
+
         self.assert_isinstance(value, "framework", six.string_types)
         self._property_framework = value
 
@@ -999,7 +1004,7 @@ class EditRequest(Request):
         if value is None:
             self._property_design = None
             return
-        
+
         self.assert_isinstance(value, "design", (dict,))
         self._property_design = value
 
@@ -1012,7 +1017,7 @@ class EditRequest(Request):
         if value is None:
             self._property_labels = None
             return
-        
+
         self.assert_isinstance(value, "labels", (dict,))
         self._property_labels = value
 
@@ -1025,7 +1030,7 @@ class EditRequest(Request):
         if value is None:
             self._property_ready = None
             return
-        
+
         self.assert_isinstance(value, "ready", (bool,))
         self._property_ready = value
 
@@ -1038,7 +1043,7 @@ class EditRequest(Request):
         if value is None:
             self._property_project = None
             return
-        
+
         self.assert_isinstance(value, "project", six.string_types)
         self._property_project = value
 
@@ -1051,7 +1056,7 @@ class EditRequest(Request):
         if value is None:
             self._property_parent = None
             return
-        
+
         self.assert_isinstance(value, "parent", six.string_types)
         self._property_parent = value
 
@@ -1064,7 +1069,7 @@ class EditRequest(Request):
         if value is None:
             self._property_task = None
             return
-        
+
         self.assert_isinstance(value, "task", six.string_types)
         self._property_task = value
 
@@ -1113,6 +1118,7 @@ class EditResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, fields=None, **kwargs):
         super(EditResponse, self).__init__(**kwargs)
@@ -1143,7 +1149,7 @@ class EditResponse(Response):
         if value is None:
             self._property_fields = None
             return
-        
+
         self.assert_isinstance(value, "fields", (dict,))
         self._property_fields = value
 
@@ -1295,6 +1301,7 @@ class GetAllRequest(Request):
         },
         'type': 'object',
     }
+
     def __init__(
             self, name=None, ready=None, tags=None, only_fields=None, page=None, page_size=None, project=None, order_by=None, task=None, id=None, search_text=None, framework=None, uri=None, _all_=None, _any_=None, **kwargs):
         super(GetAllRequest, self).__init__(**kwargs)
@@ -1323,7 +1330,7 @@ class GetAllRequest(Request):
         if value is None:
             self._property_name = None
             return
-        
+
         self.assert_isinstance(value, "name", six.string_types)
         self._property_name = value
 
@@ -1336,7 +1343,7 @@ class GetAllRequest(Request):
         if value is None:
             self._property_ready = None
             return
-        
+
         self.assert_isinstance(value, "ready", (bool,))
         self._property_ready = value
 
@@ -1349,9 +1356,9 @@ class GetAllRequest(Request):
         if value is None:
             self._property_tags = None
             return
-        
+
         self.assert_isinstance(value, "tags", (list, tuple))
-        
+
         self.assert_isinstance(value, "tags", six.string_types, is_array=True)
         self._property_tags = value
 
@@ -1364,9 +1371,9 @@ class GetAllRequest(Request):
         if value is None:
             self._property_only_fields = None
             return
-        
+
         self.assert_isinstance(value, "only_fields", (list, tuple))
-        
+
         self.assert_isinstance(value, "only_fields", six.string_types, is_array=True)
         self._property_only_fields = value
 
@@ -1409,9 +1416,9 @@ class GetAllRequest(Request):
         if value is None:
             self._property_project = None
             return
-        
+
         self.assert_isinstance(value, "project", (list, tuple))
-        
+
         self.assert_isinstance(value, "project", six.string_types, is_array=True)
         self._property_project = value
 
@@ -1424,9 +1431,9 @@ class GetAllRequest(Request):
         if value is None:
             self._property_order_by = None
             return
-        
+
         self.assert_isinstance(value, "order_by", (list, tuple))
-        
+
         self.assert_isinstance(value, "order_by", six.string_types, is_array=True)
         self._property_order_by = value
 
@@ -1439,9 +1446,9 @@ class GetAllRequest(Request):
         if value is None:
             self._property_task = None
             return
-        
+
         self.assert_isinstance(value, "task", (list, tuple))
-        
+
         self.assert_isinstance(value, "task", six.string_types, is_array=True)
         self._property_task = value
 
@@ -1454,9 +1461,9 @@ class GetAllRequest(Request):
         if value is None:
             self._property_id = None
             return
-        
+
         self.assert_isinstance(value, "id", (list, tuple))
-        
+
         self.assert_isinstance(value, "id", six.string_types, is_array=True)
         self._property_id = value
 
@@ -1469,7 +1476,7 @@ class GetAllRequest(Request):
         if value is None:
             self._property_search_text = None
             return
-        
+
         self.assert_isinstance(value, "search_text", six.string_types)
         self._property_search_text = value
 
@@ -1482,9 +1489,9 @@ class GetAllRequest(Request):
         if value is None:
             self._property_framework = None
             return
-        
+
         self.assert_isinstance(value, "framework", (list, tuple))
-        
+
         self.assert_isinstance(value, "framework", six.string_types, is_array=True)
         self._property_framework = value
 
@@ -1497,9 +1504,9 @@ class GetAllRequest(Request):
         if value is None:
             self._property_uri = None
             return
-        
+
         self.assert_isinstance(value, "uri", (list, tuple))
-        
+
         self.assert_isinstance(value, "uri", six.string_types, is_array=True)
         self._property_uri = value
 
@@ -1628,6 +1635,7 @@ class GetAllResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, models=None, **kwargs):
         super(GetAllResponse, self).__init__(**kwargs)
@@ -1642,7 +1650,7 @@ class GetAllResponse(Response):
         if value is None:
             self._property_models = None
             return
-        
+
         self.assert_isinstance(value, "models", (list, tuple))
         if any(isinstance(v, dict) for v in value):
             value = [Model.from_dict(v) if isinstance(v, dict) else v for v in value]
@@ -1668,6 +1676,7 @@ class GetByIdRequest(Request):
         'required': ['model'],
         'type': 'object',
     }
+
     def __init__(
             self, model, **kwargs):
         super(GetByIdRequest, self).__init__(**kwargs)
@@ -1682,7 +1691,7 @@ class GetByIdRequest(Request):
         if value is None:
             self._property_model = None
             return
-        
+
         self.assert_isinstance(value, "model", six.string_types)
         self._property_model = value
 
@@ -1780,6 +1789,7 @@ class GetByIdResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, model=None, **kwargs):
         super(GetByIdResponse, self).__init__(**kwargs)
@@ -1819,6 +1829,7 @@ class GetByTaskIdRequest(Request):
         },
         'type': 'object',
     }
+
     def __init__(
             self, task=None, **kwargs):
         super(GetByTaskIdRequest, self).__init__(**kwargs)
@@ -1833,7 +1844,7 @@ class GetByTaskIdRequest(Request):
         if value is None:
             self._property_task = None
             return
-        
+
         self.assert_isinstance(value, "task", six.string_types)
         self._property_task = value
 
@@ -1931,6 +1942,7 @@ class GetByTaskIdResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, model=None, **kwargs):
         super(GetByTaskIdResponse, self).__init__(**kwargs)
@@ -1985,6 +1997,7 @@ class SetReadyRequest(Request):
         'required': ['model'],
         'type': 'object',
     }
+
     def __init__(
             self, model, force_publish_task=None, publish_task=None, **kwargs):
         super(SetReadyRequest, self).__init__(**kwargs)
@@ -2001,7 +2014,7 @@ class SetReadyRequest(Request):
         if value is None:
             self._property_model = None
             return
-        
+
         self.assert_isinstance(value, "model", six.string_types)
         self._property_model = value
 
@@ -2014,7 +2027,7 @@ class SetReadyRequest(Request):
         if value is None:
             self._property_force_publish_task = None
             return
-        
+
         self.assert_isinstance(value, "force_publish_task", (bool,))
         self._property_force_publish_task = value
 
@@ -2027,7 +2040,7 @@ class SetReadyRequest(Request):
         if value is None:
             self._property_publish_task = None
             return
-        
+
         self.assert_isinstance(value, "publish_task", (bool,))
         self._property_publish_task = value
 
@@ -2089,6 +2102,7 @@ class SetReadyResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, published_task=None, **kwargs):
         super(SetReadyResponse, self).__init__(**kwargs)
@@ -2119,7 +2133,7 @@ class SetReadyResponse(Response):
         if value is None:
             self._property_published_task = None
             return
-        
+
         self.assert_isinstance(value, "published_task", (dict,))
         self._property_published_task = value
 
@@ -2193,6 +2207,7 @@ class UpdateRequest(Request):
         'required': ['model'],
         'type': 'object',
     }
+
     def __init__(
             self, model, name=None, comment=None, tags=None, ready=False, created=None, ui_cache=None, project=None, task=None, iteration=None, **kwargs):
         super(UpdateRequest, self).__init__(**kwargs)
@@ -2216,7 +2231,7 @@ class UpdateRequest(Request):
         if value is None:
             self._property_model = None
             return
-        
+
         self.assert_isinstance(value, "model", six.string_types)
         self._property_model = value
 
@@ -2229,7 +2244,7 @@ class UpdateRequest(Request):
         if value is None:
             self._property_name = None
             return
-        
+
         self.assert_isinstance(value, "name", six.string_types)
         self._property_name = value
 
@@ -2242,7 +2257,7 @@ class UpdateRequest(Request):
         if value is None:
             self._property_comment = None
             return
-        
+
         self.assert_isinstance(value, "comment", six.string_types)
         self._property_comment = value
 
@@ -2255,9 +2270,9 @@ class UpdateRequest(Request):
         if value is None:
             self._property_tags = None
             return
-        
+
         self.assert_isinstance(value, "tags", (list, tuple))
-        
+
         self.assert_isinstance(value, "tags", six.string_types, is_array=True)
         self._property_tags = value
 
@@ -2270,7 +2285,7 @@ class UpdateRequest(Request):
         if value is None:
             self._property_ready = None
             return
-        
+
         self.assert_isinstance(value, "ready", (bool,))
         self._property_ready = value
 
@@ -2283,7 +2298,7 @@ class UpdateRequest(Request):
         if value is None:
             self._property_created = None
             return
-        
+
         self.assert_isinstance(value, "created", six.string_types + (datetime,))
         if not isinstance(value, datetime):
             value = parse_datetime(value)
@@ -2298,7 +2313,7 @@ class UpdateRequest(Request):
         if value is None:
             self._property_ui_cache = None
             return
-        
+
         self.assert_isinstance(value, "ui_cache", (dict,))
         self._property_ui_cache = value
 
@@ -2311,7 +2326,7 @@ class UpdateRequest(Request):
         if value is None:
             self._property_project = None
             return
-        
+
         self.assert_isinstance(value, "project", six.string_types)
         self._property_project = value
 
@@ -2324,7 +2339,7 @@ class UpdateRequest(Request):
         if value is None:
             self._property_task = None
             return
-        
+
         self.assert_isinstance(value, "task", six.string_types)
         self._property_task = value
 
@@ -2373,6 +2388,7 @@ class UpdateResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, fields=None, **kwargs):
         super(UpdateResponse, self).__init__(**kwargs)
@@ -2403,7 +2419,7 @@ class UpdateResponse(Response):
         if value is None:
             self._property_fields = None
             return
-        
+
         self.assert_isinstance(value, "fields", (dict,))
         self._property_fields = value
 
@@ -2455,6 +2471,7 @@ class UpdateForTaskRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, uri=None, name=None, comment=None, tags=None, override_model_id=None, iteration=None, **kwargs):
         super(UpdateForTaskRequest, self).__init__(**kwargs)
@@ -2475,7 +2492,7 @@ class UpdateForTaskRequest(Request):
         if value is None:
             self._property_task = None
             return
-        
+
         self.assert_isinstance(value, "task", six.string_types)
         self._property_task = value
 
@@ -2488,7 +2505,7 @@ class UpdateForTaskRequest(Request):
         if value is None:
             self._property_uri = None
             return
-        
+
         self.assert_isinstance(value, "uri", six.string_types)
         self._property_uri = value
 
@@ -2501,7 +2518,7 @@ class UpdateForTaskRequest(Request):
         if value is None:
             self._property_name = None
             return
-        
+
         self.assert_isinstance(value, "name", six.string_types)
         self._property_name = value
 
@@ -2514,7 +2531,7 @@ class UpdateForTaskRequest(Request):
         if value is None:
             self._property_comment = None
             return
-        
+
         self.assert_isinstance(value, "comment", six.string_types)
         self._property_comment = value
 
@@ -2527,9 +2544,9 @@ class UpdateForTaskRequest(Request):
         if value is None:
             self._property_tags = None
             return
-        
+
         self.assert_isinstance(value, "tags", (list, tuple))
-        
+
         self.assert_isinstance(value, "tags", six.string_types, is_array=True)
         self._property_tags = value
 
@@ -2542,7 +2559,7 @@ class UpdateForTaskRequest(Request):
         if value is None:
             self._property_override_model_id = None
             return
-        
+
         self.assert_isinstance(value, "override_model_id", six.string_types)
         self._property_override_model_id = value
 
@@ -2599,6 +2616,7 @@ class UpdateForTaskResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, created=None, updated=None, fields=None, **kwargs):
         super(UpdateForTaskResponse, self).__init__(**kwargs)
@@ -2616,7 +2634,7 @@ class UpdateForTaskResponse(Response):
         if value is None:
             self._property_id = None
             return
-        
+
         self.assert_isinstance(value, "id", six.string_types)
         self._property_id = value
 
@@ -2629,7 +2647,7 @@ class UpdateForTaskResponse(Response):
         if value is None:
             self._property_created = None
             return
-        
+
         self.assert_isinstance(value, "created", (bool,))
         self._property_created = value
 
@@ -2657,7 +2675,7 @@ class UpdateForTaskResponse(Response):
         if value is None:
             self._property_fields = None
             return
-        
+
         self.assert_isinstance(value, "fields", (dict,))
         self._property_fields = value
 

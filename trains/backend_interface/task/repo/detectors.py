@@ -45,9 +45,9 @@ class Result(object):
 class Detector(object):
     """ Base class for repository detection """
 
-    """ 
-    Commands are represented using the result class, where each attribute contains 
-    the command used to obtain the value of the same attribute in the actual result. 
+    """
+    Commands are represented using the result class, where each attribute contains
+    the command used to obtain the value of the same attribute in the actual result.
     """
 
     _fallback = '_fallback'
@@ -226,9 +226,10 @@ class EnvDetector(Detector):
         """
         Convert to absolute and squash 'path/../folder'
         """
+        # noinspection PyBroadException
         try:
             return os.path.abspath((Path.cwd() / root).absolute().as_posix())
-        except:
+        except Exception:
             return Path.cwd()
 
     def _get_info(self, _, include_diff=False):

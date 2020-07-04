@@ -1,4 +1,3 @@
-import os
 import sys
 import time
 from logging import LogRecord, getLogger, basicConfig, getLevelName, INFO, WARNING, Formatter, makeLogRecord
@@ -67,10 +66,11 @@ class TaskHandler(BufferingHandler):
             return True
 
         # if the first entry in the log was too long ago.
+        # noinspection PyBroadException
         try:
             if len(self.buffer) and (time.time() - self.buffer[0].created) > self.__flush_max_history_seconds:
                 return True
-        except:
+        except Exception:
             pass
 
         return False
@@ -179,6 +179,7 @@ class TaskHandler(BufferingHandler):
         self._task_id = None
 
         if wait and _thread:
+            # noinspection PyBroadException
             try:
                 timeout = 1. if self._queue.empty() else self.__wait_for_flush_timeout
                 _thread.join(timeout=timeout)
@@ -186,7 +187,7 @@ class TaskHandler(BufferingHandler):
                     self.__log_stderr('Flush timeout {}s exceeded, dropping last {} lines'.format(
                         timeout, self._queue.qsize()))
                 # self.__log_stderr('Closing {} wait done'.format(os.getpid()))
-            except:
+            except Exception:
                 pass
         # call super and remove the handler
         super(TaskHandler, self).close()
@@ -219,9 +220,10 @@ class TaskHandler(BufferingHandler):
             # pull from queue
             request = None
             if self._queue:
+                # noinspection PyBroadException
                 try:
                     request = self._queue.get(block=not leave)
-                except:
+                except Exception:
                     pass
             if request:
                 self._send_events(request)

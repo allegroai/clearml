@@ -8,7 +8,7 @@ from datetime import datetime
 import six
 from dateutil.parser import parse as parse_datetime
 
-from ....backend_api.session import Request, Response, NonStrictDataModel, schema_property, StringEnum
+from ....backend_api.session import NonStrictDataModel, Request, Response, schema_property
 
 
 class MultiFieldPatternData(NonStrictDataModel):
@@ -32,6 +32,7 @@ class MultiFieldPatternData(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, pattern=None, fields=None, **kwargs):
         super(MultiFieldPatternData, self).__init__(**kwargs)
@@ -133,6 +134,7 @@ class Project(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, name=None, description=None, user=None, company=None, created=None, tags=None, system_tags=None, default_output_destination=None, last_update=None, **kwargs):
         super(Project, self).__init__(**kwargs)
@@ -340,6 +342,7 @@ class StatsStatusCount(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, total_runtime=None, status_count=None, **kwargs):
         super(StatsStatusCount, self).__init__(**kwargs)
@@ -401,6 +404,7 @@ class Stats(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, active=None, archived=None, **kwargs):
         super(Stats, self).__init__(**kwargs)
@@ -502,6 +506,7 @@ class ProjectsGetAllResponseSingle(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, name=None, description=None, user=None, company=None, created=None, tags=None, system_tags=None, default_output_destination=None, stats=None, **kwargs):
         super(ProjectsGetAllResponseSingle, self).__init__(**kwargs)
@@ -683,6 +688,7 @@ class MetricVariantResult(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, metric=None, metric_hash=None, variant=None, variant_hash=None, **kwargs):
         super(MetricVariantResult, self).__init__(**kwargs)
@@ -794,6 +800,7 @@ class CreateRequest(Request):
         'required': ['name', 'description'],
         'type': 'object',
     }
+
     def __init__(
             self, name, description, tags=None, system_tags=None, default_output_destination=None, **kwargs):
         super(CreateRequest, self).__init__(**kwargs)
@@ -891,6 +898,7 @@ class CreateResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, **kwargs):
         super(CreateResponse, self).__init__(**kwargs)
@@ -937,6 +945,7 @@ class DeleteRequest(Request):
         'required': ['project'],
         'type': 'object',
     }
+
     def __init__(
             self, project, force=False, **kwargs):
         super(DeleteRequest, self).__init__(**kwargs)
@@ -998,6 +1007,7 @@ class DeleteResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, deleted=None, disassociated_tasks=None, **kwargs):
         super(DeleteResponse, self).__init__(**kwargs)
@@ -1161,6 +1171,7 @@ class GetAllRequest(Request):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, name=None, description=None, tags=None, system_tags=None, order_by=None, page=None, page_size=None, search_text=None, only_fields=None, _all_=None, _any_=None, **kwargs):
         super(GetAllRequest, self).__init__(**kwargs)
@@ -1491,6 +1502,7 @@ class GetAllResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, projects=None, **kwargs):
         super(GetAllResponse, self).__init__(**kwargs)
@@ -1529,6 +1541,7 @@ class GetByIdRequest(Request):
         'required': ['project'],
         'type': 'object',
     }
+
     def __init__(
             self, project, **kwargs):
         super(GetByIdRequest, self).__init__(**kwargs)
@@ -1616,6 +1629,7 @@ class GetByIdResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, project=None, **kwargs):
         super(GetByIdResponse, self).__init__(**kwargs)
@@ -1670,6 +1684,7 @@ class GetHyperParametersRequest(Request):
         'required': ['project'],
         'type': 'object',
     }
+
     def __init__(
             self, project, page=0, page_size=500, **kwargs):
         super(GetHyperParametersRequest, self).__init__(**kwargs)
@@ -1755,6 +1770,7 @@ class GetHyperParametersResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, parameters=None, remaining=None, total=None, **kwargs):
         super(GetHyperParametersResponse, self).__init__(**kwargs)
@@ -1828,6 +1844,7 @@ class GetUniqueMetricVariantsRequest(Request):
         },
         'type': 'object',
     }
+
     def __init__(
             self, project=None, **kwargs):
         super(GetUniqueMetricVariantsRequest, self).__init__(**kwargs)
@@ -1891,6 +1908,7 @@ class GetUniqueMetricVariantsResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, metrics=None, **kwargs):
         super(GetUniqueMetricVariantsResponse, self).__init__(**kwargs)
@@ -1967,6 +1985,7 @@ class UpdateRequest(Request):
         'required': ['project'],
         'type': 'object',
     }
+
     def __init__(
             self, project, name=None, description=None, tags=None, system_tags=None, default_output_destination=None, **kwargs):
         super(UpdateRequest, self).__init__(**kwargs)
@@ -2089,6 +2108,7 @@ class UpdateResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, fields=None, **kwargs):
         super(UpdateResponse, self).__init__(**kwargs)

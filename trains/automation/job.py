@@ -246,6 +246,7 @@ class _JobStub(object):
     """
     This is a Job Stub, use only for debugging
     """
+
     def __init__(
             self,
             base_task_id,  # type: str

@@ -120,8 +120,6 @@ class Metrics(InterfaceBase):
 
         storage_uri = storage_uri or self._storage_uri
 
-        now = time()
-
         def update_and_get_file_entry(ev):
             entry = ev.get_file_entry()
             kwargs = {}
@@ -222,15 +220,17 @@ class Metrics(InterfaceBase):
         Metrics._upload_pool = None
 
         if file_pool:
+            # noinspection PyBroadException
             try:
                 file_pool.terminate()
                 file_pool.join()
-            except:
+            except Exception:
                 pass
 
         if pool:
+            # noinspection PyBroadException
             try:
                 pool.terminate()
                 pool.join()
-            except:
+            except Exception:
                 pass

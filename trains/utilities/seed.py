@@ -46,7 +46,7 @@ def make_deterministic(seed=1337, cudnn_deterministic=False):
     if tf is not None:
         # reset graph state
         try:
-            import tensorflow
+            import tensorflow  # noqa: F401
             from tensorflow.python.eager.context import _context
             eager_mode_bypass = _context is None
         except Exception:

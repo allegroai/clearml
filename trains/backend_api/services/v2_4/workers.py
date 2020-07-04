@@ -3,14 +3,13 @@ workers service
 
 Provides an API for worker machines, allowing workers to report status and get tasks for execution
 """
-import six
-import types
-from datetime import datetime
 import enum
+from datetime import datetime
 
+import six
 from dateutil.parser import parse as parse_datetime
 
-from ....backend_api.session import Request, BatchRequest, Response, DataModel, NonStrictDataModel, CompoundRequest, schema_property, StringEnum
+from ....backend_api.session import NonStrictDataModel, Request, Response, schema_property, StringEnum
 
 
 class MetricsCategory(NonStrictDataModel):
@@ -34,6 +33,7 @@ class MetricsCategory(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, name=None, metric_keys=None, **kwargs):
         super(MetricsCategory, self).__init__(**kwargs)
@@ -94,6 +94,7 @@ class StatItem(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, key=None, category=None, **kwargs):
         super(StatItem, self).__init__(**kwargs)
@@ -155,6 +156,7 @@ class AggregationStats(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, aggregation=None, values=None, **kwargs):
         super(AggregationStats, self).__init__(**kwargs)
@@ -232,6 +234,7 @@ class MetricStats(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, metric=None, variant=None, dates=None, stats=None, **kwargs):
         super(MetricStats, self).__init__(**kwargs)
@@ -321,6 +324,7 @@ class WorkerStats(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, worker=None, metrics=None, **kwargs):
         super(WorkerStats, self).__init__(**kwargs)
@@ -382,6 +386,7 @@ class ActivitySeries(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, dates=None, counts=None, **kwargs):
         super(ActivitySeries, self).__init__(**kwargs)
@@ -497,6 +502,7 @@ class Worker(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, user=None, company=None, ip=None, register_time=None, last_activity_time=None, last_report_time=None, task=None, queue=None, queues=None, **kwargs):
         super(Worker, self).__init__(**kwargs)
@@ -674,6 +680,7 @@ class IdNameEntry(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, name=None, **kwargs):
         super(IdNameEntry, self).__init__(**kwargs)
@@ -733,6 +740,7 @@ class CurrentTaskEntry(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, name=None, running_time=None, last_iteration=None, **kwargs):
         super(CurrentTaskEntry, self).__init__(**kwargs)
@@ -827,6 +835,7 @@ class QueueEntry(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, name=None, next_task=None, num_tasks=None, **kwargs):
         super(QueueEntry, self).__init__(**kwargs)
@@ -990,6 +999,7 @@ class MachineStats(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, cpu_usage=None, gpu_usage=None, memory_used=None, memory_free=None, gpu_memory_free=None, gpu_memory_used=None, network_tx=None, network_rx=None, disk_free_home=None, disk_free_temp=None, disk_read=None, disk_write=None, cpu_temperature=None, gpu_temperature=None, **kwargs):
         super(MachineStats, self).__init__(**kwargs)
@@ -1257,6 +1267,7 @@ class GetActivityReportRequest(Request):
         'required': ['from_date', 'to_date', 'interval'],
         'type': 'object',
     }
+
     def __init__(
             self, from_date, to_date, interval, **kwargs):
         super(GetActivityReportRequest, self).__init__(**kwargs)
@@ -1357,6 +1368,7 @@ class GetActivityReportResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, total=None, active=None, **kwargs):
         super(GetActivityReportResponse, self).__init__(**kwargs)
@@ -1417,6 +1429,7 @@ class GetAllRequest(Request):
         },
         'type': 'object',
     }
+
     def __init__(
             self, last_seen=3600, **kwargs):
         super(GetAllRequest, self).__init__(**kwargs)
@@ -1567,6 +1580,7 @@ class GetAllResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, workers=None, **kwargs):
         super(GetAllResponse, self).__init__(**kwargs)
@@ -1613,6 +1627,7 @@ class GetMetricKeysRequest(Request):
         },
         'type': 'object',
     }
+
     def __init__(
             self, worker_ids=None, **kwargs):
         super(GetMetricKeysRequest, self).__init__(**kwargs)
@@ -1672,6 +1687,7 @@ class GetMetricKeysResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, categories=None, **kwargs):
         super(GetMetricKeysResponse, self).__init__(**kwargs)
@@ -1774,6 +1790,7 @@ class GetStatsRequest(Request):
         'required': ['from_date', 'to_date', 'interval', 'items'],
         'type': 'object',
     }
+
     def __init__(
             self, from_date, to_date, interval, items, worker_ids=None, split_by_variant=False, **kwargs):
         super(GetStatsRequest, self).__init__(**kwargs)
@@ -1952,6 +1969,7 @@ class GetStatsResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, workers=None, **kwargs):
         super(GetStatsResponse, self).__init__(**kwargs)
@@ -2013,6 +2031,7 @@ class RegisterRequest(Request):
         'required': ['worker'],
         'type': 'object',
     }
+
     def __init__(
             self, worker, timeout=600, queues=None, **kwargs):
         super(RegisterRequest, self).__init__(**kwargs)
@@ -2197,6 +2216,7 @@ class StatusReportRequest(Request):
         'required': ['worker', 'timestamp'],
         'type': 'object',
     }
+
     def __init__(
             self, worker, timestamp, task=None, queue=None, queues=None, machine_stats=None, **kwargs):
         super(StatusReportRequest, self).__init__(**kwargs)
@@ -2326,6 +2346,7 @@ class UnregisterRequest(Request):
         'required': ['worker'],
         'type': 'object',
     }
+
     def __init__(
             self, worker, **kwargs):
         super(UnregisterRequest, self).__init__(**kwargs)

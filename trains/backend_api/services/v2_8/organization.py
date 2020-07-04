@@ -4,13 +4,8 @@ organization service
 This service provides organization level operations
 """
 import six
-import types
-from datetime import datetime
-import enum
 
-from dateutil.parser import parse as parse_datetime
-
-from ....backend_api.session import Request, Response, NonStrictDataModel, schema_property, StringEnum
+from ....backend_api.session import Request, Response, schema_property
 
 
 class GetTagsRequest(Request):
@@ -49,6 +44,7 @@ class GetTagsRequest(Request):
         },
         'type': 'object',
     }
+
     def __init__(
             self, include_system=False, filter=None, **kwargs):
         super(GetTagsRequest, self).__init__(**kwargs)
@@ -64,7 +60,7 @@ class GetTagsRequest(Request):
         if value is None:
             self._property_include_system = None
             return
-        
+
         self.assert_isinstance(value, "include_system", (bool,))
         self._property_include_system = value
 
@@ -77,7 +73,7 @@ class GetTagsRequest(Request):
         if value is None:
             self._property_filter = None
             return
-        
+
         self.assert_isinstance(value, "filter", (dict,))
         self._property_filter = value
 
@@ -112,6 +108,7 @@ class GetTagsResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, tags=None, system_tags=None, **kwargs):
         super(GetTagsResponse, self).__init__(**kwargs)
@@ -127,9 +124,9 @@ class GetTagsResponse(Response):
         if value is None:
             self._property_tags = None
             return
-        
+
         self.assert_isinstance(value, "tags", (list, tuple))
-        
+
         self.assert_isinstance(value, "tags", six.string_types, is_array=True)
         self._property_tags = value
 
@@ -142,9 +139,9 @@ class GetTagsResponse(Response):
         if value is None:
             self._property_system_tags = None
             return
-        
+
         self.assert_isinstance(value, "system_tags", (list, tuple))
-        
+
         self.assert_isinstance(value, "system_tags", six.string_types, is_array=True)
         self._property_system_tags = value
 

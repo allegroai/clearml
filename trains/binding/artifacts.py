@@ -81,7 +81,7 @@ class Artifact(object):
 
     @property
     def mode(self):
-        # type: () -> Union["input", "output"]
+        # type: () -> Union["input", "output"]  # noqa: F821
         """
         :return: The mode (str) of of artifact: "input" or "output".
         """
@@ -451,10 +451,11 @@ class Artifacts(object):
             override_filename_in_uri = name + override_filename_ext_in_uri
             fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
             os.close(fd)
+            # noinspection PyBroadException
             try:
                 with open(local_filename, 'wb') as f:
                     pickle.dump(artifact_object, f)
-            except Exception as ex:
+            except Exception:
                 # cleanup and raise exception
                 os.unlink(local_filename)
                 raise

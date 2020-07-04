@@ -1,9 +1,5 @@
-import re
-from functools import partial
-
 import attr
-from attr.converters import optional as optional_converter
-from attr.validators import instance_of, optional, and_
+from attr.validators import and_, instance_of, optional
 from six import string_types
 
 # noinspection PyTypeChecker

@@ -10,3 +10,5 @@ if PY32:
     from .thread_extractor import ThreadExtractor as Extractor
 else:
     from .gevent_extractor import GeventExtractor as Extractor
+
+__all__ = ["Extractor"]

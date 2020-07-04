@@ -3,14 +3,12 @@ events service
 
 Provides an API for running tasks to report events collected by the system.
 """
-import six
-import types
-from datetime import datetime
 import enum
 
-from dateutil.parser import parse as parse_datetime
+import six
 
-from ....backend_api.session import Request, BatchRequest, Response, DataModel, NonStrictDataModel, CompoundRequest, schema_property, StringEnum
+from ....backend_api.session import BatchRequest, CompoundRequest, NonStrictDataModel, Request, Response, \
+    schema_property, StringEnum
 
 
 class MetricsScalarEvent(NonStrictDataModel):
@@ -56,6 +54,7 @@ class MetricsScalarEvent(NonStrictDataModel):
         'required': ['task', 'type'],
         'type': 'object',
     }
+
     def __init__(
             self, task, timestamp=None, iter=None, metric=None, variant=None, value=None, **kwargs):
         super(MetricsScalarEvent, self).__init__(**kwargs)
@@ -198,6 +197,7 @@ class MetricsVectorEvent(NonStrictDataModel):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, timestamp=None, iter=None, metric=None, variant=None, values=None, **kwargs):
         super(MetricsVectorEvent, self).__init__(**kwargs)
@@ -338,6 +338,7 @@ class MetricsImageEvent(NonStrictDataModel):
         'required': ['task', 'type'],
         'type': 'object',
     }
+
     def __init__(
             self, task, timestamp=None, iter=None, metric=None, variant=None, key=None, url=None, **kwargs):
         super(MetricsImageEvent, self).__init__(**kwargs)
@@ -492,6 +493,7 @@ class MetricsPlotEvent(NonStrictDataModel):
         'required': ['task', 'type'],
         'type': 'object',
     }
+
     def __init__(
             self, task, timestamp=None, iter=None, metric=None, variant=None, plot_str=None, **kwargs):
         super(MetricsPlotEvent, self).__init__(**kwargs)
@@ -628,6 +630,7 @@ class TaskMetric(NonStrictDataModel):
         'required': ['task', 'metric'],
         'type': 'object',
     }
+
     def __init__(
             self, task, metric, **kwargs):
         super(TaskMetric, self).__init__(**kwargs)
@@ -643,7 +646,7 @@ class TaskMetric(NonStrictDataModel):
         if value is None:
             self._property_task = None
             return
-        
+
         self.assert_isinstance(value, "task", six.string_types)
         self._property_task = value
 
@@ -656,7 +659,7 @@ class TaskMetric(NonStrictDataModel):
         if value is None:
             self._property_metric = None
             return
-        
+
         self.assert_isinstance(value, "metric", six.string_types)
         self._property_metric = value
 
@@ -698,6 +701,7 @@ class TaskLogEvent(NonStrictDataModel):
         'required': ['task', 'type'],
         'type': 'object',
     }
+
     def __init__(
             self, task, timestamp=None, level=None, worker=None, msg=None, **kwargs):
         super(TaskLogEvent, self).__init__(**kwargs)
@@ -961,6 +965,7 @@ class AddRequest(CompoundRequest):
         },
         'type': 'object',
     }
+
     def __init__(self, event):
         super(AddRequest, self).__init__()
         self.event = event
@@ -1023,6 +1028,7 @@ class AddBatchResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, added=None, errors=None, errors_info=None, **kwargs):
         super(AddBatchResponse, self).__init__(**kwargs)
@@ -1069,7 +1075,7 @@ class AddBatchResponse(Response):
         if value is None:
             self._property_errors_info = None
             return
-        
+
         self.assert_isinstance(value, "errors_info", (dict,))
         self._property_errors_info = value
 
@@ -1133,6 +1139,7 @@ class DebugImagesRequest(Request):
         'required': ['metrics'],
         'type': 'object',
     }
+
     def __init__(
             self, metrics, iters=None, navigate_earlier=None, refresh=None, scroll_id=None, **kwargs):
         super(DebugImagesRequest, self).__init__(**kwargs)
@@ -1151,7 +1158,7 @@ class DebugImagesRequest(Request):
         if value is None:
             self._property_metrics = None
             return
-        
+
         self.assert_isinstance(value, "metrics", (list, tuple))
         if any(isinstance(v, dict) for v in value):
             value = [TaskMetric.from_dict(v) if isinstance(v, dict) else v for v in value]
@@ -1183,7 +1190,7 @@ class DebugImagesRequest(Request):
         if value is None:
             self._property_navigate_earlier = None
             return
-        
+
         self.assert_isinstance(value, "navigate_earlier", (bool,))
         self._property_navigate_earlier = value
 
@@ -1196,7 +1203,7 @@ class DebugImagesRequest(Request):
         if value is None:
             self._property_refresh = None
             return
-        
+
         self.assert_isinstance(value, "refresh", (bool,))
         self._property_refresh = value
 
@@ -1209,7 +1216,7 @@ class DebugImagesRequest(Request):
         if value is None:
             self._property_scroll_id = None
             return
-        
+
         self.assert_isinstance(value, "scroll_id", six.string_types)
         self._property_scroll_id = value
 
@@ -1242,6 +1249,7 @@ class DebugImagesResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, metrics=None, scroll_id=None, **kwargs):
         super(DebugImagesResponse, self).__init__(**kwargs)
@@ -1257,9 +1265,9 @@ class DebugImagesResponse(Response):
         if value is None:
             self._property_metrics = None
             return
-        
+
         self.assert_isinstance(value, "metrics", (list, tuple))
-        
+
         self.assert_isinstance(value, "metrics", (dict,), is_array=True)
         self._property_metrics = value
 
@@ -1272,7 +1280,7 @@ class DebugImagesResponse(Response):
         if value is None:
             self._property_scroll_id = None
             return
-        
+
         self.assert_isinstance(value, "scroll_id", six.string_types)
         self._property_scroll_id = value
 
@@ -1303,6 +1311,7 @@ class DeleteForTaskRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, allow_locked=False, **kwargs):
         super(DeleteForTaskRequest, self).__init__(**kwargs)
@@ -1331,7 +1340,7 @@ class DeleteForTaskRequest(Request):
         if value is None:
             self._property_allow_locked = None
             return
-        
+
         self.assert_isinstance(value, "allow_locked", (bool,))
         self._property_allow_locked = value
 
@@ -1357,6 +1366,7 @@ class DeleteForTaskResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, deleted=None, **kwargs):
         super(DeleteForTaskResponse, self).__init__(**kwargs)
@@ -1409,6 +1419,7 @@ class DownloadTaskLogRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, line_type=None, line_format="{asctime} {worker} {level} {msg}", **kwargs):
         super(DownloadTaskLogRequest, self).__init__(**kwargs)
@@ -1503,6 +1514,7 @@ class GetMultiTaskPlotsRequest(Request):
         'required': ['tasks'],
         'type': 'object',
     }
+
     def __init__(
             self, tasks, iters=None, scroll_id=None, **kwargs):
         super(GetMultiTaskPlotsRequest, self).__init__(**kwargs)
@@ -1593,6 +1605,7 @@ class GetMultiTaskPlotsResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, plots=None, returned=None, total=None, scroll_id=None, **kwargs):
         super(GetMultiTaskPlotsResponse, self).__init__(**kwargs)
@@ -1677,6 +1690,7 @@ class GetScalarMetricDataRequest(Request):
         },
         'type': 'object',
     }
+
     def __init__(
             self, task=None, metric=None, **kwargs):
         super(GetScalarMetricDataRequest, self).__init__(**kwargs)
@@ -1750,6 +1764,7 @@ class GetScalarMetricDataResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, events=None, returned=None, total=None, scroll_id=None, **kwargs):
         super(GetScalarMetricDataResponse, self).__init__(**kwargs)
@@ -1834,6 +1849,7 @@ class GetScalarMetricsAndVariantsRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, **kwargs):
         super(GetScalarMetricsAndVariantsRequest, self).__init__(**kwargs)
@@ -1871,6 +1887,7 @@ class GetScalarMetricsAndVariantsResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, metrics=None, **kwargs):
         super(GetScalarMetricsAndVariantsResponse, self).__init__(**kwargs)
@@ -1934,6 +1951,7 @@ class GetTaskEventsRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, order=None, scroll_id=None, batch_size=None, event_type=None, **kwargs):
         super(GetTaskEventsRequest, self).__init__(**kwargs)
@@ -1996,6 +2014,7 @@ class GetTaskEventsRequest(Request):
 
         self.assert_isinstance(value, "batch_size", six.integer_types)
         self._property_batch_size = value
+
     @schema_property('event_type')
     def event_type(self):
         return self._property_event_type
@@ -2005,7 +2024,7 @@ class GetTaskEventsRequest(Request):
         if value is None:
             self._property_event_type = None
             return
-        
+
         self.assert_isinstance(value, "event_type", six.string_types)
         self._property_event_type = value
 
@@ -2050,6 +2069,7 @@ class GetTaskEventsResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, events=None, returned=None, total=None, scroll_id=None, **kwargs):
         super(GetTaskEventsResponse, self).__init__(**kwargs)
@@ -2132,6 +2152,7 @@ class GetTaskLatestScalarValuesRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, **kwargs):
         super(GetTaskLatestScalarValuesRequest, self).__init__(**kwargs)
@@ -2197,6 +2218,7 @@ class GetTaskLatestScalarValuesResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, metrics=None, **kwargs):
         super(GetTaskLatestScalarValuesResponse, self).__init__(**kwargs)
@@ -2259,6 +2281,7 @@ class GetTaskLogRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, order=None, from_=None, scroll_id=None, batch_size=None, **kwargs):
         super(GetTaskLogRequest, self).__init__(**kwargs)
@@ -2376,6 +2399,7 @@ class GetTaskLogResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, events=None, returned=None, total=None, scroll_id=None, **kwargs):
         super(GetTaskLogResponse, self).__init__(**kwargs)
@@ -2477,6 +2501,7 @@ class GetTaskMetricsRequest(Request):
         'required': ['tasks'],
         'type': 'object',
     }
+
     def __init__(
             self, tasks, event_type=None, **kwargs):
         super(GetTaskMetricsRequest, self).__init__(**kwargs)
@@ -2492,9 +2517,9 @@ class GetTaskMetricsRequest(Request):
         if value is None:
             self._property_tasks = None
             return
-        
+
         self.assert_isinstance(value, "tasks", (list, tuple))
-        
+
         self.assert_isinstance(value, "tasks", six.string_types, is_array=True)
         self._property_tasks = value
 
@@ -2539,6 +2564,7 @@ class GetTaskMetricsResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, metrics=None, **kwargs):
         super(GetTaskMetricsResponse, self).__init__(**kwargs)
@@ -2553,9 +2579,9 @@ class GetTaskMetricsResponse(Response):
         if value is None:
             self._property_metrics = None
             return
-        
+
         self.assert_isinstance(value, "metrics", (list, tuple))
-        
+
         self.assert_isinstance(value, "metrics", (dict,), is_array=True)
         self._property_metrics = value
 
@@ -2591,6 +2617,7 @@ class GetTaskPlotsRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, iters=None, scroll_id=None, **kwargs):
         super(GetTaskPlotsRequest, self).__init__(**kwargs)
@@ -2680,6 +2707,7 @@ class GetTaskPlotsResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, plots=None, returned=None, total=None, scroll_id=None, **kwargs):
         super(GetTaskPlotsResponse, self).__init__(**kwargs)
@@ -2760,6 +2788,7 @@ class GetVectorMetricsAndVariantsRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, **kwargs):
         super(GetVectorMetricsAndVariantsRequest, self).__init__(**kwargs)
@@ -2801,6 +2830,7 @@ class GetVectorMetricsAndVariantsResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, metrics=None, **kwargs):
         super(GetVectorMetricsAndVariantsResponse, self).__init__(**kwargs)
@@ -2865,6 +2895,7 @@ class MultiTaskScalarMetricsIterHistogramRequest(Request):
         'required': ['tasks'],
         'type': 'object',
     }
+
     def __init__(
             self, tasks, samples=None, key=None, **kwargs):
         super(MultiTaskScalarMetricsIterHistogramRequest, self).__init__(**kwargs)
@@ -2969,6 +3000,7 @@ class ScalarMetricsIterHistogramRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, samples=None, key=None, **kwargs):
         super(ScalarMetricsIterHistogramRequest, self).__init__(**kwargs)
@@ -3041,6 +3073,7 @@ class ScalarMetricsIterHistogramResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, images=None, **kwargs):
         super(ScalarMetricsIterHistogramResponse, self).__init__(**kwargs)
@@ -3087,6 +3120,7 @@ class VectorMetricsIterHistogramRequest(Request):
         'required': ['task', 'metric', 'variant'],
         'type': 'object',
     }
+
     def __init__(
             self, task, metric, variant, **kwargs):
         super(VectorMetricsIterHistogramRequest, self).__init__(**kwargs)
@@ -3152,6 +3186,7 @@ class VectorMetricsIterHistogramResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, images=None, **kwargs):
         super(VectorMetricsIterHistogramResponse, self).__init__(**kwargs)

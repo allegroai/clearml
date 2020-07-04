@@ -1,15 +1,13 @@
-import os
 from collections import namedtuple
 from functools import partial
-from tempfile import mkstemp
 
 import six
 from pathlib2 import Path
 
-from ..backend_api import Session
-from ..backend_api.services import models
 from .base import IdObjectBase
 from .util import make_message
+from ..backend_api import Session
+from ..backend_api.services import models
 from ..storage import StorageManager
 from ..storage.helper import StorageHelper
 from ..utilities.async_manager import AsyncManagerMixin

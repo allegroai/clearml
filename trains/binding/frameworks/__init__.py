@@ -109,7 +109,7 @@ class WeightsFileHandler(object):
 
     @classmethod
     def add_pre_callback(cls, callback_function):
-        # type: (Callable[[Union[str, CallbackType], ModelInfo], Optional[ModelInfo]]) -> int
+        # type: (Callable[[Union[str, WeightsFileHandler.CallbackType], WeightsFileHandler.ModelInfo], Optional[WeightsFileHandler.ModelInfo]]) -> int
         """
         Add a pre-save/load callback for weights files and return its handle. If the callback was already added,
          return the existing handle.
@@ -127,7 +127,7 @@ class WeightsFileHandler(object):
 
     @classmethod
     def add_post_callback(cls, callback_function):
-        # type: (Callable[[Union[str, CallbackType], ModelInfo], ModelInfo]) -> int
+        # type: (Callable[[Union[str, WeightsFileHandler.CallbackType], WeightsFileHandler.ModelInfo], WeightsFileHandler.ModelInfo]) -> int
         """
         Add a post-save/load callback for weights files and return its handle.
         If the callback was already added, return the existing handle.
@@ -196,7 +196,7 @@ class WeightsFileHandler(object):
                 trains_in_model = model_info.model
             else:
                 # # disable model reuse, let Model module try to find it for use
-                trains_in_model, ref_model = None, None
+                trains_in_model, ref_model = None, None  # noqa: F841
                 # trains_in_model, ref_model = WeightsFileHandler._model_in_store_lookup.get(
                 #     id(model) if model is not None else None, (None, None))
                 # # noinspection PyCallingNonCallable
@@ -300,7 +300,7 @@ class WeightsFileHandler(object):
             WeightsFileHandler._model_store_lookup_lock.acquire()
 
             # # disable model reuse, let Model module try to find it for use
-            trains_out_model, ref_model = None, None
+            trains_out_model, ref_model = None, None  # noqa: F841
             # check if object already has InputModel
             # trains_out_model, ref_model = WeightsFileHandler._model_out_store_lookup.get(
             #     id(model) if model is not None else None, (None, None))

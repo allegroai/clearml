@@ -34,8 +34,8 @@ LOCAL_CONFIG_FILE_OVERRIDE_VAR = 'TRAINS_CONFIG_FILE'
 
 
 ENV_CONFIG_PATH_OVERRIDE_VAR = 'TRAINS_CONFIG_PATH'
-""" 
-Environment-related config path override environment variable. If this is set, no other env config path will be used. 
+"""
+Environment-related config path override environment variable. If this is set, no other env config path will be used.
 """
 
 

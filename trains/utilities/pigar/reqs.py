@@ -18,7 +18,6 @@ try:
 except ImportError:
     from io import IOBase as FileType  # py3
 
-from .log import logger
 from .utils import parse_git_config
 from .modules import ImportedModules
 

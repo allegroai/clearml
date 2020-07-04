@@ -440,9 +440,10 @@ class EventTrainsWriter(object):
         num, value = self._scalar_report_cache.get((title, series), (0, 0))
         # nan outputs is a string, it's probably a NaN
         if isinstance(scalar_data, six.string_types):
+            # noinspection PyBroadException
             try:
                 scalar_data = float(scalar_data)
-            except:
+            except Exception:
                 scalar_data = float('nan')
         # nan outputs nan
         self._scalar_report_cache[(title, series)] = \
@@ -1004,14 +1005,14 @@ class PatchModelCheckPointCallback(object):
         callbacks = None
         if is_keras:
             try:
-                import keras.callbacks as callbacks
+                import keras.callbacks as callbacks  # noqa: F401
             except ImportError:
                 is_keras = False
         if not is_keras and is_tf_keras:
             try:
                 # hack: make sure tensorflow.__init__ is called
-                import tensorflow
-                import tensorflow.python.keras.callbacks as callbacks
+                import tensorflow  # noqa: F401
+                import tensorflow.python.keras.callbacks as callbacks  # noqa: F811
             except ImportError:
                 is_tf_keras = False
                 callbacks = None
@@ -1091,8 +1092,8 @@ class PatchTensorFlowEager(object):
         if 'tensorflow' in sys.modules:
             try:
                 # hack: make sure tensorflow.__init__ is called
-                import tensorflow
-                from tensorflow.python.ops import gen_summary_ops
+                import tensorflow  # noqa: F401
+                from tensorflow.python.ops import gen_summary_ops  # noqa: F401
                 PatchTensorFlowEager.__original_fn_scalar = gen_summary_ops.write_scalar_summary
                 gen_summary_ops.write_scalar_summary = PatchTensorFlowEager._write_scalar_summary
                 PatchTensorFlowEager.__original_fn_image = gen_summary_ops.write_image_summary
@@ -1115,23 +1116,27 @@ class PatchTensorFlowEager(object):
         if not PatchTensorFlowEager.__main_task:
             return None
         if not PatchTensorFlowEager.__trains_event_writer.get(id(writer)):
+            # noinspection PyBroadException
             try:
                 logdir = writer.get_logdir()
             except Exception:
                 # check if we are in eager mode, let's get the global context lopdir
+                # noinspection PyBroadException
                 try:
                     from tensorflow.python.eager import context
                     logdir = context.context().summary_writer._init_op_fn.keywords.get('logdir')
-                except:
+                except Exception:
+                    # noinspection PyBroadException
                     try:
                         from tensorflow.python.ops.summary_ops_v2 import _summary_state
                         logdir = _summary_state.writer._init_op_fn.keywords.get('logdir')
-                    except:
+                    except Exception:
                         logdir = None
+                # noinspection PyBroadException
                 try:
                     if logdir is not None:
                         logdir = logdir.numpy().decode()
-                except:
+                except Exception:
                     logdir = None
 
             PatchTensorFlowEager.__trains_event_writer[id(writer)] = EventTrainsWriter(
@@ -1150,6 +1155,7 @@ class PatchTensorFlowEager(object):
     def _write_summary(writer, step, tensor, tag, summary_metadata, name=None, **kwargs):
         event_writer = PatchTensorFlowEager._get_event_writer(writer)
         if event_writer:
+            # noinspection PyBroadException
             try:
                 plugin_type = summary_metadata.decode()
                 if plugin_type.endswith('scalars'):
@@ -1173,7 +1179,7 @@ class PatchTensorFlowEager(object):
                                                 values=None, audio_data=audio_bytes)
                 else:
                     pass  # print('unsupported plugin_type', plugin_type)
-            except Exception as ex:
+            except Exception:
                 pass
         return PatchTensorFlowEager.__write_summary(writer, step, tensor, tag, summary_metadata, name, **kwargs)
 
@@ -1219,8 +1225,8 @@ class PatchTensorFlowEager(object):
         if img_data_np.ndim == 1 and img_data_np.size >= 3 and \
                 (len(img_data_np[0]) < 10 and len(img_data_np[1]) < 10):
             # this is just for making sure these are actually valid numbers
-            width = int(img_data_np[0].decode())
-            height = int(img_data_np[1].decode())
+            width = int(img_data_np[0].decode())  # noqa: F841
+            height = int(img_data_np[1].decode())  # noqa: F841
             for i in range(2, img_data_np.size):
                 img_data = {'width': -1, 'height': -1,
                             'colorspace': 'RGB', 'encodedImageString': img_data_np[i]}
@@ -1275,19 +1281,19 @@ class PatchKerasModelIO(object):
         if 'tensorflow' in sys.modules and not PatchKerasModelIO.__patched_tensorflow:
             try:
                 # hack: make sure tensorflow.__init__ is called
-                import tensorflow
+                import tensorflow  # noqa: F401
                 from tensorflow.python.keras.engine.network import Network
             except ImportError:
                 Network = None
             try:
                 # hack: make sure tensorflow.__init__ is called
-                import tensorflow
+                import tensorflow  # noqa: F811
                 from tensorflow.python.keras.engine.sequential import Sequential
             except ImportError:
                 Sequential = None
             try:
                 # hack: make sure tensorflow.__init__ is called
-                import tensorflow
+                import tensorflow  # noqa: F401, F811
                 from tensorflow.python.keras import models as keras_saving
             except ImportError:
                 keras_saving = None
@@ -1461,9 +1467,10 @@ class PatchKerasModelIO(object):
             filepath = kwargs['filepath'] if 'filepath' in kwargs else args[0]
 
             # this will already generate an output model
+            # noinspection PyBroadException
             try:
                 config = self._updated_config()
-            except Exception as ex:
+            except Exception:
                 # we failed to convert the network to json, for some reason (most likely internal keras error)
                 config = {}
 
@@ -1569,7 +1576,7 @@ class PatchTensorflowModelIO(object):
         # noinspection PyBroadException
         try:
             # make sure we import the correct version of save
-            import tensorflow
+            import tensorflow  # noqa: F811
             from tensorflow.saved_model import save
             # actual import
             from tensorflow.python.saved_model import save as saved_model
@@ -1578,7 +1585,7 @@ class PatchTensorflowModelIO(object):
             try:
                 # make sure we import the correct version of save
                 import tensorflow
-                from tensorflow.saved_model.experimental import save
+                from tensorflow.saved_model.experimental import save  # noqa: F401
                 # actual import
                 import tensorflow.saved_model.experimental as saved_model
             except ImportError:
@@ -1595,9 +1602,9 @@ class PatchTensorflowModelIO(object):
         # noinspection PyBroadException
         try:
             # make sure we import the correct version of save
-            import tensorflow
+            import tensorflow  # noqa: F811
             # actual import
-            from tensorflow.saved_model import load
+            from tensorflow.saved_model import load  # noqa: F401
             import tensorflow.saved_model as saved_model_load
             saved_model_load.load = _patched_call(saved_model_load.load, PatchTensorflowModelIO._load)
         except ImportError:
@@ -1608,7 +1615,7 @@ class PatchTensorflowModelIO(object):
         # noinspection PyBroadException
         try:
             # make sure we import the correct version of save
-            import tensorflow
+            import tensorflow  # noqa: F811
             # actual import
             from tensorflow.saved_model import loader as loader1
             loader1.load = _patched_call(loader1.load, PatchTensorflowModelIO._load)
@@ -1620,7 +1627,7 @@ class PatchTensorflowModelIO(object):
         # noinspection PyBroadException
         try:
             # make sure we import the correct version of save
-            import tensorflow
+            import tensorflow  # noqa: F811
             # actual import
             from tensorflow.compat.v1.saved_model import loader as loader2
             loader2.load = _patched_call(loader2.load, PatchTensorflowModelIO._load)
@@ -1631,7 +1638,7 @@ class PatchTensorflowModelIO(object):
 
         # noinspection PyBroadException
         try:
-            import tensorflow
+            import tensorflow  # noqa: F401, F811
             from tensorflow.train import Checkpoint
             # noinspection PyBroadException
             try:
@@ -1782,7 +1789,7 @@ class PatchTensorflow2ModelIO(object):
         # noinspection PyBroadException
         try:
             # hack: make sure tensorflow.__init__ is called
-            import tensorflow
+            import tensorflow  # noqa: F401
             from tensorflow.python.training.tracking import util
             # noinspection PyBroadException
             try:

@@ -24,13 +24,13 @@ class BaseExtractor(object):
             self.final()
 
     def extract(self, job):
-        raise NotImplemented
+        raise NotImplementedError
 
     def wait_complete(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def shutdown(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def final(self):
         pass

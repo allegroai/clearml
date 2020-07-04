@@ -3,14 +3,12 @@ models service
 
 This service provides a management interface for models (results of training tasks) stored in the system.
 """
-import six
-import types
 from datetime import datetime
-import enum
 
+import six
 from dateutil.parser import parse as parse_datetime
 
-from ....backend_api.session import Request, BatchRequest, Response, DataModel, NonStrictDataModel, CompoundRequest, schema_property, StringEnum
+from ....backend_api.session import NonStrictDataModel, Request, Response, schema_property
 
 
 class MultiFieldPatternData(NonStrictDataModel):
@@ -34,6 +32,7 @@ class MultiFieldPatternData(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, pattern=None, fields=None, **kwargs):
         super(MultiFieldPatternData, self).__init__(**kwargs)
@@ -177,6 +176,7 @@ class Model(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, name=None, user=None, company=None, created=None, task=None, parent=None, project=None, comment=None, tags=None, system_tags=None, framework=None, design=None, labels=None, uri=None, ready=None, ui_cache=None, **kwargs):
         super(Model, self).__init__(**kwargs)
@@ -518,6 +518,7 @@ class CreateRequest(Request):
         'required': ['uri', 'name', 'labels'],
         'type': 'object',
     }
+
     def __init__(
             self, uri, name, labels, comment=None, tags=None, system_tags=None, framework=None, design=None, ready=False, public=False, project=None, parent=None, task=None, **kwargs):
         super(CreateRequest, self).__init__(**kwargs)
@@ -733,6 +734,7 @@ class CreateResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, created=None, **kwargs):
         super(CreateResponse, self).__init__(**kwargs)
@@ -792,6 +794,7 @@ class DeleteRequest(Request):
         'required': ['model'],
         'type': 'object',
     }
+
     def __init__(
             self, model, force=None, **kwargs):
         super(DeleteRequest, self).__init__(**kwargs)
@@ -846,6 +849,7 @@ class DeleteResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, deleted=None, **kwargs):
         super(DeleteResponse, self).__init__(**kwargs)
@@ -957,6 +961,7 @@ class EditRequest(Request):
         'required': ['model'],
         'type': 'object',
     }
+
     def __init__(
             self, model, uri=None, name=None, comment=None, tags=None, system_tags=None, framework=None, design=None, labels=None, ready=None, project=None, parent=None, task=None, iteration=None, **kwargs):
         super(EditRequest, self).__init__(**kwargs)
@@ -1193,6 +1198,7 @@ class EditResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, fields=None, **kwargs):
         super(EditResponse, self).__init__(**kwargs)
@@ -1383,6 +1389,7 @@ class GetAllRequest(Request):
         },
         'type': 'object',
     }
+
     def __init__(
             self, name=None, ready=None, tags=None, system_tags=None, only_fields=None, page=None, page_size=None, project=None, order_by=None, task=None, id=None, search_text=None, framework=None, uri=None, _all_=None, _any_=None, **kwargs):
         super(GetAllRequest, self).__init__(**kwargs)
@@ -1737,6 +1744,7 @@ class GetAllResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, models=None, **kwargs):
         super(GetAllResponse, self).__init__(**kwargs)
@@ -1777,6 +1785,7 @@ class GetByIdRequest(Request):
         'required': ['model'],
         'type': 'object',
     }
+
     def __init__(
             self, model, **kwargs):
         super(GetByIdRequest, self).__init__(**kwargs)
@@ -1894,6 +1903,7 @@ class GetByIdResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, model=None, **kwargs):
         super(GetByIdResponse, self).__init__(**kwargs)
@@ -1933,6 +1943,7 @@ class GetByTaskIdRequest(Request):
         },
         'type': 'object',
     }
+
     def __init__(
             self, task=None, **kwargs):
         super(GetByTaskIdRequest, self).__init__(**kwargs)
@@ -2050,6 +2061,7 @@ class GetByTaskIdResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, model=None, **kwargs):
         super(GetByTaskIdResponse, self).__init__(**kwargs)
@@ -2104,6 +2116,7 @@ class SetReadyRequest(Request):
         'required': ['model'],
         'type': 'object',
     }
+
     def __init__(
             self, model, force_publish_task=None, publish_task=None, **kwargs):
         super(SetReadyRequest, self).__init__(**kwargs)
@@ -2208,6 +2221,7 @@ class SetReadyResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, published_task=None, **kwargs):
         super(SetReadyResponse, self).__init__(**kwargs)
@@ -2324,6 +2338,7 @@ class UpdateRequest(Request):
         'required': ['model'],
         'type': 'object',
     }
+
     def __init__(
             self, model, name=None, comment=None, tags=None, system_tags=None, ready=False, created=None, ui_cache=None, project=None, task=None, iteration=None, **kwargs):
         super(UpdateRequest, self).__init__(**kwargs)
@@ -2520,6 +2535,7 @@ class UpdateResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, fields=None, **kwargs):
         super(UpdateResponse, self).__init__(**kwargs)
@@ -2614,6 +2630,7 @@ class UpdateForTaskRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, uri=None, name=None, comment=None, tags=None, system_tags=None, override_model_id=None, iteration=None, **kwargs):
         super(UpdateForTaskRequest, self).__init__(**kwargs)
@@ -2774,6 +2791,7 @@ class UpdateForTaskResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, created=None, updated=None, fields=None, **kwargs):
         super(UpdateForTaskResponse, self).__init__(**kwargs)

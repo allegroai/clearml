@@ -118,7 +118,7 @@ class _Arguments(object):
             for k, v in parsed_args.__dict__.items():
                 if k not in task_defaults:
                     # do not change this comparison because isinstance(type(v), type(None)) === False
-                    if type(v) == type(None):
+                    if v is None:
                         task_defaults[k] = ''
                     elif type(v) in (str, int, float, bool, list):
                         task_defaults[k] = v
@@ -166,9 +166,10 @@ class _Arguments(object):
         arg_parser_argeuments = {}
         for k, v in task_arguments.items():
             # python2 unicode support
+            # noinspection PyBroadException
             try:
                 v = str(v)
-            except:
+            except Exception:
                 pass
 
             # if we have a StoreTrueAction and the value is either False or Empty or 0 change the default to False
@@ -225,7 +226,7 @@ class _Arguments(object):
                     # if we have an int, we should cast to float, because it is more generic
                     if var_type == int:
                         var_type = float
-                    elif var_type == type(None):  # do not change! because isinstance(var_type, type(None)) === False
+                    elif var_type == type(None):  # noqa: E721 - do not change! because isinstance(var_type, type(None)) === False
                         var_type = str
                     # now we should try and cast the value if we can
                     try:
@@ -260,6 +261,7 @@ class _Arguments(object):
                         arg_parser_argeuments[k] = v
                 elif current_action and current_action.type:
                     arg_parser_argeuments[k] = v
+                    # noinspection PyBroadException
                     try:
                         if current_action.default is None and current_action.type != str and not v:
                             arg_parser_argeuments[k] = v = None
@@ -269,7 +271,7 @@ class _Arguments(object):
                             arg_parser_argeuments[k] = v = current_action.default
                         else:
                             arg_parser_argeuments[k] = v = current_action.type(v)
-                    except:
+                    except Exception:
                         pass
 
                 # add as default
@@ -375,9 +377,10 @@ class _Arguments(object):
                     self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
                                            (str(k), str(param), str(k), str(v)))
 
+            # noinspection PyBroadException
             try:
                 # do not change this comparison because isinstance(v_type, type(None)) === False
-                if v_type == type(None):
+                if v_type == type(None):  # noqa: E721
                     dictionary[k] = str(param) if param else None
                 else:
                     dictionary[k] = v_type(param)

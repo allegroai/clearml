@@ -33,6 +33,7 @@ class MultiFieldPatternData(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, pattern=None, fields=None, **kwargs):
         super(MultiFieldPatternData, self).__init__(**kwargs)
@@ -131,6 +132,7 @@ class Script(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, binary="python", repository=None, tag=None, branch=None, version_num=None, entry_point=None, working_dir=None, requirements=None, diff=None, **kwargs):
         super(Script, self).__init__(**kwargs)
@@ -262,8 +264,6 @@ class Script(NonStrictDataModel):
         self._property_diff = value
 
 
-
-
 class Output(NonStrictDataModel):
     """
     :param destination: Storage id. This is where output files will be stored.
@@ -290,6 +290,7 @@ class Output(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, destination=None, model=None, result=None, error=None, **kwargs):
         super(Output, self).__init__(**kwargs)
@@ -297,7 +298,6 @@ class Output(NonStrictDataModel):
         self.model = model
         self.result = result
         self.error = error
-
 
     @schema_property('destination')
     def destination(self):
@@ -352,8 +352,6 @@ class Output(NonStrictDataModel):
         self._property_error = value
 
 
-
-
 class ArtifactTypeData(NonStrictDataModel):
     """
     :param preview: Description or textual data
@@ -380,6 +378,7 @@ class ArtifactTypeData(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, preview=None, content_type=None, data_hash=None, **kwargs):
         super(ArtifactTypeData, self).__init__(**kwargs)
@@ -481,6 +480,7 @@ class Artifact(NonStrictDataModel):
         'required': ['key', 'type'],
         'type': 'object',
     }
+
     def __init__(
             self, key, type, mode="output", uri=None, content_size=None, hash=None, timestamp=None, type_data=None, display_data=None, **kwargs):
         super(Artifact, self).__init__(**kwargs)
@@ -684,6 +684,7 @@ class Execution(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, queue=None, parameters=None, model=None, model_desc=None, model_labels=None, framework=None, docker_cmd=None, artifacts=None, **kwargs):
         super(Execution, self).__init__(**kwargs)
@@ -855,6 +856,7 @@ class LastMetricsEvent(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, metric=None, variant=None, value=None, min_value=None, max_value=None, **kwargs):
         super(LastMetricsEvent, self).__init__(**kwargs)
@@ -1116,6 +1118,7 @@ class Task(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, name=None, user=None, company=None, type=None, status=None, comment=None, created=None, started=None, completed=None, parent=None, project=None, output=None, execution=None, script=None, tags=None, system_tags=None, status_changed=None, status_message=None, status_reason=None, published=None, last_worker=None, last_worker_report=None, last_update=None, last_iteration=None, last_metrics=None, **kwargs):
         super(Task, self).__init__(**kwargs)
@@ -1476,6 +1479,7 @@ class Task(NonStrictDataModel):
         if not isinstance(value, datetime):
             value = parse_datetime(value)
         self._property_last_worker_report = value
+
     @schema_property('last_update')
     def last_update(self):
         return self._property_last_update
@@ -1558,6 +1562,7 @@ class CloseRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, force=False, status_reason=None, status_message=None, **kwargs):
         super(CloseRequest, self).__init__(**kwargs)
@@ -1648,6 +1653,7 @@ class CloseResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, fields=None, **kwargs):
         super(CloseResponse, self).__init__(**kwargs)
@@ -1722,6 +1728,7 @@ class CompletedRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, force=False, status_reason=None, status_message=None, **kwargs):
         super(CompletedRequest, self).__init__(**kwargs)
@@ -1812,6 +1819,7 @@ class CompletedResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, fields=None, **kwargs):
         super(CompletedResponse, self).__init__(**kwargs)
@@ -2075,6 +2083,7 @@ class CreateRequest(Request):
         'required': ['name', 'type'],
         'type': 'object',
     }
+
     def __init__(
             self, name, type, tags=None, system_tags=None, comment=None, parent=None, project=None, input=None, output_dest=None, execution=None, script=None, **kwargs):
         super(CreateRequest, self).__init__(**kwargs)
@@ -2260,6 +2269,7 @@ class CreateResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, **kwargs):
         super(CreateResponse, self).__init__(**kwargs)
@@ -2329,6 +2339,7 @@ class DeleteRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, move_to_trash=False, force=False, status_reason=None, status_message=None, **kwargs):
         super(DeleteRequest, self).__init__(**kwargs)
@@ -2459,6 +2470,7 @@ class DeleteResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, deleted=None, updated_children=None, updated_models=None, updated_versions=None, frames=None, events=None, **kwargs):
         super(DeleteResponse, self).__init__(**kwargs)
@@ -2586,6 +2598,7 @@ class DequeueRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, status_reason=None, status_message=None, **kwargs):
         super(DequeueRequest, self).__init__(**kwargs)
@@ -2669,6 +2682,7 @@ class DequeueResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, dequeued=None, updated=None, fields=None, **kwargs):
         super(DequeueResponse, self).__init__(**kwargs)
@@ -2952,6 +2966,7 @@ class EditRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, force=False, name=None, tags=None, system_tags=None, type=None, comment=None, parent=None, project=None, output_dest=None, execution=None, script=None, **kwargs):
         super(EditRequest, self).__init__(**kwargs)
@@ -3167,6 +3182,7 @@ class EditResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, fields=None, **kwargs):
         super(EditResponse, self).__init__(**kwargs)
@@ -3248,6 +3264,7 @@ class EnqueueRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, queue=None, status_reason=None, status_message=None, **kwargs):
         super(EnqueueRequest, self).__init__(**kwargs)
@@ -3345,6 +3362,7 @@ class EnqueueResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, queued=None, updated=None, fields=None, **kwargs):
         super(EnqueueResponse, self).__init__(**kwargs)
@@ -3434,6 +3452,7 @@ class FailedRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, force=False, status_reason=None, status_message=None, **kwargs):
         super(FailedRequest, self).__init__(**kwargs)
@@ -3524,6 +3543,7 @@ class FailedResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, fields=None, **kwargs):
         super(FailedResponse, self).__init__(**kwargs)
@@ -3733,6 +3753,7 @@ class GetAllRequest(Request):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, name=None, user=None, project=None, page=None, page_size=None, order_by=None, type=None, tags=None, system_tags=None, status=None, only_fields=None, parent=None, status_changed=None, search_text=None, _all_=None, _any_=None, **kwargs):
         super(GetAllRequest, self).__init__(**kwargs)
@@ -4004,7 +4025,6 @@ class GetAllRequest(Request):
         else:
             self.assert_isinstance(value, "_any_", MultiFieldPatternData)
         self._property__any_ = value
-
 
 
 class GetAllResponse(Response):
@@ -4374,6 +4394,7 @@ class GetAllResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, tasks=None, **kwargs):
         super(GetAllResponse, self).__init__(**kwargs)
@@ -4414,6 +4435,7 @@ class GetByIdRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, **kwargs):
         super(GetByIdRequest, self).__init__(**kwargs)
@@ -4799,6 +4821,7 @@ class GetByIdResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, task=None, **kwargs):
         super(GetByIdResponse, self).__init__(**kwargs)
@@ -4837,6 +4860,7 @@ class PingRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, **kwargs):
         super(PingRequest, self).__init__(**kwargs)
@@ -4913,6 +4937,7 @@ class PublishRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, force=False, publish_model=None, status_reason=None, status_message=None, **kwargs):
         super(PublishRequest, self).__init__(**kwargs)
@@ -5024,6 +5049,7 @@ class PublishResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, committed_versions_results=None, updated=None, fields=None, **kwargs):
         super(PublishResponse, self).__init__(**kwargs)
@@ -5113,6 +5139,7 @@ class ResetRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, force=False, status_reason=None, status_message=None, **kwargs):
         super(ResetRequest, self).__init__(**kwargs)
@@ -5238,6 +5265,7 @@ class ResetResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, deleted_indices=None, dequeued=None, frames=None, events=None, deleted_models=None, updated=None, fields=None, **kwargs):
         super(ResetResponse, self).__init__(**kwargs)
@@ -5372,6 +5400,7 @@ class SetRequirementsRequest(Request):
         'required': ['task', 'requirements'],
         'type': 'object',
     }
+
     def __init__(
             self, task, requirements, **kwargs):
         super(SetRequirementsRequest, self).__init__(**kwargs)
@@ -5434,6 +5463,7 @@ class SetRequirementsResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, fields=None, **kwargs):
         super(SetRequirementsResponse, self).__init__(**kwargs)
@@ -5507,6 +5537,7 @@ class StartedRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, force=False, status_reason=None, status_message=None, **kwargs):
         super(StartedRequest, self).__init__(**kwargs)
@@ -5604,6 +5635,7 @@ class StartedResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, started=None, updated=None, fields=None, **kwargs):
         super(StartedResponse, self).__init__(**kwargs)
@@ -5693,6 +5725,7 @@ class StopRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, force=False, status_reason=None, status_message=None, **kwargs):
         super(StopRequest, self).__init__(**kwargs)
@@ -5783,6 +5816,7 @@ class StopResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, fields=None, **kwargs):
         super(StopResponse, self).__init__(**kwargs)
@@ -5856,6 +5890,7 @@ class StoppedRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, force=False, status_reason=None, status_message=None, **kwargs):
         super(StoppedRequest, self).__init__(**kwargs)
@@ -5946,6 +5981,7 @@ class StoppedResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, fields=None, **kwargs):
         super(StoppedResponse, self).__init__(**kwargs)
@@ -6040,6 +6076,7 @@ class UpdateRequest(Request):
         'required': ['task'],
         'type': 'object',
     }
+
     def __init__(
             self, task, name=None, tags=None, system_tags=None, comment=None, project=None, output__error=None, created=None, **kwargs):
         super(UpdateRequest, self).__init__(**kwargs)
@@ -6192,6 +6229,7 @@ class UpdateResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, fields=None, **kwargs):
         super(UpdateResponse, self).__init__(**kwargs)
@@ -6263,6 +6301,7 @@ class UpdateBatchResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, **kwargs):
         super(UpdateBatchResponse, self).__init__(**kwargs)
@@ -6506,6 +6545,7 @@ class ValidateRequest(Request):
         'required': ['name', 'type'],
         'type': 'object',
     }
+
     def __init__(
             self, name, type, tags=None, system_tags=None, comment=None, parent=None, project=None, output_dest=None, execution=None, script=None, **kwargs):
         super(ValidateRequest, self).__init__(**kwargs)
@@ -6619,7 +6659,6 @@ class ValidateRequest(Request):
 
         self.assert_isinstance(value, "project", six.string_types)
         self._property_project = value
-
 
     @schema_property('output_dest')
     def output_dest(self):

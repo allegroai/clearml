@@ -29,9 +29,10 @@ def _lowlevel_async_raise(thread_obj, exception=None):
         target_tid = ctypes.c_long(target_tid)
         NULL = ctypes.c_long(NULL)
 
+    # noinspection PyBroadException
     try:
         ret = ctypes.pythonapi.PyThreadState_SetAsyncExc(target_tid, ctypes.py_object(exception))
-    except:
+    except Exception:
         ret = 0
 
     # ref: http://docs.python.org/c-api/init.html#PyThreadState_SetAsyncExc
@@ -42,9 +43,10 @@ def _lowlevel_async_raise(thread_obj, exception=None):
         # Huh? Why would we notify more than one threads?
         # Because we punch a hole into C level interpreter.
         # So it is better to clean up the mess.
+        # noinspection PyBroadException
         try:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(target_tid, NULL)
-        except:
+        except Exception:
             pass
         # raise SystemError("PyThreadState_SetAsyncExc failed")
         return False
@@ -63,10 +65,11 @@ def kill_thread(thread_obj, wait=False):
 
 
 def __wait_thread(a_thread, a_event):
+    # noinspection PyBroadException
     try:
         a_thread.join()
         a_event.set()
-    except Exception as ex:
+    except Exception:
         pass
 
 

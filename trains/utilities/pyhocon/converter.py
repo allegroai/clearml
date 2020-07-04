@@ -70,19 +70,21 @@ class HOCONConverter(object):
 
     @staticmethod
     def _auto_indent(lines, section):
+        # noinspection PyBroadException
         try:
             indent = len(lines) - lines.rindex('\n')
-        except:
+        except Exception:
             indent = len(lines)
+        # noinspection PyBroadException
         try:
             section_indent = section.index('\n')
-        except:
+        except Exception:
             section_indent = len(section)
         if section_indent < 3:
             return lines + section
 
         indent = '\n' + ''.rjust(indent, ' ')
-        return lines + indent.join([l.strip() for l in section.split('\n')])
+        return lines + indent.join([sec.strip() for sec in section.split('\n')])
         # indent = ''.rjust(indent, ' ')
         # return lines + section.replace('\n', '\n'+indent)
 

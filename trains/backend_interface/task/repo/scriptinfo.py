@@ -49,21 +49,21 @@ class ScriptRequirements(object):
         # noinspection PyBroadException
         try:
             # noinspection PyPackageRequirements,PyUnresolvedReferences
-            import boto3
+            import boto3  # noqa: F401
             modules.add('boto3', 'trains.storage', 0)
         except Exception:
             pass
         # noinspection PyBroadException
         try:
             # noinspection PyPackageRequirements,PyUnresolvedReferences
-            from google.cloud import storage
+            from google.cloud import storage  # noqa: F401
             modules.add('google_cloud_storage', 'trains.storage', 0)
         except Exception:
             pass
         # noinspection PyBroadException
         try:
             # noinspection PyPackageRequirements,PyUnresolvedReferences
-            from azure.storage.blob import ContentSettings
+            from azure.storage.blob import ContentSettings  # noqa: F401
             modules.add('azure_storage_blob', 'trains.storage', 0)
         except Exception:
             pass
@@ -81,9 +81,9 @@ class ScriptRequirements(object):
             try:
                 # see if this version of torch support tensorboard
                 # noinspection PyPackageRequirements,PyUnresolvedReferences
-                import torch.utils.tensorboard
+                import torch.utils.tensorboard  # noqa: F401
                 # noinspection PyPackageRequirements,PyUnresolvedReferences
-                import tensorboard
+                import tensorboard  # noqa: F401
                 modules.add('tensorboard', 'torch', 0)
             except Exception:
                 pass
@@ -766,7 +766,7 @@ class _JupyterHistoryLogger(object):
             if 'google.colab' in self._ip.extension_manager.loaded:
                 self._ip._org_run_cell = self._ip.run_cell
                 self._ip.run_cell = partial(self._patched_run_cell, self._ip)
-        except Exception as ex:
+        except Exception:
             pass
 
         # start with the current history

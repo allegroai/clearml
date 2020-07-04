@@ -26,17 +26,19 @@
 # THE POSSIBILITY OF SUCH DAMAGE.
 # @ copied from nvidia-ml-py3 7.352.0
 #####
+# flake8: noqa
+# This is only to ignore F405 errors
 
 ##
 # Python bindings for the NVML library
 ##
-from ctypes import *
+from ctypes import *  # noqa: F403
 import sys
 import os
 import threading
 import string
 
-## C Type mappings ##
+# C Type mappings #
 # Enums
 _nvmlEnableState_t = c_uint
 NVML_FEATURE_DISABLED = 0
@@ -228,13 +230,13 @@ NVML_DEVICE_PCI_BUS_ID_BUFFER_SIZE = 16
 NVML_VALUE_NOT_AVAILABLE_ulonglong = c_ulonglong(-1)
 NVML_VALUE_NOT_AVAILABLE_uint = c_uint(-1)
 
-## Lib loading ##
+# Lib loading #
 nvmlLib = None
 libLoadLock = threading.Lock()
 _nvmlLib_refcount = 0  # Incremented on each nvmlInit and decremented on nvmlShutdown
 
 
-## Error Checking ##
+# Error Checking #
 class NVMLError(Exception):
     _valClassMapping = dict()
     # List of currently known error codes
@@ -322,7 +324,7 @@ def _nvmlCheckReturn(ret):
     return ret
 
 
-## Function access ##
+# Function access #
 _nvmlGetFunctionPointer_cache = dict()  # function pointers are cached to prevent unnecessary libLoadLock locking
 
 
@@ -335,7 +337,7 @@ def _nvmlGetFunctionPointer(name):
     libLoadLock.acquire()
     try:
         # ensure library was loaded
-        if (nvmlLib == None):
+        if nvmlLib is None:
             raise NVMLError(NVML_ERROR_UNINITIALIZED)
         try:
             _nvmlGetFunctionPointer_cache[name] = getattr(nvmlLib, name)
@@ -653,7 +655,7 @@ class c_nvmlAccountingStats_t(_PrintableStructure):
     ]
 
 
-## C function wrappers ##
+# C function wrappers #
 def nvmlInit():
     _LoadNvmlLibrary()
 
@@ -678,13 +680,13 @@ def _LoadNvmlLibrary():
     '''
     global nvmlLib
 
-    if (nvmlLib == None):
+    if nvmlLib is None:
         # lock to ensure only one caller loads the library
         libLoadLock.acquire()
 
         try:
             # ensure the library still isn't loaded
-            if (nvmlLib == None):
+            if nvmlLib is None:
                 try:
                     if (sys.platform[:3] == "win"):
                         searchPaths = [
@@ -693,7 +695,7 @@ def _LoadNvmlLibrary():
                             os.path.join(os.getenv("WinDir", r"C:\Windows"), r"System32\nvml.dll"),
                         ]
                         nvmlPath = next((x for x in searchPaths if os.path.isfile(x)), None)
-                        if (nvmlPath == None):
+                        if nvmlPath is None:
                             _nvmlCheckReturn(NVML_ERROR_LIBRARY_NOT_FOUND)
                         else:
                             # cdecl calling convention
@@ -701,9 +703,9 @@ def _LoadNvmlLibrary():
                     else:
                         # assume linux
                         nvmlLib = CDLL("libnvidia-ml.so.1")
-                except OSError as ose:
+                except OSError:
                     _nvmlCheckReturn(NVML_ERROR_LIBRARY_NOT_FOUND)
-                if (nvmlLib == None):
+                if nvmlLib is None:
                     _nvmlCheckReturn(NVML_ERROR_LIBRARY_NOT_FOUND)
         finally:
             # lock is always freed

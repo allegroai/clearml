@@ -6,20 +6,20 @@ from os.path import expandvars, expanduser
 from ..backend_api import load_config
 from ..backend_config.bucket_config import S3BucketConfigurations
 
-from .defs import *
+from .defs import *  # noqa: F403
 from .remote import running_remotely_task_id as _running_remotely_task_id
 
-config_obj = load_config(Path(__file__).parent)
+config_obj = load_config(Path(__file__).parent)  # noqa: F405
 config_obj.initialize_logging()
 config = config_obj.get("sdk")
 """ Configuration object reflecting the merged SDK section of all available configuration files """
 
 
 def get_cache_dir():
-    cache_base_dir = Path(
+    cache_base_dir = Path(  # noqa: F405
         expandvars(
             expanduser(
-                TRAINS_CACHE_DIR.get() or config.get("storage.cache.default_base_dir") or DEFAULT_CACHE_DIR
+                TRAINS_CACHE_DIR.get() or config.get("storage.cache.default_base_dir") or DEFAULT_CACHE_DIR  # noqa: F405
             )
         )
     )
@@ -44,20 +44,22 @@ def running_remotely():
 
 
 def get_log_to_backend(default=None):
-    return LOG_TO_BACKEND_ENV_VAR.get(default=default)
+    return LOG_TO_BACKEND_ENV_VAR.get(default=default)  # noqa: F405
 
 
 def get_node_id(default=0):
-    node_id = NODE_ID_ENV_VAR.get()
+    node_id = NODE_ID_ENV_VAR.get()  # noqa: F405
 
+    # noinspection PyBroadException
     try:
         mpi_world_rank = int(os.environ.get('OMPI_COMM_WORLD_NODE_RANK', os.environ.get('PMI_RANK')))
-    except:
+    except Exception:
         mpi_world_rank = None
 
+    # noinspection PyBroadException
     try:
         mpi_rank = int(os.environ.get('OMPI_COMM_WORLD_RANK', os.environ.get('SLURM_PROCID')))
-    except:
+    except Exception:
         mpi_rank = None
 
     # if we have no node_id, use the mpi rank
@@ -105,7 +107,7 @@ def get_is_master_node():
 
 def get_log_redirect_level():
     """ Returns which log level (and up) should be redirected to stderr. None means no redirection. """
-    value = LOG_STDERR_REDIRECT_LEVEL.get()
+    value = LOG_STDERR_REDIRECT_LEVEL.get()  # noqa: F405
     try:
         if value:
             return logging._checkLevel(value)
@@ -114,19 +116,21 @@ def get_log_redirect_level():
 
 
 def dev_worker_name():
-    return DEV_WORKER_NAME.get()
+    return DEV_WORKER_NAME.get()  # noqa: F405
 
 
 def __set_is_master_node():
+    # noinspection PyBroadException
     try:
         force_master_node = os.environ.pop('TRAINS_FORCE_MASTER_NODE', None)
-    except:
+    except Exception:
         force_master_node = None
 
     if force_master_node is not None:
+        # noinspection PyBroadException
         try:
             force_master_node = bool(int(force_master_node))
-        except:
+        except Exception:
             force_master_node = None
 
     return force_master_node

@@ -3,14 +3,12 @@ queues service
 
 Provides a management API for queues of tasks waiting to be executed by workers deployed anywhere (see Workers Service).
 """
-import six
-import types
 from datetime import datetime
-import enum
 
+import six
 from dateutil.parser import parse as parse_datetime
 
-from ....backend_api.session import Request, BatchRequest, Response, DataModel, NonStrictDataModel, CompoundRequest, schema_property, StringEnum
+from ....backend_api.session import NonStrictDataModel, Request, Response, schema_property
 
 
 class QueueMetrics(NonStrictDataModel):
@@ -52,6 +50,7 @@ class QueueMetrics(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, queue=None, dates=None, avg_waiting_times=None, queue_lengths=None, **kwargs):
         super(QueueMetrics, self).__init__(**kwargs)
@@ -139,6 +138,7 @@ class Entry(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, task=None, added=None, **kwargs):
         super(Entry, self).__init__(**kwargs)
@@ -226,6 +226,7 @@ class Queue(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, name=None, user=None, company=None, created=None, tags=None, system_tags=None, entries=None, **kwargs):
         super(Queue, self).__init__(**kwargs)
@@ -375,6 +376,7 @@ class AddTaskRequest(Request):
         'required': ['queue', 'task'],
         'type': 'object',
     }
+
     def __init__(
             self, queue, task, **kwargs):
         super(AddTaskRequest, self).__init__(**kwargs)
@@ -430,6 +432,7 @@ class AddTaskResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, added=None, **kwargs):
         super(AddTaskResponse, self).__init__(**kwargs)
@@ -488,6 +491,7 @@ class CreateRequest(Request):
         'required': ['name'],
         'type': 'object',
     }
+
     def __init__(
             self, name, tags=None, system_tags=None, **kwargs):
         super(CreateRequest, self).__init__(**kwargs)
@@ -557,6 +561,7 @@ class CreateResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, **kwargs):
         super(CreateResponse, self).__init__(**kwargs)
@@ -602,6 +607,7 @@ class DeleteRequest(Request):
         'required': ['queue'],
         'type': 'object',
     }
+
     def __init__(
             self, queue, force=False, **kwargs):
         super(DeleteRequest, self).__init__(**kwargs)
@@ -657,6 +663,7 @@ class DeleteResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, deleted=None, **kwargs):
         super(DeleteResponse, self).__init__(**kwargs)
@@ -764,6 +771,7 @@ class GetAllRequest(Request):
         },
         'type': 'object',
     }
+
     def __init__(
             self, name=None, id=None, tags=None, system_tags=None, page=None, page_size=None, order_by=None, search_text=None, only_fields=None, **kwargs):
         super(GetAllRequest, self).__init__(**kwargs)
@@ -984,6 +992,7 @@ class GetAllResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, queues=None, **kwargs):
         super(GetAllResponse, self).__init__(**kwargs)
@@ -1024,6 +1033,7 @@ class GetByIdRequest(Request):
         'required': ['queue'],
         'type': 'object',
     }
+
     def __init__(
             self, queue, **kwargs):
         super(GetByIdRequest, self).__init__(**kwargs)
@@ -1117,6 +1127,7 @@ class GetByIdResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, queue=None, **kwargs):
         super(GetByIdResponse, self).__init__(**kwargs)
@@ -1174,6 +1185,7 @@ class GetDefaultResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, id=None, name=None, **kwargs):
         super(GetDefaultResponse, self).__init__(**kwargs)
@@ -1224,6 +1236,7 @@ class GetNextTaskRequest(Request):
         'required': ['queue'],
         'type': 'object',
     }
+
     def __init__(
             self, queue, **kwargs):
         super(GetNextTaskRequest, self).__init__(**kwargs)
@@ -1279,6 +1292,7 @@ class GetNextTaskResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, entry=None, **kwargs):
         super(GetNextTaskResponse, self).__init__(**kwargs)
@@ -1344,6 +1358,7 @@ class GetQueueMetricsRequest(Request):
         'required': ['from_date', 'to_date', 'interval'],
         'type': 'object',
     }
+
     def __init__(
             self, from_date, to_date, interval, queue_ids=None, **kwargs):
         super(GetQueueMetricsRequest, self).__init__(**kwargs)
@@ -1458,6 +1473,7 @@ class GetQueueMetricsResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, queues=None, **kwargs):
         super(GetQueueMetricsResponse, self).__init__(**kwargs)
@@ -1508,6 +1524,7 @@ class MoveTaskBackwardRequest(Request):
         'required': ['queue', 'task'],
         'type': 'object',
     }
+
     def __init__(
             self, queue, task, count=None, **kwargs):
         super(MoveTaskBackwardRequest, self).__init__(**kwargs)
@@ -1579,6 +1596,7 @@ class MoveTaskBackwardResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, position=None, **kwargs):
         super(MoveTaskBackwardResponse, self).__init__(**kwargs)
@@ -1629,6 +1647,7 @@ class MoveTaskForwardRequest(Request):
         'required': ['queue', 'task'],
         'type': 'object',
     }
+
     def __init__(
             self, queue, task, count=None, **kwargs):
         super(MoveTaskForwardRequest, self).__init__(**kwargs)
@@ -1700,6 +1719,7 @@ class MoveTaskForwardResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, position=None, **kwargs):
         super(MoveTaskForwardResponse, self).__init__(**kwargs)
@@ -1741,6 +1761,7 @@ class MoveTaskToBackRequest(Request):
         'required': ['queue', 'task'],
         'type': 'object',
     }
+
     def __init__(
             self, queue, task, **kwargs):
         super(MoveTaskToBackRequest, self).__init__(**kwargs)
@@ -1796,6 +1817,7 @@ class MoveTaskToBackResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, position=None, **kwargs):
         super(MoveTaskToBackResponse, self).__init__(**kwargs)
@@ -1837,6 +1859,7 @@ class MoveTaskToFrontRequest(Request):
         'required': ['queue', 'task'],
         'type': 'object',
     }
+
     def __init__(
             self, queue, task, **kwargs):
         super(MoveTaskToFrontRequest, self).__init__(**kwargs)
@@ -1892,6 +1915,7 @@ class MoveTaskToFrontResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, position=None, **kwargs):
         super(MoveTaskToFrontResponse, self).__init__(**kwargs)
@@ -1935,6 +1959,7 @@ class RemoveTaskRequest(Request):
         'required': ['queue', 'task'],
         'type': 'object',
     }
+
     def __init__(
             self, queue, task, **kwargs):
         super(RemoveTaskRequest, self).__init__(**kwargs)
@@ -1990,6 +2015,7 @@ class RemoveTaskResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, removed=None, **kwargs):
         super(RemoveTaskResponse, self).__init__(**kwargs)
@@ -2051,6 +2077,7 @@ class UpdateRequest(Request):
         'required': ['queue'],
         'type': 'object',
     }
+
     def __init__(
             self, queue, name=None, tags=None, system_tags=None, **kwargs):
         super(UpdateRequest, self).__init__(**kwargs)
@@ -2145,6 +2172,7 @@ class UpdateResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, fields=None, **kwargs):
         super(UpdateResponse, self).__init__(**kwargs)

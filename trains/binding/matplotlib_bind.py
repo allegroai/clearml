@@ -86,13 +86,14 @@ class PatchedMatplotlib:
                 PatchedMatplotlib._patched_original_figure = figure.Figure.show
                 PatchedMatplotlib._patched_original_savefig = figure.Figure.savefig
 
+            # noinspection PyBroadException
             try:
                 import matplotlib.pylab as pltlab
                 if plt.show == pltlab.show:
                     pltlab.show = PatchedMatplotlib.patched_show
                 if plt.imshow == pltlab.imshow:
                     pltlab.imshow = PatchedMatplotlib.patched_imshow
-            except:
+            except Exception:
                 pass
             plt.show = PatchedMatplotlib.patched_show
             figure.Figure.show = PatchedMatplotlib.patched_figure_show
@@ -293,37 +294,42 @@ class PatchedMatplotlib:
 
                         x_ticks = list(plotly_renderer.current_mpl_ax.get_xticklabels())
                         if x_ticks:
+                            # noinspection PyBroadException
                             try:
                                 # check if all values can be cast to float
-                                values = [float(t.get_text().replace('−', '-')) for t in x_ticks]
-                            except:
+                                [float(t.get_text().replace('−', '-')) for t in x_ticks]
+                            except Exception:
+                                # noinspection PyBroadException
                                 try:
                                     plotly_renderer.plotly_fig['layout']['xaxis1'].update({
                                         'ticktext': [t.get_text() for t in x_ticks],
                                         'tickvals': [t.get_position()[0] for t in x_ticks],
                                     })
-                                except:
+                                except Exception:
                                     pass
                         y_ticks = list(plotly_renderer.current_mpl_ax.get_yticklabels())
                         if y_ticks:
+                            # noinspection PyBroadException
                             try:
                                 # check if all values can be cast to float
-                                values = [float(t.get_text().replace('−', '-')) for t in y_ticks]
-                            except:
+                                _ = [float(t.get_text().replace('−', '-')) for t in y_ticks]
+                            except Exception:
+                                # noinspection PyBroadException
                                 try:
                                     plotly_renderer.plotly_fig['layout']['yaxis1'].update({
                                         'ticktext': [t.get_text() for t in y_ticks],
                                         'tickvals': [t.get_position()[1] for t in y_ticks],
                                     })
-                                except:
+                                except Exception:
                                     pass
                         return deepcopy(plotly_renderer.plotly_fig)
 
                     plotly_fig = our_mpl_to_plotly(mpl_fig)
+                    # noinspection PyBroadException
                     try:
                         if 'none' in templates:
                             plotly_fig._layout_obj.template = templates['none']
-                    except:
+                    except Exception:
                         pass
                 except Exception as ex:
                     # this was an image, change format to png

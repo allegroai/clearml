@@ -516,7 +516,7 @@ class Task(_Task):
 
     @classmethod
     def create(cls, project_name=None, task_name=None, task_type=TaskTypes.training):
-        # type: (Optional[str], Optional[str], TaskTypes) -> Task
+        # type: (Optional[str], Optional[str], Task.TaskTypes) -> Task
         """
         Create a new, non-reproducible Task (experiment). This is called a sub-task.
 

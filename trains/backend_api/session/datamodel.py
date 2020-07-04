@@ -2,7 +2,6 @@ import keyword
 
 import enum
 import json
-import warnings
 from datetime import datetime
 
 import jsonschema
@@ -34,7 +33,7 @@ def schema_property(name):
 # Support both jsonschema >= 3.0.0 and <= 2.6.0
 _CustomValidator = None
 try:
-    from jsonschema import TypeChecker, Draft7Validator
+    from jsonschema import TypeChecker, Draft7Validator  # noqa: F401
 
     def _is_array(checker, instance):
         return isinstance(instance, (list, tuple))

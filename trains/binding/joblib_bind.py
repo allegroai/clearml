@@ -51,7 +51,7 @@ class PatchedJoblib(object):
             if not PatchedJoblib._patched_sk_joblib and 'sklearn' in sys.modules:
                 PatchedJoblib._patched_sk_joblib = True
                 try:
-                    import sklearn
+                    import sklearn  # noqa: F401
                     # avoid deprecation warning, we must import sklearn before, so we could catch it
                     with warnings.catch_warnings():
                         warnings.simplefilter("ignore")
@@ -165,6 +165,7 @@ class PatchedJoblib(object):
     @staticmethod
     def get_model_framework(obj):
         framework = Framework.scikitlearn
+        # noinspection PyBroadException
         try:
             object_orig_module = obj.__module__ if hasattr(obj, '__module__') else obj.__package__
             model = object_orig_module.partition(".")[0]
@@ -174,7 +175,7 @@ class PatchedJoblib(object):
                 framework = Framework.xgboost
             else:
                 framework = Framework.scikitlearn
-        except Exception as _:
+        except Exception:
             LoggerRoot.get_base_logger().debug(
                 "Can't get model framework {}, model framework will be: {} ".format(object_orig_module, framework))
         finally:

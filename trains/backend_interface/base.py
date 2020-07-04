@@ -12,7 +12,6 @@ from ..backend_api.session.defs import ENV_ACCESS_KEY, ENV_SECRET_KEY
 from ..config import config_obj
 from ..config.defs import LOG_LEVEL_ENV_VAR
 from ..debugging import get_logger
-from ..version import __version__
 from .session import SendError, SessionInterface
 
 

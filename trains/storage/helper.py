@@ -546,9 +546,10 @@ class StorageHelper(object):
             except Exception as ex:
                 last_ex = ex
                 # seek to beginning if possible
+                # noinspection PyBroadException
                 try:
                     stream.seek(0)
-                except:
+                except Exception:
                     pass
         if last_ex:
             raise last_ex
@@ -720,15 +721,16 @@ class StorageHelper(object):
                 self._log.info(
                     'Downloaded %.2f MB successfully from %s , saved to %s' % (dl_total_mb, remote_path, local_path))
             return local_path
-        except DownloadError as e:
+        except DownloadError:
             raise
         except Exception as e:
             self._log.error("Could not download {} , err: {} ".format(remote_path, e))
             if delete_on_failure:
+                # noinspection PyBroadException
                 try:
                     if temp_local_path:
                         os.remove(temp_local_path)
-                except:
+                except Exception:
                     pass
             return None
 
@@ -737,7 +739,7 @@ class StorageHelper(object):
         try:
             obj = self._get_object(remote_path)
             return self._driver.download_object_as_stream(obj, chunk_size=chunk_size)
-        except DownloadError as e:
+        except DownloadError:
             raise
         except Exception as e:
             self._log.error("Could not download file : %s, err:%s " % (remote_path, str(e)))
@@ -951,7 +953,7 @@ class StorageHelper(object):
         try:
             return self._driver.get_object(
                 container_name=self._container.name if self._container else '', object_name=object_name)
-        except ConnectionError as ex:
+        except ConnectionError:
             raise DownloadError
         except Exception as e:
             self.log.warning('Storage helper problem for {}: {}'.format(str(object_name), str(e)))
@@ -967,10 +969,11 @@ class StorageHelper(object):
         if StorageHelper._upload_pool:
             pool = StorageHelper._upload_pool
             StorageHelper._upload_pool = None
+            # noinspection PyBroadException
             try:
                 pool.terminate()
                 pool.join()
-            except:
+            except Exception:
                 pass
 
 
@@ -1198,7 +1201,7 @@ class _Boto3Driver(_Driver):
             try:
                 import boto3
                 import botocore.client
-                from botocore.exceptions import ClientError
+                from botocore.exceptions import ClientError  # noqa: F401
             except ImportError:
                 raise UsageError(
                     'AWS S3 storage driver (boto3) not found. '
@@ -1553,7 +1556,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
     class _Container(object):
         def __init__(self, name, config):
             try:
-                from azure.common import AzureHttpError
+                from azure.common import AzureHttpError  # noqa: F401
                 from azure.storage.blob import BlockBlobService
             except ImportError:
                 raise UsageError(
@@ -1584,7 +1587,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
     def upload_object_via_stream(self, iterator, container, object_name, extra=None, **kwargs):
         from azure.common import AzureHttpError
 
-        blob_name = self._blob_name_from_object_path(object_name, container.name)
+        blob_name = self._blob_name_from_object_path(object_name, container.name)  # noqa: F841
         try:
             container.blob_service.MAX_SINGLE_PUT_SIZE = 16 * 1024 * 1024
             container.blob_service.socket_timeout = (300, 2000)
@@ -1970,7 +1973,7 @@ class _FileStorageDriver(_Driver):
         base_name = os.path.basename(destination_path)
 
         if not base_name and not os.path.exists(destination_path):
-            raise ValueError('Path \"%s\" does not exist'.format(destination_path))
+            raise ValueError('Path \"{}\" does not exist'.format(destination_path))
 
         if not base_name:
             file_path = os.path.join(destination_path, obj.name)
@@ -1984,6 +1987,7 @@ class _FileStorageDriver(_Driver):
             shutil.copy(obj_path, file_path)
         except IOError:
             if delete_on_failure:
+                # noinspection PyBroadException
                 try:
                     os.unlink(file_path)
                 except Exception:
@@ -2162,10 +2166,11 @@ class _FileStorageDriver(_Driver):
 
         # Check if there are any objects inside this
         for obj in self._get_objects(container):
-            raise ValueError('Container \"%s\" is not empty'.format(container.name))
+            raise ValueError('Container \"{}\" is not empty'.format(container.name))
 
         path = self.get_container_cdn_url(container, check=True)
 
+        # noinspection PyBroadException
         try:
             shutil.rmtree(path)
         except Exception:

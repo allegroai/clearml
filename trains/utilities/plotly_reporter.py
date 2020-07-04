@@ -147,7 +147,7 @@ def create_2d_scatter_series(np_row_wise, title="Scatter", series_name="Series",
     :param layout_config: optional dictionary for layout configuration, passed directly to plotly
     :return: Plotly chart dict.
     """
-    plotly_obj = _plotly_scatter_layout_dict(title=title, xaxis_title=xtitle, yaxis_title=ytitle, comment=comment)
+    plotly_obj = _plotly_scatter_layout_dict(title=title, xaxis_title=xtitle, yaxis_title=ytitle, comment=comment)  # noqa: F841
     assert np_row_wise.ndim == 2, "Expected a 2D numpy array"
     assert np_row_wise.shape[1] == 2, "Expected two columns X/Y e.g. [(x0,y0), (x1,y1) ...]"
 

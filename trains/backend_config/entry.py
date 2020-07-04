@@ -70,9 +70,10 @@ class Entry(object):
             value = self._get(key)
             if value is NotSet:
                 continue
+            # noinspection PyBroadException
             try:
                 value = self.convert(value, converter)
-            except Exception as ex:
+            except Exception as ex:  # noqa: F841
                 self.error("invalid value {key}={value}: {ex}".format(**locals()))
                 break
             return key, value

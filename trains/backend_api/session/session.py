@@ -12,7 +12,7 @@ from six.moves.urllib.parse import urlparse, urlunparse
 
 from .callresult import CallResult
 from .defs import ENV_VERBOSE, ENV_HOST, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_WEB_HOST, ENV_FILES_HOST
-from .request import Request, BatchRequest
+from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
 from ..config import load
 from ..utils import get_http_session_with_retry, urllib_log_warning_setup
@@ -526,8 +526,9 @@ class Session(TokenManager):
 
         # If no session was created, create a default one, in order to get the backend api version.
         if cls._sessions_created <= 0:
+            # noinspection PyBroadException
             try:
-                dummy = cls()
+                cls()
             except Exception:
                 pass
 

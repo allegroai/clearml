@@ -5,13 +5,8 @@ This service provides authentication management and authorization
 validation for the entire system.
 """
 import six
-import types
-from datetime import datetime
-import enum
 
-from dateutil.parser import parse as parse_datetime
-
-from ....backend_api.session import Request, BatchRequest, Response, DataModel, NonStrictDataModel, CompoundRequest, schema_property, StringEnum
+from ....backend_api.session import NonStrictDataModel, Request, Response, schema_property
 
 
 class Credentials(NonStrictDataModel):
@@ -34,6 +29,7 @@ class Credentials(NonStrictDataModel):
         },
         'type': 'object',
     }
+
     def __init__(
             self, access_key=None, secret_key=None, **kwargs):
         super(Credentials, self).__init__(**kwargs)
@@ -49,7 +45,7 @@ class Credentials(NonStrictDataModel):
         if value is None:
             self._property_access_key = None
             return
-        
+
         self.assert_isinstance(value, "access_key", six.string_types)
         self._property_access_key = value
 
@@ -62,7 +58,7 @@ class Credentials(NonStrictDataModel):
         if value is None:
             self._property_secret_key = None
             return
-        
+
         self.assert_isinstance(value, "secret_key", six.string_types)
         self._property_secret_key = value
 
@@ -73,6 +69,7 @@ class CredentialKey(NonStrictDataModel):
     :type access_key: str
     """
     _schema = {'properties': {'access_key': {'description': '', 'type': ['string', 'null']}}, 'type': 'object'}
+
     def __init__(
             self, access_key=None, **kwargs):
         super(CredentialKey, self).__init__(**kwargs)
@@ -87,11 +84,9 @@ class CredentialKey(NonStrictDataModel):
         if value is None:
             self._property_access_key = None
             return
-        
+
         self.assert_isinstance(value, "access_key", six.string_types)
         self._property_access_key = value
-
-
 
 
 class CreateCredentialsRequest(Request):
@@ -150,6 +145,7 @@ class CreateCredentialsResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, credentials=None, **kwargs):
         super(CreateCredentialsResponse, self).__init__(**kwargs)
@@ -188,6 +184,7 @@ class DeleteUserRequest(Request):
         'required': ['user'],
         'type': 'object',
     }
+
     def __init__(
             self, user, **kwargs):
         super(DeleteUserRequest, self).__init__(**kwargs)
@@ -202,7 +199,7 @@ class DeleteUserRequest(Request):
         if value is None:
             self._property_user = None
             return
-        
+
         self.assert_isinstance(value, "user", six.string_types)
         self._property_user = value
 
@@ -228,6 +225,7 @@ class DeleteUserResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, deleted=None, **kwargs):
         super(DeleteUserResponse, self).__init__(**kwargs)
@@ -242,7 +240,7 @@ class DeleteUserResponse(Response):
         if value is None:
             self._property_deleted = None
             return
-        
+
         self.assert_isinstance(value, "deleted", (bool,))
         self._property_deleted = value
 
@@ -272,6 +270,7 @@ class EditUserRequest(Request):
         },
         'type': 'object',
     }
+
     def __init__(
             self, user=None, role=None, **kwargs):
         super(EditUserRequest, self).__init__(**kwargs)
@@ -287,7 +286,7 @@ class EditUserRequest(Request):
         if value is None:
             self._property_user = None
             return
-        
+
         self.assert_isinstance(value, "user", six.string_types)
         self._property_user = value
 
@@ -300,7 +299,7 @@ class EditUserRequest(Request):
         if value is None:
             self._property_role = None
             return
-        
+
         self.assert_isinstance(value, "role", six.string_types)
         self._property_role = value
 
@@ -334,6 +333,7 @@ class EditUserResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, updated=None, fields=None, **kwargs):
         super(EditUserResponse, self).__init__(**kwargs)
@@ -349,7 +349,7 @@ class EditUserResponse(Response):
         if value is None:
             self._property_updated = None
             return
-        
+
         self.assert_isinstance(value, "updated", six.integer_types + (float,))
         self._property_updated = value
 
@@ -362,7 +362,7 @@ class EditUserResponse(Response):
         if value is None:
             self._property_fields = None
             return
-        
+
         self.assert_isinstance(value, "fields", (dict,))
         self._property_fields = value
 
@@ -414,6 +414,7 @@ class GetCredentialsResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, credentials=None, **kwargs):
         super(GetCredentialsResponse, self).__init__(**kwargs)
@@ -428,15 +429,13 @@ class GetCredentialsResponse(Response):
         if value is None:
             self._property_credentials = None
             return
-        
+
         self.assert_isinstance(value, "credentials", (list, tuple))
         if any(isinstance(v, dict) for v in value):
             value = [CredentialKey.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "credentials", CredentialKey, is_array=True)
         self._property_credentials = value
-
-
 
 
 class LoginRequest(Request):
@@ -464,6 +463,7 @@ class LoginRequest(Request):
         },
         'type': 'object',
     }
+
     def __init__(
             self, expiration_sec=None, **kwargs):
         super(LoginRequest, self).__init__(**kwargs)
@@ -503,6 +503,7 @@ class LoginResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, token=None, **kwargs):
         super(LoginResponse, self).__init__(**kwargs)
@@ -517,11 +518,9 @@ class LoginResponse(Response):
         if value is None:
             self._property_token = None
             return
-        
+
         self.assert_isinstance(value, "token", six.string_types)
         self._property_token = value
-
-
 
 
 class RevokeCredentialsRequest(Request):
@@ -547,6 +546,7 @@ class RevokeCredentialsRequest(Request):
         'required': ['key_id'],
         'type': 'object',
     }
+
     def __init__(
             self, access_key=None, **kwargs):
         super(RevokeCredentialsRequest, self).__init__(**kwargs)
@@ -561,7 +561,7 @@ class RevokeCredentialsRequest(Request):
         if value is None:
             self._property_access_key = None
             return
-        
+
         self.assert_isinstance(value, "access_key", six.string_types)
         self._property_access_key = value
 
@@ -588,6 +588,7 @@ class RevokeCredentialsResponse(Response):
         },
         'type': 'object',
     }
+
     def __init__(
             self, revoked=None, **kwargs):
         super(RevokeCredentialsResponse, self).__init__(**kwargs)
@@ -607,8 +608,6 @@ class RevokeCredentialsResponse(Response):
 
         self.assert_isinstance(value, "revoked", six.integer_types)
         self._property_revoked = value
-
-
 
 
 response_mapping = {

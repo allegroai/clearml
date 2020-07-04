@@ -910,7 +910,7 @@ class Logger(object):
             title,  # type: str
             series,  # type: str
             iteration,  # type: int
-            figure,  # type: Union[Dict, "Figure"]
+            figure,  # type: Union[Dict, "Figure"]  # noqa: F821
     ):
         """
         Report a ``Plotly`` figure (plot) directly
@@ -1029,7 +1029,7 @@ class Logger(object):
             series,  # type: str
             iteration,  # type: int
             path=None,  # type: Optional[str]
-            matrix=None,  # type: # type: Optional[Union[np.ndarray, Image.Image]]
+            matrix=None,  # type: Optional[Union[np.ndarray, Image.Image]]
             max_image_history=None,  # type: Optional[int]
             delete_after_upload=False  # type: bool
     ):

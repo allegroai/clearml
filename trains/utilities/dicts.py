@@ -86,9 +86,10 @@ class NestedBlobsDict(BlobsDict):
         return dict(self)
 
     def get(self, keys_str, default=None):
+        # noinspection PyBroadException
         try:
             return self[keys_str]
-        except:
+        except Exception:
             return None
 
     def _keys(self, cur_dict, path):

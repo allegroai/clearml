@@ -39,7 +39,7 @@ class _RetryFilter(logging.Filter):
         if record.args and len(record.args) > 0 and isinstance(record.args[0], Retry):
             left = (record.args[0].total, record.args[0].connect, record.args[0].read,
                     record.args[0].redirect, record.args[0].status)
-            left = [l for l in left if isinstance(l, int)]
+            left = [is_int for is_int in left if isinstance(is_int, int)]
             if left:
                 retry_left = max(left) - min(left)
                 return retry_left >= self.display_warning_after
@@ -48,8 +48,8 @@ class _RetryFilter(logging.Filter):
 
 
 def urllib_log_warning_setup(total_retries=10, display_warning_after=5):
-    for l in ('urllib3.connectionpool', 'requests.packages.urllib3.connectionpool'):
-        urllib3_log = logging.getLogger(l)
+    for conn in ('urllib3.connectionpool', 'requests.packages.urllib3.connectionpool'):
+        urllib3_log = logging.getLogger(conn)
         if urllib3_log:
             urllib3_log.removeFilter(_RetryFilter.last_instance)
             urllib3_log.addFilter(_RetryFilter(total_retries, display_warning_after))

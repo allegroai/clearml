@@ -2,7 +2,7 @@ from trains import Task
 from time import sleep
 
 # Initialize the Task Pipe's first Task used to start the Task Pipe
-task = Task.init('examples', 'Simple Controller Task')
+task = Task.init('examples', 'Simple Controller Task', task_type=Task.TaskTypes.controller)
 
 # Create a hyper-parameter dictionary for the task
 param = dict()

@@ -3,7 +3,7 @@ from random import sample
 from trains import Task
 
 # Connecting TRAINS
-task = Task.init(project_name='examples', task_name='Random Hyper-Parameter Search Example')
+task = Task.init(project_name='examples', task_name='Random Hyper-Parameter Search Example', task_type=Task.TaskTypes.optimizer)
 
 # Create a hyper-parameter dictionary for the task
 params = dict()

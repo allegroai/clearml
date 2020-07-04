@@ -14,7 +14,7 @@ from trains import Task
 os.environ["TRAINS_DOCKER_IMAGE"] = "nvidia/cuda --network host"
 
 # initialize TRAINS
-task = Task.init(project_name="examples", task_name="Remote Jupyter NoteBook")
+task = Task.init(project_name="examples", task_name="Remote Jupyter NoteBook", task_type=Task.TaskTypes.service)
 
 # get rid of all the runtime TRAINS
 preserve = (

@@ -161,6 +161,9 @@ class Artifact(object):
         elif self.type == 'JSON':
             with open(local_file, 'rt') as f:
                 self._object = json.load(f)
+        elif self.type == 'string':
+            with open(local_file, 'rt') as f:
+                self._object = f.read()
         elif self.type == 'pickle':
             with open(local_file, 'rb') as f:
                 self._object = pickle.load(f)
@@ -316,10 +319,18 @@ class Artifacts(object):
                 artifact_path = Path(artifact_object)
                 if artifact_path.exists():
                     artifact_object = artifact_path
+                elif '*' in artifact_object or '?' in artifact_object:
+                    # hackish, detect wildcard in tr files
+                    folder = Path('').joinpath(*artifact_path.parts[:-1])
+                    if folder.is_dir() and folder.parts:
+                        wildcard = artifact_path.parts[-1]
+                        if list(Path(folder).rglob(wildcard)):
+                            artifact_object = artifact_path
             except Exception:
                 pass
 
         artifact_type_data = tasks.ArtifactTypeData()
+        artifact_type_data.preview = ''
         override_filename_in_uri = None
         override_filename_ext_in_uri = None
         uri = None
@@ -367,7 +378,7 @@ class Artifacts(object):
                 artifact_type_data.preview = preview
             else:
                 artifact_type_data.preview = '# full json too large to store, storing first {}kb\n{}'.format(
-                    len(preview)//1024, preview[:self.max_preview_size_bytes]
+                    self.max_preview_size_bytes//1024, preview[:self.max_preview_size_bytes]
                 )
 
             delete_after_upload = True
@@ -428,6 +439,8 @@ class Artifacts(object):
                     raise ValueError("Artifact file '{}' could not be found".format(artifact_object.as_posix()))
 
                 override_filename_in_uri = artifact_object.parts[-1]
+                artifact_type_data.preview = '{} - {}\n'.format(
+                    artifact_object, humanfriendly.format_size(artifact_object.stat().st_size))
                 artifact_object = artifact_object.as_posix()
                 artifact_type = 'custom'
                 artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
@@ -441,11 +454,38 @@ class Artifacts(object):
             uri = artifact_object
             artifact_type = 'custom'
             artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
+        elif isinstance(artifact_object, six.string_types):
+            # if we got here, we should store it as text file.
+            artifact_type = 'string'
+            artifact_type_data.content_type = 'text/plain'
+            if len(artifact_object) < self.max_preview_size_bytes:
+                artifact_type_data.preview = artifact_object
+            else:
+                artifact_type_data.preview = '# full text too large to store, storing first {}kb\n{}'.format(
+                    self.max_preview_size_bytes//1024, artifact_object[:self.max_preview_size_bytes]
+                )
+            delete_after_upload = True
+            override_filename_ext_in_uri = '.txt'
+            override_filename_in_uri = name + override_filename_ext_in_uri
+            fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
+            os.close(fd)
+            # noinspection PyBroadException
+            try:
+                with open(local_filename, 'wt') as f:
+                    f.write(artifact_object)
+            except Exception as ex:
+                # cleanup and raise exception
+                os.unlink(local_filename)
+                raise
         elif auto_pickle:
             # if we are here it means we do not know what to do with the object, so we serialize it with pickle.
             artifact_type = 'pickle'
             artifact_type_data.content_type = 'application/pickle'
-            artifact_type_data.preview = str(artifact_object.__repr__())[:self.max_preview_size_bytes]
+            # noinspection PyBroadException
+            try:
+                artifact_type_data.preview = str(artifact_object.__repr__())[:self.max_preview_size_bytes]
+            except Exception:
+                artifact_type_data.preview = ''
             delete_after_upload = True
             override_filename_ext_in_uri = '.pkl'
             override_filename_in_uri = name + override_filename_ext_in_uri
@@ -455,7 +495,7 @@ class Artifacts(object):
             try:
                 with open(local_filename, 'wb') as f:
                     pickle.dump(artifact_object, f)
-            except Exception:
+            except Exception as ex:
                 # cleanup and raise exception
                 os.unlink(local_filename)
                 raise

@@ -592,6 +592,7 @@ class ScriptInfo(object):
         script_dir = scripts_dir[0]
         script_path = scripts_path[0]
         messages = []
+        auxiliary_git_diff = None
 
         if not plugin:
             log.info("No repository found, storing script code instead")
@@ -625,7 +626,10 @@ class ScriptInfo(object):
                 messages.append(
                     "======> WARNING! Git diff to large to store "
                     "({}kb), skipping uncommitted changes <======".format(len(diff)//1024))
-                diff = ''
+                auxiliary_git_diff = diff
+                diff = '# WARNING! git diff too large to store, clear this section to execute without it.\n' \
+                       '# full git diff available in Artifacts/auxiliary_git_diff\n' \
+                       '# Clear the section before enqueueing Task!\n'
 
         else:
             diff = ''
@@ -665,7 +669,7 @@ class ScriptInfo(object):
         if not any(script_info.values()):
             script_info = None
 
-        return (ScriptInfoResult(script=script_info, warning_messages=messages),
+        return (ScriptInfoResult(script=script_info, warning_messages=messages, auxiliary_git_diff=auxiliary_git_diff),
                 script_requirements)
 
     @classmethod
@@ -724,6 +728,7 @@ class ScriptInfo(object):
 class ScriptInfoResult(object):
     script = attr.ib(default=None)
     warning_messages = attr.ib(factory=list)
+    auxiliary_git_diff = attr.ib(default=None)
 
 
 class _JupyterHistoryLogger(object):

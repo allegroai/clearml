@@ -21,6 +21,7 @@ from collections import OrderedDict
 from six.moves.urllib.parse import quote
 
 from ...utilities.locks import RLock as FileRLock
+from ...binding.artifacts import Artifacts
 from ...backend_interface.task.development.worker import DevWorker
 from ...backend_api import Session
 from ...backend_api.services import tasks, models, events, projects
@@ -154,6 +155,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             log_to_backend = False
         self._log_to_backend = log_to_backend
         self._setup_log(default_log_to_backend=log_to_backend)
+        self._artifacts_manager = Artifacts(self)
 
     def _setup_log(self, default_log_to_backend=None, replace_existing=False):
         """
@@ -263,6 +265,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             )
             for msg in result.warning_messages:
                 self.get_logger().report_text(msg)
+
+            # if the git is too large to store on the task, we must store it as artifact:
+            if result.auxiliary_git_diff:
+                self._artifacts_manager.upload_artifact(
+                    name='auxiliary_git_diff', artifact_object=result.auxiliary_git_diff)
 
             # store original entry point
             entry_point = result.script.get('entry_point') if result.script else None

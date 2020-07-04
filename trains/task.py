@@ -152,7 +152,6 @@ class Task(_Task):
         self._connected_parameter_type = None
         self._detect_repo_async_thread = None
         self._resource_monitor = None
-        self._artifacts_manager = Artifacts(self)
         self._calling_filename = None
         # register atexit, so that we mark the task as stopped
         self._at_exit_called = False

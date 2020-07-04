@@ -192,7 +192,8 @@ class UploadEvent(MetricsEventAdapter):
                  file_history_size=None, delete_after_upload=False, **kwargs):
         # param override_filename: override uploaded file name (notice extension will be added from local path
         # param override_filename_ext: override uploaded file extension
-        if image_data is not None and (not hasattr(image_data, 'shape') and not isinstance(image_data, six.BytesIO)):
+        if image_data is not None and (
+                not hasattr(image_data, 'shape') and not isinstance(image_data, (six.StringIO, six.BytesIO))):
             raise ValueError('Image must have a shape attribute')
         self._image_data = image_data
         self._local_image_path = local_image_path
@@ -263,7 +264,7 @@ class UploadEvent(MetricsEventAdapter):
         last_count = self._get_metric_count(self.metric, self.variant, next=False)
         if abs(self._count - last_count) > self._file_history_size:
             output = None
-        elif isinstance(self._image_data, six.BytesIO):
+        elif isinstance(self._image_data, (six.StringIO, six.BytesIO)):
             output = self._image_data
         elif self._image_data is not None:
             image_data = self._image_data

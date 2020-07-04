@@ -828,7 +828,7 @@ class Logger(object):
             series,  # type: str
             iteration,  # type: int
             local_path=None,  # type: Optional[str]
-            stream=None,  # type: Optional[six.BytesIO]
+            stream=None,  # type: Optional[Union[six.BytesIO, six.StringIO]]
             file_extension=None,  # type: Optional[str]
             max_history=None,  # type: Optional[int]
             delete_after_upload=False,  # type: bool

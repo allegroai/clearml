@@ -277,7 +277,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type iter: int
         :param path: A path to an image file. Required unless matrix is provided.
         :type path: str
-        :param stream: File stream
+        :param stream: File/String stream
         :param file_extension: file extension to use when stream is passed
         :param max_history: maximum number of files to store per metric/variant combination
         use negative value for unlimited. default is set in global configuration (default=5)
@@ -288,6 +288,9 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             raise ValueError('Upload configuration is required (use setup_upload())')
         if len([x for x in (path, stream) if x is not None]) != 1:
             raise ValueError('Expected only one of [filename, stream]')
+        if isinstance(stream, six.string_types):
+            stream = six.StringIO(stream)
+
         kwargs = dict(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter,
                       file_history_size=max_history)
         ev = MediaEvent(stream=stream, upload_uri=upload_uri, local_image_path=path,

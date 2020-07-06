@@ -307,7 +307,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             get_logger('task').debug(str(e))
 
     def _auto_generate(self, project_name=None, task_name=None, task_type=TaskTypes.training):
-        created_msg = make_message('Auto-generated at %(time)s by %(user)s@%(host)s')
+        created_msg = make_message('Auto-generated at %(time)s UTC by %(user)s@%(host)s')
 
         if task_type.value not in (self.TaskTypes.training, self.TaskTypes.testing) and \
                 not Session.check_min_api_version('2.8'):

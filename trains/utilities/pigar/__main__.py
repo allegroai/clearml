@@ -77,6 +77,8 @@ class GenerateReqs(object):
             logger.info('Checking module: %s', name)
             if name in self._installed_pkgs:
                 pkg_name, version = self._installed_pkgs[name]
+                if name not in modules:
+                    modules.add(name, name, 0)
                 reqs.add(pkg_name, version, modules[name])
             elif name in modules:
                 guess.add(name, 0, modules[name])

@@ -1399,6 +1399,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         task = get_single_result(entity='task', query=task_name, results=res.response.tasks)
         return cls(task_id=task.id)
 
+    @classmethod
+    def _get_project_name(cls, project_id):
+        res = cls._send(cls._get_default_session(), projects.GetByIdRequest(project=project_id), raise_on_errors=False)
+        if not res or not res.response or not res.response.project:
+            return None
+        return res.response.project.name
+
     def _get_all_events(self, max_events=100):
         # type: (int) -> Any
         """

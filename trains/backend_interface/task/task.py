@@ -8,7 +8,7 @@ from enum import Enum
 from tempfile import gettempdir
 from multiprocessing import RLock
 from threading import Thread
-from typing import Optional, Any, Sequence, Callable, Mapping, Union
+from typing import Optional, Any, Sequence, Callable, Mapping, Union, List
 
 try:
     # noinspection PyCompatibility
@@ -1143,6 +1143,21 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         lines = [r.get('msg', '') for r in response.response_data['events']]
         return lines
+
+    @classmethod
+    def get_projects(cls):
+        # type: () -> (List['projects.Project'])
+        """
+        Return a list of projects in the system, sorted by last updated time
+
+        :return: A list of all the projects in the system. Each entry is a `services.projects.Project` object.
+        """
+        res = cls._send(
+            cls._get_default_session(),
+            projects.GetAllRequest(order_by=['last_update']), raise_on_errors=True)
+        if res and res.response and res.response.projects:
+            return [projects.Project(**p.to_dict()) for p in res.response.projects]
+        return []
 
     @staticmethod
     def running_locally():

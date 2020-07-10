@@ -1524,6 +1524,7 @@ class Task(_Task):
         export_data.pop('status_message', None)
         export_data.get('execution', {}).pop('artifacts', None)
         export_data.get('execution', {}).pop('model', None)
+        export_data['project_name'] = self.get_project_name()
         return export_data
 
     def update_task(self, task_data):
@@ -1550,7 +1551,7 @@ class Task(_Task):
         :return: return True if Task was imported/updated
         """
         if not target_task:
-            project_name = Task._get_project_name(task_data.get('project', ''))
+            project_name = task_data.get('project_name') or Task._get_project_name(task_data.get('project', ''))
             target_task = Task.create(project_name=project_name, task_name=task_data.get('name', None))
         elif isinstance(target_task, six.string_types):
             target_task = Task.get_task(task_id=target_task)
@@ -1562,6 +1563,7 @@ class Task(_Task):
         cur_data = target_task.data.to_dict()
         cur_data = merge_dicts(cur_data, task_data) if update else task_data
         cur_data.pop('id', None)
+        cur_data.pop('project', None)
         # noinspection PyProtectedMember
         valid_fields = list(tasks.EditRequest._get_data_props().keys())
         cur_data = dict((k, cur_data[k]) for k in valid_fields if k in cur_data)

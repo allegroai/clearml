@@ -7,6 +7,7 @@ import time
 from argparse import ArgumentParser
 from tempfile import mkstemp
 
+
 try:
     # noinspection PyCompatibility
     from collections.abc import Callable, Sequence as CollectionsSequence
@@ -30,6 +31,7 @@ from .backend_interface.util import get_single_result, exact_match_regex, make_m
 from .binding.absl_bind import PatchAbsl
 from .binding.artifacts import Artifacts, Artifact
 from .binding.environ_bind import EnvironmentBind, PatchOsFork
+from .binding.frameworks.fastai_bind import PatchFastai
 from .binding.frameworks.pytorch_bind import PatchPyTorchModelIO
 from .binding.frameworks.tensorflow_bind import TensorflowBinding
 from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
@@ -469,6 +471,8 @@ class Task(_Task):
                     PatchPyTorchModelIO.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('xgboost', True):
                     PatchXGBoostModelIO.update_current_task(task)
+                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('fastai', True):
+                    PatchFastai.update_current_task(task)
             if auto_resource_monitoring and not is_sub_process_task_id:
                 task._resource_monitor = ResourceMonitor(
                     task, report_mem_used_per_process=not config.get(

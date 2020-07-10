@@ -13,7 +13,7 @@ except ValueError:
         'we will be using RandomSearch strategy instead\n'
         'If you like to try ' '{{BOHB}: Robust and Efficient Hyperparameter Optimization at Scale},\n'
         'run: pip install hpbandster')
-Our_SearchStrategy = RandomSearch
+    Our_SearchStrategy = RandomSearch
 
 
 def job_complete_callback(

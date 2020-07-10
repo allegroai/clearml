@@ -30,7 +30,7 @@ Additionally, the **TRAINS** Logger module provides methods that allow you to do
 
 Use to report scalar metrics by iteration as a line plot.
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/scalar_reporting.py)) with the following method.
 
 **Method**:
 
@@ -101,7 +101,7 @@ def report_scalar(self, title, series, value, iteration)
 
 Use to report any data by iteration as a histogram.
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
 
 **Method**:
 
@@ -199,7 +199,7 @@ def report_histogram(self, title, series, values, iteration, labels=None, xlabel
 
 Use to report any data by iteration as a single or multiple line plot.
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
 
 **Method**:
 
@@ -325,7 +325,7 @@ def report_line_plot(self, title, series, iteration, xaxis, yaxis, mode='lines',
 
 Use to report any vector data as a 2D scatter diagram.
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
 
 **Method**:
 
@@ -461,7 +461,7 @@ def report_scatter2d(self, title, series, scatter, iteration, xaxis=None, yaxis=
 
 Use to report any array data as a 3D scatter diagram.
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/3d_plots_reporting.py)) with the following method.
 
 **Method**:
 
@@ -597,7 +597,7 @@ def report_scatter3d(self, title, series, scatter, iteration, labels=None, mode=
 
 Use to report a heat-map matrix as a confusion matrix. You can also plot a heat-map as a [surface diagram](#surface-diagrams).
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
 
 **Method**:
 
@@ -689,7 +689,7 @@ def report_confusion_matrix(self, title, series, matrix, iteration, xlabels=None
 
 Use to plot a heat-map matrix as a surface diagram. You can also plot a heat-map as a [confusion matrix](#confusion-matrices).
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/3d_plots_reporting.py)) with the following method.
 
 **Method**:
 
@@ -972,7 +972,7 @@ Use the methods in this section to log various types of messages. The method nam
 def debug(self, msg, *args, **kwargs)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:
 
@@ -1010,7 +1010,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 def info(self, msg, *args, **kwargs)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:
 
@@ -1048,7 +1048,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 def warn(self, msg, *args, **kwargs)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:<a name="log_arguments"></a>
 
@@ -1087,7 +1087,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 def error(self, msg, *args, **kwargs)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:
 
@@ -1125,7 +1125,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 def critical(self, msg, *args, **kwargs)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:
     
@@ -1163,7 +1163,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 def fatal(self, msg, *args, **kwargs)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:
 
@@ -1201,7 +1201,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 def console(self, msg, level=logging.INFO, omit_console=False, *args, **kwargs)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:
 
@@ -1279,7 +1279,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 def report_text(self, msg, level=logging.INFO, print_console=False, *args, **_)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:
 

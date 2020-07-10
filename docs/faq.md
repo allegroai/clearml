@@ -182,7 +182,7 @@ This issue was resolved in v0.9.2. Upgrade TRAINS:
 
 ### When I run my experiment, I get an SSL Connection error [CERTIFICATE_VERIFY_FAILED]. Do you have a solution? <a name="ssl-connection-error"></a>
 
-Your firewall may be preventing the connection. Try one of the following solutons:
+Your firewall may be preventing the connection. Try one of the following solutions:
 
 * Direct python "requests" to use the enterprise certificate file by setting the OS environment variables CURL_CA_BUNDLE or REQUESTS_CA_BUNDLE.
 

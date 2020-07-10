@@ -523,7 +523,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         )
 
     def report_value_matrix(self, title, series, data, iter, xtitle=None, ytitle=None, xlabels=None, ylabels=None,
-                            comment=None, layout_config=None):
+                            yaxis_reversed=False, comment=None, layout_config=None):
         """
         Report a heat-map matrix
 
@@ -539,6 +539,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param str ytitle: optional y-axis title
         :param xlabels: optional label per column of the matrix
         :param ylabels: optional label per row of the matrix
+        :param bool yaxis_reversed: If False 0,0 is at the bottom left corner. If True 0,0 is at the Top left corner
         :param comment: comment underneath the title
         :param layout_config: optional dictionary for layout configuration, passed directly to plotly
         :type layout_config: dict or None
@@ -553,6 +554,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             comment=comment,
             xtitle=xtitle,
             ytitle=ytitle,
+            yaxis_reversed=yaxis_reversed,
             layout_config=layout_config,
         )
 

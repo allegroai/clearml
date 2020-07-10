@@ -217,7 +217,7 @@ def create_3d_scatter_series(np_row_wise, title="Scatter", series_name="Series",
 
 
 def create_value_matrix(np_value_matrix, title="Heatmap Matrix", xlabels=None, ylabels=None, xtitle="X", ytitle="Y",
-                        custom_colors=True, series=None, comment=None, layout_config=None):
+                        custom_colors=True, series=None, comment=None, yaxis_reversed=False, layout_config=None):
     conf_matrix_plot = {
         "data": [
             {
@@ -240,6 +240,8 @@ def create_value_matrix(np_value_matrix, title="Heatmap Matrix", xlabels=None, y
             "name": series,
         }
     }
+    if yaxis_reversed:
+        conf_matrix_plot['layout']['yaxis']['autorange'] = "reversed"
 
     if custom_colors:
         scale, bar = _get_z_colorbar_data()

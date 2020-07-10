@@ -572,6 +572,7 @@ class Logger(object):
             yaxis=None,  # type: Optional[str]
             xlabels=None,  # type: Optional[List[str]]
             ylabels=None,  # type: Optional[List[str]]
+            yaxis_reversed=False,  # type: bool
             comment=None,  # type: Optional[str]
             extra_layout=None,  # type: Optional[dict]
     ):
@@ -594,6 +595,7 @@ class Logger(object):
         :param str yaxis: The y-axis title. (Optional)
         :param list(str) xlabels: Labels for each column of the matrix. (Optional)
         :param list(str) ylabels: Labels for each row of the matrix. (Optional)
+        :param bool yaxis_reversed: If False 0,0 is at the bottom left corner. If True 0,0 is at the Top left corner
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
@@ -614,6 +616,7 @@ class Logger(object):
             ytitle=yaxis,
             xlabels=xlabels,
             ylabels=ylabels,
+            yaxis_reversed=yaxis_reversed,
             comment=comment,
             layout_config=extra_layout,
         )
@@ -628,6 +631,7 @@ class Logger(object):
             yaxis=None,  # type: Optional[str]
             xlabels=None,  # type: Optional[List[str]]
             ylabels=None,  # type: Optional[List[str]]
+            yaxis_reversed=False,  # type: bool
             extra_layout=None,  # type: Optional[dict]
     ):
         """
@@ -644,12 +648,14 @@ class Logger(object):
         :param str yaxis: The y-axis title. (Optional)
         :param list(str) xlabels: Labels for each column of the matrix. (Optional)
         :param list(str) ylabels: Labels for each row of the matrix. (Optional)
+        :param bool yaxis_reversed: If False 0,0 is at the bottom left corner. If True 0,0 is at the Top left corner
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
         self._touch_title_series(title, series)
         return self.report_confusion_matrix(title, series, matrix, iteration,
                                             xaxis=xaxis, yaxis=yaxis, xlabels=xlabels, ylabels=ylabels,
+                                            yaxis_reversed=yaxis_reversed,
                                             extra_layout=extra_layout)
 
     def report_surface(

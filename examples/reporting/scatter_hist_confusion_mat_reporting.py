@@ -55,6 +55,17 @@ def report_plots(logger, iteration=0):
         yaxis="title Y",
     )
 
+    # report confusion matrix with 0,0 is at the top left
+    logger.report_matrix(
+        "example_confusion_0_0_at_top",
+        "ignored",
+        iteration=iteration,
+        matrix=confusion,
+        xaxis="title X",
+        yaxis="title Y",
+        yaxis_reversed=True,
+    )
+
     scatter2d = np.hstack(
         (np.atleast_2d(np.arange(0, 10)).T, np.random.randint(10, size=(10, 1)))
     )

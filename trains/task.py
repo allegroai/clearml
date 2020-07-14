@@ -1817,7 +1817,7 @@ class Task(_Task):
         # print warning, reusing/creating a task
         if default_task_id and not continue_last_task:
             logger.report_text('TRAINS Task: overwriting (reusing) task id=%s' % task.id)
-        if default_task_id and continue_last_task:
+        elif default_task_id and continue_last_task:
             logger.report_text('TRAINS Task: continuing previous task id=%s '
                                'Notice this run will not be reproducible!' % task.id)
         else:

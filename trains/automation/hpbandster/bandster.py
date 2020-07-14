@@ -164,7 +164,7 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         :param float time_limit_per_job: Optional, maximum execution time per single job in minutes,
             when time limit is exceeded job is aborted
         :param int local_port: default port 9090 tcp, this is a must for the BOHB workers to communicate, even locally.
-        :param bohb_kwargs: arguments passed directly yo the BOHB object
+        :param bohb_kwargs: arguments passed directly to the BOHB object
         """
         if not max_iteration_per_job or not min_iteration_per_job or not total_max_jobs:
             raise ValueError(
@@ -323,7 +323,8 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         """
         # After the optimizer run, we must shutdown the master and the nameserver.
         self._bohb.shutdown(shutdown_workers=True)
-        self._namespace.shutdown()
+        # no need to specifically shutdown the name server, hopefully pyro will do that
+        # self._namespace.shutdown()
 
         if not self._res:
             return

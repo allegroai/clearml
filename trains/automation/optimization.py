@@ -286,6 +286,7 @@ class SearchStrategy(object):
             self.max_iteration_per_job and self.total_max_jobs else None
         )
         self._validate_base_task()
+        self._optimizer_task = None
 
     def start(self):
         # type: () -> ()
@@ -521,6 +522,16 @@ class SearchStrategy(object):
 
         """
         self._naming_function = naming_function
+
+    def set_optimizer_task(self, task):
+        # type: (Task) -> ()
+        """
+        Set the optimizer task object to be used to store/generate reports on the optimization process.
+        Usually this is the current task of this process.
+
+        :param Task task: The optimizer's current Task.
+        """
+        self._optimizer_task = task
 
     def _validate_base_task(self):
         # type: () -> ()
@@ -901,6 +912,7 @@ class HyperParameterOptimizer(object):
                 base_task_id=opts['base_task_id'], hyper_parameters=hyper_parameters,
                 objective_metric=self.objective_metric, execution_queue=opts['execution_queue'],
                 num_concurrent_workers=opts['max_number_of_concurrent_tasks'], **opts.get('optimizer_kwargs', {}))
+        self.optimizer.set_optimizer_task(self._task)
         self.optimization_timeout = None
         self.optimization_start_time = None
         self._thread = None
@@ -1190,6 +1202,9 @@ class HyperParameterOptimizer(object):
             elif optimizer_class == 'OptimizerBOHB':
                 from .hpbandster import OptimizerBOHB
                 optimizer_class = OptimizerBOHB
+            elif optimizer_class == 'OptimizerOptuna':
+                from .optuna import OptimizerOptuna
+                optimizer_class = OptimizerOptuna
             else:
                 logger.warning("Could not resolve optimizer_class {} reverting to original class {}".format(
                     optimizer_class, original_class))

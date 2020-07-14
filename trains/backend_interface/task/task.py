@@ -238,7 +238,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 # check latest version
                 from ...utilities.check_updates import CheckPackageUpdates
                 latest_version = CheckPackageUpdates.check_new_package_available(only_once=True)
-                if latest_version and not SUPPRESS_UPDATE_MESSAGE_ENV_VAR.get(default=config.get('development.suppress_update_message', False)):
+                if latest_version and not SUPPRESS_UPDATE_MESSAGE_ENV_VAR.get(
+                        default=config.get('development.suppress_update_message', False)):
                     if not latest_version[1]:
                         sep = os.linesep
                         self.get_logger().report_text(

@@ -299,6 +299,9 @@ class ResourceMonitor(object):
             gpu_stat = self._gpustat.new_query(per_process_stats=True)
             gpu_mem = {}
             for i, g in enumerate(gpu_stat.gpus):
+                # only monitor the active gpu's, if none were selected, monitor everything
+                if self._active_gpus and i not in self._active_gpus:
+                    continue
                 gpu_mem[i] = 0
                 for p in g.processes:
                     if p['pid'] in self._last_process_id_list:

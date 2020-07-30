@@ -1087,7 +1087,7 @@ class HyperParameterOptimizer(object):
         if specific_time:
             self.optimization_timeout = specific_time.timestamp()
         else:
-            self.optimization_timeout = (in_minutes * 60.) + time() if in_minutes else None
+            self.optimization_timeout = (float(in_minutes) * 60.) + time() if in_minutes else None
 
     def get_time_limit(self):
         # type: () -> datetime

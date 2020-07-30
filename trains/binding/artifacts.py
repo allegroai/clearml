@@ -302,8 +302,9 @@ class Artifacts(object):
         self._unregister_request.add(name)
         self.flush()
 
-    def upload_artifact(self, name, artifact_object=None, metadata=None, delete_after_upload=False, auto_pickle=True):
-        # type: (str, Optional[object], Optional[dict], bool, bool) -> bool
+    def upload_artifact(self, name, artifact_object=None, metadata=None, preview=None,
+                        delete_after_upload=False, auto_pickle=True):
+        # type: (str, Optional[object], Optional[dict], Optional[str], bool, bool) -> bool
         if not Session.check_min_api_version('2.3'):
             LoggerRoot.get_base_logger().warning('Artifacts not supported by your TRAINS-server version, '
                                                  'please upgrade to the latest server version')
@@ -311,6 +312,10 @@ class Artifacts(object):
 
         if name in self._artifacts_container:
             raise ValueError("Artifact by the name of {} is already registered, use register_artifact".format(name))
+
+        # cast preview to string
+        if preview:
+            preview = str(preview)
 
         # convert string to object if try is a file/folder (dont try to serialize long texts
         if isinstance(artifact_object, six.string_types) and len(artifact_object) < 2048:
@@ -337,7 +342,7 @@ class Artifacts(object):
         if np and isinstance(artifact_object, np.ndarray):
             artifact_type = 'numpy'
             artifact_type_data.content_type = 'application/numpy'
-            artifact_type_data.preview = str(artifact_object.__repr__())
+            artifact_type_data.preview = preview or str(artifact_object.__repr__())
             override_filename_ext_in_uri = '.npz'
             override_filename_in_uri = name + override_filename_ext_in_uri
             fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
@@ -347,7 +352,7 @@ class Artifacts(object):
         elif pd and isinstance(artifact_object, pd.DataFrame):
             artifact_type = 'pandas'
             artifact_type_data.content_type = 'text/csv'
-            artifact_type_data.preview = str(artifact_object.__repr__())
+            artifact_type_data.preview = preview or str(artifact_object.__repr__())
             override_filename_ext_in_uri = self._save_format
             override_filename_in_uri = name
             fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
@@ -358,7 +363,7 @@ class Artifacts(object):
             artifact_type = 'image'
             artifact_type_data.content_type = 'image/png'
             desc = str(artifact_object.__repr__())
-            artifact_type_data.preview = desc[1:desc.find(' at ')]
+            artifact_type_data.preview = preview or desc[1:desc.find(' at ')]
             override_filename_ext_in_uri = '.png'
             override_filename_in_uri = name + override_filename_ext_in_uri
             fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
@@ -368,7 +373,7 @@ class Artifacts(object):
         elif isinstance(artifact_object, dict):
             artifact_type = 'JSON'
             artifact_type_data.content_type = 'application/json'
-            preview = json.dumps(artifact_object, sort_keys=True, indent=4)
+            preview = preview or json.dumps(artifact_object, sort_keys=True, indent=4)
             override_filename_ext_in_uri = '.json'
             override_filename_in_uri = name + override_filename_ext_in_uri
             fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
@@ -412,13 +417,13 @@ class Artifacts(object):
                 )
                 try:
                     artifact_type_data.content_type = 'application/zip'
-                    artifact_type_data.preview = 'Archive content {}:\n'.format(artifact_object.as_posix())
+                    archive_preview = 'Archive content {}:\n'.format(artifact_object.as_posix())
 
                     with ZipFile(zip_file, 'w', allowZip64=True, compression=ZIP_DEFLATED) as zf:
                         for filename in sorted(files):
                             if filename.is_file():
                                 relative_file_name = filename.relative_to(folder).as_posix()
-                                artifact_type_data.preview += '{} - {}\n'.format(
+                                archive_preview += '{} - {}\n'.format(
                                     relative_file_name, humanfriendly.format_size(filename.stat().st_size))
                                 zf.write(filename.as_posix(), arcname=relative_file_name)
                 except Exception as e:
@@ -428,7 +433,7 @@ class Artifacts(object):
                     return False
                 finally:
                     os.close(fd)
-
+                artifact_type_data.preview = preview or archive_preview
                 artifact_object = zip_file
                 artifact_type = 'archive'
                 artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
@@ -439,14 +444,14 @@ class Artifacts(object):
                     raise ValueError("Artifact file '{}' could not be found".format(artifact_object.as_posix()))
 
                 override_filename_in_uri = artifact_object.parts[-1]
-                artifact_type_data.preview = '{} - {}\n'.format(
+                artifact_type_data.preview = preview or '{} - {}\n'.format(
                     artifact_object, humanfriendly.format_size(artifact_object.stat().st_size))
                 artifact_object = artifact_object.as_posix()
                 artifact_type = 'custom'
                 artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
                 local_filename = artifact_object
         elif (
-                isinstance(artifact_object, six.string_types)
+                isinstance(artifact_object, six.string_types) and len(artifact_object) < 4096
                 and urlparse(artifact_object).scheme in remote_driver_schemes
         ):
             # we should not upload this, just register
@@ -458,7 +463,9 @@ class Artifacts(object):
             # if we got here, we should store it as text file.
             artifact_type = 'string'
             artifact_type_data.content_type = 'text/plain'
-            if len(artifact_object) < self.max_preview_size_bytes:
+            if preview:
+                artifact_type_data.preview = preview
+            elif len(artifact_object) < self.max_preview_size_bytes:
                 artifact_type_data.preview = artifact_object
             else:
                 artifact_type_data.preview = '# full text too large to store, storing first {}kb\n{}'.format(
@@ -483,9 +490,9 @@ class Artifacts(object):
             artifact_type_data.content_type = 'application/pickle'
             # noinspection PyBroadException
             try:
-                artifact_type_data.preview = str(artifact_object.__repr__())[:self.max_preview_size_bytes]
+                artifact_type_data.preview = preview or str(artifact_object.__repr__())[:self.max_preview_size_bytes]
             except Exception:
-                artifact_type_data.preview = ''
+                artifact_type_data.preview = preview or ''
             delete_after_upload = True
             override_filename_ext_in_uri = '.pkl'
             override_filename_in_uri = name + override_filename_ext_in_uri

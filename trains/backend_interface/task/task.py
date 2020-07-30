@@ -278,8 +278,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
             # if the git is too large to store on the task, we must store it as artifact:
             if result.auxiliary_git_diff:
+                diff_preview = "# git diff too large to handle, storing as artifact. git diff summary:\n"
+                diff_preview += '\n'.join(
+                    line for line in result.auxiliary_git_diff.split('\n') if line.startswith('diff --git '))
                 self._artifacts_manager.upload_artifact(
-                    name='auxiliary_git_diff', artifact_object=result.auxiliary_git_diff)
+                    name='auxiliary_git_diff', artifact_object=result.auxiliary_git_diff,
+                    preview=diff_preview,
+                )
 
             # store original entry point
             entry_point = result.script.get('entry_point') if result.script else None

@@ -20,8 +20,8 @@ try:
 
     Task.add_requirements('hpbandster')
 except ImportError:
-    raise ValueError("OptimizerBOHB requires 'hpbandster' package, it was not found\n"
-                     "install with: pip install hpbandster")
+    raise ImportError("OptimizerBOHB requires 'hpbandster' package, it was not found\n"
+                      "install with: pip install hpbandster")
 
 
 class _TrainsBandsterWorker(Worker):
@@ -123,7 +123,7 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
             pool_period_min=2.,  # type: float
             time_limit_per_job=None,  # type: Optional[float]
             local_port=9090,  # type: int
-            **bohb_kwargs,  # type: Any
+            **bohb_kwargs  # type: Any
     ):
         # type: (...) -> None
         """
@@ -181,7 +181,9 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
             max_iteration_per_job=max_iteration_per_job, total_max_jobs=total_max_jobs)
         self._max_iteration_per_job = max_iteration_per_job
         self._min_iteration_per_job = min_iteration_per_job
-        self._bohb_kwargs = bohb_kwargs or {}
+        verified_bohb_kwargs = ['eta', 'min_budget', 'max_budget', 'min_points_in_model', 'top_n_percent',
+                                'num_samples', 'random_fraction', 'bandwidth_factor', 'min_bandwidth']
+        self._bohb_kwargs = dict((k, v) for k, v in bohb_kwargs.items() if k in verified_bohb_kwargs)
         self._param_iterator = None
         self._namespace = None
         self._bohb = None

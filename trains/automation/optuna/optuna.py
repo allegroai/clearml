@@ -11,8 +11,8 @@ try:
     import optuna
     Task.add_requirements('optuna')
 except ImportError:
-    raise ValueError("OptimizerOptuna requires 'optuna' package, it was not found\n"
-                     "install with: pip install optuna")
+    raise ImportError("OptimizerOptuna requires 'optuna' package, it was not found\n"
+                      "install with: pip install optuna")
 
 
 class OptunaObjective(object):
@@ -92,7 +92,7 @@ class OptimizerOptuna(SearchStrategy):
             optuna_sampler=None,  # type: Optional[optuna.samplers.base]
             optuna_pruner=None,  # type: Optional[optuna.pruners.base]
             continue_previous_study=None,  # type: Optional[optuna.Study]
-            **optuna_kwargs,  # type: Any
+            **optuna_kwargs  # type: Any
     ):
         # type: (...) -> None
         """
@@ -126,7 +126,8 @@ class OptimizerOptuna(SearchStrategy):
             max_iteration_per_job=max_iteration_per_job, total_max_jobs=total_max_jobs)
         self._optuna_sampler = optuna_sampler
         self._optuna_pruner = optuna_pruner
-        self._optuna_kwargs = optuna_kwargs or {}
+        verified_optuna_kwargs = []
+        self._optuna_kwargs = dict((k, v) for k, v in optuna_kwargs.items() if k in verified_optuna_kwargs)
         self._param_iterator = None
         self._objective = None
         self._study = continue_previous_study if continue_previous_study else None

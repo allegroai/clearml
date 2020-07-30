@@ -1,19 +1,31 @@
 import logging
 
 from trains import Task
-from trains.automation import DiscreteParameterRange, HyperParameterOptimizer, RandomSearch, \
-    UniformIntegerParameterRange
+from trains.automation import (
+    DiscreteParameterRange, HyperParameterOptimizer, RandomSearch,
+    UniformIntegerParameterRange)
 
-try:
-    from trains.automation.hpbandster import OptimizerBOHB
-    Our_SearchStrategy = OptimizerBOHB
-except ValueError:
+aSearchStrategy = None
+
+if not aSearchStrategy:
+    try:
+        from trains.automation.optuna import OptimizerOptuna
+        aSearchStrategy = OptimizerOptuna
+    except ImportError as ex:
+        pass
+
+if not aSearchStrategy:
+    try:
+        from trains.automation.hpbandster import OptimizerBOHB
+        aSearchStrategy = OptimizerBOHB
+    except ImportError as ex:
+        pass
+
+if not aSearchStrategy:
     logging.getLogger().warning(
-        'Apologies, it seems you do not have \'hpbandster\' installed, '
-        'we will be using RandomSearch strategy instead\n'
-        'If you like to try ' '{{BOHB}: Robust and Efficient Hyperparameter Optimization at Scale},\n'
-        'run: pip install hpbandster')
-    Our_SearchStrategy = RandomSearch
+        'Apologies, it seems you do not have \'optuna\' or \'hpbandster\' installed, '
+        'we will be using RandomSearch strategy instead')
+    aSearchStrategy = RandomSearch
 
 
 def job_complete_callback(
@@ -69,7 +81,7 @@ an_optimizer = HyperParameterOptimizer(
     # this is the optimizer class (actually doing the optimization)
     # Currently, we can choose from GridSearch, RandomSearch or OptimizerBOHB (Bayesian optimization Hyper-Band)
     # more are coming soon...
-    optimizer_class=Our_SearchStrategy,
+    optimizer_class=aSearchStrategy,
     # Select an execution queue to schedule the experiments for execution
     execution_queue='1xGPU',
     # Optional: Limit the execution time of a single experiment, in minutes.

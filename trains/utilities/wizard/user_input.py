@@ -1,4 +1,3 @@
-import distutils
 from typing import Optional
 
 
@@ -53,11 +52,20 @@ def input_int(
 
 def input_bool(question, default=False):
     # type: (str, bool) -> bool
+    """
+    :param question: string to display
+    :param default: default boolean value
+    :return: return True if response is 'y'/'yes' 't'/'true' in input.lower()
+    """
     while True:
         try:
             response = input("{}: ".format(question)).lower()
             if not response:
                 return default
-            return distutils.util.strtobool(response)
+            if response.startswith("y") or response.startswith("t"):
+                return True
+            if response.startswith("n") or response.startswith("f"):
+                return False
+            raise ValueError()
         except ValueError:
-            print("Invalid input: please enter yes or no")
+            print("Invalid input: please enter 'yes' or 'no'")

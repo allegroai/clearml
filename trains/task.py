@@ -1434,6 +1434,18 @@ class Task(_Task):
         """
         self._arguments.copy_from_dict(flatten_dictionary(dictionary))
 
+    def set_base_docker(self, docker_cmd):
+        # type: (str) -> ()
+        """
+        Set the base docker image for this experiment
+        If provided, this value will be used by trains-agent to execute this experiment
+        inside the provided docker image.
+        """
+        if not self.running_locally() and self.is_main_task():
+            return
+
+        super(Task, self).set_base_docker(docker_cmd)
+
     def execute_remotely(self, queue_name=None, clone=False, exit_process=True):
         # type: (Optional[str], bool, bool) -> ()
         """

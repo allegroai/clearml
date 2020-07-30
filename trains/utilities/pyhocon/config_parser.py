@@ -87,8 +87,9 @@ class ConfigFactory(object):
         :param resolve: if true, resolve substitutions
         :type resolve: boolean
         :param unresolved_value: assigned value value to unresolved substitution.
-        If overriden with a default value, it will replace all unresolved value to the default value.
-        If it is set to to pyhocon.STR_SUBSTITUTION then it will replace the value by its substitution expression (e.g., ${x})
+            If overriden with a default value, it will replace all unresolved value to the default value.
+            If it is set to to pyhocon.STR_SUBSTITUTION then it will replace the value by its
+            substitution expression (e.g., ${x})
         :type unresolved_value: class
         :return: Config object
         :type return: Config
@@ -112,8 +113,9 @@ class ConfigFactory(object):
         :param resolve: if true, resolve substitutions
         :type resolve: boolean
         :param unresolved_value: assigned value value to unresolved substitution.
-        If overriden with a default value, it will replace all unresolved value to the default value.
-        If it is set to to pyhocon.STR_SUBSTITUTION then it will replace the value by its substitution expression (e.g., ${x})
+            If overriden with a default value, it will replace all unresolved value to the default value.
+            If it is set to to pyhocon.STR_SUBSTITUTION then it will replace the value by
+            its substitution expression (e.g., ${x})
         :type unresolved_value: boolean
         :return: Config object or []
         :type return: Config or list
@@ -141,8 +143,9 @@ class ConfigFactory(object):
         :param resolve: if true, resolve substitutions
         :type resolve: boolean
         :param unresolved_value: assigned value value to unresolved substitution.
-        If overriden with a default value, it will replace all unresolved value to the default value.
-        If it is set to to pyhocon.STR_SUBSTITUTION then it will replace the value by its substitution expression (e.g., ${x})
+            If overriden with a default value, it will replace all unresolved value to the default value.
+            If it is set to to pyhocon.STR_SUBSTITUTION then it will replace the value by
+            its substitution expression (e.g., ${x})
         :type unresolved_value: boolean
         :return: Config object
         :type return: Config
@@ -234,8 +237,9 @@ class ConfigParser(object):
         :param resolve: if true, resolve substitutions
         :type resolve: boolean
         :param unresolved_value: assigned value value to unresolved substitution.
-        If overriden with a default value, it will replace all unresolved value to the default value.
-        If it is set to to pyhocon.STR_SUBSTITUTION then it will replace the value by its substitution expression (e.g., ${x})
+            If overriden with a default value, it will replace all unresolved value to the default value.
+            If it is set to to pyhocon.STR_SUBSTITUTION then it will replace the value by
+            its substitution expression (e.g., ${x})
         :type unresolved_value: boolean
         :return: a ConfigTree or a list
         """
@@ -434,7 +438,8 @@ class ConfigParser(object):
             config = config_expr.parseString(content, parseAll=True)[0]
 
             if resolve:
-                allow_unresolved = resolve and unresolved_value is not DEFAULT_SUBSTITUTION and unresolved_value is not MANDATORY_SUBSTITUTION
+                allow_unresolved = resolve and unresolved_value is not DEFAULT_SUBSTITUTION and \
+                                   unresolved_value is not MANDATORY_SUBSTITUTION
                 has_unresolved = cls.resolve_substitutions(config, allow_unresolved)
                 if has_unresolved and unresolved_value is MANDATORY_SUBSTITUTION:
                     raise ConfigSubstitutionException(
@@ -489,8 +494,8 @@ class ConfigParser(object):
                         if len(prop_path) > 1 and config.get(substitution.variable, None) is not None:
                             continue  # If value is present in latest version, don't do anything
                         if prop_path[0] == key:
-                            if isinstance(
-                                    previous_item, ConfigValues) and not accept_unresolved:  # We hit a dead end, we cannot evaluate
+                            if isinstance(previous_item, ConfigValues) and not accept_unresolved:
+                                # We hit a dead end, we cannot evaluate
                                 raise ConfigSubstitutionException(
                                     "Property {variable} cannot be substituted. Check for cycles.".format(
                                         variable=substitution.variable

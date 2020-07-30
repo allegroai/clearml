@@ -74,5 +74,6 @@ class PostImportHookPatching(object):
 
     @staticmethod
     def remove_on_import(name, func):
-        if name in PostImportHookPatching._post_import_hooks and func in PostImportHookPatching._post_import_hooks[name]:
+        if name in PostImportHookPatching._post_import_hooks and \
+                func in PostImportHookPatching._post_import_hooks[name]:
             PostImportHookPatching._post_import_hooks[name].remove(func)

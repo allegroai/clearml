@@ -42,7 +42,7 @@ class PatchFastai(object):
         try:
             PatchFastai.__metrics_names = ["train_loss"] if recorder.no_val else ["train_loss", "valid_loss"]
             PatchFastai.__metrics_names += recorder.metrics_names
-        except Exception as ex:
+        except Exception:
             pass
 
     @staticmethod
@@ -84,7 +84,7 @@ class PatchFastai(object):
             iteration = kwargs.get("iteration", 0)
             for name, val in stats_report.items():
                 logger.report_scalar(title="model_stats_gradients", series=name, value=val, iteration=iteration)
-        except Exception as ex:
+        except Exception:
             pass
 
     @staticmethod

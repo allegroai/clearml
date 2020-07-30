@@ -226,7 +226,8 @@ class _Arguments(object):
                     # if we have an int, we should cast to float, because it is more generic
                     if var_type == int:
                         var_type = float
-                    elif var_type == type(None):  # noqa: E721 - do not change! because isinstance(var_type, type(None)) === False
+                    elif var_type == type(None):  # noqa: E721 - do not change!
+                        # because isinstance(var_type, type(None)) === False
                         var_type = str
                     # now we should try and cast the value if we can
                     try:

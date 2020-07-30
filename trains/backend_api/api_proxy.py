@@ -57,10 +57,10 @@ class ExtApiServiceProxy(ApiServiceProxy):
         for module_path in self._get_services_modules():
             try:
                 return importlib.import_module(name, package=module_path)
-            except ModuleNotFoundError:
+            except ImportError:
                 pass
 
-        raise ModuleNotFoundError(
+        raise ImportError(
             "No module '{}' in all predefined services module paths".format(name)
         )
 

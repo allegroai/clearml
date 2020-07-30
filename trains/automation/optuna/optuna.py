@@ -1,9 +1,8 @@
-from time import sleep, time
+from time import sleep
 from typing import Any, Optional, Sequence
 
 from ..optimization import Objective, SearchStrategy
-from ..parameters import (
-    DiscreteParameterRange, UniformParameterRange, RandomSeed, UniformIntegerParameterRange, Parameter, )
+from ..parameters import (DiscreteParameterRange, Parameter, UniformIntegerParameterRange, UniformParameterRange)
 from ...task import Task
 
 try:

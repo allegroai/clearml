@@ -473,7 +473,7 @@ class Artifacts(object):
             try:
                 with open(local_filename, 'wt') as f:
                     f.write(artifact_object)
-            except Exception as ex:
+            except Exception:
                 # cleanup and raise exception
                 os.unlink(local_filename)
                 raise
@@ -495,7 +495,7 @@ class Artifacts(object):
             try:
                 with open(local_filename, 'wb') as f:
                     pickle.dump(artifact_object, f)
-            except Exception as ex:
+            except Exception:
                 # cleanup and raise exception
                 os.unlink(local_filename)
                 raise

@@ -311,8 +311,8 @@ class Config(object):
         try:
             return ConfigFactory.parse_file(file_path)
         except ParseSyntaxException as ex:
-            msg = "Failed parsing {0} ({1.__class__.__name__}): (at char {1.loc}, line:{1.lineno}, col:{1.column})".format(
-                file_path, ex)
+            msg = "Failed parsing {0} ({1.__class__.__name__}): " \
+                  "(at char {1.loc}, line:{1.lineno}, col:{1.column})".format(file_path, ex)
             six.reraise(
                 ConfigurationError,
                 ConfigurationError(msg, file_path=file_path),

@@ -61,9 +61,9 @@ class DeferredExecution(object):
     def defer_execution(self, condition_or_attr_name=True):
         """
         Deferred execution decorator, designed to wrap class functions for classes containing a deferred execution pool.
-        :param condition_or_attr_name: Condition controlling whether wrapped function should be deferred. True by default.
-            If a callable is provided, it will be called with the class instance (self) as first argument.
-            If a string is provided, a class instance (self) attribute by that name is evaluated.
+        :param condition_or_attr_name: Condition controlling whether wrapped function should be deferred.
+            True by default. If a callable is provided, it will be called with the class instance (self)
+            as first argument. If a string is provided, a class instance (self) attribute by that name is evaluated.
         :return:
         """
         def decorator(func):

@@ -2375,7 +2375,7 @@ class Task(_Task):
                             relative_file_name = filename.relative_to(offline_folder).as_posix()
                             zf.write(filename.as_posix(), arcname=relative_file_name)
                 print('TRAINS Task: Offline session stored in {}'.format(zip_file))
-            except Exception as ex:
+            except Exception:
                 pass
 
         # delete locking object (lock file)

@@ -515,7 +515,8 @@ class ConfigValues(object):
             tok_type = determine_type(token)
             if first_tok_type is not tok_type:
                 raise ConfigWrongTypeException(
-                    "Token '{token}' of type {tok_type} (index {index}) must be of type {req_tok_type} (line: {line}, col: {col})".format(
+                    "Token '{token}' of type {tok_type} (index {index}) must be of type {req_tok_type} "
+                    "(line: {line}, col: {col})".format(
                         token=token,
                         index=index + 1,
                         tok_type=tok_type.__name__,

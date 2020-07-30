@@ -109,7 +109,7 @@ class WeightsFileHandler(object):
 
     @classmethod
     def add_pre_callback(cls, callback_function):
-        # type: (Callable[[Union[str, WeightsFileHandler.CallbackType], WeightsFileHandler.ModelInfo], Optional[WeightsFileHandler.ModelInfo]]) -> int
+        # type: (Callable[[Union[str, WeightsFileHandler.CallbackType], WeightsFileHandler.ModelInfo], Optional[WeightsFileHandler.ModelInfo]]) -> int  # noqa
         """
         Add a pre-save/load callback for weights files and return its handle. If the callback was already added,
          return the existing handle.
@@ -127,7 +127,7 @@ class WeightsFileHandler(object):
 
     @classmethod
     def add_post_callback(cls, callback_function):
-        # type: (Callable[[Union[str, WeightsFileHandler.CallbackType], WeightsFileHandler.ModelInfo], WeightsFileHandler.ModelInfo]) -> int
+        # type: (Callable[[Union[str, WeightsFileHandler.CallbackType], WeightsFileHandler.ModelInfo], WeightsFileHandler.ModelInfo]) -> int  # noqa
         """
         Add a post-save/load callback for weights files and return its handle.
         If the callback was already added, return the existing handle.

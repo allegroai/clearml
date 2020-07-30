@@ -383,7 +383,8 @@ class SearchStrategy(object):
 
         If returns ``False``, the job was aborted / completed, and should be taken off the current job list
 
-        If there is a budget limitation, this call should update ``self.budget.compute_time.update`` / ``self.budget.iterations.update``
+        If there is a budget limitation, this call should update
+        ``self.budget.compute_time.update`` / ``self.budget.iterations.update``
 
         :param TrainsJob job: A ``TrainsJob`` object to monitor.
 

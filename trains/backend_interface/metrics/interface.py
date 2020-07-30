@@ -65,8 +65,8 @@ class Metrics(InterfaceBase):
         """
         Write events to the backend, uploading any required files.
         :param events: A list of event objects
-        :param async_enable: If True, upload is performed asynchronously and an AsyncResult object is returned, otherwise a
-            blocking call is made and the upload result is returned.
+        :param async_enable: If True, upload is performed asynchronously and an AsyncResult object is returned,
+            otherwise a blocking call is made and the upload result is returned.
         :param callback: A optional callback called when upload was completed in case async is True
         :return: .backend_api.session.CallResult if async is False otherwise AsyncResult. Note that if no events were
             sent, None will be returned.

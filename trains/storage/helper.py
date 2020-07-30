@@ -25,7 +25,7 @@ from attr import attrs, attrib, asdict
 from furl import furl
 from pathlib2 import Path
 from requests.exceptions import ConnectionError
-from six import binary_type
+from six import binary_type, StringIO
 from six.moves.queue import Queue, Empty
 from six.moves.urllib.parse import urlparse
 from six.moves.urllib.request import url2pathname
@@ -2084,7 +2084,7 @@ class _FileStorageDriver(_Driver):
         self._make_path(base_path)
 
         obj_path = os.path.realpath(obj_path)
-        with open(obj_path, 'wb') as obj_file:
+        with open(obj_path, 'wb' if not isinstance(iterator, StringIO) else 'wt') as obj_file:
             obj_file.write(iterator.read() if hasattr(iterator, 'read') else bytes(iterator))
 
         os.chmod(obj_path, int('664', 8))

@@ -8,13 +8,13 @@ from tempfile import mkstemp
 import psutil
 
 # make sure we have jupyter in the auto requirements
+import jupyter  # noqa
 from trains import Task
 
-# set default docker image, with network configuration
-os.environ["TRAINS_DOCKER_IMAGE"] = "nvidia/cuda --network host"
 
 # initialize TRAINS
-task = Task.init(project_name="examples", task_name="Remote Jupyter NoteBook", task_type=Task.TaskTypes.service)
+task = Task.init(
+    project_name="DevOps", task_name="Allocate Jupyter Notebook Instance", task_type=Task.TaskTypes.service)
 
 # get rid of all the runtime TRAINS
 preserve = (
@@ -25,6 +25,7 @@ preserve = (
     "TRAINS_API_ACCESS_KEY",
     "TRAINS_API_SECRET_KEY",
     "TRAINS_API_HOST_VERIFY_CERT",
+    "TRAINS_DOCKER_IMAGE",
 )
 
 # setup os environment
@@ -38,8 +39,14 @@ param = {
     "jupyter_server_base_directory": "~/",
     "ssh_server": True,
     "ssh_password": "training",
+    "default_docker_for_jupyter": "nvidia/cuda",
 }
 task.connect(param)
+
+# set default docker image, with network configuration
+os.environ["TRAINS_DOCKER_IMAGE"] = param['default_docker_for_jupyter']
+task.set_base_docker("{} --network host".format(param['default_docker_for_jupyter']))
+
 
 # noinspection PyBroadException
 try:

@@ -19,11 +19,19 @@ def get_cache_dir():
     cache_base_dir = Path(  # noqa: F405
         expandvars(
             expanduser(
-                TRAINS_CACHE_DIR.get() or config.get("storage.cache.default_base_dir") or DEFAULT_CACHE_DIR  # noqa: F405
+                TRAINS_CACHE_DIR.get() or
+                config.get("storage.cache.default_base_dir") or
+                DEFAULT_CACHE_DIR  # noqa: F405
             )
         )
     )
     return cache_base_dir
+
+
+def get_offline_dir(task_id=None):
+    if not task_id:
+        return get_cache_dir() / 'offline'
+    return get_cache_dir() / 'offline' / task_id
 
 
 def get_config_for_bucket(base_url, extra_configurations=None):

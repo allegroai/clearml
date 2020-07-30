@@ -11,7 +11,8 @@ from requests.auth import HTTPBasicAuth
 from six.moves.urllib.parse import urlparse, urlunparse
 
 from .callresult import CallResult
-from .defs import ENV_VERBOSE, ENV_HOST, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_WEB_HOST, ENV_FILES_HOST
+from .defs import ENV_VERBOSE, ENV_HOST, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_WEB_HOST, \
+    ENV_FILES_HOST, ENV_OFFLINE_MODE
 from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
 from ..config import load
@@ -50,6 +51,8 @@ class Session(TokenManager):
     _write_session_timeout = (300.0, 300.)
     _sessions_created = 0
     _ssl_error_count_verbosity = 2
+    _offline_mode = ENV_OFFLINE_MODE.get()
+    _offline_default_version = '2.5'
 
     _client = [(__package__.partition(".")[0], __version__)]
 
@@ -153,6 +156,9 @@ class Session(TokenManager):
 
         self.client = ", ".join("{}-{}".format(*x) for x in self._client)
 
+        if self._offline_mode:
+            return
+
         self.refresh_token()
 
         # update api version from server response
@@ -197,6 +203,9 @@ class Session(TokenManager):
               server-side permissions have changed but are not reflected in the current token. Refreshing the token will
               generate a token with the updated permissions.
         """
+        if self._offline_mode:
+            return None
+
         host = self.host
         headers = headers.copy() if headers else {}
         headers[self._WORKER_HEADER] = self.worker
@@ -406,6 +415,9 @@ class Session(TokenManager):
         """
         self.validate_request(req_obj)
 
+        if self._offline_mode:
+            return None
+
         if isinstance(req_obj, BatchRequest):
             # TODO: support async for batch requests as well
             if async_enable:
@@ -526,11 +538,14 @@ class Session(TokenManager):
 
         # If no session was created, create a default one, in order to get the backend api version.
         if cls._sessions_created <= 0:
-            # noinspection PyBroadException
-            try:
-                cls()
-            except Exception:
-                pass
+            if cls._offline_mode:
+                cls.api_version = cls._offline_default_version
+            else:
+                # noinspection PyBroadException
+                try:
+                    cls()
+                except Exception:
+                    pass
 
         return version_tuple(cls.api_version) >= version_tuple(str(min_api_version))
 

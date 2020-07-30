@@ -1,4 +1,7 @@
+import json
+import os
 from functools import partial
+from logging import warning
 from multiprocessing.pool import ThreadPool
 from multiprocessing import Lock
 from time import time
@@ -25,6 +28,7 @@ class Metrics(InterfaceBase):
     _file_upload_retries = 3
     _upload_pool = None
     _file_upload_pool = None
+    __offline_filename = 'metrics.jsonl'
 
     @property
     def storage_key_prefix(self):
@@ -43,14 +47,19 @@ class Metrics(InterfaceBase):
         finally:
             self._storage_lock.release()
 
-    def __init__(self, session, task_id, storage_uri, storage_uri_suffix='metrics', iteration_offset=0, log=None):
+    def __init__(self, session, task, storage_uri, storage_uri_suffix='metrics', iteration_offset=0, log=None):
         super(Metrics, self).__init__(session, log=log)
-        self._task_id = task_id
+        self._task_id = task.id
         self._task_iteration_offset = iteration_offset
         self._storage_uri = storage_uri.rstrip('/') if storage_uri else None
         self._storage_key_prefix = storage_uri_suffix.strip('/') if storage_uri_suffix else None
         self._file_related_event_time = None
         self._file_upload_time = None
+        self._offline_log_filename = None
+        if self._offline_mode:
+            offline_folder = Path(task.get_offline_mode_folder())
+            offline_folder.mkdir(parents=True, exist_ok=True)
+            self._offline_log_filename = offline_folder / self.__offline_filename
 
     def write_events(self, events, async_enable=True, callback=None, **kwargs):
         """
@@ -167,6 +176,7 @@ class Metrics(InterfaceBase):
                     e.set_exception(exp)
                 e.stream.close()
                 if e.delete_local_file:
+                    # noinspection PyBroadException
                     try:
                         Path(e.delete_local_file).unlink()
                     except Exception:
@@ -199,6 +209,11 @@ class Metrics(InterfaceBase):
             _events = [ev.get_api_event() for ev in good_events]
             batched_requests = [api_events.AddRequest(event=ev) for ev in _events if ev]
             if batched_requests:
+                if self._offline_mode:
+                    with open(self._offline_log_filename.as_posix(), 'at') as f:
+                        f.write(json.dumps([b.to_dict() for b in batched_requests])+'\n')
+                    return
+
                 req = api_events.AddBatchRequest(requests=batched_requests)
                 return self.send(req, raise_on_errors=False)
 
@@ -234,3 +249,69 @@ class Metrics(InterfaceBase):
                 pool.join()
             except Exception:
                 pass
+
+    @classmethod
+    def report_offline_session(cls, task, folder):
+        from ... import StorageManager
+        filename = Path(folder) / cls.__offline_filename
+        if not filename.is_file():
+            return False
+        # noinspection PyProtectedMember
+        remote_url = task._get_default_report_storage_uri()
+        if remote_url and remote_url.endswith('/'):
+            remote_url = remote_url[:-1]
+        uploaded_files = set()
+        task_id = task.id
+        with open(filename, 'rt') as f:
+            i = 0
+            while True:
+                try:
+                    line = f.readline()
+                    if not line:
+                        break
+                    list_requests = json.loads(line)
+                    for r in list_requests:
+                        org_task_id = r['task']
+                        r['task'] = task_id
+                        if r.get('key') and r.get('url'):
+                            debug_sample = (Path(folder) / 'data').joinpath(*(r['key'].split('/')))
+                            r['key'] = r['key'].replace(
+                                '.{}{}'.format(org_task_id, os.sep), '.{}{}'.format(task_id, os.sep), 1)
+                            r['url'] = '{}/{}'.format(remote_url, r['key'])
+                            if debug_sample not in uploaded_files and debug_sample.is_file():
+                                uploaded_files.add(debug_sample)
+                                StorageManager.upload_file(local_file=debug_sample.as_posix(), remote_url=r['url'])
+                        elif r.get('plot_str'):
+                            # hack plotly embedded images links
+                            # noinspection PyBroadException
+                            try:
+                                task_id_sep = '.{}{}'.format(org_task_id, os.sep)
+                                plot = json.loads(r['plot_str'])
+                                if plot.get('layout', {}).get('images'):
+                                    for image in plot['layout']['images']:
+                                        if task_id_sep not in image['source']:
+                                            continue
+                                        pre, post = image['source'].split(task_id_sep, 1)
+                                        pre = os.sep.join(pre.split(os.sep)[-2:])
+                                        debug_sample = (Path(folder) / 'data').joinpath(
+                                            pre+'.{}'.format(org_task_id), post)
+                                        image['source'] = '/'.join(
+                                            [remote_url, pre + '.{}'.format(task_id), post])
+                                        if debug_sample not in uploaded_files and debug_sample.is_file():
+                                            uploaded_files.add(debug_sample)
+                                            StorageManager.upload_file(
+                                                local_file=debug_sample.as_posix(), remote_url=image['source'])
+                                r['plot_str'] = json.dumps(plot)
+                            except Exception:
+                                pass
+                    i += 1
+                except StopIteration:
+                    break
+                except Exception as ex:
+                    warning('Failed reporting metric, line {} [{}]'.format(i, ex))
+                batch_requests = api_events.AddBatchRequest(requests=list_requests)
+                res = task.session.send(batch_requests)
+                if res and not res.ok():
+                    warning("failed logging metric task to backend ({:d} lines, {})".format(
+                        len(batch_requests.requests), str(res.meta)))
+        return True

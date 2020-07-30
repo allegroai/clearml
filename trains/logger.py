@@ -982,6 +982,7 @@ class Logger(object):
 
             For example: ``s3://bucket/directory/``, or ``file:///tmp/debug/``.
         """
+        # noinspection PyProtectedMember
         return self._default_upload_destination or self._task._get_default_report_storage_uri()
 
     def flush(self):

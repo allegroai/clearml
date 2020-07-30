@@ -71,6 +71,9 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
 
     def _reload(self):
         """ Reload the model object """
+        if self._offline_mode:
+            return models.Model()
+
         if self.id == self._EMPTY_MODEL_ID:
             return
         res = self.send(models.GetByIdRequest(model=self.id))
@@ -186,35 +189,40 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         task = task_id or self.data.task
         project = project_id or self.data.project
         parent = parent_id or self.data.parent
-        if tags:
-            extra = {'system_tags': tags or self.data.system_tags} \
-                if hasattr(self.data, 'system_tags') else {'tags': tags or self.data.tags}
-        else:
-            extra = {}
 
-        self.send(models.EditRequest(
+        self._edit(
             model=self.id,
             uri=uri,
             name=name,
             comment=comment,
             labels=labels,
             design=design,
+            framework=framework or self.data.framework,
+            iteration=iteration,
             task=task,
             project=project,
             parent=parent,
-            framework=framework or self.data.framework,
-            iteration=iteration,
-            **extra
-        ))
-        self.reload()
+        )
 
     def edit(self, design=None, labels=None, name=None, comment=None, tags=None,
              uri=None, framework=None, iteration=None):
+        return self._edit(design=design, labels=labels, name=name, comment=comment, tags=tags,
+                          uri=uri, framework=framework, iteration=iteration)
+
+    def _edit(self, design=None, labels=None, name=None, comment=None, tags=None,
+              uri=None, framework=None, iteration=None, **extra):
+        def offline_store(**kwargs):
+            for k, v in kwargs.items():
+                setattr(self.data, k, v or getattr(self.data, k, None))
+            return
+        if self._offline_mode:
+            return offline_store(design=design, labels=labels, name=name, comment=comment, tags=tags,
+                                 uri=uri, framework=framework, iteration=iteration, **extra)
+
         if tags:
-            extra = {'system_tags': tags or self.data.system_tags} \
-                if hasattr(self.data, 'system_tags') else {'tags': tags or self.data.tags}
-        else:
-            extra = {}
+            extra.update({'system_tags': tags or self.data.system_tags}
+                         if hasattr(self.data, 'system_tags') else {'tags': tags or self.data.tags})
+
         self.send(models.EditRequest(
             model=self.id,
             uri=uri,
@@ -298,7 +306,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
                                         override_model_id=override_model_id, **extra))
         if self.id is None:
             # update the model id. in case it was just created, this will trigger a reload of the model object
-            self.id = res.response.id
+            self.id = res.response.id if res else None
         else:
             self.reload()
         try:

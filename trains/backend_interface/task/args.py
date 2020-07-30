@@ -306,10 +306,11 @@ class _Arguments(object):
         # TODO: add dict prefix
         prefix = prefix or ''  # self._prefix_dict
         if prefix:
-            prefix_dictionary = dict([(prefix + k, v) for k, v in dictionary.items()])
-            cur_params = dict([(k, v) for k, v in self._task.get_parameters().items() if not k.startswith(prefix)])
-            cur_params.update(prefix_dictionary)
-            self._task.set_parameters(cur_params)
+            with self._task._edit_lock:
+                prefix_dictionary = dict([(prefix + k, v) for k, v in dictionary.items()])
+                cur_params = dict([(k, v) for k, v in self._task.get_parameters().items() if not k.startswith(prefix)])
+                cur_params.update(prefix_dictionary)
+                self._task.set_parameters(cur_params)
         else:
             self._task.update_parameters(dictionary)
         if not isinstance(dictionary, self._ProxyDictWrite):

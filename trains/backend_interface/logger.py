@@ -18,7 +18,7 @@ class StdStreamPatch(object):
         if DevWorker.report_stdout and not PrintPatchLogger.patched and not running_remotely():
             StdStreamPatch._stdout_proxy = PrintPatchLogger(sys.stdout, logger, level=logging.INFO)
             StdStreamPatch._stderr_proxy = PrintPatchLogger(sys.stderr, logger, level=logging.ERROR)
-            logger._task_handler = TaskHandler(logger._task.session, logger._task.id, capacity=100)
+            logger._task_handler = TaskHandler(task=logger._task, capacity=100)
             # noinspection PyBroadException
             try:
                 if StdStreamPatch._stdout_original_write is None:
@@ -70,7 +70,7 @@ class StdStreamPatch(object):
                 pass
 
         elif DevWorker.report_stdout and not running_remotely():
-            logger._task_handler = TaskHandler(logger._task.session, logger._task.id, capacity=100)
+            logger._task_handler = TaskHandler(task=logger._task, capacity=100)
             if StdStreamPatch._stdout_proxy:
                 StdStreamPatch._stdout_proxy.connect(logger)
             if StdStreamPatch._stderr_proxy:

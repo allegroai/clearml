@@ -659,7 +659,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
 
         # Hack: if the url doesn't start with http/s then the plotly will not be able to show it,
         # then we put the link under images not plots
-        if not url.startswith('http'):
+        if not url.startswith('http') and not self._offline_mode:
             return self.report_image_and_upload(title=title, series=series, iter=iter, path=path, image=matrix,
                                                 upload_uri=upload_uri, max_image_history=max_image_history)
 

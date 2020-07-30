@@ -191,7 +191,6 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         parent = parent_id or self.data.parent
 
         self._edit(
-            model=self.id,
             uri=uri,
             name=name,
             comment=comment,

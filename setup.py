@@ -7,9 +7,11 @@ import os.path
 # Always prefer setuptools over distutils
 from setuptools import setup, find_packages
 
+
 def read_text(filepath):
-    with open(filepath, "r") as f:
+    with open(filepath, "r", encoding="utf-8") as f:
         return f.read()
+
 
 here = os.path.dirname(__file__)
 # Get the long description from the README file

@@ -1114,8 +1114,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         # send request
         res = self.send(
-            events.ScalarMetricsIterHistogramRequest(task=self.id, key=x_axis, samples=max(0, max_samples))
+            events.ScalarMetricsIterHistogramRequest(
+                task=self.id, key=x_axis, samples=max(1, max_samples) if max_samples else None),
+            raise_on_errors=False,
+            ignore_errors=True,
         )
+        if not res:
+            return {}
         response = res.wait()
         if not response.ok() or not response.response_data:
             return {}

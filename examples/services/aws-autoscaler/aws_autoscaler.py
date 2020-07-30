@@ -1,7 +1,8 @@
 from argparse import ArgumentParser
 from collections import defaultdict
-from pathlib import Path
+from pathlib2 import Path
 from typing import Tuple
+from itertools import chain
 
 import yaml
 from six.moves import input
@@ -12,7 +13,7 @@ from trains.config import running_remotely
 from trains.utilities.wizard.user_input import get_input, input_int, input_bool
 
 CONF_FILE = "aws_autoscaler.yaml"
-DEFAULT_DOCKER_IMAGE = "nvidia/cuda"
+DEFAULT_DOCKER_IMAGE = "nvidia/cuda:10.1-runtime-ubuntu18.04"
 
 
 def main():
@@ -23,13 +24,23 @@ def main():
         action="store_true",
         default=False,
     )
+    parser.add_argument(
+        "--remote",
+        help="Run the autoscaler as a service, launch on the `services` queue",
+        action="store_true",
+        default=False,
+    )
     args = parser.parse_args()
 
     if running_remotely():
         hyper_params = AwsAutoScaler.Settings().as_dict()
         configurations = AwsAutoScaler.Configuration().as_dict()
     else:
-        print("AWS Autoscaler setup\n")
+        print("AWS Autoscaler setup wizard\n"
+              "---------------------------\n"
+              "Follow the wizard to configure your AWS auto-scaler service.\n"
+              "Once completed, you will be able to view and change the configuration in the trains-server web UI.\n"
+              "It means there is no need to worry about typos or mistakes :)\n")
 
         config_file = Path(CONF_FILE).absolute()
         if config_file.exists() and input_bool(
@@ -43,6 +54,7 @@ def main():
         else:
             configurations, hyper_params = run_wizard()
 
+            # noinspection PyBroadException
             try:
                 with config_file.open("w+") as f:
                     conf = {
@@ -58,12 +70,19 @@ def main():
                 )
                 return
 
-    task = Task.init(project_name="Auto-Scaler", task_name="AWS Auto-Scaler")
+    task = Task.init(project_name="DevOps", task_name="AWS Auto-Scaler", task_type=Task.TaskTypes.service)
     task.connect(hyper_params)
     task.connect_configuration(configurations)
 
-    autoscaler = AwsAutoScaler(hyper_params, configurations)
+    if args.remote or args.run:
+        print("Running AWS auto-scaler as a service\nExecution log {}".format(task.get_output_log_web_page()))
 
+    if args.remote:
+        # if we are running remotely enqueue this run, and leave the process
+        # the trains-agent services will pick it up and execute it for us.
+        task.execute_remotely(queue_name='services')
+
+    autoscaler = AwsAutoScaler(hyper_params, configurations)
     if running_remotely() or args.run:
         autoscaler.start()
 
@@ -78,7 +97,10 @@ def run_wizard():
     hyper_params.cloud_credentials_secret = get_input(
         "AWS Secret Access Key", required=True
     )
-    hyper_params.cloud_credentials_region = get_input("AWS region name", required=True)
+    hyper_params.cloud_credentials_region = get_input(
+        "AWS region name",
+        "[us-east-1b]",
+        default='us-east-1b')
     # get GIT User/Pass for cloning
     print(
         "\nGIT credentials:"
@@ -103,93 +125,147 @@ def run_wizard():
 
     hyper_params.default_docker_image = get_input(
         "default docker image/parameters",
-        "to use [default is {}]".format(DEFAULT_DOCKER_IMAGE),
+        "to use [{}]".format(DEFAULT_DOCKER_IMAGE),
         default=DEFAULT_DOCKER_IMAGE,
         new_line=True,
     )
-    print("\nDefine the type of machines you want the autoscaler to use")
+    print("\nConfigure the machine types for the auto-scaler:")
+    print("------------------------------------------------")
     resource_configurations = {}
     while True:
-        resource_name = get_input(
-            "machine type name",
-            "(remember it, we will later use it in the budget section)",
-            required=True,
-            new_line=True,
-        )
-        resource_configurations[resource_name] = {
+        a_resource = {
             "instance_type": get_input(
-                "instance type",
-                "for resource '{}' [default is 'g4dn.4xlarge']".format(resource_name),
+                "Amazon instance type",
+                "['g4dn.4xlarge']",
+                question='Select',
                 default="g4dn.4xlarge",
             ),
             "is_spot": input_bool(
-                "is '{}' resource using spot instances? [t/F]".format(resource_name)
+                "Use spot instances? [y/N]"
             ),
             "availability_zone": get_input(
                 "availability zone",
-                "for resource '{}' [default is 'us-east-1b']".format(resource_name),
+                "['us-east-1b']",
+                question='Select',
                 default="us-east-1b",
             ),
             "ami_id": get_input(
-                "ami_id",
-                "for resource '{}' [default is 'ami-07c95cafbb788face']".format(
-                    resource_name
-                ),
+                "the Amazon Machine Image id",
+                "['ami-07c95cafbb788face']",
+                question='Select',
                 default="ami-07c95cafbb788face",
             ),
             "ebs_device_name": get_input(
-                "ebs_device_name",
-                "for resource '{}' [default is '/dev/xvda']".format(resource_name),
+                "the Amazon EBS device",
+                "['/dev/xvda']",
                 default="/dev/xvda",
             ),
             "ebs_volume_size": input_int(
-                "ebs_volume_size",
-                " for resource '{}' [default is '100']".format(resource_name),
+                "the Amazon EBS volume size",
+                "(in GiB) [100]",
                 default=100,
             ),
             "ebs_volume_type": get_input(
-                "ebs_volume_type",
-                "for resource '{}' [default is 'gp2']".format(resource_name),
+                "the Amazon EBS volume type",
+                "['gp2']",
                 default="gp2",
             ),
         }
-        if not input_bool("\nDefine another resource? [y/N]"):
+
+        while True:
+            resource_name = get_input(
+                "a name for this instance type",
+                "(used in the budget section) For example 'aws4gpu'",
+                question='Select',
+                required=True,
+            )
+            if resource_name in resource_configurations:
+                print("\tError: instance type '{}' already used!".format(resource_name))
+                continue
             break
+        resource_configurations[resource_name] = a_resource
+
+        if not input_bool("\nDefine another instance type? [y/N]"):
+            break
+
     configurations.resource_configurations = resource_configurations
 
     configurations.extra_vm_bash_script = input(
-        "\nEnter any pre-execution bash script to be executed on the newly created instances: "
+        "\nEnter any pre-execution bash script to be executed on the newly created instances []: "
     )
 
-    print("\nSet up the budget\n")
+    print("\nDefine the machines budget:")
+    print("-----------------------------")
+    resource_configurations_names = list(configurations.resource_configurations.keys())
     queues = defaultdict(list)
     while True:
-        queue_name = get_input("queue name", required=True)
         while True:
-            queue_type = get_input(
-                "queue type",
-                "(use the resources names defined earlier)",
-                required=True,
-            )
-            max_instances = input_int(
-                "maximum number of instances allowed", required=True
-            )
-            queues[queue_name].append((queue_type, max_instances))
+            queue_name = get_input("a queue name (for example: 'aws_4gpu_machines')", question='Select', required=True)
+            if queue_name in queues:
+                print("\tError: queue name '{}' already used!".format(queue_name))
+                continue
+            break
 
-            if not input_bool("\nAdd another type to queue? [y/N]: "):
+        while True:
+            valid_instances = [k for k in resource_configurations_names
+                               if k not in (q[0] for q in queues[queue_name])]
+            while True:
+                queue_type = get_input(
+                    "a instance type to attach to the queue",
+                    "{}".format(valid_instances),
+                    question="Select",
+                    required=True,
+                )
+                if queue_type not in configurations.resource_configurations:
+                    print("\tError: instance type '{}' not in predefined instances {}!".format(
+                        queue_type, list(configurations.resource_configurations.keys())))
+                    continue
+
+                if queue_type in (q[0] for q in queues[queue_name]):
+                    print("\tError: instance type '{}' already in {}!".format(
+                        queue_type, queue_name))
+                    continue
+
+                if queue_type in [q[0] for q in chain.from_iterable(queues.values())]:
+                    queue_type_new = '{}_{}'.format(queue_type, queue_name)
+                    print("\tInstance type '{}' already used, renaming instance to {}".format(
+                        queue_type, queue_type_new))
+                    configurations.resource_configurations[queue_type_new] = \
+                        dict(**configurations.resource_configurations[queue_type])
+                    queue_type = queue_type_new
+
+                    # make sure the renamed name is not reused
+                    if queue_type in (q[0] for q in queues[queue_name]):
+                        print("\tError: instance type '{}' already in {}!".format(
+                            queue_type, queue_name))
+                        continue
+
                 break
-        if not input_bool("Define another queue? [y/N]: "):
+            max_instances = input_int(
+                "maximum number of '{}' instances to spin simultaneously (example: 3)".format(queue_type),
+                required=True
+            )
+
+            queues[queue_name].append((queue_type, max_instances))
+            valid_instances = [k for k in configurations.resource_configurations.keys()
+                               if k not in (q[0] for q in queues[queue_name])]
+            if not valid_instances:
+                break
+
+            if not input_bool("Do you wish to add another instance type to queue? [y/N]: "):
+                break
+        if not input_bool("\nAdd another queue? [y/N]: "):
             break
     configurations.queues = dict(queues)
 
     hyper_params.max_idle_time_min = input_int(
         "maximum idle time",
-        "for the autoscaler (in minutes, default is 15)",
+        "for the auto-scaler to spin down an instance (in minutes) [15]",
         default=15,
         new_line=True,
     )
     hyper_params.polling_interval_time_min = input_int(
-        "polling interval", "for the autoscaler (in minutes, default is 5)", default=5,
+        "instances polling interval", "for the auto-scaler (in minutes) [5]", default=5,
     )
 
     return configurations.as_dict(), hyper_params.as_dict()

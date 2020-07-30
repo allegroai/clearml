@@ -73,6 +73,7 @@ class GenerateReqs(object):
         candidates |= set(self._force_modules_reqs.keys())
 
         logger.info('Check module in local environment.')
+        reqs_module_name = []
         for name in candidates:
             logger.info('Checking module: %s', name)
             if name in self._installed_pkgs:
@@ -80,15 +81,17 @@ class GenerateReqs(object):
                 if name not in modules:
                     modules.add(name, name, 0)
                 reqs.add(pkg_name, version, modules[name])
+                reqs_module_name.append(name)
             elif name in modules:
                 guess.add(name, 0, modules[name])
 
         # add local modules, so we know what is used but not installed.
         project_path = os.path.realpath(self._project_path)
         for name in self._local_mods:
-            if name in modules:
+            if name in modules and name not in reqs_module_name:
                 if name in self._force_modules_reqs:
                     reqs.add(name, self._force_modules_reqs[name], modules[name])
+                    reqs_module_name.append(name)
                     continue
 
                 # if this is a base module, we have it in installed modules but package name is None

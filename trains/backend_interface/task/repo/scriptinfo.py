@@ -128,7 +128,10 @@ class ScriptRequirements(object):
                         name = 'torch'
                     k, v = reqs_lower.get(name, (None, None))
                     if k and v is not None:
-                        conda_requirements += '{0} {1} {2}\n'.format(k, '==', v.version)
+                        if v.version:
+                            conda_requirements += '{0} {1} {2}\n'.format(k, '==', v.version)
+                        else:
+                            conda_requirements += '{0}\n'.format(k)
         except Exception:
             conda_requirements = ''
 
@@ -147,7 +150,10 @@ class ScriptRequirements(object):
         if local_pks:
             requirements_txt += '\n# Local modules found - skipping:\n'
             for k, v in local_pks.sorted_items():
-                requirements_txt += '# {0} == {1}\n'.format(k, v.version)
+                if v.version:
+                    requirements_txt += '# {0} == {1}\n'.format(k, v.version)
+                else:
+                    requirements_txt += '# {0}\n'.format(k)
 
         # requirement summary
         requirements_txt += '\n'
@@ -158,9 +164,11 @@ class ScriptRequirements(object):
                 if forced_version:
                     version = forced_version
             # requirements_txt += ''.join(['# {0}\n'.format(c) for c in v.comments.sorted_items()])
-            if k == '-e':
-                requirements_txt += '{0} {1}\n'.format(k, version)
-            elif v:
+            if k == '-e' and version:
+                requirements_txt += '{0}\n'.format(version)
+            elif k.startswith('-e '):
+                requirements_txt += '{0} {1}\n'.format(k.replace('-e ', '', 1), version or '')
+            elif version:
                 requirements_txt += '{0} {1} {2}\n'.format(k, '==', version)
             else:
                 requirements_txt += '{0}\n'.format(k)

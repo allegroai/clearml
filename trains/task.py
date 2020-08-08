@@ -124,7 +124,6 @@ class Task(_Task):
     __task_id_reuse_time_window_in_hours = float(config.get('development.task_reuse_time_window_in_hours', 24.0))
     __detect_repo_async = config.get('development.vcs_repo_detect_async', False)
     __default_output_uri = config.get('development.default_output_uri', None)
-    __default_configuration_name = 'General'
 
     class _ConnectedParametersType(object):
         argparse = "argument_parser"
@@ -940,9 +939,9 @@ class Task(_Task):
 
         multi_config_support = Session.check_min_api_version('2.9')
         if multi_config_support and not name:
-            name = self.__default_configuration_name
+            name = self._default_configuration_section_name
 
-        if not multi_config_support and name and name != self.__default_configuration_name:
+        if not multi_config_support and name and name != self._default_configuration_section_name:
             raise ValueError("Multiple configurations is not supported with the current 'trains-server', "
                              "please upgrade to the latest version")
 
@@ -1003,9 +1002,9 @@ class Task(_Task):
 
         multi_config_support = Session.check_min_api_version('2.9')
         if multi_config_support and not name:
-            name = self.__default_configuration_name
+            name = self._default_configuration_section_name
 
-        if not multi_config_support and name and name != self.__default_configuration_name:
+        if not multi_config_support and name and name != self._default_configuration_section_name:
             raise ValueError("Multiple configurations is not supported with the current 'trains-server', "
                              "please upgrade to the latest version")
 

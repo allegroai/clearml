@@ -59,6 +59,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     _anonymous_dataview_id = '__anonymous__'
     _development_tag = 'development'
+    _default_configuration_section_name = 'General'
     _force_requirements = {}
 
     _store_diff = config.get('development.store_uncommitted_code_diff', False)
@@ -890,7 +891,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     for k, v in parameters.items():
                         org_k = k
                         if '/' not in k:
-                            k = 'General/{}'.format(k)
+                            k = '{}/{}'.format(self._default_configuration_section_name, k)
                         section_name, key = k.split('/', 1)
                         section = hyperparams.get(section_name, dict())
                         description = \
@@ -1021,12 +1022,19 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # type: (str) -> ()
         with self._edit_lock:
             self.reload()
-            execution = self.data.execution
-            if design is not None:
-                # noinspection PyProtectedMember
-                execution.model_desc = Model._wrap_design(design)
+            if Session.check_min_api_version('2.9'):
+                configuration = self._get_task_property(
+                    "configuration", default={}, raise_on_error=False, log_on_error=False) or {}
+                configuration[self._default_configuration_section_name] = tasks.ConfigurationItem(
+                    name=self._default_configuration_section_name, value=str(design))
+                self._edit(configuration=configuration)
+            else:
+                execution = self.data.execution
+                if design is not None:
+                    # noinspection PyProtectedMember
+                    execution.model_desc = Model._wrap_design(design)
 
-            self._edit(execution=execution)
+                self._edit(execution=execution)
 
     def get_labels_enumeration(self):
         # type: () -> Mapping[str, int]
@@ -1046,7 +1054,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         :return: The model configuration as blob of text.
         """
-        design = self._get_task_property("execution.model_desc", default={}, raise_on_error=False, log_on_error=False)
+        if Session.check_min_api_version('2.9'):
+            design = self._get_task_property(
+                "configuration", default={}, raise_on_error=False, log_on_error=False) or {}
+            if design:
+                design = design.get(sorted(design.keys())[0]).value or ''
+        else:
+            design = self._get_task_property(
+                "execution.model_desc", default={}, raise_on_error=False, log_on_error=False)
+
         # noinspection PyProtectedMember
         return Model._unwrap_design(design)
 

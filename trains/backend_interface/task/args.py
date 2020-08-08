@@ -351,7 +351,7 @@ class _Arguments(object):
             if param_types:
                 param_types = dict((prefix+k, v) for k, v in param_types.items())
             # this will only set the specific section
-            self._task.set_parameters(
+            self._task.update_parameters(
                 dictionary,
                 __parameters_prefix=prefix,
                 __parameters_descriptions=descriptions,

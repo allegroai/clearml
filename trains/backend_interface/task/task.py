@@ -5,6 +5,7 @@ import logging
 import os
 import sys
 import re
+from copy import copy
 from enum import Enum
 from tempfile import gettempdir
 from multiprocessing import RLock
@@ -785,17 +786,20 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not Session.check_min_api_version('2.9'):
             return self._get_task_property('execution.parameters')
 
-        # API will makes sure we get old parameters under _legacy
+        # API will makes sure we get old parameters with type legacy on top level (instead of nested in General)
         parameters = dict()
-        hyperparams = self._get_task_property('hyperparams', default=dict())
-        if len(hyperparams) == 1 and '_legacy' in hyperparams and backwards_compatibility:
-            for section in ('_legacy', ):
-                for key, section_param in hyperparams[section].items():
-                    parameters['{}'.format(key)] = section_param.value
-        else:
+        hyperparams = self._get_task_property('hyperparams') or {}
+        if not backwards_compatibility:
             for section in hyperparams:
                 for key, section_param in hyperparams[section].items():
                     parameters['{}/{}'.format(section, key)] = section_param.value
+        else:
+            for section in hyperparams:
+                for key, section_param in hyperparams[section].items():
+                    if section_param.type == 'legacy' and section in (self._default_configuration_section_name, ):
+                        parameters['{}'.format(key)] = section_param.value
+                    else:
+                        parameters['{}/{}'.format(section, key)] = section_param.value
 
         return parameters
 
@@ -856,10 +860,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             # if we have a specific prefix and we use hyperparameters, and we use set.
             # overwrite only the prefix, leave the rest as is.
             if not update and prefix:
-                parameters = dict(**(self.get_parameters() or {}))
+                parameters = copy(self.get_parameters() or {})
                 parameters = dict((k, v) for k, v in parameters.items() if not k.startswith(prefix+'/'))
             elif update:
-                parameters = dict(**(self.get_parameters() or {}))
+                parameters = copy(self.get_parameters() or {})
             else:
                 parameters = dict()
 
@@ -872,34 +876,40 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 # build nested dict from flat parameters dict:
                 org_hyperparams = self.data.hyperparams or {}
                 hyperparams = dict()
+                # if the task is a legacy task, we should put everything back under General/key with legacy type
+                legacy_name = self._default_configuration_section_name
+                org_legacy_section = org_hyperparams.get(legacy_name, dict())
 
-                # if the task is a legacy task, we should put everything back under _legacy
-                if self.data.hyperparams and '_legacy' in self.data.hyperparams:
-                    for k, v in parameters.items():
-                        section_name, key = '_legacy', k
-                        section = hyperparams.get(section_name, dict())
-                        description = \
-                            descriptions.get(k) or \
-                            org_hyperparams.get(section_name, dict()).get(key, tasks.ParamsItem()).description
-                        param_type = \
-                            params_types.get(k) or \
-                            org_hyperparams.get(section_name, dict()).get(key, tasks.ParamsItem()).type
-                        section[key] = tasks.ParamsItem(
-                            section=section_name, name=key, value=v, description=description, type=str(param_type))
-                        hyperparams[section_name] = section
-                else:
-                    for k, v in parameters.items():
-                        org_k = k
-                        if '/' not in k:
-                            k = '{}/{}'.format(self._default_configuration_section_name, k)
-                        section_name, key = k.split('/', 1)
-                        section = hyperparams.get(section_name, dict())
-                        description = \
-                            descriptions.get(org_k) or \
-                            org_hyperparams.get(section_name, dict()).get(key, tasks.ParamsItem()).description
-                        section[key] = tasks.ParamsItem\
-                            (section=section_name, name=key, value=v, description=description)
-                        hyperparams[section_name] = section
+                for k, v in parameters.items():
+                    # legacy variable
+                    if org_legacy_section.get(k, tasks.ParamsItem()).type == 'legacy':
+                        section = hyperparams.get(legacy_name, dict())
+                        section[k] = copy(org_legacy_section[k])
+                        section[k].value = str(v) if v else v
+                        description = descriptions.get(k)
+                        if description:
+                            section[k].description = description
+                        hyperparams[legacy_name] = section
+                        continue
+
+                    org_k = k
+                    if '/' not in k:
+                        k = '{}/{}'.format(self._default_configuration_section_name, k)
+                    section_name, key = k.split('/', 1)
+                    section = hyperparams.get(section_name, dict())
+                    org_param = org_hyperparams.get(section_name, dict()).get(key, tasks.ParamsItem())
+                    param_type = params_types[org_k] if org_k in params_types else org_param.type
+                    if param_type and not isinstance(param_type, str):
+                        param_type = param_type.__name__ if hasattr(param_type, '__name__') else str(param_type)
+
+                    section[key] = tasks.ParamsItem(
+                        section=section_name, name=key,
+                        value=str(v) if v else v,
+                        description=descriptions[org_k] if org_k in descriptions else org_param.description,
+                        type=param_type,
+                    )
+                    hyperparams[section_name] = section
+
                 self._edit(hyperparams=hyperparams)
             else:
                 execution = self.data.execution

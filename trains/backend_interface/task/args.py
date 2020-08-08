@@ -4,6 +4,7 @@ from six import PY2
 from argparse import _StoreAction, ArgumentError, _StoreConstAction, _SubParsersAction, SUPPRESS
 from copy import copy
 
+from ...backend_api import Session
 from ...utilities.args import call_original_argparser
 
 
@@ -59,21 +60,24 @@ class _Arguments(object):
         self._exclude_parser_args = excluded_args or {}
 
     def set_defaults(self, *dicts, **kwargs):
+        prefix = self._prefix_args if Session.check_min_api_version('2.9') else None
         # noinspection PyProtectedMember
-        self._task._set_parameters(*dicts, __parameters_prefix=self._prefix_args, **kwargs)
+        self._task._set_parameters(*dicts, __parameters_prefix=prefix, **kwargs)
 
     def add_argument(self, option_strings, type=None, default=None, help=None):
         if not option_strings:
             raise Exception('Expected at least one argument name (option string)')
         name = option_strings[0].strip('- \t') if isinstance(option_strings, list) else option_strings.strip('- \t')
-        name = self._prefix_args + name
+        if Session.check_min_api_version('2.9'):
+            name = self._prefix_args + name
         self._task.set_parameter(name=name, value=default, description=help)
 
     def connect(self, parser):
         self._task.connect_argparse(parser)
 
     @classmethod
-    def _add_to_defaults(cls, a_parser, defaults, descriptions, a_args=None, a_namespace=None, a_parsed_args=None):
+    def _add_to_defaults(cls, a_parser, defaults, descriptions, arg_types,
+                         a_args=None, a_namespace=None, a_parsed_args=None):
         actions = [
             a for a in a_parser._actions
             if isinstance(a, _StoreAction) or isinstance(a, _StoreConstAction)
@@ -100,6 +104,8 @@ class _Arguments(object):
 
         desc_ = {a.dest: a.help for a in actions}
         descriptions.update(desc_)
+        types_ = {a.dest: (a.type or None) for a in actions}
+        arg_types.update(types_)
 
         full_args_dict = copy(defaults)
         full_args_dict.update(args_dict)
@@ -115,19 +121,23 @@ class _Arguments(object):
                 defaults[sub_parser.dest] = full_args_dict.get(sub_parser.dest) or ''
             for choice in sub_parser.choices.values():
                 # recursively parse
-                defaults, descriptions = cls._add_to_defaults(
+                defaults, descriptions, arg_types = cls._add_to_defaults(
                     a_parser=choice,
                     defaults=defaults,
                     descriptions=descriptions,
+                    arg_types=arg_types,
                     a_parsed_args=a_parsed_args or full_args_dict
                 )
 
-        return defaults, descriptions
+        return defaults, descriptions, arg_types
 
     def copy_defaults_from_argparse(self, parser, args=None, namespace=None, parsed_args=None):
         task_defaults = {}
         task_defaults_descriptions = {}
-        self._add_to_defaults(parser, task_defaults, task_defaults_descriptions, args, namespace, parsed_args)
+        task_defaults_types = {}
+        self._add_to_defaults(parser, task_defaults, task_defaults_descriptions, task_defaults_types,
+                              args, namespace, parsed_args)
+
 
         # Make sure we didn't miss anything
         if parsed_args:
@@ -150,12 +160,23 @@ class _Arguments(object):
                 del task_defaults[k]
 
         # Skip excluded arguments, Add prefix.
-        task_defaults = dict([(self._prefix_args + k, v) for k, v in task_defaults.items()
-                              if self._exclude_parser_args.get(k, True)])
-        task_defaults_descriptions = dict([(self._prefix_args + k, v) for k, v in task_defaults_descriptions.items()
-                                           if self._exclude_parser_args.get(k, True)])
+        if Session.check_min_api_version('2.9'):
+            task_defaults = dict(
+                [(self._prefix_args + k, v) for k, v in task_defaults.items()
+                 if self._exclude_parser_args.get(k, True)])
+            task_defaults_descriptions = dict(
+                [(self._prefix_args + k, v) for k, v in task_defaults_descriptions.items()
+                 if self._exclude_parser_args.get(k, True)])
+            task_defaults_types = dict(
+                [(self._prefix_args + k, v) for k, v in task_defaults_types.items()
+                 if self._exclude_parser_args.get(k, True)])
+
         # Store to task
-        self._task.update_parameters(task_defaults, __parameters_descriptions=task_defaults_descriptions)
+        self._task.update_parameters(
+            task_defaults,
+            __parameters_descriptions=task_defaults_descriptions,
+            __parameters_types=task_defaults_types
+        )
 
     @classmethod
     def _find_parser_action(cls, a_parser, name):
@@ -176,9 +197,10 @@ class _Arguments(object):
 
     def copy_to_parser(self, parser, parsed_args):
         # Change to argparse prefix only
-        task_arguments = dict([(k[len(self._prefix_args):], v) for k, v in self._task.get_parameters().items()
-                               if k.startswith(self._prefix_args) and
-                               self._exclude_parser_args.get(k[len(self._prefix_args):], True)])
+        prefix = self._prefix_args if Session.check_min_api_version('2.9') else ''
+        task_arguments = dict([(k[len(prefix):], v) for k, v in self._task.get_parameters().items()
+                               if k.startswith(prefix) and
+                               self._exclude_parser_args.get(k[len(prefix):], True)])
         arg_parser_argeuments = {}
         for k, v in task_arguments.items():
             # python2 unicode support
@@ -319,15 +341,29 @@ class _Arguments(object):
                     setattr(parsed_args, k, v)
         parser.set_defaults(**arg_parser_argeuments)
 
-    def copy_from_dict(self, dictionary, prefix=None):
+    def copy_from_dict(self, dictionary, prefix=None, descriptions=None, param_types=None):
         # add dict prefix
         prefix = prefix  # or self._prefix_dict
         if prefix:
             prefix = prefix.strip(self._prefix_sep) + self._prefix_sep
+            if descriptions:
+                descriptions = dict((prefix+k, v) for k, v in descriptions.items())
+            if param_types:
+                param_types = dict((prefix+k, v) for k, v in param_types.items())
             # this will only set the specific section
-            self._task.set_parameters(dictionary, __parameters_prefix=prefix)
+            self._task.set_parameters(
+                dictionary,
+                __parameters_prefix=prefix,
+                __parameters_descriptions=descriptions,
+                __parameters_types=param_types,
+            )
         else:
-            self._task.update_parameters(dictionary)
+            self._task.update_parameters(
+                dictionary,
+                __parameters_prefix=prefix,
+                __parameters_descriptions=descriptions,
+                __parameters_types=param_types,
+            )
         if not isinstance(dictionary, self._ProxyDictWrite):
             return self._ProxyDictWrite(self, prefix, **dictionary)
         return dictionary

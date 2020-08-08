@@ -73,8 +73,8 @@ class PatchAbsl(object):
             # noinspection PyBroadException
             try:
                 if param_name and flag:
-                    param_dict = PatchAbsl._task._arguments.copy_to_dict({param_name: flag.value},
-                                                                         prefix=_Arguments._prefix_tf_defines)
+                    param_dict = PatchAbsl._task._arguments.copy_to_dict(
+                        {param_name: flag.value}, prefix=_Arguments._prefix_tf_defines)
                     flag.value = param_dict.get(param_name, flag.value)
             except Exception:
                 pass
@@ -82,7 +82,7 @@ class PatchAbsl(object):
         else:
             if flag and param_name:
                 value = flag.value
-                PatchAbsl._task.update_parameters({_Arguments._prefix_tf_defines + param_name: value})
+                PatchAbsl._task.update_parameters({_Arguments._prefix_tf_defines + param_name: value}, )
             ret = PatchAbsl._original_DEFINE_flag(*args, **kwargs)
         return ret
 
@@ -117,6 +117,20 @@ class PatchAbsl(object):
             else:
                 # clear previous parameters
                 parameters = dict([(k, FLAGS[k].value) for k in FLAGS])
-                cls._task._arguments.copy_from_dict(parameters, prefix=_Arguments._prefix_tf_defines)
+                # noinspection PyBroadException
+                try:
+                    descriptions = dict([(k, FLAGS[k].help or None) for k in FLAGS])
+                except Exception:
+                    descriptions = None
+                # noinspection PyBroadException
+                try:
+                    param_types = dict([(k, FLAGS[k].flag_type() or None) for k in FLAGS])
+                except Exception:
+                    param_types = None
+                cls._task._arguments.copy_from_dict(
+                    parameters,
+                    prefix=_Arguments._prefix_tf_defines,
+                    descriptions=descriptions, param_types=param_types,
+                )
         except Exception:
             pass

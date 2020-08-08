@@ -1579,7 +1579,7 @@ class Task(_Task):
     def wait_for_status(
             self,
             status=(_Task.TaskStatusEnum.completed, _Task.TaskStatusEnum.stopped, _Task.TaskStatusEnum.closed),
-            raise_on_status=(tasks.TaskStatusEnum.failed,),
+            raise_on_status=(_Task.TaskStatusEnum.failed,),
             check_interval_sec=60.,
     ):
         # type: (Iterable[Task.TaskStatusEnum], Optional[Iterable[Task.TaskStatusEnum]], float) -> ()

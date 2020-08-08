@@ -61,6 +61,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     _anonymous_dataview_id = '__anonymous__'
     _development_tag = 'development'
     _default_configuration_section_name = 'General'
+    _legacy_parameters_section_name = 'Args'
     _force_requirements = {}
 
     _store_diff = config.get('development.store_uncommitted_code_diff', False)
@@ -796,7 +797,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         else:
             for section in hyperparams:
                 for key, section_param in hyperparams[section].items():
-                    if section_param.type == 'legacy' and section in (self._default_configuration_section_name, ):
+                    if section_param.type == 'legacy' and section in (self._legacy_parameters_section_name, ):
                         parameters['{}'.format(key)] = section_param.value
                     else:
                         parameters['{}/{}'.format(section, key)] = section_param.value
@@ -877,7 +878,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 org_hyperparams = self.data.hyperparams or {}
                 hyperparams = dict()
                 # if the task is a legacy task, we should put everything back under General/key with legacy type
-                legacy_name = self._default_configuration_section_name
+                legacy_name = self._legacy_parameters_section_name
                 org_legacy_section = org_hyperparams.get(legacy_name, dict())
 
                 for k, v in parameters.items():

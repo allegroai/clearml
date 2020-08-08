@@ -112,11 +112,12 @@ def get_logger(path=None, level=None, stream=None, colored=False):
     path = path or os.path.abspath((inspect.stack()[1])[1])
     root_log = LoggerRoot.get_base_logger(level=default_level, stream=sys.stdout, colored=colored)
     log = root_log.getChild(Path(path).stem)
-    level = level if level is not None else root_log.level
-    log.setLevel(level)
+    if level is not None:
+        log.setLevel(level)
     if stream:
         ch = logging.StreamHandler(stream=stream)
-        ch.setLevel(level)
+        if level is not None:
+            ch.setLevel(level)
     log.propagate = True
     return log
 

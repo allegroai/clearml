@@ -262,7 +262,7 @@ class Metrics(InterfaceBase):
             remote_url = remote_url[:-1]
         uploaded_files = set()
         task_id = task.id
-        with open(filename, 'rt') as f:
+        with open(filename.as_posix(), 'rt') as f:
             i = 0
             while True:
                 try:

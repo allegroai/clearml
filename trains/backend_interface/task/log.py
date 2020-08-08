@@ -259,7 +259,7 @@ class TaskHandler(BufferingHandler):
         filename = Path(folder) / cls.__offline_filename
         if not filename.is_file():
             return False
-        with open(filename, 'rt') as f:
+        with open(filename.as_posix(), 'rt') as f:
             i = 0
             while True:
                 try:

@@ -543,7 +543,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             if self._offline_mode:
                 # noinspection PyBroadException
                 try:
-                    with open(self.get_offline_mode_folder() / self._offline_filename, 'rt') as f:
+                    with open((self.get_offline_mode_folder() / self._offline_filename).as_posix(), 'rt') as f:
                         stored_dict = json.load(f)
                     stored_data = tasks.Task(**stored_dict)
                     # add missing entries

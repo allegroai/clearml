@@ -1710,7 +1710,7 @@ class Task(_Task):
             raise ValueError("Could not find the session folder / zip-file {}".format(session_folder))
 
         try:
-            with open(session_folder / cls._offline_filename, 'rt') as f:
+            with open((session_folder / cls._offline_filename).as_posix(), 'rt') as f:
                 export_data = json.load(f)
         except Exception as ex:
             raise ValueError(

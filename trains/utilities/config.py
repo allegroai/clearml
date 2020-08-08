@@ -2,6 +2,8 @@ from __future__ import division
 
 import six
 import humanfriendly
+import pyparsing
+from .pyhocon import ConfigFactory, HOCONConverter
 
 
 def parse_human_size(value):
@@ -44,3 +46,38 @@ def get_human_size_default(config, key, default=None):
         return default
 
     return parse_human_size(raw_value)
+
+
+def config_dict_to_text(config):
+    # if already string return as is
+    if isinstance(config, six.string_types):
+        return config
+    if not isinstance(config, dict):
+        raise ValueError("Configuration only supports dictionary objects")
+    try:
+        # noinspection PyBroadException
+        try:
+            text = HOCONConverter.to_hocon(ConfigFactory.from_dict(config))
+        except Exception:
+            # fallback json+pyhocon
+            # hack, pyhocon is not very good with dict conversion so we pass through json
+            import json
+            text = json.dumps(config)
+            text = HOCONConverter.to_hocon(ConfigFactory.parse_string(text))
+
+    except Exception:
+        raise ValueError("Could not serialize configuration dictionary:\n", config)
+    return text
+
+
+def text_to_config_dict(text):
+    if not isinstance(text, six.string_types):
+        raise ValueError("Configuration parsing only supports string")
+    # noinspection PyBroadException
+    try:
+        return ConfigFactory.parse_string(text).as_plain_ordered_dict()
+    except pyparsing.ParseBaseException as ex:
+        pos = "at char {}, line:{}, col:{}".format(ex.loc, ex.lineno, ex.column)
+        six.raise_from(ValueError("Could not parse configuration text ({}):\n{}".format(pos, text)), None)
+    except Exception:
+        six.raise_from(ValueError("Could not parse configuration text:\n{}".format(text)), None)

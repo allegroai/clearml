@@ -263,7 +263,7 @@ class Artifacts(object):
 
     def __init__(self, task):
         self._task = task
-        # notice the double link, this important since the Artifact
+        # notice the double link, this is important since the Artifact
         # dictionary needs to signal the Artifacts base on changes
         self._artifacts_container = self._ProxyDictWrite(self)
         self._last_artifacts_upload = {}

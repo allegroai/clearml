@@ -4,7 +4,6 @@ import tarfile
 import zipfile
 from tempfile import mkdtemp, mkstemp
 
-import pyparsing
 import six
 from typing import List, Dict, Union, Optional, Mapping, TYPE_CHECKING, Sequence
 
@@ -12,7 +11,7 @@ from .backend_api import Session
 from .backend_api.services import models
 from pathlib2 import Path
 
-from .utilities.pyhocon import ConfigFactory, HOCONConverter
+from .utilities.config import config_dict_to_text, text_to_config_dict
 
 from .backend_interface.util import validate_dict, get_single_result, mutually_exclusive
 from .debugging.log import get_logger
@@ -338,36 +337,15 @@ class BaseModel(object):
 
     @staticmethod
     def _config_dict_to_text(config):
-        # if already string return as is
-        if isinstance(config, six.string_types):
-            return config
-        if not isinstance(config, dict):
-            raise ValueError("Model configuration only supports dictionary objects")
-        try:
-            try:
-                text = HOCONConverter.to_hocon(ConfigFactory.from_dict(config))
-            except Exception:
-                # fallback json+pyhocon
-                # hack, pyhocon is not very good with dict conversion so we pass through json
-                import json
-                text = json.dumps(config)
-                text = HOCONConverter.to_hocon(ConfigFactory.parse_string(text))
-
-        except Exception:
-            raise ValueError("Could not serialize configuration dictionary:\n", config)
-        return text
+        if not isinstance(config, six.string_types) and not isinstance(config, dict):
+            raise ValueError("Model configuration only supports dictionary or string objects")
+        return config_dict_to_text
 
     @staticmethod
     def _text_to_config_dict(text):
         if not isinstance(text, six.string_types):
             raise ValueError("Model configuration parsing only supports string")
-        try:
-            return ConfigFactory.parse_string(text).as_plain_ordered_dict()
-        except pyparsing.ParseBaseException as ex:
-            pos = "at char {}, line:{}, col:{}".format(ex.loc, ex.lineno, ex.column)
-            six.raise_from(ValueError("Could not parse configuration text ({}):\n{}".format(pos, text)), None)
-        except Exception:
-            six.raise_from(ValueError("Could not parse configuration text:\n{}".format(text)), None)
+        return text_to_config_dict(text)
 
     @staticmethod
     def _resolve_config(config_text=None, config_dict=None):

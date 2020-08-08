@@ -64,7 +64,11 @@ class DataModel(object):
 
     @classmethod
     def _to_base_type(cls, value):
-        if isinstance(value, DataModel):
+        if isinstance(value, dict):
+            # Note: this should come before DataModel to handle data models that are simply a dict
+            # (and thus are not expected to have additional named properties)
+            return {k: cls._to_base_type(v) for k, v in value.items()}
+        elif isinstance(value, DataModel):
             return value.to_dict()
         elif isinstance(value, enum.Enum):
             return value.value

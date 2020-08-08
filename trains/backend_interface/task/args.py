@@ -10,32 +10,35 @@ from ...utilities.args import call_original_argparser
 class _Arguments(object):
     _prefix_sep = '/'
     # TODO: separate dict and argparse after we add UI support
-    _prefix_dict = 'dict' + _prefix_sep
-    _prefix_args = 'argparse' + _prefix_sep
+    _prefix_args = 'Args' + _prefix_sep
     _prefix_tf_defines = 'TF_DEFINE' + _prefix_sep
 
     class _ProxyDictWrite(dict):
         """ Dictionary wrapper that updates an arguments instance on any item set in the dictionary """
 
-        def __init__(self, arguments, *args, **kwargs):
+        def __init__(self, __arguments, __section_name, *args, **kwargs):
             super(_Arguments._ProxyDictWrite, self).__init__(*args, **kwargs)
-            self._arguments = arguments
+            self._arguments = __arguments
+            self._section_name = (__section_name.strip(_Arguments._prefix_sep) + _Arguments._prefix_sep) \
+                if __section_name else None
 
         def __setitem__(self, key, value):
             super(_Arguments._ProxyDictWrite, self).__setitem__(key, value)
             if self._arguments:
-                self._arguments.copy_from_dict(self)
+                self._arguments.copy_from_dict(self, prefix=self._section_name)
 
     class _ProxyDictReadOnly(dict):
         """ Dictionary wrapper that prevents modifications to the dictionary """
 
-        def __init__(self, arguments, *args, **kwargs):
+        def __init__(self, __arguments, __section_name, *args, **kwargs):
             super(_Arguments._ProxyDictReadOnly, self).__init__(*args, **kwargs)
-            self._arguments = arguments
+            self._arguments = __arguments
+            self._section_name = (__section_name.strip(_Arguments._prefix_sep) + _Arguments._prefix_sep) \
+                if __section_name else None
 
         def __setitem__(self, key, value):
             if self._arguments:
-                param_dict = self._arguments.copy_to_dict({key: value})
+                param_dict = self._arguments.copy_to_dict({key: value}, prefix=self._section_name)
                 value = param_dict.get(key, value)
             super(_Arguments._ProxyDictReadOnly, self).__setitem__(key, value)
 
@@ -45,24 +48,32 @@ class _Arguments(object):
         self._exclude_parser_args = {}
 
     def exclude_parser_args(self, excluded_args):
+        """
+        You can use a dictionary for fined grained control of connected
+        arguments. The dictionary keys are argparse variable names and the values are booleans.
+        The ``False`` value excludes the specified argument from the Task's parameter section.
+        Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
+
+        :param excluded_args: dict
+        """
         self._exclude_parser_args = excluded_args or {}
 
     def set_defaults(self, *dicts, **kwargs):
-        self._task.set_parameters(*dicts, **kwargs)
+        # noinspection PyProtectedMember
+        self._task._set_parameters(*dicts, __parameters_prefix=self._prefix_args, **kwargs)
 
     def add_argument(self, option_strings, type=None, default=None, help=None):
         if not option_strings:
             raise Exception('Expected at least one argument name (option string)')
         name = option_strings[0].strip('- \t') if isinstance(option_strings, list) else option_strings.strip('- \t')
-        # TODO: add argparse prefix
-        # name = self._prefix_args + name
+        name = self._prefix_args + name
         self._task.set_parameter(name=name, value=default, description=help)
 
     def connect(self, parser):
         self._task.connect_argparse(parser)
 
     @classmethod
-    def _add_to_defaults(cls, a_parser, defaults, a_args=None, a_namespace=None, a_parsed_args=None):
+    def _add_to_defaults(cls, a_parser, defaults, descriptions, a_args=None, a_namespace=None, a_parsed_args=None):
         actions = [
             a for a in a_parser._actions
             if isinstance(a, _StoreAction) or isinstance(a, _StoreConstAction)
@@ -87,6 +98,9 @@ class _Arguments(object):
                 for a in actions
             }
 
+        desc_ = {a.dest: a.help for a in actions}
+        descriptions.update(desc_)
+
         full_args_dict = copy(defaults)
         full_args_dict.update(args_dict)
         defaults.update(defaults_)
@@ -101,17 +115,19 @@ class _Arguments(object):
                 defaults[sub_parser.dest] = full_args_dict.get(sub_parser.dest) or ''
             for choice in sub_parser.choices.values():
                 # recursively parse
-                defaults = cls._add_to_defaults(
+                defaults, descriptions = cls._add_to_defaults(
                     a_parser=choice,
                     defaults=defaults,
+                    descriptions=descriptions,
                     a_parsed_args=a_parsed_args or full_args_dict
                 )
 
-        return defaults
+        return defaults, descriptions
 
     def copy_defaults_from_argparse(self, parser, args=None, namespace=None, parsed_args=None):
         task_defaults = {}
-        self._add_to_defaults(parser, task_defaults, args, namespace, parsed_args)
+        task_defaults_descriptions = {}
+        self._add_to_defaults(parser, task_defaults, task_defaults_descriptions, args, namespace, parsed_args)
 
         # Make sure we didn't miss anything
         if parsed_args:
@@ -133,12 +149,13 @@ class _Arguments(object):
             except Exception:
                 del task_defaults[k]
 
-        # Skip excluded arguments, Add prefix, TODO: add argparse prefix
-        # task_defaults = dict([(self._prefix_args + k, v) for k, v in task_defaults.items()
-        #                       if k not in self._exclude_parser_args])
-        task_defaults = dict([(k, v) for k, v in task_defaults.items() if self._exclude_parser_args.get(k, True)])
+        # Skip excluded arguments, Add prefix.
+        task_defaults = dict([(self._prefix_args + k, v) for k, v in task_defaults.items()
+                              if self._exclude_parser_args.get(k, True)])
+        task_defaults_descriptions = dict([(self._prefix_args + k, v) for k, v in task_defaults_descriptions.items()
+                                           if self._exclude_parser_args.get(k, True)])
         # Store to task
-        self._task.update_parameters(task_defaults)
+        self._task.update_parameters(task_defaults, __parameters_descriptions=task_defaults_descriptions)
 
     @classmethod
     def _find_parser_action(cls, a_parser, name):
@@ -158,11 +175,10 @@ class _Arguments(object):
         return _actions
 
     def copy_to_parser(self, parser, parsed_args):
-        # todo: change to argparse prefix only
-        # task_arguments = dict([(k[len(self._prefix_args):], v) for k, v in self._task.get_parameters().items()
-        #                        if k.startswith(self._prefix_args)])
-        task_arguments = dict([(k, v) for k, v in self._task.get_parameters().items()
-                               if not k.startswith(self._prefix_tf_defines) and self._exclude_parser_args.get(k, True)])
+        # Change to argparse prefix only
+        task_arguments = dict([(k[len(self._prefix_args):], v) for k, v in self._task.get_parameters().items()
+                               if k.startswith(self._prefix_args) and
+                               self._exclude_parser_args.get(k[len(self._prefix_args):], True)])
         arg_parser_argeuments = {}
         for k, v in task_arguments.items():
             # python2 unicode support
@@ -304,25 +320,24 @@ class _Arguments(object):
         parser.set_defaults(**arg_parser_argeuments)
 
     def copy_from_dict(self, dictionary, prefix=None):
-        # TODO: add dict prefix
-        prefix = prefix or ''  # self._prefix_dict
+        # add dict prefix
+        prefix = prefix  # or self._prefix_dict
         if prefix:
-            with self._task._edit_lock:
-                prefix_dictionary = dict([(prefix + k, v) for k, v in dictionary.items()])
-                cur_params = dict([(k, v) for k, v in self._task.get_parameters().items() if not k.startswith(prefix)])
-                cur_params.update(prefix_dictionary)
-                self._task.set_parameters(cur_params)
+            prefix = prefix.strip(self._prefix_sep) + self._prefix_sep
+            # this will only set the specific section
+            self._task.set_parameters(dictionary, __parameters_prefix=prefix)
         else:
             self._task.update_parameters(dictionary)
         if not isinstance(dictionary, self._ProxyDictWrite):
-            return self._ProxyDictWrite(self, **dictionary)
+            return self._ProxyDictWrite(self, prefix, **dictionary)
         return dictionary
 
     def copy_to_dict(self, dictionary, prefix=None):
         # iterate over keys and merge values according to parameter type in dictionary
-        # TODO: add dict prefix
-        prefix = prefix or ''  # self._prefix_dict
+        # add dict prefix
+        prefix = prefix  # or self._prefix_dict
         if prefix:
+            prefix = prefix.strip(self._prefix_sep) + self._prefix_sep
             parameters = dict([(k[len(prefix):], v) for k, v in self._task.get_parameters().items()
                                if k.startswith(prefix)])
         else:
@@ -396,5 +411,5 @@ class _Arguments(object):
         #         dictionary[k] = v
 
         if not isinstance(dictionary, self._ProxyDictReadOnly):
-            return self._ProxyDictReadOnly(self, **dictionary)
+            return self._ProxyDictReadOnly(self, prefix, **dictionary)
         return dictionary

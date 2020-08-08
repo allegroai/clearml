@@ -339,7 +339,7 @@ class BaseModel(object):
     def _config_dict_to_text(config):
         if not isinstance(config, six.string_types) and not isinstance(config, dict):
             raise ValueError("Model configuration only supports dictionary or string objects")
-        return config_dict_to_text
+        return config_dict_to_text(config)
 
     @staticmethod
     def _text_to_config_dict(text):

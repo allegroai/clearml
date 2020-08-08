@@ -62,6 +62,7 @@ class Session(TokenManager):
     default_files = "https://demofiles.trains.allegro.ai"
     default_key = "EGRTCO8JMSIGI6S39GTP43NFWXDQOW"
     default_secret = "x!XTov_G-#vspE*Y(h$Anm&DIc5Ou-F)jsl$PdOyj5wG1&E!Z8"
+    force_max_api_version = None
 
     # TODO: add requests.codes.gateway_timeout once we support async commits
     _retry_codes = [
@@ -181,6 +182,9 @@ class Session(TokenManager):
         urllib_log_warning_setup(total_retries=http_retries_config.get('total', 0), display_warning_after=3)
 
         self.__class__._sessions_created += 1
+
+        if self.force_max_api_version and self.check_min_api_version(self.force_max_api_version):
+            Session.api_version = str(self.force_max_api_version)
 
     def _send_request(
         self,
@@ -539,7 +543,17 @@ class Session(TokenManager):
         # If no session was created, create a default one, in order to get the backend api version.
         if cls._sessions_created <= 0:
             if cls._offline_mode:
-                cls.api_version = cls._offline_default_version
+                # allow to change the offline mode version by setting ENV_OFFLINE_MODE to the required API version
+                if cls.api_version != cls._offline_default_version:
+                    offline_api = ENV_OFFLINE_MODE.get(converter=lambda x: x)
+                    if offline_api:
+                        try:
+                            # check cast to float, but leave original str if we pass it.
+                            float(offline_api)
+                            cls._offline_default_version = str(offline_api)
+                        except ValueError:
+                            pass
+                    cls.api_version = cls._offline_default_version
             else:
                 # noinspection PyBroadException
                 try:

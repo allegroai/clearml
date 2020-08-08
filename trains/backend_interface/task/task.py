@@ -30,13 +30,15 @@ from ...backend_api import Session
 from ...backend_api.services import tasks, models, events, projects
 from ...backend_api.session.defs import ENV_OFFLINE_MODE
 from ...utilities.pyhocon import ConfigTree, ConfigFactory
+from ...utilities.config import config_dict_to_text, text_to_config_dict
 
 from ..base import IdObjectBase, InterfaceBase
 from ..metrics import Metrics, Reporter
 from ..model import Model
 from ..setupuploadmixin import SetupUploadMixin
-from ..util import make_message, get_or_create_project, get_single_result, \
-    exact_match_regex
+from ..util import (
+    make_message, get_or_create_project, get_single_result,
+    exact_match_regex, mutually_exclusive, )
 from ...config import (
     get_config_for_bucket, get_remote_task_id, TASK_ID_ENV_VAR, get_log_to_backend,
     running_remotely, get_cache_dir, DOCKER_IMAGE_ENV_VAR, get_offline_dir)
@@ -768,7 +770,47 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
             self._edit(execution=self.data.execution)
 
+    def get_parameters(self, backwards_compatibility=True):
+        # type: (bool) -> (Optional[dict])
+        """
+        Get the parameters for a Task. This method returns a complete group of key-value parameter pairs, but does not
+        support parameter descriptions (the result is a dictionary of key-value pairs).
+        :param backwards_compatibility: If True (default) parameters without section name
+            (API version < 2.9, trains-server < 0.16) will be at dict root level.
+            If False, parameters without section name, will be nested under "general/" key.
+        :return: dict of the task parameters, all flattened to key/value.
+            Different sections with key prefix "section/"
+        """
+        if not Session.check_min_api_version('2.9'):
+            return self._get_task_property('execution.parameters')
+
+        # API will makes sure we get old parameters under _legacy
+        parameters = dict()
+        hyperparams = self._get_task_property('hyperparams', default=dict())
+        if len(hyperparams) == 1 and '_legacy' in hyperparams and backwards_compatibility:
+            for section in ('_legacy', ):
+                for key, section_param in hyperparams[section].items():
+                    parameters['{}'.format(key)] = section_param.value
+        else:
+            for section in hyperparams:
+                for key, section_param in hyperparams[section].items():
+                    parameters['{}/{}'.format(section, key)] = section_param.value
+
+        return parameters
+
     def set_parameters(self, *args, **kwargs):
+        # type: (*dict, **Any) -> ()
+        """
+        Set the parameters for a Task. This method sets a complete group of key-value parameter pairs, but does not
+        support parameter descriptions (the input is a dictionary of key-value pairs).
+
+        :param args: Positional arguments, which are one or more dictionary or (key, value) iterable. They are
+            merged into a single key-value pair dictionary.
+        :param kwargs: Key-value pairs, merged into the parameters dictionary created from ``args``.
+        """
+        return self._set_parameters(*args, __update=False, **kwargs)
+
+    def _set_parameters(self, *args, **kwargs):
         # type: (*dict, **Any) -> ()
         """
         Set the parameters for a Task. This method sets a complete group of key-value parameter pairs, but does not
@@ -781,58 +823,113 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not all(isinstance(x, (dict, Iterable)) for x in args):
             raise ValueError('only dict or iterable are supported as positional arguments')
 
+        prefix = kwargs.pop('__parameters_prefix', None)
+        descriptions = kwargs.pop('__parameters_descriptions', None) or dict()
+        params_types = kwargs.pop('__parameters_types', None) or dict()
         update = kwargs.pop('__update', False)
+
+        # new parameters dict
+        new_parameters = dict(itertools.chain.from_iterable(x.items() if isinstance(x, dict) else x for x in args))
+        new_parameters.update(kwargs)
+        if prefix:
+            prefix = prefix.strip('/')
+            new_parameters = dict(('{}/{}'.format(prefix, k), v) for k, v in new_parameters.items())
+
+        # verify parameters type:
+        not_allowed = {
+            k: type(v).__name__
+            for k, v in new_parameters.items()
+            if not isinstance(v, self._parameters_allowed_types)
+        }
+        if not_allowed:
+            raise ValueError(
+                "Only builtin types ({}) are allowed for values (got {})".format(
+                    ', '.join(t.__name__ for t in self._parameters_allowed_types),
+                    ', '.join('%s=>%s' % p for p in not_allowed.items())),
+            )
+
+        use_hyperparams = Session.check_min_api_version('2.9')
 
         with self._edit_lock:
             self.reload()
-            if update:
-                parameters = self.get_parameters()
+            # if we have a specific prefix and we use hyperparameters, and we use set.
+            # overwrite only the prefix, leave the rest as is.
+            if not update and prefix:
+                parameters = dict(**(self.get_parameters() or {}))
+                parameters = dict((k, v) for k, v in parameters.items() if not k.startswith(prefix+'/'))
+            elif update:
+                parameters = dict(**(self.get_parameters() or {}))
             else:
                 parameters = dict()
-            parameters.update(itertools.chain.from_iterable(x.items() if isinstance(x, dict) else x for x in args))
-            parameters.update(kwargs)
 
-            not_allowed = {
-                k: type(v).__name__
-                for k, v in parameters.items()
-                if not isinstance(v, self._parameters_allowed_types)
-            }
-            if not_allowed:
-                raise ValueError(
-                    "Only builtin types ({}) are allowed for values (got {})".format(
-                        ', '.join(t.__name__ for t in self._parameters_allowed_types),
-                        ', '.join('%s=>%s' % p for p in not_allowed.items())),
-                )
+            parameters.update(new_parameters)
 
             # force cast all variables to strings (so that we can later edit them in UI)
             parameters = {k: str(v) if v is not None else "" for k, v in parameters.items()}
 
-            execution = self.data.execution
-            if execution is None:
-                execution = tasks.Execution(
-                    parameters=parameters, artifacts=[], dataviews=[], model='',
-                    model_desc={}, model_labels={}, docker_cmd='')
-            else:
-                execution.parameters = parameters
-            self._edit(execution=execution)
+            if use_hyperparams:
+                # build nested dict from flat parameters dict:
+                org_hyperparams = self.data.hyperparams or {}
+                hyperparams = dict()
 
-    def set_parameter(self, name, value, description=None):
-        # type: (str, str, Optional[str]) -> ()
+                # if the task is a legacy task, we should put everything back under _legacy
+                if self.data.hyperparams and '_legacy' in self.data.hyperparams:
+                    for k, v in parameters.items():
+                        section_name, key = '_legacy', k
+                        section = hyperparams.get(section_name, dict())
+                        description = \
+                            descriptions.get(k) or \
+                            org_hyperparams.get(section_name, dict()).get(key, tasks.ParamsItem()).description
+                        param_type = \
+                            params_types.get(k) or \
+                            org_hyperparams.get(section_name, dict()).get(key, tasks.ParamsItem()).type
+                        section[key] = tasks.ParamsItem(
+                            section=section_name, name=key, value=v, description=description, type=str(param_type))
+                        hyperparams[section_name] = section
+                else:
+                    for k, v in parameters.items():
+                        org_k = k
+                        if '/' not in k:
+                            k = 'General/{}'.format(k)
+                        section_name, key = k.split('/', 1)
+                        section = hyperparams.get(section_name, dict())
+                        description = \
+                            descriptions.get(org_k) or \
+                            org_hyperparams.get(section_name, dict()).get(key, tasks.ParamsItem()).description
+                        section[key] = tasks.ParamsItem\
+                            (section=section_name, name=key, value=v, description=description)
+                        hyperparams[section_name] = section
+                self._edit(hyperparams=hyperparams)
+            else:
+                execution = self.data.execution
+                if execution is None:
+                    execution = tasks.Execution(
+                        parameters=parameters, artifacts=[], dataviews=[], model='',
+                        model_desc={}, model_labels={}, docker_cmd='')
+                else:
+                    execution.parameters = parameters
+                self._edit(execution=execution)
+
+    def set_parameter(self, name, value, description=None, value_type=None):
+        # type: (str, str, Optional[str], Optional[Any]) -> ()
         """
         Set a single Task parameter. This overrides any previous value for this parameter.
 
         :param name: The parameter name.
         :param value: The parameter value.
         :param description: The parameter description.
-
-            .. note::
-               The ``description`` is not yet in use.
+        :param value_type: The type of the parameters (cast to string and store)
         """
-        # not supported yet
-        if description:
-            # noinspection PyUnusedLocal
+        if not Session.check_min_api_version('2.9'):
+            # not supported yet
             description = None
-        self.set_parameters({name: value}, __update=True)
+            value_type = None
+
+        self._set_parameters(
+            {name: value}, __update=True,
+            __parameters_descriptions={name: description},
+            __parameters_types={name: value_type}
+        )
 
     def get_parameter(self, name, default=None):
         # type: (str, Any) -> Any
@@ -856,7 +953,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             merged into a single key-value pair dictionary.
         :param kwargs: Key-value pairs, merged into the parameters dictionary created from ``args``.
         """
-        self.set_parameters(__update=True, *args, **kwargs)
+        self._set_parameters(*args, __update=True, **kwargs)
 
     def set_model_label_enumeration(self, enumeration=None):
         # type: (Mapping[str, int]) -> ()
@@ -1316,7 +1413,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         self._update_requirements('')
 
-        if Session.check_min_api_version('2.3'):
+        if Session.check_min_api_version('2.9'):
+            self._set_task_property("system_tags", system_tags)
+            self._edit(system_tags=self._data.system_tags, comment=self._data.comment,
+                       script=self._data.script, execution=self._data.execution, output_dest='',
+                       hyperparams=dict(), configuration=dict())
+        elif Session.check_min_api_version('2.3'):
             self._set_task_property("system_tags", system_tags)
             self._edit(system_tags=self._data.system_tags, comment=self._data.comment,
                        script=self._data.script, execution=self._data.execution, output_dest='')
@@ -1385,6 +1487,67 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self.reload()
             self.data.script = script
             self._edit(script=script)
+
+    def _set_configuration(self, name, description=None, config_type=None, config_text=None, config_dict=None):
+        # type: (str, Optional[str], Optional[str], Optional[str], Optional[Mapping]) -> None
+        """
+        Set Task configuration text/dict. Multiple configurations are supported.
+
+        :param str name: Configuration name.
+        :param str description: Configuration section description.
+        :param config_text: model configuration (unconstrained text string). usually the content
+            of a configuration file. If `config_text` is not None, `config_dict` must not be provided.
+        :param config_dict: model configuration parameters dictionary.
+            If `config_dict` is not None, `config_text` must not be provided.
+        """
+        # make sure we have wither dict or text
+        mutually_exclusive(config_dict=config_dict, config_text=config_text)
+
+        if not Session.check_min_api_version('2.9'):
+            raise ValueError("Multiple configurations are not supported with the current 'trains-server', "
+                             "please upgrade to the latest version")
+
+        if description:
+            description = str(description)
+        config = config_dict_to_text(config_text or config_dict)
+        with self._edit_lock:
+            self.reload()
+            configuration = self.data.configuration or {}
+            configuration[name] = tasks.ConfigurationItem(
+                name=name, value=config, description=description or None, type=config_type or None)
+            self._edit(configuration=configuration)
+
+    def _get_configuration_text(self, name):
+        # type: (str) -> Optional[str]
+        """
+        Get Task configuration section as text
+
+        :param str name: Configuration name.
+        :return: The Task configuration as text (unconstrained text string).
+            return None if configuration name is not valid.
+        """
+        if not Session.check_min_api_version('2.9'):
+            raise ValueError("Multiple configurations are not supported with the current 'trains-server', "
+                             "please upgrade to the latest version")
+
+        configuration = self.data.configuration or {}
+        if not configuration.get(name):
+            return None
+        return configuration[name].value
+
+    def _get_configuration_dict(self, name):
+        # type: (str) -> Optional[dict]
+        """
+        Get Task configuration section as dictionary
+
+        :param str name: Configuration name.
+        :return: The Task configuration as dictionary.
+            return None if configuration name is not valid.
+        """
+        config_text = self._get_configuration_text(name)
+        if not config_text:
+            return None
+        return text_to_config_dict(config_text)
 
     def get_offline_mode_folder(self):
         # type: () -> (Optional[Path])

@@ -15,13 +15,15 @@ except ImportError:
 
 
 class OptunaObjective(object):
-    def __init__(self, base_task_id, queue_name, optimizer, max_iteration_per_job, sleep_interval, config_space):
-        # type: (str, str, OptimizerOptuna, int, float, dict) -> None
+    def __init__(self, base_task_id, queue_name, optimizer, max_iteration_per_job, min_iteration_per_job,
+                 sleep_interval, config_space):
+        # type: (str, str, OptimizerOptuna, int, Optional[int], float, dict) -> None
         self.base_task_id = base_task_id
         self.optimizer = optimizer
         self.queue_name = queue_name
         self.sleep_interval = sleep_interval
         self.max_iteration_per_job = max_iteration_per_job
+        self.min_iteration_per_job = min_iteration_per_job
         self._config_space = config_space
 
     def objective(self, trial):
@@ -57,7 +59,9 @@ class OptunaObjective(object):
                     trial.report(value=iteration_value[1], step=iteration_value[0])
 
                     # Handle pruning based on the intermediate value.
-                    if trial.should_prune():
+                    if trial.should_prune() and (
+                            not self.min_iteration_per_job or
+                            iteration_value[0] >= self.min_iteration_per_job):
                         current_job.abort()
                         raise optuna.TrialPruned()
 
@@ -87,6 +91,7 @@ class OptimizerOptuna(SearchStrategy):
             max_iteration_per_job,  # type: Optional[int]
             total_max_jobs,  # type: Optional[int]
             pool_period_min=2.,  # type: float
+            min_iteration_per_job=None,  # type: Optional[int]
             time_limit_per_job=None,  # type: Optional[float]
             optuna_sampler=None,  # type: Optional[optuna.samplers.base]
             optuna_pruner=None,  # type: Optional[optuna.pruners.base]
@@ -97,7 +102,7 @@ class OptimizerOptuna(SearchStrategy):
         """
         Initialize am Optuna search strategy optimizer
         Optuna performs robust and efficient hyperparameter optimization at scale by combining.
-        Specific hyper-parameter pruning strategy can be selected via `sampler` and `pruner` argyments
+        Specific hyper-parameter pruning strategy can be selected via `sampler` and `pruner` arguments
 
         :param str base_task_id: Task ID (str)
         :param list hyper_parameters: list of Parameter objects to optimize over
@@ -114,6 +119,8 @@ class OptimizerOptuna(SearchStrategy):
             This means more than total_max_jobs could be created, as long as the cumulative iterations
             (summed over all created jobs) will not exceed `max_iteration_per_job * total_max_jobs`
         :param float pool_period_min: time in minutes between two consecutive pools
+        :param int min_iteration_per_job: The minimum number of iterations (of the Objective metric) per single job,
+            before early stopping the Job. (Optional)
         :param float time_limit_per_job: Optional, maximum execution time per single job in minutes,
             when time limit is exceeded job is aborted
         :param optuna_kwargs: arguments passed directly to the Optuna object
@@ -122,7 +129,8 @@ class OptimizerOptuna(SearchStrategy):
             base_task_id=base_task_id, hyper_parameters=hyper_parameters, objective_metric=objective_metric,
             execution_queue=execution_queue, num_concurrent_workers=num_concurrent_workers,
             pool_period_min=pool_period_min, time_limit_per_job=time_limit_per_job,
-            max_iteration_per_job=max_iteration_per_job, total_max_jobs=total_max_jobs)
+            max_iteration_per_job=max_iteration_per_job, min_iteration_per_job=min_iteration_per_job,
+            total_max_jobs=total_max_jobs)
         self._optuna_sampler = optuna_sampler
         self._optuna_pruner = optuna_pruner
         verified_optuna_kwargs = []
@@ -154,6 +162,7 @@ class OptimizerOptuna(SearchStrategy):
             queue_name=self._execution_queue,
             optimizer=self,
             max_iteration_per_job=self.max_iteration_per_job,
+            min_iteration_per_job=self.min_iteration_per_job,
             sleep_interval=int(self.pool_period_minutes * 60),
             config_space=config_space,
         )

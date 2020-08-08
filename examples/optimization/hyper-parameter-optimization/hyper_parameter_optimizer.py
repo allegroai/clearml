@@ -94,8 +94,8 @@ an_optimizer = HyperParameterOptimizer(
     # If OptimizerBOHB is used, it defined the maximum budget in terms of full jobs
     # basically the cumulative number of iterations will not exceed total_max_jobs * max_iteration_per_job
     total_max_jobs=10,
-    # This is only applicable for OptimizerBOHB and ignore by the rest
-    # set the minimum number of iterations for an experiment, before early stopping
+    # set the minimum number of iterations for an experiment, before early stopping.
+    # Does not apply for simple strategies such as RandomSearch or GridSearch
     min_iteration_per_job=10,
     # Set the maximum number of iterations for an experiment to execute
     # (This is optional, unless using OptimizerBOHB where this is a must)

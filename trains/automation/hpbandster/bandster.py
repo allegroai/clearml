@@ -178,7 +178,8 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
             base_task_id=base_task_id, hyper_parameters=hyper_parameters, objective_metric=objective_metric,
             execution_queue=execution_queue, num_concurrent_workers=num_concurrent_workers,
             pool_period_min=pool_period_min, time_limit_per_job=time_limit_per_job,
-            max_iteration_per_job=max_iteration_per_job, total_max_jobs=total_max_jobs)
+            max_iteration_per_job=max_iteration_per_job, min_iteration_per_job=min_iteration_per_job,
+            total_max_jobs=total_max_jobs)
         self._max_iteration_per_job = max_iteration_per_job
         self._min_iteration_per_job = min_iteration_per_job
         verified_bohb_kwargs = ['eta', 'min_budget', 'max_budget', 'min_points_in_model', 'top_n_percent',

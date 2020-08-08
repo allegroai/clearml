@@ -239,6 +239,7 @@ class SearchStrategy(object):
             num_concurrent_workers,  # type: int
             pool_period_min=2.,  # type: float
             time_limit_per_job=None,  # type: Optional[float]
+            min_iteration_per_job=None,  # type: Optional[int]
             max_iteration_per_job=None,  # type: Optional[int]
             total_max_jobs=None,  # type: Optional[int]
             **_  # type: Any
@@ -255,8 +256,9 @@ class SearchStrategy(object):
         :param float pool_period_min: The time between two consecutive pools (minutes).
         :param float time_limit_per_job: The maximum execution time per single job in minutes. When time limit is
             exceeded, the job is aborted. (Optional)
-        :param int max_iteration_per_job: The maximum iterations (of the Objective metric) per single job. When maximum
-            iterations is exceeded, the job is aborted.  (Optional)
+        :param int min_iteration_per_job: The minimum iterations (of the Objective metric) per single job (Optional)
+        :param int max_iteration_per_job: The maximum iterations (of the Objective metric) per single job.
+            When maximum iterations is exceeded, the job is aborted.  (Optional)
         :param int total_max_jobs: The total maximum jobs for the optimization process. The default value is ``None``,
             for unlimited.
         """
@@ -269,6 +271,7 @@ class SearchStrategy(object):
         self.pool_period_minutes = pool_period_min
         self.time_limit_per_job = time_limit_per_job
         self.max_iteration_per_job = max_iteration_per_job
+        self.min_iteration_per_job = min_iteration_per_job
         self.total_max_jobs = total_max_jobs
         self._stop_event = Event()
         self._current_jobs = []

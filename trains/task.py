@@ -943,7 +943,7 @@ class Task(_Task):
             name = self.__default_configuration_name
 
         if not multi_config_support and name and name != self.__default_configuration_name:
-            raise ValueError("Multiple configurations are not supported with the current 'trains-server', "
+            raise ValueError("Multiple configurations is not supported with the current 'trains-server', "
                              "please upgrade to the latest version")
 
         for mutable_type, method in dispatch:
@@ -1006,7 +1006,7 @@ class Task(_Task):
             name = self.__default_configuration_name
 
         if not multi_config_support and name and name != self.__default_configuration_name:
-            raise ValueError("Multiple configurations are not supported with the current 'trains-server', "
+            raise ValueError("Multiple configurations is not supported with the current 'trains-server', "
                              "please upgrade to the latest version")
 
         # parameter dictionary

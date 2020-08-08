@@ -1504,7 +1504,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         mutually_exclusive(config_dict=config_dict, config_text=config_text)
 
         if not Session.check_min_api_version('2.9'):
-            raise ValueError("Multiple configurations are not supported with the current 'trains-server', "
+            raise ValueError("Multiple configurations is not supported with the current 'trains-server', "
                              "please upgrade to the latest version")
 
         if description:
@@ -1527,7 +1527,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return None if configuration name is not valid.
         """
         if not Session.check_min_api_version('2.9'):
-            raise ValueError("Multiple configurations are not supported with the current 'trains-server', "
+            raise ValueError("Multiple configurations is not supported with the current 'trains-server', "
                              "please upgrade to the latest version")
 
         configuration = self.data.configuration or {}

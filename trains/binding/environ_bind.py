@@ -2,11 +2,12 @@ import os
 
 import six
 
-from ..config import TASK_LOG_ENVIRONMENT, running_remotely
+from ..config import TASK_LOG_ENVIRONMENT, running_remotely, config
 
 
 class EnvironmentBind(object):
     _task = None
+    _environment_section = 'Environment'
 
     @classmethod
     def update_current_task(cls, current_task):
@@ -21,21 +22,36 @@ class EnvironmentBind(object):
     def _bind_environment(cls):
         if not cls._task:
             return
-        environ_log = str(TASK_LOG_ENVIRONMENT.get() or '').strip()
+
+        # get ENVIRONMENT and put it into the OS environment
+        if running_remotely():
+            params = cls._task.get_parameters_as_dict()
+            if params and cls._environment_section in params:
+                # put back into os:
+                os.environ.update(params[cls._environment_section])
+            return
+
+        environ_log = \
+            str(TASK_LOG_ENVIRONMENT.get() or '').strip() or config.get('development.log_os_environments', [])
+        if environ_log and isinstance(environ_log, str):
+            environ_log = [e.strip() for e in environ_log.split(',')]
+
         if not environ_log:
             return
 
-        if environ_log == '*':
-            env_param = {k: os.environ.get(k) for k in os.environ
-                         if not k.startswith('TRAINS_') and not k.startswith('ALG_')}
-        else:
-            environ_log = [e.strip() for e in environ_log.split(',')]
-            env_param = {k: os.environ.get(k) for k in os.environ if k in environ_log}
-
-        env_param = cls._task.connect(env_param)
-        if running_remotely():
-            # put back into os:
-            os.environ.update(env_param)
+        env_param = dict()
+        for match in (environ_log or []):
+            match = match.strip()
+            if match == '*':
+                env_param.update({k: os.environ.get(k) for k in os.environ
+                                  if not k.startswith('TRAINS_') and not k.startswith('ALG_')})
+            elif match.endswith('*'):
+                match = match.strip('*')
+                env_param.update({k: os.environ.get(k) for k in os.environ if k.startswith(match)})
+            elif match in os.environ:
+                env_param.update({match: os.environ.get(match)})
+        # store os environments
+        cls._task.connect(env_param, cls._environment_section)
 
 
 class PatchOsFork(object):
@@ -43,6 +59,7 @@ class PatchOsFork(object):
 
     @classmethod
     def patch_fork(cls):
+        # noinspection PyBroadException
         try:
             # only once
             if cls._original_fork:
@@ -67,18 +84,21 @@ class PatchOsFork(object):
                 task.get_logger().flush()
 
                 # Hack: now make sure we setup the reporter thread
+
+                # noinspection PyProtectedMember
                 task._setup_reporter()
 
                 # TODO: Check if the signal handler method is enough, for the time being, we have both
                 # # if we got here patch the os._exit of our instance to call us
-                def _at_exit_callback(*args, **kwargs):
+                def _at_exit_callback(*a_args, **a_kwargs):
                     # call at exit manually
                     # noinspection PyProtectedMember
                     task._at_exit()
-                    # noinspection PyProtectedMember
-                    return os._org_exit(*args, **kwargs)
+                    # noinspection PyProtectedMember, PyUnresolvedReferences
+                    return os._org_exit(*a_args, **a_kwargs)
 
                 if not hasattr(os, '_org_exit'):
+                    # noinspection PyProtectedMember, PyUnresolvedReferences
                     os._org_exit = os._exit
                 os._exit = _at_exit_callback
 

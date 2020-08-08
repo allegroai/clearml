@@ -39,5 +39,5 @@ task.connect_label_enumeration(labels)
 # storing the model, it will have the task network configuration and label enumeration
 print('Any model stored from this point onwards, will contain both model_config and label_enumeration')
 
-torch.save(model, os.path.join(gettempdir(), "model"))
+torch.save(model, os.path.join(gettempdir(), "model.pt"))
 print('Model saved')

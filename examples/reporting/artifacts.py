@@ -40,7 +40,6 @@ task.upload_artifact('pillow_image', im)
 task.upload_artifact('local folder', artifact_object=os.path.join('data_samples'))
 # add and upload a wildcard
 task.upload_artifact('wildcard jpegs', artifact_object=os.path.join('data_samples', '*.jpg'))
-
 # do something here
 sleep(1.)
 print(df)

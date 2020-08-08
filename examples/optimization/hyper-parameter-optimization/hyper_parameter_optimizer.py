@@ -87,9 +87,9 @@ an_optimizer = HyperParameterOptimizer(
     # Optional: Limit the execution time of a single experiment, in minutes.
     # (this is optional, and if using  OptimizerBOHB, it is ignored)
     time_limit_per_job=10.,
-    # Check the experiments every 6 seconds is way too often, we should probably set it to 5 min,
+    # Check the experiments every 12 seconds is way too often, we should probably set it to 5 min,
     # assuming a single experiment is usually hours...
-    pool_period_min=0.1,
+    pool_period_min=0.2,
     # set the maximum number of jobs to launch for the optimization, default (None) unlimited
     # If OptimizerBOHB is used, it defined the maximum budget in terms of full jobs
     # basically the cumulative number of iterations will not exceed total_max_jobs * max_iteration_per_job

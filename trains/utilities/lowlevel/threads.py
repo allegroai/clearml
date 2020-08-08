@@ -1,7 +1,12 @@
 import ctypes
 import threading
+import six
 import sys
 import time
+
+
+def get_current_thread_id():
+    return threading._get_ident() if six.PY2 else threading.get_ident()
 
 
 # Nasty hack to raise exception for other threads

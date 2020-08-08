@@ -549,8 +549,9 @@ class Session(TokenManager):
                     if offline_api:
                         try:
                             # check cast to float, but leave original str if we pass it.
-                            float(offline_api)
-                            cls._offline_default_version = str(offline_api)
+                            # minimum version is 2.3
+                            if float(offline_api) >= 2.3:
+                                cls._offline_default_version = str(offline_api)
                         except ValueError:
                             pass
                     cls.api_version = cls._offline_default_version

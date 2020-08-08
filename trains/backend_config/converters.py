@@ -24,6 +24,14 @@ def text_to_bool(value):
     return bool(strtobool(value))
 
 
+def safe_text_to_bool(value):
+    # type: (Text) -> bool
+    try:
+        return bool(strtobool(value))
+    except ValueError:
+        return bool(value)
+
+
 def any_to_bool(value):
     # type: (Optional[Union[int, float, Text]]) -> bool
     if isinstance(value, six.text_type):

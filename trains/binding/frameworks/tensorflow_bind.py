@@ -349,8 +349,7 @@ class EventTrainsWriter(object):
             im = Image.open(output)
             image = np.asarray(im)
             output.close()
-            if height is not None and width is not None:
-                assert height > 0 and width > 0, 'Image width and height should be positive integers'
+            if height is not None and height > 0 and width is not None and width > 0:
                 # noinspection PyArgumentList
                 val = image.reshape(height, width, -1).astype(np.uint8)
             else:
@@ -760,6 +759,7 @@ class ProxyEventsWriter(object):
         ret = None
         for ev in self._events:
             if hasattr(ev, '_get_sentinel_event'):
+                # noinspection PyProtectedMember
                 ret = ev._get_sentinel_event()
         return ret
 
@@ -1270,7 +1270,7 @@ class PatchTensorFlowEager(object):
             width = int(img_data_np[0].decode())  # noqa: F841
             height = int(img_data_np[1].decode())  # noqa: F841
             for i in range(2, img_data_np.size):
-                img_data = {'width': -1, 'height': -1,
+                img_data = {'width': None, 'height': None,
                             'colorspace': 'RGB', 'encodedImageString': img_data_np[i]}
                 image_tag = str(tag) + '/sample_{}'.format(i - 2) if img_data_np.size > 3 else str(tag)
                 event_writer._add_image(tag=image_tag,

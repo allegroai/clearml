@@ -350,7 +350,7 @@ class EventTrainsWriter(object):
             image = np.asarray(im)
             output.close()
             if height is not None and width is not None:
-                assert height > 0 and width > 0, 'Image width and height params are not positive'
+                assert height > 0 and width > 0, 'Image width and height should be positive integers'
                 # noinspection PyArgumentList
                 val = image.reshape(height, width, -1).astype(np.uint8)
             else:
@@ -369,8 +369,7 @@ class EventTrainsWriter(object):
                     val = val[:, :, [0, 1, 2]]
         except Exception as e:
             logger = LoggerRoot.get_base_logger(TensorflowBinding)
-            logger.warning('Failed decoding debug image [%s, %s, %s]'
-                                                                  % (width, height, color_channels))
+            logger.warning('Failed decoding debug image [%s, %s, %s]' % (width, height, color_channels))
             logger.warning('Error: %s' % e)
             val = None
         return val
@@ -416,9 +415,9 @@ class EventTrainsWriter(object):
         if step % self.image_report_freq != 0:
             return None
 
-        width = img_data.get('width', None)
-        height = img_data.get('height', None)
-        colorspace = img_data.get('colorspace', None)
+        width = img_data.get('width')
+        height = img_data.get('height')
+        colorspace = img_data.get('colorspace')
         img_str = img_data['encodedImageString']
         matrix = self._decode_image(img_str, width=width, height=height, color_channels=colorspace)
         if matrix is None:

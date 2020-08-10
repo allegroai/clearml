@@ -780,14 +780,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         support parameter descriptions (the result is a dictionary of key-value pairs).
         :param backwards_compatibility: If True (default) parameters without section name
             (API version < 2.9, trains-server < 0.16) will be at dict root level.
-            If False, parameters without section name, will be nested under "general/" key.
+            If False, parameters without section name, will be nested under "Args/" key.
         :return: dict of the task parameters, all flattened to key/value.
             Different sections with key prefix "section/"
         """
         if not Session.check_min_api_version('2.9'):
             return self._get_task_property('execution.parameters')
 
-        # API will makes sure we get old parameters with type legacy on top level (instead of nested in General)
+        # API will makes sure we get old parameters with type legacy on top level (instead of nested in Args)
         parameters = dict()
         hyperparams = self._get_task_property('hyperparams') or {}
         if not backwards_compatibility:
@@ -877,7 +877,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 # build nested dict from flat parameters dict:
                 org_hyperparams = self.data.hyperparams or {}
                 hyperparams = dict()
-                # if the task is a legacy task, we should put everything back under General/key with legacy type
+                # if the task is a legacy task, we should put everything back under Args/key with legacy type
                 legacy_name = self._legacy_parameters_section_name
                 org_legacy_section = org_hyperparams.get(legacy_name, dict())
 

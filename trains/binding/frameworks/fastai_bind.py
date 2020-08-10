@@ -20,6 +20,10 @@ class PatchFastai(object):
 
     @staticmethod
     def _patch_model_callback():
+        # if you have tensroboard, we assume you use TesnorboardLogger, which we catch, so no need to patch.
+        if "tensorboard" in sys.modules:
+            return
+
         if "fastai" in sys.modules:
             try:
                 from fastai.basic_train import Recorder

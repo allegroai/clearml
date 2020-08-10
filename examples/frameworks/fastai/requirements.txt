@@ -1,1 +1,3 @@
 fastai
+tensorboard
+tensorboardX

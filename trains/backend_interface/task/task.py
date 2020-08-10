@@ -1731,6 +1731,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     @property
     def _edit_lock(self):
         # type: () -> ()
+
+        # skip the actual lock, this one-time lock will always enter
+        # only used on shutdown process to avoid deadlocks
+        if self.__edit_lock is False:
+            return RLock()
+
         if self.__edit_lock:
             return self.__edit_lock
         if not PROC_MASTER_ID_ENV_VAR.get() or len(PROC_MASTER_ID_ENV_VAR.get().split(':')) < 2:

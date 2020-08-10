@@ -2337,6 +2337,10 @@ class Task(_Task):
         # from here only a single thread can re-enter
         self._at_exit_called = get_current_thread_id()
 
+        # disable lock on signal callbacks, to avoid deadlocks.
+        if self.__exit_hook and self.__exit_hook.signal is not None:
+            self.__edit_lock = False
+
         is_sub_process = self.__is_subprocess()
 
         # noinspection PyBroadException
@@ -2565,33 +2569,25 @@ class Task(_Task):
                 return ret
 
             def signal_handler(self, sig, frame):
+                self.signal = sig
+
+                org_handler = self._org_handlers.get(sig)
+                signal.signal(sig, org_handler or signal.SIG_DFL)
+
                 if self._signal_recursion_protection_flag:
                     # call original
-                    org_handler = self._org_handlers.get(sig)
-                    if callable(org_handler):
-                        org_handler = org_handler(sig, frame)
-                    else:
-                        signal.signal(sig, org_handler or signal.SIG_DFL)
-                        os.kill(os.getpid(), sig)
-                    return org_handler
+                    os.kill(os.getpid(), sig)
+                    return org_handler if not callable(org_handler) else signal.SIG_DFL
 
                 self._signal_recursion_protection_flag = True
+
                 # call exit callback
-                self.signal = sig
                 if self._exit_callback:
                     # noinspection PyBroadException
                     try:
                         self._exit_callback()
                     except Exception:
                         pass
-                # call original signal handler
-                org_handler = self._org_handlers.get(sig)
-                self._org_handlers[sig] = None
-                if callable(org_handler):
-                    ret = org_handler(sig, frame)
-                else:
-                    signal.signal(sig, org_handler or signal.SIG_DFL)
-                    ret = 0
 
                 # remove stdout logger, just in case
                 # noinspection PyBroadException
@@ -2601,13 +2597,11 @@ class Task(_Task):
                 except Exception:
                     pass
 
-                if not callable(org_handler):
-                    os.kill(os.getpid(), sig)
+                os.kill(os.getpid(), sig)
 
                 self._signal_recursion_protection_flag = False
-
                 # return handler result
-                return ret
+                return org_handler if not callable(org_handler) else signal.SIG_DFL
 
         # we only remove the signals since this will hang subprocesses
         if only_remove_signal_and_exception_hooks:

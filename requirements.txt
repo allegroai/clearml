@@ -20,5 +20,5 @@ requests-file>=1.4.2
 requests>=2.20.0
 six>=1.11.0
 tqdm>=4.19.5
-typing>=3.6.4
+typing>=3.6.4 ; python_version < '3.5'
 urllib3>=1.21.1

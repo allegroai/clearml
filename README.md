@@ -52,7 +52,7 @@ your experimentation logs, outputs, and data to one centralized server.
 * Seamless integration (including version control) with **Jupyter Notebook**
     and [*PyCharm* remote debugging](https://github.com/allegroai/trains-pycharm-plugin)
 
-**Additionally, log data explicitly using [Trains Explicit Logging](https://allegro.ai/docs/examples/reporting/scatter_hist_confusion_mat_reporting/).**
+**Additionally, log data explicitly using [Trains Explicit Logging](https://allegro.ai/docs/examples/reporting/).**
 
 ## Using Trains <a name="using-trains"></a>
 

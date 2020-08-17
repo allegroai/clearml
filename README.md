@@ -52,7 +52,7 @@ your experimentation logs, outputs, and data to one centralized server.
 * Seamless integration (including version control) with **Jupyter Notebook**
     and [*PyCharm* remote debugging](https://github.com/allegroai/trains-pycharm-plugin)
 
-**Additionally, log data explicitly using [Trains Explicit Logging](https://github.com/allegroai/trains/blob/master/docs/logger.md).**
+**Additionally, log data explicitly using [Trains Explicit Logging](https://allegro.ai/docs/examples/reporting/scatter_hist_confusion_mat_reporting/).**
 
 ## Using Trains <a name="using-trains"></a>
 
@@ -93,7 +93,7 @@ Trains is a two part solution:
 
     - Open the link and view your experiment parameters, model and tensorboard metrics
 
-    **See examples [here](https://github.com/allegroai/trains/tree/master/examples)**
+    **See examples [here](https://allegro.ai/docs/examples/examples_overview/)**
 
 2. [Trains Server](https://github.com/allegroai/trains-server) for logging, querying, control and UI ([Web-App](https://github.com/allegroai/trains-web))
     

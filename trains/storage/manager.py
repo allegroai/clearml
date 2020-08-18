@@ -108,7 +108,7 @@ class StorageManager(object):
             try:
                 # if rename fails, it means that someone else already manged to extract the zip, delete the current
                 # folder and return the already existing cached zip folder
-                os.rename(temp_target_folder, str(target_folder))
+                shutil.move(temp_target_folder, str(target_folder))
             except Exception:
                 if target_folder.exists():
                     target_folder.touch(exist_ok=True)

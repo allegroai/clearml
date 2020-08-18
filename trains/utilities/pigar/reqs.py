@@ -363,6 +363,7 @@ def _search_path(path):
             elif version.endswith('egg'):
                 version = version.rsplit('.', 1)[0]
 
+            mapping_pkg_name = pkg_name
             # pep610 support. add support for new pip>=20.1 git reference feature
             git_direct_json = os.path.join(path, file, 'direct_url.json')
             if os.path.isfile(git_direct_json):
@@ -376,14 +377,13 @@ def _search_path(path):
 
                     # Bugfix: package name should be the URL link, because we need it unique
                     # mapping[pkg_name] = ('-e', git_url)
-                    mapping[pkg_name] = ('-e {}'.format(git_url), '')
+                    pkg_name, version = '-e {}'.format(git_url), ''
 
-                    continue
                 except Exception:
                     pass
 
             # default
-            mapping[pkg_name] = (pkg_name, version)
+            mapping[mapping_pkg_name] = (pkg_name, version)
 
             # analyze 'top_level.txt' if it exists
             top_level = os.path.join(path, file, 'top_level.txt')

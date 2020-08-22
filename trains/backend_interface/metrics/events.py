@@ -290,13 +290,18 @@ class UploadEvent(MetricsEventAdapter):
             image.save(output, format=image_format, quality=self._quality)
             output.seek(0)
         else:
-            local_file = self._local_image_path
+            # noinspection PyBroadException
             try:
-                output = open(local_file, 'rb')
-            except Exception as e:
-                # something happened to the file, we should skip it
+                output = pathlib2.Path(self._local_image_path)
+                if not output.is_file():
+                    output = None
+            except Exception:
+                output = None
+
+            if output is None:
                 from ...debugging.log import LoggerRoot
-                LoggerRoot.get_base_logger().warning(str(e))
+                LoggerRoot.get_base_logger().warning(
+                    'Skipping upload, could not find object file \'{}\''.format(output.as_posix()))
                 return None
 
         return self.FileEntry(

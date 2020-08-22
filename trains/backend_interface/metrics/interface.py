@@ -140,7 +140,7 @@ class Metrics(InterfaceBase):
                     # if entry has no stream, we won't upload it
                     entry = None
                 else:
-                    if not hasattr(entry.stream, 'read'):
+                    if not isinstance(entry.stream, Path) and not hasattr(entry.stream, 'read'):
                         raise ValueError('Invalid file object %s' % entry.stream)
                     entry.url = url
             ev.update(task=self._task_id, iter_offset=self._task_iteration_offset, **kwargs)
@@ -165,7 +165,10 @@ class Metrics(InterfaceBase):
 
                 try:
                     storage = self._get_storage(upload_uri)
-                    url = storage.upload_from_stream(e.stream, e.url, retries=self._file_upload_retries)
+                    if isinstance(e.stream, Path):
+                        url = storage.upload(e.stream.as_posix(), e.url, retries=self._file_upload_retries)
+                    else:
+                        url = storage.upload_from_stream(e.stream, e.url, retries=self._file_upload_retries)
                     e.event.update(url=url)
                 except Exception as exp:
                     log.warning("Failed uploading to {} ({})".format(
@@ -174,7 +177,8 @@ class Metrics(InterfaceBase):
                     ))
 
                     e.set_exception(exp)
-                e.stream.close()
+                if not isinstance(e.stream, Path):
+                    e.stream.close()
                 if e.delete_local_file:
                     # noinspection PyBroadException
                     try:

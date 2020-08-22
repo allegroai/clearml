@@ -1806,9 +1806,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param offline_mode: If True, offline-mode is turned on, and no communication to the backend is enabled.
         :return:
         """
-        ENV_OFFLINE_MODE.set(offline_mode)
-        InterfaceBase._offline_mode = bool(offline_mode)
-        Session._offline_mode = bool(offline_mode)
+        if not running_remotely():
+            ENV_OFFLINE_MODE.set(offline_mode)
+            InterfaceBase._offline_mode = bool(offline_mode)
+            Session._offline_mode = bool(offline_mode)
 
     @classmethod
     def is_offline(cls):

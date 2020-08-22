@@ -882,7 +882,8 @@ class HyperParameterOptimizer(object):
             self._task = Task.init(
                 project_name=base_task.get_project_name(),
                 task_name='Optimizing: {}'.format(base_task.name),
-            )  # TODO: add task_type=controller
+                task_type=Task.TaskTypes.optimizer,
+            )
 
         opts = dict(
             base_task_id=base_task_id,

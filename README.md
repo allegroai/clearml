@@ -29,7 +29,8 @@ your experimentation logs, outputs, and data to one centralized server.
 
 ### :steam_locomotive: [Getting Started Tutorial](https://allegro.ai/blog/setting-up-allegro-ai-platform/) :rocket:
 
-**You can try out Trains and [test your code](#integrate-trains), with no additional setup.**
+**You can try out Trains and [test your code](#integrate-trains), with no additional setup.**  
+
 <a href="https://demoapp.trains.allegro.ai"><img src="https://github.com/allegroai/trains/blob/master/docs/webapp_screenshots.gif?raw=true" width="100%"></a>
 
 ## Trains Automatically Logs Everything

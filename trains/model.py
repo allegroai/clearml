@@ -967,9 +967,12 @@ class OutputModel(BaseModel):
 
         elif self._floating_data is not None:
             # we copy configuration / labels if they exist, obviously someone wants them as the output base model
-            if _Model._unwrap_design(self._floating_data.design):
+            design = _Model._unwrap_design(self._floating_data.design)
+            if design:
                 if not task._get_model_config_text():
-                    task._set_model_config(config_text=self._floating_data.design)
+                    if not Session.check_min_api_version('2.9'):
+                        design = self._floating_data.design
+                    task._set_model_config(config_text=design)
             else:
                 self._floating_data.design = _Model._wrap_design(self._task._get_model_config_text())
 

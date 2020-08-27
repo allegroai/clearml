@@ -45,11 +45,10 @@ class OptunaObjective(object):
         current_job.launch(self.queue_name)
         iteration_value = None
         is_pending = True
-
-        while not current_job.is_stopped():
+        while self.optimizer.monitor_job(current_job):
             if is_pending and not current_job.is_pending():
                 is_pending = False
-
+                self.optimizer.budget.jobs.update(current_job.task_id(), 1.)
             if not is_pending:
                 # noinspection PyProtectedMember
                 iteration_value = self.optimizer._objective_metric.get_current_raw_objective(current_job)
@@ -93,6 +92,7 @@ class OptimizerOptuna(SearchStrategy):
             pool_period_min=2.,  # type: float
             min_iteration_per_job=None,  # type: Optional[int]
             time_limit_per_job=None,  # type: Optional[float]
+            compute_time_limit=None,  # type: Optional[float]
             optuna_sampler=None,  # type: Optional[optuna.samplers.base]
             optuna_pruner=None,  # type: Optional[optuna.pruners.base]
             continue_previous_study=None,  # type: Optional[optuna.Study]
@@ -123,14 +123,16 @@ class OptimizerOptuna(SearchStrategy):
             before early stopping the Job. (Optional)
         :param float time_limit_per_job: Optional, maximum execution time per single job in minutes,
             when time limit is exceeded job is aborted
+        :param float compute_time_limit: The maximum compute time in minutes. When time limit is exceeded,
+            all jobs aborted. (Optional)
         :param optuna_kwargs: arguments passed directly to the Optuna object
         """
         super(OptimizerOptuna, self).__init__(
             base_task_id=base_task_id, hyper_parameters=hyper_parameters, objective_metric=objective_metric,
             execution_queue=execution_queue, num_concurrent_workers=num_concurrent_workers,
             pool_period_min=pool_period_min, time_limit_per_job=time_limit_per_job,
-            max_iteration_per_job=max_iteration_per_job, min_iteration_per_job=min_iteration_per_job,
-            total_max_jobs=total_max_jobs)
+            compute_time_limit=compute_time_limit, max_iteration_per_job=max_iteration_per_job,
+            min_iteration_per_job=min_iteration_per_job, total_max_jobs=total_max_jobs)
         self._optuna_sampler = optuna_sampler
         self._optuna_pruner = optuna_pruner
         verified_optuna_kwargs = []

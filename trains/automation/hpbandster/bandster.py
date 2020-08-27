@@ -122,6 +122,7 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
             total_max_jobs,  # type: Optional[int]
             pool_period_min=2.,  # type: float
             time_limit_per_job=None,  # type: Optional[float]
+            compute_time_limit=None,  # type: Optional[float]
             local_port=9090,  # type: int
             **bohb_kwargs  # type: Any
     ):
@@ -163,6 +164,8 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         :param float pool_period_min: time in minutes between two consecutive pools
         :param float time_limit_per_job: Optional, maximum execution time per single job in minutes,
             when time limit is exceeded job is aborted
+        :param float compute_time_limit: The maximum compute time in minutes. When time limit is exceeded,
+            all jobs aborted. (Optional)
         :param int local_port: default port 9090 tcp, this is a must for the BOHB workers to communicate, even locally.
         :param bohb_kwargs: arguments passed directly to the BOHB object
         """
@@ -178,8 +181,8 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
             base_task_id=base_task_id, hyper_parameters=hyper_parameters, objective_metric=objective_metric,
             execution_queue=execution_queue, num_concurrent_workers=num_concurrent_workers,
             pool_period_min=pool_period_min, time_limit_per_job=time_limit_per_job,
-            max_iteration_per_job=max_iteration_per_job, min_iteration_per_job=min_iteration_per_job,
-            total_max_jobs=total_max_jobs)
+            compute_time_limit=compute_time_limit, max_iteration_per_job=max_iteration_per_job,
+            min_iteration_per_job=min_iteration_per_job, total_max_jobs=total_max_jobs)
         self._max_iteration_per_job = max_iteration_per_job
         self._min_iteration_per_job = min_iteration_per_job
         verified_bohb_kwargs = ['eta', 'min_budget', 'max_budget', 'min_points_in_model', 'top_n_percent',

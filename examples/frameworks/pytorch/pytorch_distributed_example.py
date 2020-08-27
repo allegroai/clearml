@@ -154,6 +154,10 @@ if __name__ == "__main__":
     # otherwise, the `rank` will always be set to the original value.
     task = Task.init("examples", "test torch distributed", auto_connect_arg_parser={'rank': False})
 
+    if not dist.is_available():
+        print("torch.distributed is not supported for this platform")
+        exit(0)
+
     if os.environ.get('MASTER_ADDR'):
         dist.init_process_group(backend='gloo', rank=args.rank, world_size=args.nodes)
         run(args.workers_in_node)

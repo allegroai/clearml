@@ -9,13 +9,13 @@ from __future__ import print_function
 import tempfile
 import os
 
-from keras.callbacks import TensorBoard, ModelCheckpoint
-from keras.datasets import mnist
-from keras.models import Sequential
-from keras.layers.core import Dense, Activation
-from keras.optimizers import RMSprop
-from keras.utils import np_utils
 import tensorflow as tf  # noqa: F401
+from tensorflow.keras import utils as np_utils
+from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
+from tensorflow.keras.datasets import mnist
+from tensorflow.keras.layers import Activation, Dense
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.optimizers import RMSprop
 
 from trains import Task, Logger
 

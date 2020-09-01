@@ -484,6 +484,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # type: () -> Model
         return self._get_output_model(upload_required=False, force=True)
 
+    def reload(self):
+        # type: () -> ()
+        """
+        Reload current Task's state from trains-server.
+        Refresh all task's fields, including artifacts / models / parameters etc.
+        """
+        return super(Task, self).reload()
+
     def _get_output_model(self, upload_required=True, force=False, model_id=None):
         # type: (bool, bool, Optional[str]) -> Model
         return Model(
@@ -670,7 +678,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param str name: The updated model name. (Optional)
         :param str comment: The updated model description. (Optional)
         :param list tags: The updated model tags. (Optional)
-        :param bool async_enable: Request asynchronous upload?
+        :param bool async_enable: Request asynchronous upload
 
             - ``True`` - The API call returns immediately, while the upload and update are scheduled in another thread.
             - ``False`` - The API call blocks until the upload completes, and the API call updating the model returns.
@@ -721,12 +729,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             then ``model_id`` must be specified.
         :param model_name: The model name. The name is used to locate an existing model in the **Trains Server**
             (backend). If ``model_id`` is not specified, then ``model_name`` must be specified.
-        :param update_task_design: Update the Task's design?
+        :param update_task_design: Update the Task's design
 
             - ``True`` - Trains copies the Task's model design from the input model.
             - ``False`` - Trains does not copy the Task's model design from the input model.
 
-        :param update_task_labels: Update the Task's label enumeration?
+        :param update_task_labels: Update the Task's label enumeration
 
             - ``True`` - Trains copies the Task's label enumeration from the input model.
             - ``False`` - Trains does not copy the Task's label enumeration from the input model.
@@ -1336,7 +1344,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def running_locally():
         # type: () -> bool
         """
-        Is the task running locally (i.e., ``trains-agent`` is not executing it)?
+        Is the task running locally (i.e., ``trains-agent`` is not executing it)
 
         :return: True, if the task is running locally. False, if the task is not running locally.
 

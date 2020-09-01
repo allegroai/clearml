@@ -296,7 +296,7 @@ class Task(_Task):
                `Trains Python Client Extras <./references/trains_extras_storage/>`_ in the "Trains Python Client
                Reference" section.
 
-        :param auto_connect_arg_parser: Automatically connect an argparse object to the Task?
+        :param auto_connect_arg_parser: Automatically connect an argparse object to the Task
 
             The values are:
 
@@ -316,7 +316,7 @@ class Task(_Task):
             .. note::
                To manually connect an argparse, use :meth:`Task.connect`.
 
-        :param auto_connect_frameworks: Automatically connect frameworks? This includes patching MatplotLib, XGBoost,
+        :param auto_connect_frameworks: Automatically connect frameworks This includes patching MatplotLib, XGBoost,
             scikit-learn, Keras callbacks, and TensorBoard/X to serialize plots, graphs, and the model location to
             the **Trains Server** (backend), in addition to original output destination.
 
@@ -335,7 +335,7 @@ class Task(_Task):
                auto_connect_frameworks={'matplotlib': True, 'tensorflow': True, 'pytorch': True,
                     'xgboost': True, 'scikit': True}
 
-        :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots?
+        :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
             These plots appear in in the **Trains Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab,
             with a title of **:resource monitor:**.
 
@@ -1139,7 +1139,7 @@ class Task(_Task):
         """
         Flush any outstanding reports or console logs.
 
-        :param bool wait_for_uploads: Wait for all outstanding uploads to complete before existing the flush?
+        :param bool wait_for_uploads: Wait for all outstanding uploads to complete
 
             - ``True`` - Wait
             - ``False`` - Do not wait (default)
@@ -1166,12 +1166,12 @@ class Task(_Task):
         When a worker executes a Task remotely, the Task does not reset unless
         the ``force`` parameter is set to ``True`` (this avoids accidentally clearing logs and metrics).
 
-        :param bool set_started_on_success: If successful, automatically set the Task to started?
+        :param bool set_started_on_success: If successful, automatically set the Task to `started`
 
             - ``True`` - If successful, set to started.
             - ``False`` - If successful, do not set to started. (default)
 
-        :param bool force: Force a Task reset, even when executing the Task (experiment) remotely in a worker?
+        :param bool force: Force a Task reset, even when executing the Task (experiment) remotely in a worker
 
             - ``True`` - Force
             - ``False`` - Do not force (default)
@@ -1290,7 +1290,7 @@ class Task(_Task):
         :param object artifact_object:  The artifact object.
         :param dict metadata: A dictionary of key-value pairs for any metadata. This dictionary appears with the
             experiment in the **Trains Web-App (UI)**, **ARTIFACTS** tab.
-        :param bool delete_after_upload: After the upload, delete the local copy of the artifact?
+        :param bool delete_after_upload: After the upload, delete the local copy of the artifact
 
             - ``True`` - Delete the local copy of the artifact.
             - ``False`` - Do not delete. (default)
@@ -1337,9 +1337,9 @@ class Task(_Task):
         .. deprecated:: 0.13.0
            This method is deprecated. Use :meth:`Task.is_main_task` instead.
 
-        Is this Task object the main execution Task (initially returned by :meth:`Task.init`)?
+        Is this Task object the main execution Task (initially returned by :meth:`Task.init`)
 
-        :return: Is this Task object the main execution Task?
+        :return: Is this Task object the main execution Task
 
             - ``True`` - Is the main execution Task.
             - ``False`` - Is not the main execution Task.
@@ -1350,7 +1350,7 @@ class Task(_Task):
     def is_main_task(self):
         # type: () -> bool
         """
-        Is this Task object the main execution Task (initially returned by :meth:`Task.init`)?
+        Is this Task object the main execution Task (initially returned by :meth:`Task.init`)
 
         .. note::
            If :meth:`Task.init` was never called, this method will *not* create
@@ -1360,7 +1360,7 @@ class Task(_Task):
 
               Task.init() == task
 
-        :return: Is this Task object the main execution Task?
+        :return: Is this Task object the main execution Task
 
             - ``True`` - Is the main execution Task.
             - ``False`` - Is not the main execution Task.
@@ -1520,14 +1520,14 @@ class Task(_Task):
 
         :param queue_name: The queue name used for enqueueing the task. If ``None``, this call exits the process
             without enqueuing the task.
-        :param clone: Clone the Task and execute the newly cloned Task?
+        :param clone: Clone the Task and execute the newly cloned Task
 
             The values are:
 
             - ``True`` - A cloned copy of the Task will be created, and enqueued, instead of this Task.
             - ``False`` - The Task will be enqueued.
 
-        :param exit_process: The function call will leave the calling process at the end?
+        :param exit_process: The function call will leave the calling process at the end
 
             - ``True`` - Exit the process (exit(0)).
             - ``False`` - Do not exit the process.

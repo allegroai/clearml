@@ -720,6 +720,18 @@ class Task(_Task):
         """
         return self.get_models()
 
+    @property
+    def logger(self):
+        # type: () -> Logger
+        """
+        Get a Logger object for reporting, for this task context. You can view all Logger report output associated with
+        the Task for which this method is called, including metrics, plots, text, tables, and images, in the
+        **Trains Web-App (UI)**.
+
+        :return: The Logger object for the current Task (experiment).
+        """
+        return self.get_logger()
+
     @classmethod
     def clone(
             cls,

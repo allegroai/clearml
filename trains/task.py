@@ -1600,6 +1600,9 @@ class Task(_Task):
         if raise_on_status and self.status in raise_on_status:
             raise RuntimeError("Task {} has status: {}.".format(self.task_id, self.status))
 
+        # make sure we have the Task object
+        self.reload()
+
     def export_task(self):
         # type: () -> dict
         """

@@ -384,7 +384,7 @@ class PatchedMatplotlib:
                 _pylab_helpers.Gcf.set_active(stored_figure)
 
             # get the main task
-            reporter = PatchedMatplotlib._current_task._reporter
+            reporter = PatchedMatplotlib._current_task.__reporter
             if reporter is not None:
                 if mpl_fig.texts:
                     plot_title = mpl_fig.texts[0].get_text()

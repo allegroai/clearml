@@ -383,7 +383,7 @@ class Task(_Task):
                 logger.set_flush_period(None)
                 # create a new logger (to catch stdout/err)
                 cls.__main_task._logger = None
-                cls.__main_task._reporter = None
+                cls.__main_task.__reporter = None
                 cls.__main_task.get_logger()
                 cls.__main_task._artifacts_manager = Artifacts(cls.__main_task)
                 # unregister signal hooks, they cause subprocess to hang
@@ -1165,8 +1165,8 @@ class Task(_Task):
         if self._logger:
             # noinspection PyProtectedMember
             self._logger._flush_stdout_handler()
-        if self._reporter:
-            self._reporter.flush()
+        if self.__reporter:
+            self.__reporter.flush()
         LoggerRoot.flush()
 
         return True
@@ -1435,7 +1435,7 @@ class Task(_Task):
         :return: The last reported iteration number.
         """
         self._reload_last_iteration()
-        return max(self.data.last_iteration or 0, self._reporter.max_iteration if self._reporter else 0)
+        return max(self.data.last_iteration or 0, self.__reporter.max_iteration if self.__reporter else 0)
 
     def set_initial_iteration(self, offset=0):
         # type: (int) -> int
@@ -2406,15 +2406,15 @@ class Task(_Task):
             # wait for uploads
             print_done_waiting = False
             if wait_for_uploads and (BackendModel.get_num_results() > 0 or
-                                     (self._reporter and self._reporter.get_num_results() > 0)):
+                                     (self.__reporter and self.__reporter.get_num_results() > 0)):
                 self.log.info('Waiting to finish uploads')
                 print_done_waiting = True
             # from here, do not send log in background thread
             if wait_for_uploads:
                 self.flush(wait_for_uploads=True)
                 # wait until the reporter flush everything
-                if self._reporter:
-                    self._reporter.stop()
+                if self.__reporter:
+                    self.__reporter.stop()
                     if self.is_main_task():
                         # notice: this will close the reporting for all the Tasks in the system
                         Metrics.close_async_threads()

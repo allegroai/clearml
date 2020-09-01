@@ -2592,7 +2592,7 @@ class Task(_Task):
                 if self._signal_recursion_protection_flag:
                     # call original
                     os.kill(os.getpid(), sig)
-                    return org_handler if not callable(org_handler) else signal.SIG_DFL
+                    return org_handler if not callable(org_handler) else org_handler(sig, frame)
 
                 self._signal_recursion_protection_flag = True
 
@@ -2616,7 +2616,7 @@ class Task(_Task):
 
                 self._signal_recursion_protection_flag = False
                 # return handler result
-                return org_handler if not callable(org_handler) else signal.SIG_DFL
+                return org_handler if not callable(org_handler) else org_handler(sig, frame)
 
         # we only remove the signals since this will hang subprocesses
         if only_remove_signal_and_exception_hooks:

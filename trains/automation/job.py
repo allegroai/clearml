@@ -35,10 +35,12 @@ class TrainsJob(object):
         self.task = Task.clone(base_task_id, parent=parent or base_task_id, **kwargs)
         if tags:
             self.task.set_tags(list(set(self.task.get_tags()) | set(tags)))
+        self.task_parameter_override = None
         if parameter_override:
             params = self.task.get_parameters_as_dict()
             params.update(parameter_override)
             self.task.set_parameters_as_dict(params)
+            self.task_parameter_override = dict(**parameter_override)
         if task_overrides:
             # todo: make sure it works
             # noinspection PyProtectedMember
@@ -216,6 +218,24 @@ class TrainsJob(object):
         :return: True the task is currently in failed state
         """
         return self.task.status in (Task.TaskStatusEnum.failed, )
+
+    def is_completed(self):
+        # type: () -> bool
+        """
+        Return True, if job is has executed and completed successfully
+
+        :return: True the task is currently in completed or published state
+        """
+        return self.task.status in (Task.TaskStatusEnum.completed, Task.TaskStatusEnum.published)
+
+    def is_aborted(self):
+        # type: () -> bool
+        """
+        Return True, if job is has executed and aborted
+
+        :return: True the task is currently in aborted state
+        """
+        return self.task.status in (Task.TaskStatusEnum.stopped, )
 
     def is_pending(self):
         # type: () -> bool

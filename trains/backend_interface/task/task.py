@@ -139,7 +139,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._input_model = None
         self._output_model = None
         self._metrics_manager = None
-        self._reporter = None
+        self.__reporter = None
         self._curr_label_stats = {}
         self._raise_on_validation_errors = raise_on_validation_errors
         self._parameters_allowed_types = (
@@ -511,14 +511,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return self._get_metrics_manager(self.get_output_destination())
 
     @property
-    def reporter(self):
+    def _reporter(self):
         # type: () -> Reporter
         """
         Returns a simple metrics reporter instance.
         """
-        if self._reporter is None:
+        if self.__reporter is None:
             self._setup_reporter()
-        return self._reporter
+        return self.__reporter
 
     def _get_metrics_manager(self, storage_uri):
         # type: (str) -> Metrics
@@ -538,8 +538,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             storage_uri = self.get_output_destination(log_on_error=False)
         except ValueError:
             storage_uri = None
-        self._reporter = Reporter(self._get_metrics_manager(storage_uri=storage_uri))
-        return self._reporter
+        self.__reporter = Reporter(self._get_metrics_manager(storage_uri=storage_uri))
+        return self.__reporter
 
     def _get_output_destination_suffix(self, extra_path=None):
         # type: (Optional[str]) -> str

@@ -142,7 +142,7 @@ class Logger(object):
         # if task was not started, we have to start it
         self._start_task_if_needed()
         self._touch_title_series(title, series)
-        return self._task.reporter.report_scalar(title=title, series=series, value=float(value), iter=iteration)
+        return self._task._reporter.report_scalar(title=title, series=series, value=float(value), iter=iteration)
 
     def report_vector(
             self,
@@ -239,7 +239,7 @@ class Logger(object):
         # if task was not started, we have to start it
         self._start_task_if_needed()
         self._touch_title_series(title, series)
-        return self._task.reporter.report_histogram(
+        return self._task._reporter.report_histogram(
             title=title,
             series=series,
             histogram=values,
@@ -322,7 +322,7 @@ class Logger(object):
         replace("Inf", np.inf, math.inf)
         replace("-Inf", -np.inf, np.NINF, -math.inf)
 
-        return self._task.reporter.report_table(
+        return self._task._reporter.report_table(
             title=title,
             series=series,
             table=reporter_table,
@@ -375,7 +375,7 @@ class Logger(object):
         # if task was not started, we have to start it
         self._start_task_if_needed()
         self._touch_title_series(title, series[0].name if series else '')
-        return self._task.reporter.report_line_plot(
+        return self._task._reporter.report_line_plot(
             title=title,
             series=series,
             iter=iteration,
@@ -453,7 +453,7 @@ class Logger(object):
         # if task was not started, we have to start it
         self._start_task_if_needed()
         self._touch_title_series(title, series)
-        return self._task.reporter.report_2d_scatter(
+        return self._task._reporter.report_2d_scatter(
             title=title,
             series=series,
             data=scatter.astype(np.float32),
@@ -547,7 +547,7 @@ class Logger(object):
         # if task was not started, we have to start it
         self._start_task_if_needed()
         self._touch_title_series(title, series)
-        return self._task.reporter.report_3d_scatter(
+        return self._task._reporter.report_3d_scatter(
             title=title,
             series=series,
             data=scatter,
@@ -607,7 +607,7 @@ class Logger(object):
         # if task was not started, we have to start it
         self._start_task_if_needed()
         self._touch_title_series(title, series)
-        return self._task.reporter.report_value_matrix(
+        return self._task._reporter.report_value_matrix(
             title=title,
             series=series,
             data=matrix.astype(np.float32),
@@ -707,7 +707,7 @@ class Logger(object):
         # if task was not started, we have to start it
         self._start_task_if_needed()
         self._touch_title_series(title, series)
-        return self._task.reporter.report_value_surface(
+        return self._task._reporter.report_value_surface(
             title=title,
             series=series,
             data=matrix.astype(np.float32),
@@ -797,7 +797,7 @@ class Logger(object):
         self._touch_title_series(title, series)
 
         if url:
-            self._task.reporter.report_image(
+            self._task._reporter.report_image(
                 title=title,
                 series=series,
                 src=url,
@@ -817,7 +817,7 @@ class Logger(object):
             if isinstance(image, Image.Image):
                 image = np.array(image)
 
-            self._task.reporter.report_image_and_upload(
+            self._task._reporter.report_image_and_upload(
                 title=title,
                 series=series,
                 path=local_path,
@@ -882,7 +882,7 @@ class Logger(object):
         self._touch_title_series(title, series)
 
         if url:
-            self._task.reporter.report_media(
+            self._task._reporter.report_media(
                 title=title,
                 series=series,
                 src=url,
@@ -899,7 +899,7 @@ class Logger(object):
                 storage = StorageHelper.get(upload_uri)
                 upload_uri = storage.verify_upload(folder_uri=upload_uri)
 
-            self._task.reporter.report_media_and_upload(
+            self._task._reporter.report_media_and_upload(
                 title=title,
                 series=series,
                 path=local_path,
@@ -939,7 +939,7 @@ class Logger(object):
             plot['layout']['title'] = series
         except Exception:
             pass
-        self._task.reporter.report_plot(
+        self._task._reporter.report_plot(
             title=title,
             series=series,
             plot=plot,
@@ -1185,7 +1185,7 @@ class Logger(object):
             storage = StorageHelper.get(upload_uri)
             upload_uri = storage.verify_upload(folder_uri=upload_uri)
 
-        self._task.reporter.report_image_plot_and_upload(
+        self._task._reporter.report_image_plot_and_upload(
             title=title,
             series=series,
             path=path,
@@ -1237,7 +1237,7 @@ class Logger(object):
             storage = StorageHelper.get(upload_uri)
             upload_uri = storage.verify_upload(folder_uri=upload_uri)
 
-        self._task.reporter.report_image_and_upload(
+        self._task._reporter.report_image_and_upload(
             title=title,
             series=series,
             path=path,

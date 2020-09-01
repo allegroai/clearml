@@ -703,7 +703,7 @@ class Artifacts(object):
 
         # send for upload
         # noinspection PyProtectedMember
-        self._task.reporter._report(ev)
+        self._task._reporter._report(ev)
 
         return uri
 

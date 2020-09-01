@@ -1154,7 +1154,7 @@ class Task(_Task):
             # noinspection PyProtectedMember
             self._logger._flush_stdout_handler()
         if self._reporter:
-            self.reporter.flush()
+            self._reporter.flush()
         LoggerRoot.flush()
 
         return True
@@ -2040,7 +2040,7 @@ class Task(_Task):
             self._logger = Logger(private_task=self)
             # make sure we set our reported to async mode
             # we make sure we flush it in self._at_exit
-            self.reporter.async_enable = True
+            self._reporter.async_enable = True
             # if we just created the logger, set default flush period
             if not flush_period or flush_period is self.NotSet:
                 flush_period = DevWorker.report_period
@@ -2394,7 +2394,7 @@ class Task(_Task):
             # wait for uploads
             print_done_waiting = False
             if wait_for_uploads and (BackendModel.get_num_results() > 0 or
-                                     (self._reporter and self.reporter.get_num_results() > 0)):
+                                     (self._reporter and self._reporter.get_num_results() > 0)):
                 self.log.info('Waiting to finish uploads')
                 print_done_waiting = True
             # from here, do not send log in background thread
@@ -2402,7 +2402,7 @@ class Task(_Task):
                 self.flush(wait_for_uploads=True)
                 # wait until the reporter flush everything
                 if self._reporter:
-                    self.reporter.stop()
+                    self._reporter.stop()
                     if self.is_main_task():
                         # notice: this will close the reporting for all the Tasks in the system
                         Metrics.close_async_threads()

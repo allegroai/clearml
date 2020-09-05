@@ -48,7 +48,7 @@ class TaskHandler(BufferingHandler):
 
     def shouldFlush(self, record):
         """
-        Should the handler flush its buffer?
+        Should the handler flush its buffer
 
         Returns true if the buffer is up to capacity. This method can be
         overridden to implement custom flushing strategies.

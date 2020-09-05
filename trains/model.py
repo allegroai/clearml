@@ -264,7 +264,7 @@ class BaseModel(object):
         Download the base model package into a temporary directory (extract the files), or return a list of the
         locally stored filenames.
 
-        :param bool return_path: Return the model weights or a list of filenames? (Optional)
+        :param bool return_path: Return the model weights or a list of filenames (Optional)
 
             - ``True`` - Download the model weights into a temporary directory, and return the temporary directory path.
             - ``False`` - Return a list of the locally stored filenames. (Default)
@@ -486,13 +486,13 @@ class InputModel(Model):
         :type tags: list(str)
         :param str comment: A comment / description for the model. (Optional)
         :type comment str:
-        :param is_package: Is the imported weights file is a package? (Optional)
+        :param is_package: Is the imported weights file is a package (Optional)
 
             - ``True`` - Is a package. Add a package tag to the model.
             - ``False`` - Is not a package. Do not add a package tag. (Default)
 
         :type is_package: bool
-        :param bool create_as_published: Set the model's status to Published? (Optional)
+        :param bool create_as_published: Set the model's status to Published (Optional)
 
             - ``True`` - Set the status to Published.
             - ``False`` - Do not set the status to Published. The status will be Draft. (Default)
@@ -600,7 +600,7 @@ class InputModel(Model):
             .. note::
                 If a model with the exact same URL exists, it will be used, and all other arguments will be ignored.
 
-        :param bool load_archived: Load archived models?
+        :param bool load_archived: Load archived models
 
             - ``True`` - Load the registered Model, if it is archived.
             - ``False`` - Ignore archive models.
@@ -1048,7 +1048,7 @@ class OutputModel(BaseModel):
             is the previously used URI. (Optional)
         :param str target_filename: The newly created filename in the storage destination location. The default value
             is the ``weights_filename`` value. (Optional)
-        :param bool auto_delete_file: Delete the temporary file after uploading? (Optional)
+        :param bool auto_delete_file: Delete the temporary file after uploading (Optional)
 
             - ``True`` - Delete (Default)
             - ``False`` - Do not delete
@@ -1057,7 +1057,7 @@ class OutputModel(BaseModel):
             ``register_uri`` or ``weights_filename``, but not both.
         :param int iteration: The iteration number.
         :param bool update_comment: Update the model comment with the local weights file name (to maintain
-            provenance)? (Optional)
+            provenance) (Optional)
 
             - ``True`` - Update model comment (Default)
             - ``False`` - Do not update
@@ -1182,7 +1182,7 @@ class OutputModel(BaseModel):
             is the previously used URI. (Optional)
         :param str target_filename: The newly created filename in the storage destination URI location. The default
             is the value specified in the ``weights_filename`` parameter.  (Optional)
-        :param bool auto_delete_file: Delete temporary file after uploading?  (Optional)
+        :param bool auto_delete_file: Delete temporary file after uploading  (Optional)
 
             - ``True`` - Delete (Default)
             - ``False`` - Do not delete

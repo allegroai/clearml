@@ -467,7 +467,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         Clone this model into a new model.
         :param name: Name for the new model
         :param comment: Optional comment for the new model
-        :param child: Should the new model be a child of this model? (default True)
+        :param child: Should the new model be a child of this model (default True)
         :return: The new model's ID
         """
         data = self.data

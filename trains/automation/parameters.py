@@ -129,7 +129,7 @@ class UniformParameterRange(Parameter):
         :param float min_value: The minimum sample to use for uniform random sampling.
         :param float max_value: The maximum sample to use for uniform random sampling.
         :param float step_size: If not ``None``, set step size (quantization) for value sampling.
-        :param bool include_max_value: Range includes the ``max_value``?
+        :param bool include_max_value: Range includes the ``max_value``
 
             The values are:
 
@@ -185,7 +185,7 @@ class UniformIntegerParameterRange(Parameter):
         :param int min_value: The minimum sample to use for uniform random sampling.
         :param int max_value: The maximum sample to use for uniform random sampling.
         :param int step_size: The default step size is ``1``.
-        :param bool include_max_value: Range includes the ``max_value``?
+        :param bool include_max_value: Range includes the ``max_value``
 
             The values are:
 

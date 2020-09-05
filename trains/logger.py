@@ -109,7 +109,7 @@ class Logger(object):
 
         :param str msg: The text to log.
         :param int level: The log level from the Python ``logging`` package. The default value is ``logging.INFO``.
-        :param bool print_console: In addition to the log, print to the console?
+        :param bool print_console: In addition to the log, print to the console
 
             The values are:
 
@@ -358,7 +358,7 @@ class Logger(object):
             - ``markers``
             - ``lines+markers``
 
-        :param bool reverse_xaxis: Reverse the x-axis?
+        :param bool reverse_xaxis: Reverse the x-axis
 
             The values are:
 
@@ -510,7 +510,7 @@ class Logger(object):
            logger.report_scatter3d(title="example_scatter_3d", series="series_xyz", iteration=1, scatter=scatter3d,
                 xaxis="title x", yaxis="title y", zaxis="title z")
 
-        :param bool fill: Fill the area under the curve?
+        :param bool fill: Fill the area under the curve
 
             The values are:
 
@@ -773,7 +773,7 @@ class Logger(object):
         :param int max_image_history: The maximum number of images to store per metric/variant combination.
             For an unlimited number, use a negative value. The default value is set in global configuration
             (default=``5``).
-        :param bool delete_after_upload: After the upload, delete the local copy of the image?
+        :param bool delete_after_upload: After the upload, delete the local copy of the image
 
             The values are:
 
@@ -863,7 +863,7 @@ class Logger(object):
         :param file_extension: A file extension to use when ``stream`` is passed.
         :param int max_history: The maximum number of media files to store per metric/variant combination
             use negative value for unlimited. default is set in global configuration (default=5)
-        :param bool delete_after_upload: After the file is uploaded, delete the local copyu?
+        :param bool delete_after_upload: After the file is uploaded, delete the local copy
 
             - ``True`` - Delete
             - ``False`` - Do not delete
@@ -1053,7 +1053,7 @@ class Logger(object):
         """
         Group together TensorBoard scalars that do not have a title, or assign a title/series with the same tag.
 
-        :param group_scalars: Group TensorBoard scalars without a title?
+        :param group_scalars: Group TensorBoard scalars without a title
 
             The values are:
 
@@ -1070,7 +1070,7 @@ class Logger(object):
         """
         Group TensorBoard scalar series together or in separate plots.
 
-        :param single_series: Group TensorBoard scalar series together?
+        :param single_series: Group TensorBoard scalar series together
 
             The values are:
 
@@ -1093,7 +1093,7 @@ class Logger(object):
         :param str msg: text to print to the console (always send to the backend and displayed in console)
         :param level: logging level, default: logging.INFO
         :type level: Logging Level
-        :param bool omit_console: Omit the console output, and only send the ``msg`` value to the log?
+        :param bool omit_console: Omit the console output, and only send the ``msg`` value to the log
 
             - ``True`` - Omit the console output.
             - ``False`` - Print the console output. (default)

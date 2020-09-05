@@ -47,7 +47,7 @@ class Objective(object):
             - ``max``
             - ``min``
 
-        :param bool extremum: Return the global minimum / maximum reported metric value?
+        :param bool extremum: Return the global minimum / maximum reported metric value
 
             The values are:
 
@@ -837,7 +837,7 @@ class HyperParameterOptimizer(object):
             default is ``None``, indicating no time limit.
         :param float compute_time_limit: The maximum compute time in minutes. When time limit is exceeded,
             all jobs aborted. (Optional)
-        :param bool auto_connect_task: Store optimization arguments and configuration in the Task?
+        :param bool auto_connect_task: Store optimization arguments and configuration in the Task
 
             The values are:
 
@@ -847,7 +847,7 @@ class HyperParameterOptimizer(object):
 
             - ``False`` - Do not store with Task.
 
-        :param bool always_create_task: Always create a new Task?
+        :param bool always_create_task: Always create a new Task
 
             The values are:
 
@@ -1045,7 +1045,7 @@ class HyperParameterOptimizer(object):
     def is_active(self):
         # type: () -> bool
         """
-        Is the optimization procedure active (still running)?
+        Is the optimization procedure active (still running)
 
         The values are:
 
@@ -1062,7 +1062,7 @@ class HyperParameterOptimizer(object):
     def is_running(self):
         # type: () -> bool
         """
-        Is the optimization controller is running?
+        Is the optimization controller is running
 
         The values are:
 
@@ -1141,7 +1141,7 @@ class HyperParameterOptimizer(object):
     def reached_time_limit(self):
         # type: () -> bool
         """
-        Did the optimizer reach the time limit?
+        Did the optimizer reach the time limit
 
         The values are:
 

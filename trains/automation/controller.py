@@ -525,7 +525,7 @@ class PipelineController(object):
                     continue
                 if node.job.is_stopped():
                     completed_jobs.append(j)
-                    node.executed = node.job.task_id()
+                    node.executed = node.job.task_id() if not node.job.is_failed() else False
                 elif node.timeout:
                     started = node.job.task.data.started
                     if (datetime.now().astimezone(started.tzinfo) - started).total_seconds() > node.timeout:

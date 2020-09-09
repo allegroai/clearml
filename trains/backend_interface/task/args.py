@@ -138,7 +138,6 @@ class _Arguments(object):
         self._add_to_defaults(parser, task_defaults, task_defaults_descriptions, task_defaults_types,
                               args, namespace, parsed_args)
 
-
         # Make sure we didn't miss anything
         if parsed_args:
             for k, v in parsed_args.__dict__.items():

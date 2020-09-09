@@ -2423,7 +2423,7 @@ class CloneRequest(Request):
         if value is None:
             self._property_new_task_hyperparams = None
             return
-        
+
         self.assert_isinstance(value, "new_task_hyperparams", (dict,))
         self._property_new_task_hyperparams = value
 
@@ -2436,7 +2436,7 @@ class CloneRequest(Request):
         if value is None:
             self._property_new_task_configuration = None
             return
-        
+
         self.assert_isinstance(value, "new_task_configuration", (dict,))
         self._property_new_task_configuration = value
 
@@ -7624,7 +7624,7 @@ class ResetRequest(Request):
         if value is None:
             self._property_clear_all = None
             return
-        
+
         self.assert_isinstance(value, "clear_all", (bool,))
         self._property_clear_all = value
 

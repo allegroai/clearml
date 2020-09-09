@@ -22,6 +22,7 @@ class GenerateReqs(object):
         self._installed_pkgs = installed_pkgs
         self._maybe_local_mods = set()
         self._local_mods = dict()
+        self._relative_imports = set()
         self._comparison_operator = comparison_operator
 
     def extract_reqs(self, module_callback=None, entry_point_filename=None):
@@ -55,7 +56,7 @@ class GenerateReqs(object):
 
             # if we have any module/package we cannot find, take no chances and scan the entire project
             # if we have local modules and they are not just us.
-            if num_local_mod or local_mods:
+            if num_local_mod or local_mods or self._relative_imports:
                 modules, try_imports, local_mods = project_import_modules(
                     self._project_path, self._ignores)
 
@@ -149,7 +150,10 @@ class GenerateReqs(object):
         logger.info('Filtering modules ...')
         for module in modules:
             logger.info('Checking module: %s', module)
-            if not module or module.startswith('.'):
+            if not module:
+                continue
+            if module.startswith('.'):
+                self._relative_imports.add(module)
                 continue
             if module in local_mods:
                 self._maybe_local_mods.add(module)

@@ -39,11 +39,14 @@ def project_import_modules(project_path, ignores):
             ignore_paths.add(Path(path).name)
 
     if os.path.isfile(project_path):
-        fake_path = Path(project_path).name
-        with open(project_path, 'rb') as f:
-            fmodules, try_ipts = file_import_modules(fake_path, f.read())
-            modules |= fmodules
-            try_imports |= try_ipts
+        try:
+            fake_path = Path(project_path).name
+            with open(project_path, 'rb') as f:
+                fmodules, try_ipts = file_import_modules(fake_path, f.read())
+                modules |= fmodules
+                try_imports |= try_ipts
+        except Exception:
+            pass
     else:
         cur_dir = project_path
         for dirpath, dirnames, files in os.walk(os.path.abspath(project_path), followlinks=True):
@@ -70,12 +73,15 @@ def project_import_modules(project_path, ignores):
             if '__init__.py' in files:
                 local_mods.append(os.path.basename(dirpath))
             for file in py_files:
-                fpath = os.path.join(dirpath, file)
-                fake_path = fpath.split(cur_dir)[1][1:]
-                with open(fpath, 'rb') as f:
-                    fmodules, try_ipts = file_import_modules(fake_path, f.read())
-                    modules |= fmodules
-                    try_imports |= try_ipts
+                try:
+                    fpath = os.path.join(dirpath, file)
+                    fake_path = Path(fpath).relative_to(cur_dir).as_posix()
+                    with open(fpath, 'rb') as f:
+                        fmodules, try_ipts = file_import_modules(fake_path, f.read())
+                        modules |= fmodules
+                        try_imports |= try_ipts
+                except Exception:
+                    pass
 
     return modules, try_imports, local_mods
 

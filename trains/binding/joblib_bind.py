@@ -10,6 +10,7 @@ from ..binding.frameworks import _patched_call, _Empty, WeightsFileHandler
 from ..config import running_remotely
 from ..debugging.log import LoggerRoot
 from ..model import Framework
+from ..utilities.lowlevel.file_access import get_filename_from_file_object, buffer_writer_close_cb
 
 
 class PatchedJoblib(object):
@@ -91,7 +92,19 @@ class PatchedJoblib(object):
         ret = original_fn(obj, f, *args, **kwargs)
         if not PatchedJoblib._current_task:
             return ret
-        PatchedJoblib._register_dump(obj, f)
+
+        fname = f if isinstance(f, six.string_types) else None
+        fileobj = ret if isinstance(f, six.string_types) else f
+
+        if fileobj and hasattr(fileobj, 'close'):
+            def callback(*_):
+                PatchedJoblib._register_dump(obj, fname or fileobj)
+
+            if isinstance(fname, six.string_types) or hasattr(fileobj, 'name'):
+                buffer_writer_close_cb(fileobj, callback)
+        else:
+            PatchedJoblib._register_dump(obj, f)
+
         return ret
 
     @staticmethod
@@ -99,21 +112,24 @@ class PatchedJoblib(object):
         ret = original_fn(f, *args, **kwargs)
         if not PatchedJoblib._current_task:
             return ret
-        PatchedJoblib._register_dump(obj, f)
+
+        fname = f if isinstance(f, six.string_types) else None
+        fileobj = ret if isinstance(f, six.string_types) else f
+
+        if fileobj and hasattr(fileobj, 'close'):
+            def callback(*_):
+                PatchedJoblib._register_dump(obj, fname or fileobj)
+
+            if isinstance(fname, six.string_types) or hasattr(fileobj, 'name'):
+                buffer_writer_close_cb(fileobj, callback)
+        else:
+            PatchedJoblib._register_dump(obj, f)
         return ret
 
     @staticmethod
     def _register_dump(obj, f):
-        if isinstance(f, six.string_types):
-            filename = f
-        elif hasattr(f, 'name'):
-            filename = f.name
-            # noinspection PyBroadException
-            try:
-                f.flush()
-            except Exception:
-                pass
-        else:
+        filename = get_filename_from_file_object(f, flush=True)
+        if not filename:
             return
 
         # give the model a descriptive name based on the file name
@@ -128,15 +144,10 @@ class PatchedJoblib(object):
 
     @staticmethod
     def _load(original_fn, f, *args, **kwargs):
-        if isinstance(f, six.string_types):
-            filename = f
-        elif hasattr(f, 'name'):
-            filename = f.name
-        else:
-            filename = None
-
         if not PatchedJoblib._current_task:
             return original_fn(f, *args, **kwargs)
+
+        filename = get_filename_from_file_object(f, flush=False)
 
         # register input model
         empty = _Empty()
@@ -165,6 +176,7 @@ class PatchedJoblib(object):
     @staticmethod
     def get_model_framework(obj):
         framework = Framework.scikitlearn
+        object_orig_module = None
         # noinspection PyBroadException
         try:
             object_orig_module = obj.__module__ if hasattr(obj, '__module__') else obj.__package__

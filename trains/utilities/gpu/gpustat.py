@@ -15,10 +15,8 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import json
-import os.path
 import platform
 import sys
-import time
 from datetime import datetime
 
 import psutil
@@ -199,10 +197,10 @@ class GPUStatCollection(object):
                 if nv_process.pid not in GPUStatCollection.global_processes:
                     GPUStatCollection.global_processes[nv_process.pid] = \
                         psutil.Process(pid=nv_process.pid)
-                ps_process = GPUStatCollection.global_processes[nv_process.pid]
                 process['pid'] = nv_process.pid
                 # noinspection PyBroadException
                 try:
+                    # ps_process = GPUStatCollection.global_processes[nv_process.pid]
                     # we do not actually use these, so no point in collecting them
                     # process['username'] = ps_process.username()
                     # # cmdline returns full path;

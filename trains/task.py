@@ -12,9 +12,9 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 try:
     # noinspection PyCompatibility
-    from collections.abc import Callable, Sequence as CollectionsSequence
+    from collections.abc import Sequence as CollectionsSequence
 except ImportError:
-    from collections import Callable, Sequence as CollectionsSequence
+    from collections import Sequence as CollectionsSequence
 
 from typing import Optional, Union, Mapping, Sequence, Any, Dict, Iterable, TYPE_CHECKING
 

@@ -916,7 +916,9 @@ class StorageHelper(object):
                 self._log.error("Calling upload callback when starting upload: %s" % str(e))
         if verbose:
             msg = 'Starting upload: {} => {}{}'.format(
-                src_path, self._container.name if self._container else '', object_name)
+                src_path,
+                (self._container.name if self._container.name.endswith('/') else self._container.name + '/')
+                if self._container and self._container.name else '', object_name)
             if object_name.startswith('file://') or object_name.startswith('/'):
                 self._log.debug(msg)
             else:
@@ -932,10 +934,11 @@ class StorageHelper(object):
 
         if last_ex:
             self._log.error("Exception encountered while uploading %s" % str(last_ex))
-            try:
-                cb(False)
-            except Exception as e:
-                self._log.warning("Exception on upload callback: %s" % str(e))
+            if cb:
+                try:
+                    cb(False)
+                except Exception as e:
+                    self._log.warning("Exception on upload callback: %s" % str(e))
             raise last_ex
 
         if verbose:

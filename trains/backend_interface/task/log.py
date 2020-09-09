@@ -151,7 +151,7 @@ class TaskHandler(BufferingHandler):
             self.__log_stderr("WARNING: trains.log - Failed logging task to backend ({:d} lines)".format(len(buffer)))
             batch_requests = None
 
-        if batch_requests:
+        if batch_requests and batch_requests.requests:
             self._pending += 1
             self._add_to_queue(batch_requests)
 
@@ -276,8 +276,9 @@ class TaskHandler(BufferingHandler):
                     warning('Failed reporting log, line {} [{}]'.format(i, ex))
                 batch_requests = events.AddBatchRequest(
                     requests=[events.TaskLogEvent(task=task.id, **r) for r in list_requests])
-                res = task.session.send(batch_requests)
-                if res and not res.ok():
-                    warning("failed logging task to backend ({:d} lines, {})".format(
-                        len(batch_requests.requests), str(res.meta)))
+                if batch_requests.requests:
+                    res = task.session.send(batch_requests)
+                    if res and not res.ok():
+                        warning("failed logging task to backend ({:d} lines, {})".format(
+                            len(batch_requests.requests), str(res.meta)))
         return True

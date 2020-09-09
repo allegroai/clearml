@@ -314,8 +314,9 @@ class Metrics(InterfaceBase):
                 except Exception as ex:
                     warning('Failed reporting metric, line {} [{}]'.format(i, ex))
                 batch_requests = api_events.AddBatchRequest(requests=list_requests)
-                res = task.session.send(batch_requests)
-                if res and not res.ok():
-                    warning("failed logging metric task to backend ({:d} lines, {})".format(
-                        len(batch_requests.requests), str(res.meta)))
+                if batch_requests.requests:
+                    res = task.session.send(batch_requests)
+                    if res and not res.ok():
+                        warning("failed logging metric task to backend ({:d} lines, {})".format(
+                            len(batch_requests.requests), str(res.meta)))
         return True

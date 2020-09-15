@@ -42,7 +42,7 @@ def get_filename_from_file_object(file_object, flush=False, analyze_file_handle=
     if isinstance(file_object, six.string_types):
         # noinspection PyBroadException
         try:
-            return os.path.abspath(file_object)
+            return os.path.abspath(file_object) if file_object else file_object
         except Exception:
             return file_object
     elif hasattr(file_object, 'name'):

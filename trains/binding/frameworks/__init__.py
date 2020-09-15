@@ -168,8 +168,9 @@ class WeightsFileHandler(object):
         if task is None:
             return filepath
 
+        local_model_path = os.path.abspath(filepath) if filepath else filepath
         model_info = WeightsFileHandler.ModelInfo(
-            model=None, upload_filename=None, local_model_path=filepath,
+            model=None, upload_filename=None, local_model_path=local_model_path,
             local_model_id=filepath, framework=framework, task=task)
         # call pre model callback functions
         for cb in WeightsFileHandler._model_pre_callbacks.values():
@@ -311,8 +312,9 @@ class WeightsFileHandler(object):
             #     WeightsFileHandler._model_out_store_lookup.pop(id(model))
             #     trains_out_model, ref_model = None, None
 
+            local_model_path = os.path.abspath(saved_path) if saved_path else saved_path
             model_info = WeightsFileHandler.ModelInfo(
-                model=trains_out_model, upload_filename=None, local_model_path=saved_path,
+                model=trains_out_model, upload_filename=None, local_model_path=local_model_path,
                 local_model_id=saved_path, framework=framework, task=task)
 
             if not model_info.local_model_path:

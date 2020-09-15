@@ -351,7 +351,7 @@ class Task(_Task):
             validate = [
                 ('project name', project_name, cls.__main_task.get_project_name()),
                 ('task name', task_name, cls.__main_task.name),
-                ('task type', str(task_type), str(cls.__main_task.task_type)),
+                ('task type', str(task_type) if task_type else task_type, str(cls.__main_task.task_type)),
             ]
 
             for field, default, current in validate:

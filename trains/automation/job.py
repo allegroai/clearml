@@ -57,11 +57,7 @@ class TrainsJob(object):
         :param str series: Series on the specific graph (variant)
         :return: A tuple of min value, max value, last value
         """
-        title = hashlib.md5(str(title).encode('utf-8')).hexdigest()
-        series = hashlib.md5(str(series).encode('utf-8')).hexdigest()
-        metric = 'last_metrics.{}.{}.'.format(title, series)
-        values = ['min_value', 'max_value', 'value']
-        metrics = [metric + v for v in values]
+        metrics, title, series, values = self.get_metric_req_params(title, series)
 
         res = self.task.send(
             tasks_service.GetAllRequest(
@@ -74,6 +70,15 @@ class TrainsJob(object):
         response = res.wait()
 
         return tuple(response.response_data['tasks'][0]['last_metrics'][title][series][v] for v in values)
+
+    @staticmethod
+    def get_metric_req_params(title, series):
+        title = hashlib.md5(str(title).encode('utf-8')).hexdigest()
+        series = hashlib.md5(str(series).encode('utf-8')).hexdigest()
+        metric = 'last_metrics.{}.{}.'.format(title, series)
+        values = ['min_value', 'max_value', 'value']
+        metrics = [metric + v for v in values]
+        return metrics, title, series, values
 
     def launch(self, queue_name=None):
         # type: (str) -> ()

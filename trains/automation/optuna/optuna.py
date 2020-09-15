@@ -45,11 +45,12 @@ class OptunaObjective(object):
         current_job.launch(self.queue_name)
         iteration_value = None
         is_pending = True
-        while self.optimizer.monitor_job(current_job):
+        while not current_job.is_stopped():
             if is_pending and not current_job.is_pending():
                 is_pending = False
                 self.optimizer.budget.jobs.update(current_job.task_id(), 1.)
             if not is_pending:
+                self.optimizer.update_budget_per_job(current_job)
                 # noinspection PyProtectedMember
                 iteration_value = self.optimizer._objective_metric.get_current_raw_objective(current_job)
 
@@ -182,6 +183,7 @@ class OptimizerOptuna(SearchStrategy):
                 self._study.stop()
             except Exception as ex:
                 print(ex)
+        self._stop_event.set()
 
     def _convert_hyper_parameters_to_optuna(self):
         # type: () -> dict

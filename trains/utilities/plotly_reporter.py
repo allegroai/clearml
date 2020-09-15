@@ -102,7 +102,12 @@ def create_line_plot(title, series, xtitle, ytitle, mode='lines', reverse_xaxis=
         for s in series:
             # if we need to down-sample, use low-pass average filter and sampling
             if s.data.size >= base_size:
-                budget = int(leftover * s.data.size / (total_size - baseused_size))
+                budget = base_size
+                # if we have some leftover in the budget, split based on series sizes
+                if leftover > 0:
+                    # calculate the relative overflow  of this series compared to all the overflows
+                    # then multiply it by the leftover budget
+                    budget += int(leftover * s.data.size / (total_size - baseused_size))
                 step = int(np.ceil(s.data.size / float(budget)))
                 x = s.data[:, 0][::-step][::-1]
                 y = s.data[:, 1]
@@ -114,8 +119,8 @@ def create_line_plot(title, series, xtitle, ytitle, mode='lines', reverse_xaxis=
             s_max = np.max(np.abs(s.data), axis=0)
             s_max = np.maximum(s_max, s_max * 0 + 0.01)
             digits = np.maximum(np.array([1, 1]), np.array([6, 6]) - np.floor(np.abs(np.log10(s_max))))
-            s.data[:, 0] = np.round(s.data[:, 0] * (10 ** digits[0])) / (10 ** digits[0])
-            s.data[:, 1] = np.round(s.data[:, 1] * (10 ** digits[1])) / (10 ** digits[1])
+            s.data[:, 0] = np.round(s.data[:, 0], int(digits[0]))
+            s.data[:, 1] = np.round(s.data[:, 1], int(digits[1]))
 
     plotly_obj["data"].extend({
         "name": s.name,

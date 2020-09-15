@@ -1,5 +1,4 @@
 from ....config import config
-from ....backend_api.services import tasks
 
 
 class TaskStopReason(object):
@@ -13,19 +12,18 @@ class TaskStopSignal(object):
 
     _number_of_consecutive_reset_tests = 4
 
-    # _unexpected_statuses = (
-    #     tasks.TaskStatusEnum.closed,
-    #     tasks.TaskStatusEnum.stopped,
-    #     tasks.TaskStatusEnum.failed,
-    #     tasks.TaskStatusEnum.published,
-    #     tasks.TaskStatusEnum.completed,
-    # )
-
     def __init__(self, task):
         from ....backend_interface import Task
         assert isinstance(task, Task)
         self.task = task
         self._task_reset_state_counter = 0
+        self._status_in_progress = str(Task.TaskStatusEnum.in_progress)
+        self._status_created = str(Task.TaskStatusEnum.created)
+        self._status_expected_statuses = (
+                str(Task.TaskStatusEnum.created),
+                str(Task.TaskStatusEnum.queued),
+                str(Task.TaskStatusEnum.in_progress),
+            )
 
     def test(self):
         # noinspection PyBroadException
@@ -36,23 +34,17 @@ class TaskStopSignal(object):
             status = str(status)
             message = str(message)
 
-            if status == str(tasks.TaskStatusEnum.in_progress) and "stopping" in message:
+            if status == self._status_in_progress and "stopping" in message:
                 # make sure we syn the entire task object
                 self.task.reload()
                 return TaskStopReason.stopped
 
-            _expected_statuses = (
-                str(tasks.TaskStatusEnum.created),
-                str(tasks.TaskStatusEnum.queued),
-                str(tasks.TaskStatusEnum.in_progress),
-            )
-
-            if status not in _expected_statuses and "worker" not in message:
+            if status not in self._status_expected_statuses and "worker" not in message:
                 # make sure we syn the entire task object
                 self.task.reload()
                 return TaskStopReason.status_changed
 
-            if status == str(tasks.TaskStatusEnum.created):
+            if status == self._status_created:
                 self._task_reset_state_counter += 1
 
                 if self._task_reset_state_counter >= self._number_of_consecutive_reset_tests:

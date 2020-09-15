@@ -1,7 +1,7 @@
 import importlib
 import pkgutil
 import re
-from typing import Any
+from typing import Any, Optional
 
 from .session import Session
 from ..utilities.check_updates import Version
@@ -21,14 +21,15 @@ class ApiServiceProxy(object):
 
         if not self.__dict__.get("__wrapped__") or self.__dict__.get("__wrapped_version__") != Session.api_version:
             if not ApiServiceProxy._available_versions:
-                from ..backend_api import services
-                ApiServiceProxy._available_versions = [
+                services = self._import_module(self._main_services_module, None)
+                ApiServiceProxy._available_versions = sorted(
                     Version(name[1:].replace("_", "."))
                     for name in [
                         module_name
                         for _, module_name, _ in pkgutil.iter_modules(services.__path__)
                         if re.match(r"^v[0-9]+_[0-9]+$", module_name)
-                    ]]
+                    ]
+                )
 
             # get the most advanced service version that supports our api
             version = [str(v) for v in ApiServiceProxy._available_versions if Session.check_min_api_version(v)][-1]
@@ -41,7 +42,7 @@ class ApiServiceProxy(object):
         return getattr(self.__dict__["__wrapped__"], attr)
 
     def _import_module(self, name, package):
-        # type: (str, str) -> Any
+        # type: (str, Optional[str]) -> Any
         # noinspection PyBroadException
         try:
             return importlib.import_module(name, package=package)
@@ -53,7 +54,7 @@ class ExtApiServiceProxy(ApiServiceProxy):
     _extra_services_modules = []
 
     def _import_module(self, name, _):
-        # type: (str, str) -> Any
+        # type: (str, Optional[str]) -> Any
         for module_path in self._get_services_modules():
             try:
                 return importlib.import_module(name, package=module_path)

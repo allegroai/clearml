@@ -65,6 +65,7 @@ class Detector(object):
         modified = attr.ib(default=None, type=list)
         # alternative commands
         branch_fallback = attr.ib(default=None, type=list)
+        diff_fallback = attr.ib(default=None, type=list)
 
     def __init__(self, type_name, name=None):
         self.type_name = type_name
@@ -195,9 +196,10 @@ class GitDetector(Detector):
             commit=["git", "rev-parse", "HEAD"],
             root=["git", "rev-parse", "--show-toplevel"],
             status=["git", "status", "-s"],
-            diff=["git", "diff"],
+            diff=["git", "diff", "--submodule=diff"],
             modified=["git", "ls-files", "-m"],
             branch_fallback=["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            diff_fallback=["git", "diff"],
         )
 
     def _post_process_info(self, info):

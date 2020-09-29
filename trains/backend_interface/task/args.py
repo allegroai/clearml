@@ -102,7 +102,11 @@ class _Arguments(object):
                 for a in actions
             }
 
-        desc_ = {a.dest: a.help for a in actions}
+        desc_ = {
+            a.dest: a.help or (
+                '{}default: {}'.format('choices: {}, '.format(a.choices) if a.choices else '',
+                                       defaults_.get(a.dest, '')))
+            for a in actions}
         descriptions.update(desc_)
         types_ = {a.dest: (a.type or None) for a in actions}
         arg_types.update(types_)

@@ -343,6 +343,7 @@ class Task(_Task):
 
             - ``True`` - Automatically create resource monitoring plots. (default)
             - ``False`` - Do not automatically create.
+            - Class Type - Create ResourceMonitor object of the specified class type.
 
         :return: The main execution Task (Task context).
         """
@@ -502,7 +503,9 @@ class Task(_Task):
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('fastai', True):
                     PatchFastai.update_current_task(task)
             if auto_resource_monitoring and not is_sub_process_task_id:
-                task._resource_monitor = ResourceMonitor(
+                resource_monitor_cls = auto_resource_monitoring \
+                    if isinstance(auto_resource_monitoring, six.class_types) else ResourceMonitor
+                task._resource_monitor = resource_monitor_cls(
                     task, report_mem_used_per_process=not config.get(
                         'development.worker.report_global_mem_used', False))
                 task._resource_monitor.start()
@@ -1518,6 +1521,23 @@ class Task(_Task):
             return
 
         super(Task, self).set_base_docker(docker_cmd)
+
+    def set_resource_monitor_iteration_timeout(self, seconds_from_start=1800):
+        # type: (float) -> bool
+        """
+        Set the ResourceMonitor maximum duration (in seconds) to wait until first scalar/plot is reported.
+        If timeout is reached without any reporting, the ResourceMonitor will start reporting machine statistics based
+        on seconds from Task start time (instead of based on iteration)
+
+        :param seconds_from_start: Maximum number of seconds to wait for scalar/plot reporting before defaulting
+            to machine statistics reporting based on seconds from experiment start time
+        :return: True if success
+        """
+        if not self._resource_monitor:
+            return False
+        self._resource_monitor.wait_for_first_iteration = seconds_from_start
+        self._resource_monitor.max_check_first_iteration = seconds_from_start
+        return True
 
     def execute_remotely(self, queue_name=None, clone=False, exit_process=True):
         # type: (Optional[str], bool, bool) -> ()

@@ -1657,7 +1657,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             project=project if project else task.project,
             output_dest=output_dest,
             execution=execution.as_plain_ordered_dict(),
-            script=task.script
+            script=task.script,
+            hyperparams=task.hyperparams if hasattr(task, 'hyperparams') else None
         )
         res = cls._send(session=session, log=log, req=req)
         cloned_task_id = res.response.id

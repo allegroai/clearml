@@ -173,6 +173,9 @@ class _Arguments(object):
             task_defaults_types = dict(
                 [(self._prefix_args + k, v) for k, v in task_defaults_types.items()
                  if self._exclude_parser_args.get(k, True)])
+        else:
+            task_defaults = dict(
+                [(k, v) for k, v in task_defaults.items() if self._exclude_parser_args.get(k, True)])
 
         # Store to task
         self._task.update_parameters(

@@ -1026,17 +1026,17 @@ class HyperParameterOptimizer(object):
         self._thread_reporter.start()
         return True
 
-    def stop(self, timeout=None, flush_reporter=True):
+    def stop(self, timeout=None, wait_for_reporter=True):
         # type: (Optional[float], Optional[bool]) -> ()
         """
         Stop the HyperParameterOptimizer controller and the optimization thread.
 
         :param float timeout: Wait timeout for the optimization thread to exit (minutes).
             The default is ``None``, indicating do not wait terminate immediately.
-        :param flush_reporter: Wait for reporter to flush data.
+        :param wait_for_reporter: Wait for reporter to flush data.
         """
         if not self._thread or not self._stop_event or not self.optimizer:
-            if self._thread_reporter and flush_reporter:
+            if self._thread_reporter and wait_for_reporter:
                 self._thread_reporter.join()
             return
 
@@ -1054,7 +1054,7 @@ class HyperParameterOptimizer(object):
 
         # clear thread
         self._thread = None
-        if flush_reporter:
+        if wait_for_reporter:
             # wait for reporter to flush
             self._thread_reporter.join()
 
@@ -1311,7 +1311,7 @@ class HyperParameterOptimizer(object):
             # if we should leave, stop everything now.
             if timeout < 0:
                 # we should leave
-                self.stop(flush_reporter=False)
+                self.stop(wait_for_reporter=False)
                 return
         if task_logger and counter:
             counter += 1

@@ -64,14 +64,14 @@ an_optimizer = HyperParameterOptimizer(
     base_task_id=args['template_task_id'],
     # here we define the hyper-parameters to optimize
     hyper_parameters=[
-        UniformIntegerParameterRange('layer_1', min_value=128, max_value=512, step_size=128),
-        UniformIntegerParameterRange('layer_2', min_value=128, max_value=512, step_size=128),
-        DiscreteParameterRange('batch_size', values=[96, 128, 160]),
-        DiscreteParameterRange('epochs', values=[30]),
+        UniformIntegerParameterRange('General/layer_1', min_value=128, max_value=512, step_size=128),
+        UniformIntegerParameterRange('General/layer_2', min_value=128, max_value=512, step_size=128),
+        DiscreteParameterRange('General/batch_size', values=[96, 128, 160]),
+        DiscreteParameterRange('General/epochs', values=[30]),
     ],
     # this is the objective metric we want to maximize/minimize
-    objective_metric_title='val_acc',
-    objective_metric_series='val_acc',
+    objective_metric_title='epoch_accuracy',
+    objective_metric_series='epoch_accuracy',
     # now we decide if we want to maximize it or minimize it (accuracy we maximize)
     objective_metric_sign='max',
     # let us limit the number of concurrent experiments,

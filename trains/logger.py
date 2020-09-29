@@ -309,9 +309,9 @@ class Logger(object):
                     "please install the pandas python package"
                 )
             if url:
-                table = pd.read_csv(url)
+                table = pd.read_csv(url, index_col=[0])
             elif csv:
-                table = pd.read_csv(csv)
+                table = pd.read_csv(csv, index_col=[0])
 
         def replace(dst, *srcs):
             for src in srcs:

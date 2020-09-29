@@ -154,8 +154,10 @@ class Artifact(object):
         # noinspection PyProtectedMember
         if self.type == 'numpy' and np:
             self._object = np.load(local_file)[self.name]
-        elif self.type in ('pandas', Artifacts._pd_artifact_type) and pd:
+        elif self.type == Artifacts._pd_artifact_type and pd:
             self._object = pd.read_csv(local_file)
+        elif self.type == 'pandas' and pd:
+            self._object = pd.read_csv(local_file, index_col=[0])
         elif self.type == 'image':
             self._object = Image.open(local_file)
         elif self.type == 'JSON':

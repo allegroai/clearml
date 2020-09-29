@@ -37,9 +37,9 @@ class TrainsJob(object):
             self.task.set_tags(list(set(self.task.get_tags()) | set(tags)))
         self.task_parameter_override = None
         if parameter_override:
-            params = self.task.get_parameters_as_dict()
+            params = self.task.get_parameters(backwards_compatibility=False)
             params.update(parameter_override)
-            self.task.set_parameters_as_dict(params)
+            self.task.set_parameters(params)
             self.task_parameter_override = dict(**parameter_override)
         if task_overrides:
             # todo: make sure it works

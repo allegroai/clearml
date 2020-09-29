@@ -161,7 +161,7 @@ class IdObjectBase(InterfaceBase):
         try:
             self._data = self._reload()
         except Exception:
-            pass
+            self.log.error("Failed reloading task {}".format(self.id))
 
     @classmethod
     def normalize_id(cls, id):

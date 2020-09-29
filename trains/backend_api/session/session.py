@@ -341,9 +341,8 @@ class Session(TokenManager):
             raise ValueError("Expecting list, tuple or generator in 'data' or 'json'")
 
         if not data and not json:
-            raise ValueError(
-                "Missing data (data or json), batch requests are meaningless without it."
-            )
+            # Missing data (data or json), batch requests are meaningless without it.
+            return None
 
         headers = headers.copy() if headers else {}
         headers["Content-Type"] = "application/json-lines"
@@ -439,11 +438,12 @@ class Session(TokenManager):
                 headers=headers,
             )
             # TODO: handle multiple results in this case
-            try:
-                res = next(r for r in res if r.status_code != 200)
-            except StopIteration:
-                # all are 200
-                res = res[0]
+            if res is not None:
+                try:
+                    res = next(r for r in res if r.status_code != 200)
+                except StopIteration:
+                    # all are 200
+                    res = res[0]
         else:
             res = self.send_request(
                 service=req_obj._service,

@@ -30,7 +30,7 @@ class ResponseMeta(jsonmodels.models.Base):
         return self._is_valid
 
     @classmethod
-    def from_raw_data(cls, status_code, text, endpoint=None):
+    def from_raw_data(cls, status_code, text="", endpoint=None):
         return cls(is_valid=False, result_code=status_code, result_subcode=0, result_msg=text,
                    endpoint=_ResponseEndpoint(name=(endpoint or 'unknown')))
 

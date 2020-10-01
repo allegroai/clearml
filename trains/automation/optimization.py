@@ -1409,8 +1409,8 @@ class HyperParameterOptimizer(object):
             value_func, series_name = (max, "max") if self.objective_metric.get_objective_sign() > 0 else \
                 (min, "min")
             latest_completed, obj_values = self._get_latest_completed_task_value(completed_jobs, series_name)
-            val = value_func(obj_values)
             if latest_completed:
+                val = value_func(obj_values)
                 task_logger.report_scalar(
                     title=title,
                     series=series_name,

@@ -12,7 +12,7 @@ from six.moves.urllib.parse import urlparse, urlunparse
 
 from .callresult import CallResult
 from .defs import ENV_VERBOSE, ENV_HOST, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_WEB_HOST, \
-    ENV_FILES_HOST, ENV_OFFLINE_MODE
+    ENV_FILES_HOST, ENV_OFFLINE_MODE, ENV_TRAINS_NO_DEFAULT_SERVER
 from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
 from ..config import load
@@ -139,6 +139,9 @@ class Session(TokenManager):
         host = host or self.get_api_server_host(config=self.config)
         if not host:
             raise ValueError("host is required in init or config")
+
+        if ENV_TRAINS_NO_DEFAULT_SERVER.get() and host == self.default_host:
+            raise ValueError("Configuration file or environment could not be located and default demo server is disabled")
 
         self._ssl_error_count_verbosity = self.config.get(
             "api.ssl_error_count_verbosity", self._ssl_error_count_verbosity)

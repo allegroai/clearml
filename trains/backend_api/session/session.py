@@ -57,7 +57,8 @@ class Session(TokenManager):
     _client = [(__package__.partition(".")[0], __version__)]
 
     api_version = '2.1'
-    default_host = "https://demoapi.trains.allegro.ai"
+    default_demo_host = "https://demoapi.trains.allegro.ai"
+    default_host = default_demo_host
     default_web = "https://demoapp.trains.allegro.ai"
     default_files = "https://demofiles.trains.allegro.ai"
     default_key = "EGRTCO8JMSIGI6S39GTP43NFWXDQOW"
@@ -140,8 +141,10 @@ class Session(TokenManager):
         if not host:
             raise ValueError("host is required in init or config")
 
-        if ENV_TRAINS_NO_DEFAULT_SERVER.get() and host == self.default_host:
-            raise ValueError("Configuration file or environment could not be located and default demo server is disabled")
+        if ENV_TRAINS_NO_DEFAULT_SERVER.get() and host == self.default_demo_host:
+            raise ValueError(
+                "Configuration file or environment could not be located and default demo server is disabled"
+            )
 
         self._ssl_error_count_verbosity = self.config.get(
             "api.ssl_error_count_verbosity", self._ssl_error_count_verbosity)

@@ -3,6 +3,7 @@ import yaml
 from six import PY2
 from argparse import _StoreAction, ArgumentError, _StoreConstAction, _SubParsersAction, SUPPRESS
 from copy import copy
+import types
 
 from ...backend_api import Session
 from ...utilities.args import call_original_argparser
@@ -92,8 +93,9 @@ class _Arguments(object):
                 else:
                     args_dict = call_original_argparser(a_parser, args=a_args, namespace=a_namespace).__dict__
             defaults_ = {
-                a.dest: args_dict.get(a.dest) if (args_dict.get(a.dest) is not None) else ''
-                for a in actions
+                a.dest: args_dict.get(a.dest) if (
+                        args_dict.get(a.dest) is not None and not callable(args_dict.get(a.dest))
+                ) else '' for a in actions
             }
         except Exception:
             # don't crash us if we failed parsing the inputs
@@ -305,6 +307,19 @@ class _Arguments(object):
                     if v not in (None, ''):
                         arg_parser_argeuments[k] = v
                 elif current_action and current_action.type:
+
+                    # if we have an action type and value (v) is None, and cannot be casted, leave as is
+                    if isinstance(current_action.type, types.FunctionType) and not v:
+                        # noinspection PyBroadException
+                        try:
+                            v = current_action.type(v)
+                        except Exception:
+                            continue
+                    elif current_action.type == str and current_action.default is None and v in (None, ''):
+                        # if the type is str and the default is None, and we stored empty string,
+                        # do not change the value (i.e. leave it as None)
+                        continue
+
                     arg_parser_argeuments[k] = v
                     # noinspection PyBroadException
                     try:

@@ -1600,6 +1600,10 @@ class Task(_Task):
             Task.enqueue(task, queue_name=queue_name)
             LoggerRoot.get_base_logger().warning(
                 'Switching to remote execution, output log page {}'.format(task.get_output_log_web_page()))
+        else:
+            # Remove the development system tag
+            system_tags = [t for t in task.get_system_tags() if t != self._development_tag]
+            self.set_system_tags(system_tags)
 
         # leave this process.
         if exit_process:

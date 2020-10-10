@@ -16,8 +16,9 @@
 * Navigate to mlflow_examples directory in the terminal.
 * Extract `examples.zip` file
 * Run the following line: 
-
+    ```bash
     mlflow run <example-name-from-the-list-above> 
     (e.g mlflow run examples/pytorch)
+    ```
     
 For more information visit: [mlflow/examples](https://github.com/mlflow/mlflow/tree/master/examples).

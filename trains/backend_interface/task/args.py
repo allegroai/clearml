@@ -204,6 +204,19 @@ class _Arguments(object):
         return _actions
 
     def copy_to_parser(self, parser, parsed_args):
+        def cast_to_bool_int(value, strip=False):
+            strip_v = value if not strip else str(value).lower().strip()
+            if strip_v == 'false' or not strip_v:
+                return False
+            elif strip_v == 'true':
+                return True
+            else:
+                # first try to cast to integer
+                try:
+                    return int(strip_v)
+                except (ValueError, TypeError):
+                    return None
+
         # Change to argparse prefix only
         prefix = self._prefix_args if Session.check_min_api_version('2.9') else ''
         task_arguments = dict([(k[len(prefix):], v) for k, v in self._task.get_parameters().items()
@@ -230,16 +243,9 @@ class _Arguments(object):
                     const_type = type(const_value)
                     strip_v = str(v).lower().strip()
                     if const_type == bool:
-                        if strip_v == 'false' or not strip_v:
-                            const_value = False
-                        elif strip_v == 'true':
-                            const_value = True
-                        else:
-                            # first try to cast to integer
-                            try:
-                                const_value = int(strip_v)
-                            except ValueError:
-                                pass
+                        bool_value = cast_to_bool_int(strip_v)
+                        if bool_value is not None:
+                            const_value = bool_value
                     else:
                         const_value = strip_v
                     # then cast to const type (might be boolean)
@@ -289,7 +295,6 @@ class _Arguments(object):
                     except Exception:
                         # if we failed, leave as string
                         arg_parser_argeuments[k] = v
-
                 elif current_action and current_action.type == bool:
                     # parser.set_defaults cannot cast string `False`/`True` to boolean properly,
                     # so we have to do it manually here
@@ -307,7 +312,6 @@ class _Arguments(object):
                     if v not in (None, ''):
                         arg_parser_argeuments[k] = v
                 elif current_action and current_action.type:
-
                     # if we have an action type and value (v) is None, and cannot be casted, leave as is
                     if isinstance(current_action.type, types.FunctionType) and not v:
                         # noinspection PyBroadException
@@ -319,6 +323,12 @@ class _Arguments(object):
                         # if the type is str and the default is None, and we stored empty string,
                         # do not change the value (i.e. leave it as None)
                         continue
+                    elif current_action.type == str and isinstance(current_action.default, bool):
+                        # this will take care of values that can be strings or boolean with default of boolean
+                        # and the default value is kept the same
+                        bool_value = cast_to_bool_int(v, strip=True)
+                        if bool_value is not None and current_action.default == bool(bool_value):
+                            continue
 
                     arg_parser_argeuments[k] = v
                     # noinspection PyBroadException

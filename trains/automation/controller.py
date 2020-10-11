@@ -362,7 +362,7 @@ class PipelineController(object):
         return True
 
     def _verify_node(self, node):
-        # type: (Node) -> bool
+        # type: (PipelineController.Node) -> bool
         """
         Raise ValueError on verification errors
 
@@ -407,7 +407,7 @@ class PipelineController(object):
         return not bool(set(self._nodes.keys()) - visited)
 
     def _launch_node(self, node):
-        # type: (Node) -> ()
+        # type: (PipelineController.Node) -> ()
         """
         Launch a single node (create and enqueue a TrainsJob)
 
@@ -618,7 +618,7 @@ class PipelineController(object):
                 pass
 
     def __verify_step_reference(self, node, step_ref_string):
-        # type: (Node, str) -> bool
+        # type: (PipelineController.Node, str) -> bool
         """
         Verify the step reference. For example "${step1.parameters.Args/param}"
         :param Node node: calling reference node (used for logging)

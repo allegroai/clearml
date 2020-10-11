@@ -1329,19 +1329,19 @@ class PatchKerasModelIO(object):
         if 'tensorflow' in sys.modules and not PatchKerasModelIO.__patched_tensorflow:
             try:
                 # hack: make sure tensorflow.__init__ is called
-                import tensorflow  # noqa: F401
+                import tensorflow  # noqa: F401, F811
                 from tensorflow.python.keras.engine.network import Network
             except ImportError:
                 Network = None
             try:
                 # hack: make sure tensorflow.__init__ is called
-                import tensorflow  # noqa: F401
+                import tensorflow  # noqa: F401, F811
                 from tensorflow.python.keras.engine.functional import Functional
             except ImportError:
                 Functional = None
             try:
                 # hack: make sure tensorflow.__init__ is called
-                import tensorflow  # noqa: F811
+                import tensorflow  # noqa: F401, F811
                 from tensorflow.python.keras.engine.sequential import Sequential
             except ImportError:
                 Sequential = None
@@ -1357,7 +1357,7 @@ class PatchKerasModelIO(object):
                     Network if PatchKerasModelIO.__patched_keras[0] != Network else None,
                     Sequential if PatchKerasModelIO.__patched_keras[1] != Sequential else None,
                     keras_saving if PatchKerasModelIO.__patched_keras[2] != keras_saving else None,
-                    Functional if PatchKerasModelIO.__patched_keras[3] != Functional else None,]
+                    Functional if PatchKerasModelIO.__patched_keras[3] != Functional else None, ]
             else:
                 PatchKerasModelIO.__patched_tensorflow = [Network, Sequential, keras_saving, Functional]
             PatchKerasModelIO._patch_io_calls(*PatchKerasModelIO.__patched_tensorflow)

@@ -309,10 +309,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             if result.script and script_requirements:
                 entry_point_filename = None if config.get('development.force_analyze_entire_repo', False) else \
                     os.path.join(result.script['working_dir'], entry_point)
-                if config.get('development.detect_with_pip_freeze', False):
-                    conda_requirements = ""
+                if config.get('development.detect_with_pip_freeze', False) or \
+                        config.get('development.detect_with_conda_freeze', False):
+                    requirements, conda_requirements = pip_freeze(
+                        config.get('development.detect_with_conda_freeze', False))
                     requirements = '# Python ' + sys.version.replace('\n', ' ').replace('\r', ' ') + '\n\n'\
-                                   + "\n".join(pip_freeze())
+                                   + requirements
                 else:
                     requirements, conda_requirements = script_requirements.get_requirements(
                         entry_point_filename=entry_point_filename)

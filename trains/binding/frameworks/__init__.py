@@ -429,7 +429,8 @@ class WeightsFileHandler(object):
                         weights_filename=temp_file, auto_delete_file=True, target_filename=target_filename,
                         update_comment=False)
             else:
-                trains_out_model.update_weights(weights_filename=None, register_uri=model_info.local_model_path)
+                trains_out_model.update_weights(
+                    weights_filename=None, register_uri=model_info.local_model_path, is_package=bool(len(files) > 1))
 
             # update back the internal Model lookup, and replace the local file with our file
             # noinspection PyProtectedMember

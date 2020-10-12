@@ -1651,6 +1651,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not hasattr(task, 'system_tags') and not tags and task.tags:
             tags = [t for t in task.tags if t != cls._development_tag]
 
+        extra = {}
+        if hasattr(task, 'hyperparams'):
+            extra['hyperparams'] = task.hyperparams
+        if hasattr(task, 'configuration'):
+            extra['configuration'] = task.configuration
+
         req = tasks.CreateRequest(
             name=name or task.name,
             type=task.type,
@@ -1662,8 +1668,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             output_dest=output_dest,
             execution=execution.as_plain_ordered_dict(),
             script=task.script,
-            hyperparams=task.hyperparams if hasattr(task, 'hyperparams') else None,
-            configuration=task.configuration if hasattr(task, 'configuration') else None,
+            **extra
         )
         res = cls._send(session=session, log=log, req=req)
         cloned_task_id = res.response.id

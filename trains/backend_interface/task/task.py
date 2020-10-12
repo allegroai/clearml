@@ -48,7 +48,7 @@ from ...debugging.log import LoggerRoot
 from ...storage.helper import StorageHelper, StorageError
 from .access import AccessMixin
 from .log import TaskHandler
-from .repo import ScriptInfo
+from .repo import ScriptInfo, pip_freeze
 from .repo.util import get_command_output
 from ...config import config, PROC_MASTER_ID_ENV_VAR, SUPPRESS_UPDATE_MESSAGE_ENV_VAR
 
@@ -312,7 +312,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 if config.get('development.detect_with_pip_freeze', False):
                     conda_requirements = ""
                     requirements = '# Python ' + sys.version.replace('\n', ' ').replace('\r', ' ') + '\n\n'\
-                                   + get_command_output([sys.executable, "-m", "pip", "freeze"])
+                                   + "\n".join(pip_freeze())
                 else:
                     requirements, conda_requirements = script_requirements.get_requirements(
                         entry_point_filename=entry_point_filename)

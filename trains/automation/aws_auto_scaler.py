@@ -82,8 +82,8 @@ class AwsAutoScaler(AutoScaler):
             access_key=self.access_key,
             secret_key=self.secret_key,
             queue=queue_name,
-            git_user=self.git_user,
-            git_pass=self.git_pass,
+            git_user=self.git_user or "",
+            git_pass=self.git_pass or "",
             trains_conf=self.extra_trains_conf,
             bash_script=self.extra_vm_bash_script,
             docker="--docker '{}'".format(self.default_docker_image)

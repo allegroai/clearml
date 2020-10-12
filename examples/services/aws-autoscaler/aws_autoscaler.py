@@ -99,8 +99,8 @@ def run_wizard():
     )
     hyper_params.cloud_credentials_region = get_input(
         "AWS region name",
-        "[us-east-1b]",
-        default='us-east-1b')
+        "[us-east-1]",
+        default='us-east-1')
     # get GIT User/Pass for cloning
     print(
         "\nGIT credentials:"
@@ -211,7 +211,7 @@ def run_wizard():
                                if k not in (q[0] for q in queues[queue_name])]
             while True:
                 queue_type = get_input(
-                    "a instance type to attach to the queue",
+                    "an instance type to attach to the queue",
                     "{}".format(valid_instances),
                     question="Select",
                     required=True,

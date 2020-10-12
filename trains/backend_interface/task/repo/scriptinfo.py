@@ -122,11 +122,18 @@ class ScriptRequirements(object):
                     if not r.get('channel') or r.get('channel') == 'pypi':
                         continue
                     # check if we have it in our required packages
-                    name = r['name'].lower().replace('-', '_')
+                    name = r['name'].lower()
                     # hack support pytorch/torch different naming convention
                     if name == 'pytorch':
                         name = 'torch'
-                    k, v = reqs_lower.get(name, (None, None))
+                    k, v = None, None
+                    if name in reqs_lower:
+                        k, v = reqs_lower.get(name, (None, None))
+                    else:
+                        name = name.replace('-', '_')
+                        if name in reqs_lower:
+                            k, v = reqs_lower.get(name, (None, None))
+
                     if k and v is not None:
                         if v.version:
                             conda_requirements += '{0} {1} {2}\n'.format(k, '==', v.version)

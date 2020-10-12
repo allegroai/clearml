@@ -81,7 +81,10 @@ class GenerateReqs(object):
                 pkg_name, version = self._installed_pkgs[name]
                 if name not in modules:
                     modules.add(name, name, 0)
-                reqs.add(pkg_name, version, modules[name])
+                if not version and pkg_name and pkg_name.startswith('-e '):
+                    reqs.add('{} @ {}'.format(name, pkg_name.replace('-e ', '', 1)), version, modules[name])
+                else:
+                    reqs.add(pkg_name, version, modules[name])
                 reqs_module_name.append(name)
             elif name in modules:
                 guess.add(name, 0, modules[name])

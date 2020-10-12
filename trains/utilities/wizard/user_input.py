@@ -69,3 +69,15 @@ def input_bool(question, default=False):
             raise ValueError()
         except ValueError:
             print("Invalid input: please enter 'yes' or 'no'")
+
+
+def multiline_input(description=""):
+    print("{} \nNote: two consecutive empty lines would terminate the input : ".format(description))
+    lines = []
+    empty_lines = 0
+    while empty_lines < 2:
+        line = input()
+        lines.append(line)
+        empty_lines = 0 if line else empty_lines + 1
+    res = "\n".join(lines[:-1])
+    return res, len(res.splitlines())

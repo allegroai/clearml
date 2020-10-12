@@ -10,7 +10,7 @@ from six.moves import input
 from trains import Task
 from trains.automation.aws_auto_scaler import AwsAutoScaler
 from trains.config import running_remotely
-from trains.utilities.wizard.user_input import get_input, input_int, input_bool
+from trains.utilities.wizard.user_input import get_input, input_int, input_bool, multiline_input
 
 CONF_FILE = "aws_autoscaler.yaml"
 DEFAULT_DOCKER_IMAGE = "nvidia/cuda:10.1-runtime-ubuntu18.04"
@@ -190,9 +190,15 @@ def run_wizard():
 
     configurations.resource_configurations = resource_configurations
 
-    configurations.extra_vm_bash_script = input(
-        "\nEnter any pre-execution bash script to be executed on the newly created instances []: "
+    configurations.extra_vm_bash_script, num_lines_bash_script = multiline_input(
+        "\nEnter any pre-execution bash script to be executed on the newly created instances []"
     )
+    print("Entered {} lines of pre-execution bash script".format(num_lines_bash_script))
+
+    configurations.extra_trains_conf, num_lines_trains_conf = multiline_input(
+        "\nEnter anything you'd like to include in your trains.conf file []"
+    )
+    print("Entered {} extra lines for trains.conf file".format(num_lines_trains_conf))
 
     print("\nDefine the machines budget:")
     print("-----------------------------")

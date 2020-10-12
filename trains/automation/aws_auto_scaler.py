@@ -84,7 +84,7 @@ class AwsAutoScaler(AutoScaler):
             queue=queue_name,
             git_user=self.git_user or "",
             git_pass=self.git_pass or "",
-            trains_conf=self.extra_trains_conf,
+            trains_conf='\\"'.join(self.extra_trains_conf.split('"')),
             bash_script=self.extra_vm_bash_script,
             docker="--docker '{}'".format(self.default_docker_image)
             if self.default_docker_image
@@ -107,6 +107,8 @@ class AwsAutoScaler(AutoScaler):
                 LaunchSpecification={
                     "ImageId": resource_conf["ami_id"],
                     "InstanceType": resource_conf["instance_type"],
+                    "KeyName": resource_conf["key_name"],
+                    "SecurityGroupIds": resource_conf["security_group_ids"],
                     "Placement": {
                         "AvailabilityZone": resource_conf["availability_zone"]
                     },
@@ -140,6 +142,8 @@ class AwsAutoScaler(AutoScaler):
                 MinCount=1,
                 MaxCount=1,
                 InstanceType=resource_conf["instance_type"],
+                KeyName=resource_conf["key_name"],
+                SecurityGroupIds=resource_conf["security_group_ids"],
                 UserData=user_data,
                 InstanceInitiatedShutdownBehavior="terminate",
                 BlockDeviceMappings=[

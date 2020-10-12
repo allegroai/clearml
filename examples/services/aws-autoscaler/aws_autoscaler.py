@@ -1,16 +1,22 @@
 from argparse import ArgumentParser
 from collections import defaultdict
-from pathlib2 import Path
-from typing import Tuple
 from itertools import chain
+from typing import Tuple
 
 import yaml
+from pathlib2 import Path
 from six.moves import input
 
 from trains import Task
 from trains.automation.aws_auto_scaler import AwsAutoScaler
 from trains.config import running_remotely
-from trains.utilities.wizard.user_input import get_input, input_int, input_bool, multiline_input
+from trains.utilities.wizard.user_input import (
+    get_input,
+    input_int,
+    input_bool,
+    multiline_input,
+    input_list,
+)
 
 CONF_FILE = "aws_autoscaler.yaml"
 DEFAULT_DOCKER_IMAGE = "nvidia/cuda:10.1-runtime-ubuntu18.04"
@@ -169,6 +175,14 @@ def run_wizard():
                 "the Amazon EBS volume type",
                 "['gp2']",
                 default="gp2",
+            ),
+            "key_name": get_input(
+                "the Amazon Key Pair name",
+                required=True,
+            ),
+            "security_group_ids": input_list(
+                "Amazon Security Group ID",
+                required=True,
             ),
         }
 

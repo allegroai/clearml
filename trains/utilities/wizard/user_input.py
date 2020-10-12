@@ -71,6 +71,29 @@ def input_bool(question, default=False):
             print("Invalid input: please enter 'yes' or 'no'")
 
 
+def input_list(
+    key,  # type: str
+    description="",  # type: str
+    question="Enter",  # type: str
+    required=False,  # type: bool
+    default=None,  # type: Optional[str]
+    new_line=False,  # type: bool
+):
+    res_list = [get_input(key, description, question, required, default, new_line)]
+    while input_bool("\nDefine another {}? [y/N]".format(key)):
+        response = get_input(
+                    key=key,
+                    description=description,
+                    question=question,
+                    required=False,
+                    default=default,
+                    new_line=new_line,
+                )
+        if response:
+            res_list.append(response)
+    return res_list
+
+
 def multiline_input(description=""):
     print("{} \nNote: two consecutive empty lines would terminate the input : ".format(description))
     lines = []

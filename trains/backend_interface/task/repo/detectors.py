@@ -75,17 +75,17 @@ class Detector(object):
         """ Returns a RepoInfo instance containing a command for each info attribute """
         return self.Commands()
 
-    def _get_command_output(self, path, name, command):
+    def _get_command_output(self, path, name, command, strip=True):
         """ Run a command and return its output """
         try:
-            return get_command_output(command, path)
+            return get_command_output(command, path, strip=strip)
 
         except (CalledProcessError, UnicodeDecodeError) as ex:
             if not name.endswith(self._fallback):
                 fallback_command = attr.asdict(self._get_commands()).get(name + self._fallback)
                 if fallback_command:
                     try:
-                        return get_command_output(fallback_command, path)
+                        return get_command_output(fallback_command, path, strip=strip)
                     except (CalledProcessError, UnicodeDecodeError):
                         pass
             _logger.warning("Can't get {} information for {} repo in {}".format(name, self.type_name, path))
@@ -111,7 +111,7 @@ class Detector(object):
 
         info = Result(
             **{
-                name: self._get_command_output(path, name, command)
+                name: self._get_command_output(path, name, command, strip=bool(name != 'diff'))
                 for name, command in attr.asdict(commands).items()
                 if command and not name.endswith(self._fallback)
             }

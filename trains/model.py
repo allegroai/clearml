@@ -48,6 +48,7 @@ class Framework(Options):
     paddlepaddle = 'PaddlePaddle'
     scikitlearn = 'ScikitLearn'
     xgboost = 'XGBoost'
+    lightgbm = 'LightGBM'
     parquet = 'Parquet'
 
     __file_extensions_mapping = {

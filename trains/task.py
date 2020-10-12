@@ -35,6 +35,7 @@ from .binding.absl_bind import PatchAbsl
 from .binding.artifacts import Artifacts, Artifact
 from .binding.environ_bind import EnvironmentBind, PatchOsFork
 from .binding.frameworks.fastai_bind import PatchFastai
+from .binding.frameworks.lightgbm_bind import PatchLIGHTgbmModelIO
 from .binding.frameworks.pytorch_bind import PatchPyTorchModelIO
 from .binding.frameworks.tensorflow_bind import TensorflowBinding
 from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
@@ -333,7 +334,7 @@ class Task(_Task):
             .. code-block:: py
 
                auto_connect_frameworks={'matplotlib': True, 'tensorflow': True, 'pytorch': True,
-                    'xgboost': True, 'scikit': True}
+                    'xgboost': True, 'scikit': True, 'fastai': True, 'lightgbm': True}
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
             These plots appear in in the **Trains Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab,
@@ -502,6 +503,8 @@ class Task(_Task):
                     PatchXGBoostModelIO.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('fastai', True):
                     PatchFastai.update_current_task(task)
+                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('lightgbm', True):
+                    PatchLIGHTgbmModelIO.update_current_task(task)
             if auto_resource_monitoring and not is_sub_process_task_id:
                 resource_monitor_cls = auto_resource_monitoring \
                     if isinstance(auto_resource_monitoring, six.class_types) else ResourceMonitor

@@ -63,6 +63,28 @@ class TLSv1HTTPAdapter(HTTPAdapter):
                                        ssl_version=ssl.PROTOCOL_TLSv1_2)
 
 
+class SessionWithTimeout(requests.Session):
+    write_timeout = (300., 300.)
+    request_size_threshold = 15000
+
+    def __init__(self, *args, **kwargs):
+        super(SessionWithTimeout, self).__init__(*args, **kwargs)
+
+    def send(self, request, **kwargs):
+        if isinstance(request, requests.models.PreparedRequest) and \
+                request.headers and request.headers.get('Content-Length'):
+            try:
+                if int(request.headers['Content-Length']) > self.request_size_threshold:
+                    timeout = kwargs.get('timeout', 0)
+                    kwargs['timeout'] = \
+                        (max(self.write_timeout[0], timeout[0]), max(self.write_timeout[1], timeout[1])) \
+                        if isinstance(timeout, (list, tuple)) \
+                        else max(self.write_timeout[0], timeout)
+            except (TypeError, ValueError, NameError):
+                pass
+        return super(SessionWithTimeout, self).send(request, **kwargs)
+
+
 def get_http_session_with_retry(
         total=0,
         connect=None,
@@ -93,7 +115,7 @@ def get_http_session_with_retry(
         else get_config().get('api.http.pool_connections', 512)
     )
 
-    session = requests.Session()
+    session = SessionWithTimeout()
 
     # HACK: with python 2.7 there is a potential race condition that can cause
     # a deadlock when importing "netrc", inside the get_netrc_auth() function

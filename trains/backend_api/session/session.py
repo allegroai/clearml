@@ -154,6 +154,8 @@ class Session(TokenManager):
             "api.http.retries", ConfigTree()).as_plain_ordered_dict()
         http_retries_config["status_forcelist"] = self._retry_codes
         self.__http_session = get_http_session_with_retry(**http_retries_config)
+        self.__http_session.write_timeout = self._write_session_timeout
+        self.__http_session.request_size_threshold = self._write_session_data_size
 
         self.__worker = worker or self.get_worker_host_name()
 

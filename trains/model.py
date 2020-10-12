@@ -177,6 +177,29 @@ class BaseModel(object):
         self._get_base_model().update(tags=value)
 
     @property
+    def system_tags(self):
+        # type: () -> List[str]
+        """
+        A list of system tags describing the model.
+
+        :return: The list of tags.
+        """
+        data = self._get_model_data()
+        return data.system_tags if Session.check_min_api_version('2.3') else data.tags
+
+    @system_tags.setter
+    def system_tags(self, value):
+        # type: (List[str]) -> None
+        """
+        Set the list of system tags describing the model.
+
+        :param value: The tags.
+
+        :type value: list(str)
+        """
+        self._get_base_model().update(system_tags=value)
+
+    @property
     def config_text(self):
         # type: () -> str
         """
@@ -275,7 +298,7 @@ class BaseModel(object):
         :return: The model weights, or a list of the locally stored filenames.
         """
         # check if model was packaged
-        if self._package_tag not in self._get_model_data().tags:
+        if not self._is_package():
             raise ValueError('Model is not packaged')
 
         # download packaged model
@@ -331,9 +354,12 @@ class BaseModel(object):
         pass
 
     def _set_package_tag(self):
-        if self._package_tag not in self.tags:
-            self.tags.append(self._package_tag)
-            self._get_base_model().edit(tags=self.tags)
+        if self._package_tag not in self.system_tags:
+            self.system_tags.append(self._package_tag)
+            self._get_base_model().edit(system_tags=self.system_tags)
+
+    def _is_package(self):
+        return self._package_tag in (self.system_tags or [])
 
     @staticmethod
     def _config_dict_to_text(config):
@@ -390,7 +416,7 @@ class Model(BaseModel):
 
         :return: A local path to the model (or a downloaded copy of it).
         """
-        if extract_archive and self._package_tag in self.tags:
+        if extract_archive and self._is_package():
             return self.get_weights_package(return_path=True, raise_on_error=raise_on_error)
         return self.get_weights(raise_on_error=raise_on_error)
 
@@ -1033,7 +1059,8 @@ class OutputModel(BaseModel):
         auto_delete_file=True,  # type: bool
         register_uri=None,  # type: Optional[str]
         iteration=None,  # type: Optional[int]
-        update_comment=True  # type: bool
+        update_comment=True,  # type: bool
+        is_package=False,  # type: bool
     ):
         # type: (...) -> str
         """
@@ -1061,6 +1088,7 @@ class OutputModel(BaseModel):
 
             - ``True`` - Update model comment (Default)
             - ``False`` - Do not update
+        :param bool is_package: Mark the weights file as compressed package, usually a zip file.
 
         :return: The uploaded URI.
         """
@@ -1150,6 +1178,9 @@ class OutputModel(BaseModel):
             output_uri = model.update(uri=register_uri, task_id=self._task.id, framework=framework, comment=comment)
         else:
             output_uri = None
+
+        if is_package:
+            self._set_package_tag()
 
         # make sure that if we are in dev move we report that we are training (not debugging)
         self._task._output_model_updated()

@@ -1006,7 +1006,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Set the base docker image for this experiment
         If provided, this value will be used by trains-agent to execute this experiment
         inside the provided docker image.
+        When running remotely the call is ignored
         """
+        if not self.running_locally():
+            return
+
         with self._edit_lock:
             self.reload()
             execution = self.data.execution

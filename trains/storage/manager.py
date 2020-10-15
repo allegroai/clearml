@@ -1,11 +1,13 @@
 import os
 import shutil
+from random import random
 from time import time
 from typing import Optional
 from zipfile import ZipFile
 
 from pathlib2 import Path
 
+from .util import encode_string_to_filename
 from ..debugging.log import LoggerRoot
 from .cache import CacheManager
 
@@ -96,19 +98,30 @@ class StorageManager(object):
         if not cached_file or not str(cached_file).lower().endswith('.zip'):
             return cached_file
 
+        cached_folder = Path(cached_file).parent
         archive_suffix = cached_file.rpartition(".")[0]
-        target_folder = Path("{0}_artifact_archive_{1}".format(archive_suffix, name))
+        name = encode_string_to_filename(name)
+        target_folder = Path("{0}_artifacts_archive_{1}".format(archive_suffix, name))
+        if target_folder.exists():
+            # noinspection PyBroadException
+            try:
+                target_folder.touch(exist_ok=True)
+            except Exception:
+                pass
+            return target_folder
+
         base_logger = LoggerRoot.get_base_logger()
         try:
-            temp_target_folder = "{0}_{1}".format(target_folder.name, time() * 1000)
-            os.mkdir(path=temp_target_folder)
-            ZipFile(cached_file).extractall(path=temp_target_folder)
+            temp_target_folder = cached_folder / "{0}_{1}_{2}".format(
+                target_folder.name, time() * 1000, str(random()).replace('.', ''))
+            temp_target_folder.mkdir(parents=True, exist_ok=True)
+            ZipFile(cached_file).extractall(path=temp_target_folder.as_posix())
             # we assume we will have such folder if we already extract the zip file
             # noinspection PyBroadException
             try:
                 # if rename fails, it means that someone else already manged to extract the zip, delete the current
                 # folder and return the already existing cached zip folder
-                shutil.move(temp_target_folder, str(target_folder))
+                shutil.move(temp_target_folder.as_posix(), target_folder.as_posix())
             except Exception:
                 if target_folder.exists():
                     target_folder.touch(exist_ok=True)

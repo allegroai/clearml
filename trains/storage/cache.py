@@ -6,13 +6,13 @@ from pathlib2 import Path
 
 from .helper import StorageHelper
 from .util import quote_url
-from ..config import get_cache_dir
+from ..config import get_cache_dir, config
 from ..debugging.log import LoggerRoot
 
 
 class CacheManager(object):
     __cache_managers = {}
-    _default_cache_file_limit = 100
+    _default_cache_file_limit = config.get("storage.cache.default_cache_manager_size", 100)
     _storage_manager_folder = "storage_manager"
     _default_context = "global"
     _local_to_remote_url_lookup = OrderedDict()
@@ -75,24 +75,21 @@ class CacheManager(object):
             :param remote_url: check if we have the remote url in our cache
             :return: full path to file name, current file size or None
             """
-            folder = Path(
-                get_cache_dir() / CacheManager._storage_manager_folder / self._context
-            )
-            folder.mkdir(parents=True, exist_ok=True)
-            local_filename = self._get_hashed_url_file(remote_url)
-            new_file = folder / local_filename
-            if new_file.exists():
-                new_file.touch(exist_ok=True)
+            def safe_time(x):
+                # noinspection PyBroadException
+                try:
+                    return x.stat().st_mtime
+                except Exception:
+                    return 0
 
-            # delete old files
             def sort_max_access_time(x):
-                atime = x.stat().st_atime
+                atime = safe_time(x)
                 # noinspection PyBroadException
                 try:
                     if x.is_dir():
                         dir_files = list(x.iterdir())
                         atime = (
-                            max(atime, max(s.stat().st_atime for s in dir_files))
+                            max(atime, max(safe_time(s) for s in dir_files))
                             if dir_files
                             else atime
                         )
@@ -100,11 +97,30 @@ class CacheManager(object):
                     pass
                 return atime
 
+            folder = Path(
+                get_cache_dir() / CacheManager._storage_manager_folder / self._context
+            )
+            folder.mkdir(parents=True, exist_ok=True)
+            local_filename = self._get_hashed_url_file(remote_url)
+            new_file = folder / local_filename
+            new_file_exists = new_file.exists()
+            if new_file_exists:
+                # noinspection PyBroadException
+                try:
+                    new_file.touch(exist_ok=True)
+                except Exception:
+                    pass
+
+            # delete old files
             files = sorted(folder.iterdir(), reverse=True, key=sort_max_access_time)
             files = files[self._file_limit:]
             for f in files:
                 if not f.is_dir():
-                    f.unlink()
+                    # noinspection PyBroadException
+                    try:
+                        f.unlink()
+                    except Exception:
+                        pass
                 else:
                     try:
                         shutil.rmtree(f)
@@ -115,10 +131,12 @@ class CacheManager(object):
                         )
 
             # if file doesn't exist, return file size None
-            return (
-                new_file.as_posix(),
-                new_file.stat().st_size if new_file.exists() else None,
-            )
+            # noinspection PyBroadException
+            try:
+                size = new_file.stat().st_size if new_file_exists else None
+            except Exception:
+                size = 0
+            return new_file.as_posix(), size
 
     @classmethod
     def get_cache_manager(cls, cache_context=None, cache_file_limit=None):

@@ -1190,6 +1190,20 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._set_task_property("comment", str(comment))
         self._edit(comment=comment)
 
+    def set_task_type(self, task_type):
+        # type: (Union[str, TaskTypes]) -> ()
+        """
+        Set the task_type for the Task.
+
+        :param task_type: The task_type of the Task (see optional values in TaskTypes).
+        :type task_type: str or TaskTypes
+        """
+        if not isinstance(task_type, self.TaskTypes):
+            task_type = self.TaskTypes(task_type)
+
+        self._set_task_property("task_type", str(task_type))
+        self._edit(type=task_type)
+
     def set_initial_iteration(self, offset=0):
         # type: (int) -> int
         """

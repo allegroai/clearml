@@ -657,7 +657,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :type tags: [str]
         """
         self._conditionally_start_task()
-        self._get_output_model(upload_required=False).update_for_task(model_uri, self.id, name, comment, tags)
+        self._get_output_model(upload_required=False).update_for_task(
+            uri=model_uri, task_id=self.id, name=name, comment=comment, tags=tags)
 
     def update_output_model_and_upload(
             self,

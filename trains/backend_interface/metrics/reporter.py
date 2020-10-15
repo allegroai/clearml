@@ -167,6 +167,18 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
                          iter=iter)
         self._report(ev)
 
+    def report_matplotlib(self, title, series, figure, iter, force_save_as_image=False, logger=None):
+        from trains.binding.matplotlib_bind import PatchedMatplotlib
+        PatchedMatplotlib.report_figure(
+            title=title,
+            series=series,
+            figure=figure,
+            iter=iter,
+            force_save_as_image=force_save_as_image,
+            reporter=self,
+            logger=logger,
+        )
+
     def report_plot(self, title, series, plot, iter, round_digits=None):
         """
         Report a Plotly chart
@@ -500,7 +512,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param iter: Iteration number
         :type iter: int
         :param labels: label (text) per point in the scatter (in the same order)
-        :type labels: str
+        :type labels: list(str)
         :param mode: (type str) 'lines'/'markers'/'lines+markers'
         :param color: list of RGBA colors [(217, 217, 217, 0.14),]
         :param marker_size: marker size in px

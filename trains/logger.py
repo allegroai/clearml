@@ -1,7 +1,7 @@
 import logging
 import math
 import warnings
-from typing import Any, Sequence, Union, List, Optional, Tuple, Dict
+from typing import Any, Sequence, Union, List, Optional, Tuple, Dict, TYPE_CHECKING
 
 import numpy as np
 import six
@@ -26,6 +26,12 @@ from .utilities.plotly_reporter import SeriesInfo
 
 # Make sure that DeprecationWarning within this package always gets printed
 warnings.filterwarnings('always', category=DeprecationWarning, module=__name__)
+
+
+if TYPE_CHECKING:
+    from matplotlib.figure import Figure as MatplotlibFigure
+    from matplotlib import pyplot
+    from plotly.graph_objects import Figure
 
 
 class Logger(object):
@@ -142,6 +148,7 @@ class Logger(object):
         # if task was not started, we have to start it
         self._start_task_if_needed()
         self._touch_title_series(title, series)
+        # noinspection PyProtectedMember
         return self._task._reporter.report_scalar(title=title, series=series, value=float(value), iter=iteration)
 
     def report_vector(
@@ -239,6 +246,7 @@ class Logger(object):
         # if task was not started, we have to start it
         self._start_task_if_needed()
         self._touch_title_series(title, series)
+        # noinspection PyProtectedMember
         return self._task._reporter.report_histogram(
             title=title,
             series=series,
@@ -321,7 +329,7 @@ class Logger(object):
         replace("NaN", np.nan, math.nan)
         replace("Inf", np.inf, math.inf)
         replace("-Inf", -np.inf, np.NINF, -math.inf)
-
+        # noinspection PyProtectedMember
         return self._task._reporter.report_table(
             title=title,
             series=series,
@@ -375,6 +383,7 @@ class Logger(object):
         # if task was not started, we have to start it
         self._start_task_if_needed()
         self._touch_title_series(title, series[0].name if series else '')
+        # noinspection PyProtectedMember
         return self._task._reporter.report_line_plot(
             title=title,
             series=series,
@@ -453,6 +462,7 @@ class Logger(object):
         # if task was not started, we have to start it
         self._start_task_if_needed()
         self._touch_title_series(title, series)
+        # noinspection PyProtectedMember
         return self._task._reporter.report_2d_scatter(
             title=title,
             series=series,
@@ -547,6 +557,7 @@ class Logger(object):
         # if task was not started, we have to start it
         self._start_task_if_needed()
         self._touch_title_series(title, series)
+        # noinspection PyProtectedMember
         return self._task._reporter.report_3d_scatter(
             title=title,
             series=series,
@@ -607,6 +618,7 @@ class Logger(object):
         # if task was not started, we have to start it
         self._start_task_if_needed()
         self._touch_title_series(title, series)
+        # noinspection PyProtectedMember
         return self._task._reporter.report_value_matrix(
             title=title,
             series=series,
@@ -707,6 +719,7 @@ class Logger(object):
         # if task was not started, we have to start it
         self._start_task_if_needed()
         self._touch_title_series(title, series)
+        # noinspection PyProtectedMember
         return self._task._reporter.report_value_surface(
             title=title,
             series=series,
@@ -797,6 +810,7 @@ class Logger(object):
         self._touch_title_series(title, series)
 
         if url:
+            # noinspection PyProtectedMember
             self._task._reporter.report_image(
                 title=title,
                 series=series,
@@ -816,7 +830,7 @@ class Logger(object):
 
             if isinstance(image, Image.Image):
                 image = np.array(image)
-
+            # noinspection PyProtectedMember
             self._task._reporter.report_image_and_upload(
                 title=title,
                 series=series,
@@ -882,6 +896,7 @@ class Logger(object):
         self._touch_title_series(title, series)
 
         if url:
+            # noinspection PyProtectedMember
             self._task._reporter.report_media(
                 title=title,
                 series=series,
@@ -898,7 +913,7 @@ class Logger(object):
                 upload_uri = str(upload_uri)
                 storage = StorageHelper.get(upload_uri)
                 upload_uri = storage.verify_upload(folder_uri=upload_uri)
-
+            # noinspection PyProtectedMember
             self._task._reporter.report_media_and_upload(
                 title=title,
                 series=series,
@@ -939,11 +954,45 @@ class Logger(object):
             plot['layout']['title'] = series
         except Exception:
             pass
+        # noinspection PyProtectedMember
         self._task._reporter.report_plot(
             title=title,
             series=series,
             plot=plot,
             iter=iteration,
+        )
+
+    def report_matplotlib_figure(
+            self,
+            title,  # type: str
+            series,  # type: str
+            iteration,  # type: int
+            figure,  # type: Union[MatplotlibFigure, pyplot]
+            report_image=False,  # type: bool
+    ):
+        """
+        Report a ``matplotlib`` figure / plot directly
+
+        ``matplotlib.figure.Figure`` / ``matplotlib.pyplot``
+
+        :param str title: The title (metric) of the plot.
+        :param str series: The series name (variant) of the reported plot.
+        :param int iteration: The iteration number.
+        :param MatplotlibFigure figure: A ``matplotlib`` Figure object
+        :param report_image: Default False. If True the plot will be uploaded as a debug sample (png image),
+            and will appear under the debug samples tab (instead of the Plots tab).
+        """
+        # if task was not started, we have to start it
+        self._start_task_if_needed()
+
+        # noinspection PyProtectedMember
+        self._task._reporter.report_matplotlib(
+            title=title,
+            series=series,
+            figure=figure,
+            iter=iteration,
+            logger=self,
+            force_save_as_image='png' if report_image else False,
         )
 
     def set_default_upload_destination(self, uri):
@@ -1185,6 +1234,7 @@ class Logger(object):
             storage = StorageHelper.get(upload_uri)
             upload_uri = storage.verify_upload(folder_uri=upload_uri)
 
+        # noinspection PyProtectedMember
         self._task._reporter.report_image_plot_and_upload(
             title=title,
             series=series,
@@ -1236,7 +1286,7 @@ class Logger(object):
             upload_uri = str(upload_uri)
             storage = StorageHelper.get(upload_uri)
             upload_uri = storage.verify_upload(folder_uri=upload_uri)
-
+        # noinspection PyProtectedMember
         self._task._reporter.report_image_and_upload(
             title=title,
             series=series,

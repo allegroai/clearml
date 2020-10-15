@@ -36,7 +36,7 @@ class CacheManager(object):
                 # noinspection PyProtectedMember
                 direct_access = helper._driver.get_direct_access(remote_url)
             except (OSError, ValueError):
-                LoggerRoot.get_base_logger().warning("Failed accessing local file: {}".format(remote_url))
+                LoggerRoot.get_base_logger().debug("Failed accessing local file: {}".format(remote_url))
                 return None
 
             if direct_access:
@@ -126,7 +126,7 @@ class CacheManager(object):
                         shutil.rmtree(f)
                     except Exception as e:
                         # failed deleting folder
-                        LoggerRoot.get_base_logger().warning(
+                        LoggerRoot.get_base_logger().debug(
                             "Exception {}\nFailed deleting folder {}".format(e, f)
                         )
 
@@ -135,7 +135,7 @@ class CacheManager(object):
             try:
                 size = new_file.stat().st_size if new_file_exists else None
             except Exception:
-                size = 0
+                size = None
             return new_file.as_posix(), size
 
     @classmethod

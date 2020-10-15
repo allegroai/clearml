@@ -106,9 +106,9 @@ class StorageManager(object):
             # noinspection PyBroadException
             try:
                 target_folder.touch(exist_ok=True)
+                return target_folder
             except Exception:
                 pass
-            return target_folder
 
         base_logger = LoggerRoot.get_base_logger()
         try:

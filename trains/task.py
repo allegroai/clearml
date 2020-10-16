@@ -1285,6 +1285,7 @@ class Task(_Task):
         metadata=None,  # type: Optional[Mapping]
         delete_after_upload=False,  # type: bool
         auto_pickle=True,  # type: bool
+        preview=None,  # type: Any
     ):
         # type: (...) -> bool
         """
@@ -1317,6 +1318,8 @@ class Task(_Task):
             pathlib2.Path, dict, pandas.DataFrame, numpy.ndarray, PIL.Image, url (string), local_file (string)
             the artifact_object will be pickled and uploaded as pickle file artifact (with file extension .pkl)
 
+        :param Any preview: The artifact preview
+
         :return: The status of the upload.
 
         - ``True`` - Upload succeeded.
@@ -1326,7 +1329,7 @@ class Task(_Task):
         """
         return self._artifacts_manager.upload_artifact(
             name=name, artifact_object=artifact_object, metadata=metadata,
-            delete_after_upload=delete_after_upload, auto_pickle=auto_pickle)
+            delete_after_upload=delete_after_upload, auto_pickle=auto_pickle, preview=preview)
 
     def get_models(self):
         # type: () -> Dict[str, Sequence[Model]]

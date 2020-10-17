@@ -1,6 +1,11 @@
 import json
 import os
+import re
+from PIL import Image
+import yaml
+
 import pandas as pd
+from urllib.parse import urlparse
 
 
 def tag_parser(migrant, id, tag, value):
@@ -70,10 +75,7 @@ def epochs_summary_parser(migrant, id, path_tree, tag, lines):
     iteration = 0
     for line in lines:
         parts = line.split(" ")
-        # time = int(parts[0])/1000
-        # time_step = datetime.datetime.fromtimestamp(time, tz=tzutc())
-        score = parts[1]
-        # epoch = parts[2]
+        score = parts[1] if len(parts) > 1 else parts[0]
         point = [iteration, score]
         metric.append(point)
         iteration += 1
@@ -105,11 +107,112 @@ def get_value_from_path(path):
 def update_path(path):
     files = list(os.walk(path))[0][2]  # returns all the files in path
     for name in files:
+        if re.match(r"^\.", name):
+            continue
         if ".parquet" in name:
             return (name, path + os.sep + name)
         elif ".csv" in name:
             return (name, path + os.sep + name)
 
 
-def get_description(tag, value):
+def get_all_artifact_files(migrant, id, path):
+    if not os.path.isdir(path):
+        return
+    dirs = list(os.walk(path))[0][1]  # returns all the dirs in 'path'
+    for dir in dirs:
+        if "model" in dir:
+            files = list(os.walk(path + os.sep + dir))[0][
+                2
+            ]  # returns all the files in 'path'
+            for name in files:
+                if name.endswith(".yaml"):
+                    with open(path + os.sep + dir + os.sep + name) as file:
+                        documents = yaml.full_load(file)
+                        migrant.info[id][migrant.artifacts]["requirements"] = str(
+                            documents
+                        )
+                        break
+            migrant.insert_artifact_by_type(id, "folder", dir, path + os.sep + dir)
+    files = list(os.walk(path))[0][2]  # returns all the files in 'path'
+    for file_name in files:
+        if file_name.endswith(".json"):
+            with open(path + os.sep + file_name) as json_file:
+                data = json.load(json_file)
+                migrant.insert_artifact_by_type(id, "dictionary", file_name, data)
+        elif (
+            file_name.endswith(".png")
+            or file_name.endswith(".jpg")
+            or file_name.endswith(".jpeg")
+        ):
+            im = Image.open(path + os.sep + file_name)
+            migrant.insert_artifact_by_type(id, "image", file_name, im)
+
+
+def __get_description(tag, value):
     return ""
+
+
+def generate_train_param(value, tag):
+    # "epochs": {
+    #     "section": "Args",
+    #     "name": "epochs",
+    #     "value": "6",
+    #     "type": "int",
+    #     "description": "number of epochs to train (default: 6)"
+    # }
+    if re.match(r"^\d*\.\d+", value):
+        value = {
+            "section": "Args",
+            "name": tag,
+            "value": value,
+            "type": "float",
+            "description": __get_description(tag, value),
+        }
+    elif re.match(r"^\d+", value):
+        value = {
+            "section": "Args",
+            "name": tag,
+            "value": value,
+            "type": "int",
+            "description": __get_description(tag, value),
+        }
+    elif value == "True" or value == "False":
+        value = {
+            "section": "Args",
+            "name": tag,
+            "value": value,
+            "type": "boolean",
+            "description": __get_description(tag, value),
+        }
+    else:
+        value = {
+            "section": "Args",
+            "name": tag,
+            "value": value,
+            "type": "string",
+            "description": __get_description(tag, value),
+        }
+    return value
+
+
+def insert_param(migrant, id, value, tag):
+    if re.match(r"^[Ff]ile://", value):
+        p = urlparse(value)
+        value = os.path.abspath(os.path.join(p.netloc, p.path))
+        value = get_value_from_path(value)
+        if value:
+            migrant.insert_artifact(id, value)
+    elif re.match(r"^[Hh]ttps?://", value):
+        value = get_value_from_path(value)
+        if value:
+            migrant.insert_artifact(id, value)
+    elif re.match(r"^[Ss]3://", value):
+        pass
+    # elif re.match(r"^\./",value):
+    #     value = os.getcwd() + value[1:]
+    #     value = get_value_from_path(value)
+    #     if value:
+    #         migrant.insert_artifact(id, value)
+    else:
+        value = generate_train_param(value, tag)
+        migrant.info[id][migrant.params][tag] = value

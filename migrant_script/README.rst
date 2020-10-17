@@ -14,9 +14,9 @@ _____________
 To run the migrant script please provide <path> and <branch> parameters:
 
 - <branch> stand for running environment (e.g Local or Remote).
-- <path> stand for path/address to mlruns directory.
+- <path> stand for path to mlruns directory or database URL (e.g ``postgresql://<IP>:<PORT>/<DB-NAME>`` ) .
 
 Run::
 
-    python trains_immigration.py local /Users/.../mlruns
+    python trains_immigration.py <branch> <path>
 

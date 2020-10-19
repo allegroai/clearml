@@ -923,6 +923,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     hyperparams[section_name] = section
 
                 self._edit(hyperparams=hyperparams)
+                self.data.hyperparams = hyperparams
             else:
                 execution = self.data.execution
                 if execution is None:

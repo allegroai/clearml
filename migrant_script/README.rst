@@ -7,7 +7,7 @@ Installing
 ----------
 install the requirements by run::
 
-    pip install -r /path/to/requirements.txt
+    conda install --file requirements.txt
 
 Using Migrant
 _____________

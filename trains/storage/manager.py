@@ -21,9 +21,9 @@ class StorageManager(object):
 
     @classmethod
     def get_local_copy(
-        cls, remote_url, cache_context=None, extract_archive=True, name=None
+        cls, remote_url, force_download=False, cache_context=None, extract_archive=True, name=None
     ):
-        # type: (str, Optional[str], bool, Optional[str]) -> str
+        # type: (str, bool, Optional[str], bool, Optional[str]) -> str
         """
         Get a local copy of the remote file. If the remote URL is a direct file access,
         the returned link is the same, otherwise a link to a local copy of the url file is returned.
@@ -31,6 +31,7 @@ class StorageManager(object):
         Oldest accessed files are deleted when cache is full.
 
         :param str remote_url: remote url link (string)
+        :param force_download: download file from remote even if exists in local cache
         :param str cache_context: Optional caching context identifier (string), default context 'global'
         :param bool extract_archive: if True returned path will be a cached folder containing the archive's content,
             currently only zip files are supported.
@@ -39,7 +40,7 @@ class StorageManager(object):
         """
         cached_file = CacheManager.get_cache_manager(
             cache_context=cache_context
-        ).get_local_copy(remote_url=remote_url)
+        ).get_local_copy(remote_url=remote_url, force_download=force_download)
         if not extract_archive or not cached_file:
             return cached_file
         return cls._extract_to_cache(cached_file, name)

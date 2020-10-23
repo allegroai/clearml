@@ -27,7 +27,7 @@ class CacheManager(object):
             self._file_limit = max(self._file_limit, int(cache_file_limit))
             return self._file_limit
 
-        def get_local_copy(self, remote_url):
+        def get_local_copy(self, remote_url, force_download):
             helper = StorageHelper.get(remote_url)
             if not helper:
                 raise ValueError("Storage access failed: {}".format(remote_url))
@@ -44,11 +44,11 @@ class CacheManager(object):
 
             # check if we already have the file in our cache
             cached_file, cached_size = self._get_cache_file(remote_url)
-            if cached_size is not None:
+            if cached_size is not None and not force_download:
                 CacheManager._add_remote_url(remote_url, cached_file)
                 return cached_file
             # we need to download the file:
-            downloaded_file = helper.download_to_file(remote_url, cached_file)
+            downloaded_file = helper.download_to_file(remote_url, cached_file, overwrite_existing=force_download)
             if downloaded_file != cached_file:
                 # something happened
                 return None

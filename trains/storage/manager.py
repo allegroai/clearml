@@ -23,7 +23,7 @@ class StorageManager(object):
     def get_local_copy(
         cls, remote_url, cache_context=None, extract_archive=True, name=None
     ):
-        # type: (str, Optional[str], Optional[bool], Optional[str]) -> str
+        # type: (str, Optional[str], bool, Optional[str]) -> str
         """
         Get a local copy of the remote file. If the remote URL is a direct file access,
         the returned link is the same, otherwise a link to a local copy of the url file is returned.

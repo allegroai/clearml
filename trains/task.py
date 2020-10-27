@@ -1286,6 +1286,7 @@ class Task(_Task):
         delete_after_upload=False,  # type: bool
         auto_pickle=True,  # type: bool
         preview=None,  # type: Any
+        wait_on_upload=False,  # type: bool
     ):
         # type: (...) -> bool
         """
@@ -1320,6 +1321,9 @@ class Task(_Task):
 
         :param Any preview: The artifact preview
 
+        :param bool wait_on_upload: Whether or not the upload should be synchronous, forcing the upload to complete
+            before continuing.
+
         :return: The status of the upload.
 
         - ``True`` - Upload succeeded.
@@ -1328,8 +1332,8 @@ class Task(_Task):
         :raise: If the artifact object type is not supported, raise a ``ValueError``.
         """
         return self._artifacts_manager.upload_artifact(
-            name=name, artifact_object=artifact_object, metadata=metadata,
-            delete_after_upload=delete_after_upload, auto_pickle=auto_pickle, preview=preview)
+            name=name, artifact_object=artifact_object, metadata=metadata, delete_after_upload=delete_after_upload,
+            auto_pickle=auto_pickle, preview=preview, wait_on_upload=wait_on_upload)
 
     def get_models(self):
         # type: () -> Dict[str, Sequence[Model]]

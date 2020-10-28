@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import threading
-import parsers
+import migrant_script.parsers as parsers
 from trains import Task
 
 
@@ -10,12 +10,13 @@ class Migrant(ABC):
     params = "params"
     tags = "tags"
     general_information = "general_information"
-    skip_tags = ["project.backend", "project.entryPoint", "parentRunId", "best_run"]
+    skip_tags = ["project.backend", "project.entryPoint", "parentRunId", "best_run","model_summary"]
 
     def __init__(self, paths):
         self.paths = paths
         self.size = len(paths)
         self.thread_id = 0
+        self.msgs = {'FAILED':[], 'SUCCESS':[]}
         self.tag_parsers = {
             "source.name": parsers.source_name_parser(self),
             "log-model.history": parsers.log_model_history_tag_parser(self),
@@ -26,7 +27,12 @@ class Migrant(ABC):
     @abstractmethod
     def read(self):
         self.thread_id = threading.current_thread().ident
+
         for id, path in self.paths:
+            task = Task.get_task(project_name="mlflow_migrant", task_name=id)
+            if task:
+                self.msgs['FAILED'].append('task '+ id +' already exist, if you want to migrate it again, you can archive it in Allegro Trains')
+                continue
             self.info[id] = {}
             self.read_general_information(id, path)
             self.read_artifacts(id, path + self.artifacts)
@@ -37,10 +43,13 @@ class Migrant(ABC):
     @abstractmethod
     def seed(self):
         for id in self.get_ids():
-            Task.create(project_name="mlflow_migrant", task_name=id)
+            task = Task.create(project_name="mlflow_migrant", task_name=id)
             self.transmit_information(id)
             self.transmit_metrics(id)
             self.transmit_artifacts(id)
+            task.mark_started()
+            task.completed()
+            self.msgs['SUCCESS'].append(task.get_output_log_web_page())
 
     @abstractmethod
     def transmit_metrics(self, id):
@@ -69,9 +78,9 @@ class Migrant(ABC):
             if type == "folder":
                 for name, obj in l:
                     task.upload_artifact(name=name, artifact_object=obj)
-            # elif type == 'csv':
-            #     for name, obj in l:
-            #         task.get_logger().report_table(name, "local csv" ,iteration=100,csv=obj)
+            elif type == 'text':
+                for name, obj in l:
+                    task.upload_artifact(name=name, artifact_object=obj)
             elif type == "dataframe":
                 for name, obj in l:
                     task.upload_artifact(name=name, artifact_object=obj)
@@ -85,7 +94,7 @@ class Migrant(ABC):
     @abstractmethod
     def transmit_information(self, id):
         parameters = self.get_params(id)
-        general_information = self.get_general_information(id)
+        # general_information = self.get_general_information(id)
         artifact = self.get_artifact(id)
         tags = self.get_tags(id)
         task = Task.get_task(project_name="mlflow_migrant", task_name=id)
@@ -94,8 +103,8 @@ class Migrant(ABC):
             tags["note.content"] if "note.content" in tags.keys() else ""
         )
         task_values["hyperparams"]["Args"] = parameters
-        task_values["started"] = general_information["started"]
-        task_values["completed"] = general_information["completed"]
+        # task_values["started"] = general_information["started"]
+        # task_values["completed"] = general_information["completed"]
         task_values["script"]["branch"] = (
             tags["source.git.branch"]
             if "source.git.branch" in tags.keys()
@@ -104,6 +113,9 @@ class Migrant(ABC):
         task_values["script"]["repository"] = (
             tags["source.git.repoURL"] if "source.git.repoURL" in tags.keys() else ""
         )
+        task_values["script"]["version_num"] = (
+            tags["source.git.commit"] if "source.git.commit" in tags.keys() else ""
+        )
         task_values["script"]["entry_point"] = tags["entry_point"]
         task_values["script"]["working_dir"] = tags["working_dir"]
         if "project.env" in tags.keys():
@@ -111,7 +123,6 @@ class Migrant(ABC):
                 artifact["requirements"] if "requirements" in artifact.keys() else ""
             )
         task_values["user"] = tags["user"]
-
         task.update_task(task_values)
 
     @abstractmethod

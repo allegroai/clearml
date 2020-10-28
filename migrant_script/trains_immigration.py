@@ -7,8 +7,8 @@ import re
 import sys
 
 
-from local_migrant import LocalMigrant
-from remote_migrant import RemoteMigrant
+from migrant_script.local_migrant import LocalMigrant
+from migrant_script.remote_migrant import RemoteMigrant
 from trains import Task
 from concurrent.futures import ThreadPoolExecutor
 from trains.backend_api.session.client import APIClient
@@ -16,9 +16,9 @@ from trains.backend_api.session.client import APIClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
-from dblib import get_run_uuids
-from dblib import init_session
-from dblib import close
+from migrant_script.dblib import get_run_uuids
+from migrant_script.dblib import init_session
+from migrant_script.dblib import close
 
 migrant_dict = {
     "LOCAL": lambda paths: LocalMigrant(paths),
@@ -31,9 +31,9 @@ def chunks(l, n):
     return (l[i : i + n] for i in range(0, len(l), n))
 
 
-def delete_all_tasks():
+def delete_all_tasks_from_project(pr_name):
     client = APIClient()
-    tasks = Task.get_tasks(project_name="mlflow_migrant")
+    tasks = Task.get_tasks(project_name=pr_name)
     for task in tasks:
         client.tasks.delete(task=task.id, force=True)
 
@@ -41,7 +41,7 @@ def delete_all_tasks():
 def task(migrant):
     migrant.read()
     migrant.seed()
-    return migrant.size, migrant.thread_id, migrant.paths
+    return migrant.size, migrant.thread_id, migrant.paths, migrant.msgs
 
 
 def get_runs(branch, address):
@@ -78,6 +78,12 @@ def get_runs_from_local(path):
             ids_count += 1
     return l, ids_count
 
+def thread_print(size, id, jobs, msgs):
+    if size - len(msgs['FAILED']) == 0:
+        print("Thread ", id, ": failed to migrant the following experiments: ", jobs, ' messages: ', msgs['FAILED'])
+    else:
+        print("Thread ", id, ": migrant ", size - len(msgs['FAILED']), " experiments: ", jobs, ' messages: ', msgs)
+
 
 def main(path, branch):
     workers = multiprocessing.cpu_count()
@@ -92,8 +98,8 @@ def main(path, branch):
             assert isinstance(migrant, LocalMigrant)
         elif branch == "REMOTE":
             assert isinstance(migrant, RemoteMigrant)
-        id, size, jobs = task(migrant)
-        print("Thread ", id, ": migrant ", size, " experiments: ", jobs)
+        size, id, jobs, msgs = task(migrant)
+        thread_print(size, id, jobs, msgs)
     else:
         print("Workers count: ", workers)
         jobs = chunks(l, chunk_size)
@@ -109,8 +115,8 @@ def main(path, branch):
                 futures.append(future)
             for future in concurrent.futures.as_completed(futures):
                 try:
-                    size, id, jobs = future.result()
-                    print("Thread ", id, ": migrant ", size, " experiments: ", jobs)
+                    size, id, jobs, msgs = future.result()
+                    thread_print(size, id, jobs, msgs)
                 except Exception as e:
                     print("Error: ", e)
     close()
@@ -141,5 +147,4 @@ if __name__ == "__main__":
 
     main(args.Path, args.Branch.upper())
 
-    # delete_all_tasks()
-    # main('/Users/tmankita/Downloads/mlruns','LOCAL')
+

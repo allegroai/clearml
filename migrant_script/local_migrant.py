@@ -1,8 +1,8 @@
-from migrant import Migrant
+from migrant_script.migrant import Migrant
 import os
 import yaml
 import datetime
-import parsers
+import migrant_script.parsers as parsers
 import json
 import re
 

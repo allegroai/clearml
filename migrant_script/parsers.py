@@ -121,16 +121,12 @@ def get_all_artifact_files(migrant, id, path):
     dirs = list(os.walk(path))[0][1]  # returns all the dirs in 'path'
     for dir in dirs:
         if "model" in dir:
-            files = list(os.walk(path + os.sep + dir))[0][
-                2
-            ]  # returns all the files in 'path'
+            files = list(os.walk(path + os.sep + dir))[0][2]  # returns all the files in 'path'
             for name in files:
                 if name.endswith(".yaml"):
                     with open(path + os.sep + dir + os.sep + name) as file:
                         documents = yaml.full_load(file)
-                        migrant.info[id][migrant.artifacts]["requirements"] = str(
-                            documents
-                        )
+                        migrant.info[id][migrant.artifacts]["requirements"] = str(documents)
                         break
             migrant.insert_artifact_by_type(id, "folder", dir, path + os.sep + dir)
     files = list(os.walk(path))[0][2]  # returns all the files in 'path'
@@ -146,6 +142,13 @@ def get_all_artifact_files(migrant, id, path):
         ):
             im = Image.open(path + os.sep + file_name)
             migrant.insert_artifact_by_type(id, "image", file_name, im)
+        elif file_name.endswith(".txt"):
+            with open(path + os.sep + file_name) as txt_file:
+                data = txt_file.read()
+                migrant.insert_artifact_by_type(id, "text", file_name, data)
+
+
+
 
 
 def __get_description(tag, value):

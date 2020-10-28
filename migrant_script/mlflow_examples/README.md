@@ -4,6 +4,7 @@
 * examples/keras
 * examples/lightgbm
 * examples/multistep_workflow
+* examples/fastai
 * examples/prophet
 * examples/pytorch
 * examples/sklearn_elasticnet_wine

@@ -1,9 +1,9 @@
 import os
 import re
 
-from migrant import Migrant
-from dblib import *
-import parsers
+from migrant_script.migrant import Migrant
+from migrant_script.dblib import *
+import migrant_script.parsers as parsers
 from dateutil.tz import tzutc
 import datetime
 from urllib.parse import urlparse

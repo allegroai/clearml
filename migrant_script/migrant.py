@@ -17,6 +17,7 @@ class Migrant(ABC):
         self.size = len(paths)
         self.thread_id = 0
         self.msgs = {'FAILED':[], 'SUCCESS':[]}
+        self.project_link = None
         self.tag_parsers = {
             "source.name": parsers.source_name_parser(self),
             "log-model.history": parsers.log_model_history_tag_parser(self),
@@ -49,7 +50,11 @@ class Migrant(ABC):
             self.transmit_artifacts(id)
             task.mark_started()
             task.completed()
-            self.msgs['SUCCESS'].append(task.get_output_log_web_page())
+            output_log_web_page = task.get_output_log_web_page()
+            self.msgs['SUCCESS'].append(output_log_web_page)
+            url_parts = output_log_web_page.split('projects')
+            project_id = url_parts[1].split('/')[1]
+            self.project_link = url_parts[0] + '/projects/' + project_id
 
     @abstractmethod
     def transmit_metrics(self, id):

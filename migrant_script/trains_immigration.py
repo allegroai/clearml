@@ -41,7 +41,7 @@ def delete_all_tasks_from_project(pr_name):
 def task(migrant):
     migrant.read()
     migrant.seed()
-    return migrant.size, migrant.thread_id, migrant.paths, migrant.msgs
+    return migrant.size, migrant.thread_id, migrant.paths, migrant.msgs, migrant.project_link
 
 
 def get_runs(branch, address):
@@ -86,6 +86,7 @@ def thread_print(size, id, jobs, msgs):
 
 
 def main(path, branch):
+    project_link = None
     workers = multiprocessing.cpu_count()
     l, ids_count = get_runs(branch, path)
     chunk_size = math.ceil(ids_count / workers)
@@ -98,7 +99,7 @@ def main(path, branch):
             assert isinstance(migrant, LocalMigrant)
         elif branch == "REMOTE":
             assert isinstance(migrant, RemoteMigrant)
-        size, id, jobs, msgs = task(migrant)
+        size, id, jobs, msgs, project_link = task(migrant)
         thread_print(size, id, jobs, msgs)
     else:
         print("Workers count: ", workers)
@@ -115,12 +116,13 @@ def main(path, branch):
                 futures.append(future)
             for future in concurrent.futures.as_completed(futures):
                 try:
-                    size, id, jobs, msgs = future.result()
+                    size, id, jobs, msgs, project_link = future.result()
                     thread_print(size, id, jobs, msgs)
                 except Exception as e:
                     print("Error: ", e)
     close()
     print("All tasks completed")
+    print("Link to the project: ", project_link)
 
 
 if __name__ == "__main__":
@@ -146,5 +148,3 @@ if __name__ == "__main__":
             sys.exit()
 
     main(args.Path, args.Branch.upper())
-
-

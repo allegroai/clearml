@@ -572,7 +572,7 @@ class SearchStrategy(object):
         except ValueError:
             raise ValueError("Could not find base task id {}".format(self._base_task_id))
         # check if the hyper-parameters exist:
-        task_parameters = task.get_parameters_as_dict()
+        task_parameters = task.get_parameters(backwards_compatibility=False)
         missing_params = [h.name for h in self._hyper_parameters if h.name not in task_parameters]
         if missing_params:
             logger.warning('Could not find requested hyper-parameters {} on base task {}'.format(

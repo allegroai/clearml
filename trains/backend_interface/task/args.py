@@ -418,7 +418,7 @@ class _Arguments(object):
             # if key is not present in the task's parameters, assume we didn't get this far when running
             # in non-remote mode, and just add it to the task's parameters
             if k not in parameters:
-                self._task.set_parameter(k, v)
+                self._task.set_parameter((prefix or '') + k, v)
                 continue
 
             param = parameters.get(k, None)

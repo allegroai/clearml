@@ -24,6 +24,7 @@ class ScriptInfoError(Exception):
 
 class ScriptRequirements(object):
     _max_requirements_size = 512 * 1024
+    _packages_remove_version = ('setuptools', )
 
     def __init__(self, root_folder):
         self._root_folder = root_folder
@@ -33,7 +34,8 @@ class ScriptRequirements(object):
         try:
             from ....utilities.pigar.reqs import get_installed_pkgs_detail
             from ....utilities.pigar.__main__ import GenerateReqs
-            installed_pkgs = get_installed_pkgs_detail()
+            installed_pkgs = self._remove_package_versions(
+                get_installed_pkgs_detail(), self._packages_remove_version)
             gr = GenerateReqs(save_path='', project_path=self._root_folder, installed_pkgs=installed_pkgs,
                               ignores=['.git', '.hg', '.idea', '__pycache__', '.ipynb_checkpoints',
                                        'site-packages', 'dist-packages'])
@@ -213,6 +215,13 @@ class ScriptRequirements(object):
         return (requirements_txt if len(requirements_txt) < ScriptRequirements._max_requirements_size
                 else requirements_txt_packages_only,
                 conda_requirements)
+
+    @staticmethod
+    def _remove_package_versions(installed_pkgs, package_names_to_remove_version):
+        installed_pkgs = {k: (v[0], None if str(k) in package_names_to_remove_version else v[1])
+                          for k, v in installed_pkgs.items()}
+
+        return installed_pkgs
 
 
 class _JupyterObserver(object):

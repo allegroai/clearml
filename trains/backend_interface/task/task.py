@@ -65,6 +65,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     _force_requirements = {}
 
     _store_diff = config.get('development.store_uncommitted_code_diff', False)
+    _store_remote_diff = config.get('development.store_code_diff_from_remote', False)
     _offline_filename = 'task.json'
 
     class TaskTypes(Enum):
@@ -276,7 +277,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             result, script_requirements = ScriptInfo.get(
                 filepaths=[self._calling_filename, sys.argv[0], ]
                 if ScriptInfo.is_running_from_module() else [sys.argv[0], self._calling_filename, ],
-                log=self.log, create_requirements=False, check_uncommitted=self._store_diff
+                log=self.log, create_requirements=False,
+                check_uncommitted=self._store_diff, uncommitted_from_remote=self._store_remote_diff
             )
             for msg in result.warning_messages:
                 self.get_logger().report_text(msg)

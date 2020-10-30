@@ -589,7 +589,8 @@ class ScriptInfo(object):
         return ''
 
     @classmethod
-    def _get_script_info(cls, filepaths, check_uncommitted=True, create_requirements=True, log=None):
+    def _get_script_info(cls, filepaths, check_uncommitted=True, create_requirements=True, log=None,
+                         uncommitted_from_remote=False):
         jupyter_filepath = cls._get_jupyter_notebook_filename()
         if jupyter_filepath:
             scripts_path = [Path(os.path.normpath(jupyter_filepath)).absolute()]
@@ -623,7 +624,8 @@ class ScriptInfo(object):
         else:
             try:
                 for i, d in enumerate(scripts_dir):
-                    repo_info = plugin.get_info(str(d), include_diff=check_uncommitted)
+                    repo_info = plugin.get_info(
+                        str(d), include_diff=check_uncommitted, diff_from_remote=uncommitted_from_remote)
                     if not repo_info.is_empty():
                         script_dir = d
                         script_path = scripts_path[i]
@@ -697,13 +699,14 @@ class ScriptInfo(object):
                 script_requirements)
 
     @classmethod
-    def get(cls, filepaths=None, check_uncommitted=True, create_requirements=True, log=None):
+    def get(cls, filepaths=None, check_uncommitted=True, create_requirements=True, log=None,
+            uncommitted_from_remote=False):
         try:
             if not filepaths:
                 filepaths = [sys.argv[0], ]
             return cls._get_script_info(
                 filepaths=filepaths, check_uncommitted=check_uncommitted,
-                create_requirements=create_requirements, log=log)
+                create_requirements=create_requirements, log=log, uncommitted_from_remote=uncommitted_from_remote)
         except Exception as ex:
             if log:
                 log.warning("Failed auto-detecting task repository: {}".format(ex))

@@ -819,7 +819,7 @@ class HyperParameterOptimizer(object):
             execution_queue='default',  # type: str
             optimization_time_limit=None,  # type: Optional[float]
             compute_time_limit=None,  # type: Optional[float]
-            auto_connect_task=True,  # type: bool
+            auto_connect_task=True,  # type: Union[bool, Task]
             always_create_task=False,  # type: bool
             **optimizer_kwargs  # type: Any
     ):
@@ -854,11 +854,11 @@ class HyperParameterOptimizer(object):
             The values are:
 
             - ``True`` - The optimization argument and configuration will be stored in the Task. All arguments will
-              be under the hyper-parameter section as ``opt/<arg>``, and the hyper_parameters will stored in the
-              Task ``connect_configuration`` (see artifacts/hyper-parameter).
+              be under the hyper-parameter section ``opt``, and the optimization hyper_parameters space will
+              stored in the Task configuration object section.
 
             - ``False`` - Do not store with Task.
-
+            - ``Task`` - A specific Task object to connect the optimization process with.
         :param bool always_create_task: Always create a new Task
 
             The values are:
@@ -910,7 +910,7 @@ class HyperParameterOptimizer(object):
         """
 
         # create a new Task, if we do not have one already
-        self._task = Task.current_task()
+        self._task = auto_connect_task if isinstance(auto_connect_task, Task) else Task.current_task()
         if not self._task and always_create_task:
             base_task = Task.get_task(task_id=base_task_id)
             self._task = Task.init(

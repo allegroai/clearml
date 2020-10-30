@@ -41,9 +41,10 @@ class StorageManager(object):
         cached_file = CacheManager.get_cache_manager(
             cache_context=cache_context
         ).get_local_copy(remote_url=remote_url, force_download=force_download)
-        if not extract_archive or not cached_file:
-            return cached_file
-        return cls._extract_to_cache(cached_file, name)
+        if extract_archive and cached_file:
+            return cls._extract_to_cache(cached_file, name)
+
+        return cached_file
 
     @classmethod
     def upload_file(

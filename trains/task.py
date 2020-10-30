@@ -2190,7 +2190,7 @@ class Task(_Task):
                     if parsed_args is None and parser == _parser:
                         parsed_args = _parsed_args
 
-        if running_remotely() and self.is_main_task():
+        if running_remotely() and (self.is_main_task() or self.id == get_remote_task_id()):
             self._arguments.copy_to_parser(parser, parsed_args)
         else:
             self._arguments.copy_defaults_from_argparse(

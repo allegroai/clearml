@@ -222,7 +222,7 @@ class _Arguments(object):
         task_arguments = dict([(k[len(prefix):], v) for k, v in self._task.get_parameters().items()
                                if k.startswith(prefix) and
                                self._exclude_parser_args.get(k[len(prefix):], True)])
-        arg_parser_argeuments = {}
+        arg_parser_arguments = {}
         for k, v in task_arguments.items():
             # python2 unicode support
             # noinspection PyBroadException
@@ -255,7 +255,7 @@ class _Arguments(object):
                     except ValueError:
                         pass
                     if current_action.default is not None or const_value not in (None, ''):
-                        arg_parser_argeuments[k] = const_value
+                        arg_parser_arguments[k] = const_value
                 elif current_action and (current_action.nargs in ('+', '*') or isinstance(current_action.nargs, int)):
                     try:
                         v = yaml.load(v.strip(), Loader=yaml.SafeLoader)
@@ -269,7 +269,7 @@ class _Arguments(object):
                             v = [v_type(a) for a in v]
 
                         if current_action.default is not None or v not in (None, ''):
-                            arg_parser_argeuments[k] = v
+                            arg_parser_arguments[k] = v
                     except Exception:
                         pass
                 elif current_action and not current_action.type:
@@ -286,15 +286,15 @@ class _Arguments(object):
                         v = var_type(v)
                         # cast back to int if it's the same value
                         if type(current_action.default) == int and int(v) == v:
-                            arg_parser_argeuments[k] = v = int(v)
+                            arg_parser_arguments[k] = v = int(v)
                         elif current_action.default is None and v in (None, ''):
                             # Do nothing, we should leave it as is.
                             pass
                         else:
-                            arg_parser_argeuments[k] = v
+                            arg_parser_arguments[k] = v
                     except Exception:
                         # if we failed, leave as string
-                        arg_parser_argeuments[k] = v
+                        arg_parser_arguments[k] = v
                 elif current_action and current_action.type == bool:
                     # parser.set_defaults cannot cast string `False`/`True` to boolean properly,
                     # so we have to do it manually here
@@ -310,7 +310,7 @@ class _Arguments(object):
                         except ValueError:
                             pass
                     if v not in (None, ''):
-                        arg_parser_argeuments[k] = v
+                        arg_parser_arguments[k] = v
                 elif current_action and current_action.type:
                     # if we have an action type and value (v) is None, and cannot be casted, leave as is
                     if isinstance(current_action.type, types.FunctionType) and not v:
@@ -330,17 +330,17 @@ class _Arguments(object):
                         if bool_value is not None and current_action.default == bool(bool_value):
                             continue
 
-                    arg_parser_argeuments[k] = v
+                    arg_parser_arguments[k] = v
                     # noinspection PyBroadException
                     try:
                         if current_action.default is None and current_action.type != str and not v:
-                            arg_parser_argeuments[k] = v = None
+                            arg_parser_arguments[k] = v = None
                         elif current_action.default == current_action.type(v):
                             # this will make sure that if we have type float and default value int,
                             # we will keep the type as int, just like the original argparser
-                            arg_parser_argeuments[k] = v = current_action.default
+                            arg_parser_arguments[k] = v = current_action.default
                         else:
-                            arg_parser_argeuments[k] = v = current_action.type(v)
+                            arg_parser_arguments[k] = v = current_action.type(v)
                     except Exception:
                         pass
 
@@ -366,11 +366,14 @@ class _Arguments(object):
                     pass
 
         # if we already have an instance of parsed args, we should update its values
+        # this instance should already contain our defaults
         if parsed_args:
-            for k, v in arg_parser_argeuments.items():
-                if parsed_args.get(k) is not None or v not in (None, ''):
+            for k, v in arg_parser_arguments.items():
+                cur_v = getattr(parsed_args, k, None)
+                # it should not happen...
+                if cur_v != v and (cur_v is not None or v not in (None, '')):
                     setattr(parsed_args, k, v)
-        parser.set_defaults(**arg_parser_argeuments)
+        parser.set_defaults(**arg_parser_arguments)
 
     def copy_from_dict(self, dictionary, prefix=None, descriptions=None, param_types=None):
         # add dict prefix

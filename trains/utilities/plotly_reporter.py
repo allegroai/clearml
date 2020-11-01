@@ -485,7 +485,12 @@ def create_plotly_table(table_plot, title, series, layout_config=None):
     :param layout_config: additional configuration layout
     :return: dict with plotly data.
     """
-    if table_plot and isinstance(table_plot, (list, tuple)) and table_plot[0] and isinstance(table_plot[0], (list, tuple)):
+    is_list = isinstance(table_plot, (list, tuple))
+    if is_list and (not table_plot or not any(table_plot)):
+        # The list if empty
+        headers_values = []
+        cells_values = []
+    elif is_list and table_plot[0] and isinstance(table_plot[0], (list, tuple)):
         headers_values = table_plot[0]
         cells_values = [list(i) for i in zip(*table_plot[1:])]
     else:

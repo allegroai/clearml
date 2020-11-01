@@ -477,7 +477,7 @@ def create_plotly_table(table_plot, title, series, layout_config=None):
     """
     Create a basic Plotly table json style to be sent
 
-    :param table_plot: the output table in pandas.DataFrame structure
+    :param table_plot: the output table in pandas.DataFrame structure or list of rows (list) in a table
     :param title: Title (AKA metric)
     :type title: str
     :param series: Series (AKA variant)
@@ -485,17 +485,21 @@ def create_plotly_table(table_plot, title, series, layout_config=None):
     :param layout_config: additional configuration layout
     :return: dict with plotly data.
     """
-    if not pd:
-        raise UsageError(
-            "pandas is required in order to support reporting tables using CSV or a URL, "
-            "please install the pandas python package"
-        )
-    index_added = not isinstance(table_plot.index, pd.RangeIndex)
-    headers_values = list([col] for col in table_plot.columns)
-    cells_values = table_plot.T.values.tolist()
-    if index_added:
-        headers_values.insert(0, table_plot.index.name or "")
-        cells_values.insert(0, table_plot.index.values.tolist())
+    if table_plot and isinstance(table_plot, (list, tuple)) and table_plot[0] and isinstance(table_plot[0], (list, tuple)):
+        headers_values = table_plot[0]
+        cells_values = [list(i) for i in zip(*table_plot[1:])]
+    else:
+        if not pd:
+            raise UsageError(
+                "pandas is required in order to support reporting tables using CSV or a URL, "
+                "please install the pandas python package"
+            )
+        index_added = not isinstance(table_plot.index, pd.RangeIndex)
+        headers_values = list([col] for col in table_plot.columns)
+        cells_values = table_plot.T.values.tolist()
+        if index_added:
+            headers_values.insert(0, table_plot.index.name or "")
+            cells_values.insert(0, table_plot.index.values.tolist())
 
     ret = {
         "data": [{

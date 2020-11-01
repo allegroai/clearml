@@ -714,7 +714,9 @@ class Artifacts(object):
         else:
             self._task._reporter._report(ev)
 
-        return uri
+        _, quoted_uri = ev.get_target_full_upload_uri(upload_uri)
+
+        return quoted_uri
 
     def _get_statistics(self, artifacts_dict=None):
         # type: (Optional[Dict[str, Artifact]]) -> str

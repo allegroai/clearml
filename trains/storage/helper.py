@@ -555,7 +555,7 @@ class StorageHelper(object):
             raise last_ex
 
         if self.scheme in _HttpDriver.schemes:
-            # qoute link
+            # quote link
             dest_path = quote_url(dest_path)
 
         return dest_path
@@ -566,12 +566,21 @@ class StorageHelper(object):
 
         dest_path = self._canonize_url(dest_path)
 
+        if cb and self.scheme in _HttpDriver.schemes:
+            # quote link
+            def callback(path):
+                return cb(quote_url(path) if path else path)
+            cb = callback
+
         if async_enable:
             data = self._UploadData(src_path=src_path, dest_path=dest_path, extra=extra, callback=cb, retries=retries)
             StorageHelper._initialize_upload_pool()
             return StorageHelper._upload_pool.apply_async(self._do_async_upload, args=(data,))
         else:
-            return self._do_upload(src_path, dest_path, extra, cb, verbose=False, retries=retries)
+            res = self._do_upload(src_path, dest_path, extra, cb, verbose=False, retries=retries)
+            if res:
+                res = quote_url(res)
+            return res
 
     def list(self, prefix=None):
         """

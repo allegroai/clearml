@@ -11,12 +11,19 @@ install the requirements by run::
 
 Using Migrant
 _____________
-To run the migrant script please provide <path> and <branch> parameters:
+To run the migrant script please provide <url> parameter.
 
-- <branch> stand for running environment (e.g Local or Remote).
-- <path> stand for path to mlruns directory or database URL (e.g ``postgresql://<IP>:<PORT>/<DB-NAME>`` ) .
+Supported url formats:
+
+- ``file:/path_to_store``
+- SQLAlchemy database URI (e.g. ``<dialect>+<driver>://<username>:<password>@<host>:<port>/<database>`` )
+- mlflow tracking UI host address (e.g. ``http://<IP>:<PORT>`` )
+
 
 Run::
 
-    python trains_immigration.py <branch> <path>
+    python trains_immigration.py <url>
 
+Important Note
+--------------
+According to MLflow tracking UI migration -  artifacts migration from remote computer unsupported, only from storage server (e.g. S3)

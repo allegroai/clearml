@@ -6,7 +6,8 @@ import yaml
 
 import pandas as pd
 from urllib.parse import urlparse
-
+from dateutil.tz import tzutc
+import datetime
 
 def tag_parser(migrant, id, tag, value):
     migrant.info[id][migrant.tags][tag] = value
@@ -89,7 +90,7 @@ def epochs_summary_parser(migrant, id, path_tree, tag, lines):
 
 def get_value_from_path(path):
     index = path.rfind("/")
-    name = path[index + 1 :]
+    name = path[index + 1:]
     if "model" in name:
         return None
     elif "parquet" in name:
@@ -115,7 +116,7 @@ def update_path(path):
             return (name, path + os.sep + name)
 
 
-def get_all_artifact_files(migrant, id, path):
+def get_all_artifact_files(migrant, id, path, is_http_migrant = False):
     if not os.path.isdir(path):
         return
     dirs = list(os.walk(path))[0][1]  # returns all the dirs in 'path'
@@ -128,6 +129,8 @@ def get_all_artifact_files(migrant, id, path):
                         documents = yaml.full_load(file)
                         migrant.info[id][migrant.artifacts]["requirements"] = str(documents)
                         break
+            migrant.insert_artifact_by_type(id, "folder", dir, path + os.sep + dir)
+        elif is_http_migrant:
             migrant.insert_artifact_by_type(id, "folder", dir, path + os.sep + dir)
     files = list(os.walk(path))[0][2]  # returns all the files in 'path'
     for file_name in files:
@@ -146,9 +149,6 @@ def get_all_artifact_files(migrant, id, path):
             with open(path + os.sep + file_name) as txt_file:
                 data = txt_file.read()
                 migrant.insert_artifact_by_type(id, "text", file_name, data)
-
-
-
 
 
 def __get_description(tag, value):
@@ -198,8 +198,8 @@ def generate_train_param(value, tag):
     return value
 
 
-def insert_param(migrant, id, value, tag):
-    if re.match(r"^[Ff]ile://", value):
+def insert_param(migrant, id, value, tag, is_http_migrant = False):
+    if  (not is_http_migrant) and re.match(r"^[Ff]ile://", value):
         p = urlparse(value)
         value = os.path.abspath(os.path.join(p.netloc, p.path))
         value = get_value_from_path(value)
@@ -209,13 +209,22 @@ def insert_param(migrant, id, value, tag):
         value = get_value_from_path(value)
         if value:
             migrant.insert_artifact(id, value)
-    elif re.match(r"^[Ss]3://", value):
-        pass
-    # elif re.match(r"^\./",value):
-    #     value = os.getcwd() + value[1:]
-    #     value = get_value_from_path(value)
-    #     if value:
-    #         migrant.insert_artifact(id, value)
     else:
         value = generate_train_param(value, tag)
         migrant.info[id][migrant.params][tag] = value
+
+
+def parse_DateTime(start_time,end_time):
+    timestamp_start_time = int(start_time) / 1000 if start_time else None
+    timestamp_end_time = int(end_time) / 1000 if end_time else None
+    data_time_start = (
+        datetime.datetime.fromtimestamp(timestamp_start_time, tz=tzutc())
+        if timestamp_start_time
+        else None
+    )
+    data_time_end = (
+        datetime.datetime.fromtimestamp(timestamp_end_time, tz=tzutc())
+        if timestamp_end_time
+        else None
+    )
+    return data_time_start, data_time_end

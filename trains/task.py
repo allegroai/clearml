@@ -7,6 +7,7 @@ import sys
 import threading
 import time
 from argparse import ArgumentParser
+from operator import attrgetter
 from tempfile import mkstemp, mkdtemp
 from zipfile import ZipFile, ZIP_DEFLATED
 
@@ -1519,6 +1520,111 @@ class Task(_Task):
         is the same behavior as the :meth:`Task.connect` method.
         """
         self._arguments.copy_from_dict(flatten_dictionary(dictionary))
+
+    def get_user_properties(self, value_only=False):
+        # type: (bool) -> Dict[str, Union[str, dict]]
+        """
+        Get user properties for this task.
+        Returns a dictionary mapping user property name to user property details dict.
+        :param value_only: If True, returned user property details will be a string representing the property value.
+        """
+        if not Session.check_min_api_version("2.9"):
+            self.log.info("User properties are not supported by the server")
+            return {}
+
+        section = "properties"
+
+        params = self._hyper_params_manager.get_hyper_params(
+            sections=[section], projector=attrgetter("value") if value_only else None
+        )
+
+        return dict(params.get(section, {}))
+
+    def set_user_properties(
+            self,
+            *iterables,  # type: Union[Mapping[str, Union[str, dict, None]], Iterable[dict]]
+            **properties  # type: Union[str, dict, None]
+    ):
+        # type: (...) -> bool
+        """
+        Set user properties for this task.
+        A user property ca contain the following fields (all of type string):
+            * name
+            * value
+            * description
+            * type
+
+        :param iterables: Properties iterables, each can be:
+            * A dictionary of string key (name) to either a string value (value) a dict (property details). If the value
+              is a dict, it must contain a "value" field. For example:
+
+            .. code-block:: py
+
+                {
+                  "property_name": {"description": "This is a user property", "value": "property value"},
+                  "another_property_name": {"description": "This is another user property", "value": "another value"},
+                  "yet_another_property_name": "some value"
+                }
+
+            * An iterable of dicts (each representing property details). Each dict must contain a "name" field and a
+              "value" field. For example:
+
+            .. code-block:: py
+
+                [
+                  {
+                    "name": "property_name",
+                    "description": "This is a user property",
+                    "value": "property value"
+                  },
+                  {
+                    "name": "another_property_name",
+                    "description": "This is another user property",
+                    "value": "another value"
+                  }
+                ]
+
+        :param properties: Additional properties keyword arguments. Key is the property name, and value can be
+            a string (property value) or a dict (property details). If the value is a dict, it must contain a "value"
+            field. For example:
+
+            .. code-block:: py
+
+                {
+                  "property_name": "string as property value",
+                  "another_property_name":
+                  {
+                    "type": "string",
+                    "description": "This is user property",
+                    "value": "another value"
+                  }
+                }
+        """
+        if not Session.check_min_api_version("2.9"):
+            self.log.info("User properties are not supported by the server")
+            return False
+
+        return self._hyper_params_manager.edit_hyper_params(
+            properties,
+            *iterables,
+            replace='none',
+            force_section="properties",
+        )
+
+    def delete_user_properties(self, *iterables):
+        # type: (Iterable[Union[dict, Iterable[str, str]]]) -> bool
+        """
+        Delete hyper-parameters for this task.
+        :param iterables: Hyper parameter key iterables. Each an iterable whose possible values each represent
+         a hyper-parameter entry to delete, value formats are:
+            * A dictionary containing a 'section' and 'name' fields
+            * An iterable (e.g. tuple, list etc.) whose first two items denote 'section' and 'name'
+        """
+        if not Session.check_min_api_version("2.9"):
+            self.log.info("User properties are not supported by the server")
+            return False
+
+        return self._hyper_params_manager.delete_hyper_params(*iterables)
 
     def set_base_docker(self, docker_cmd):
         # type: (str) -> ()

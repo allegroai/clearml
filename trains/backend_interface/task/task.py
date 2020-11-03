@@ -3,16 +3,17 @@ import itertools
 import json
 import logging
 import os
-import sys
 import re
+import sys
 from copy import copy
 from enum import Enum
-from tempfile import gettempdir
 from multiprocessing import RLock
-from pathlib2 import Path
+from tempfile import gettempdir
 from threading import Thread
 from typing import Optional, Any, Sequence, Callable, Mapping, Union, List
 from uuid import uuid4
+
+from pathlib2 import Path
 
 try:
     # noinspection PyCompatibility
@@ -49,7 +50,7 @@ from ...storage.helper import StorageHelper, StorageError
 from .access import AccessMixin
 from .log import TaskHandler
 from .repo import ScriptInfo, pip_freeze
-from .repo.util import get_command_output
+from .hyperparams import HyperParams
 from ...config import config, PROC_MASTER_ID_ENV_VAR, SUPPRESS_UPDATE_MESSAGE_ENV_VAR
 
 
@@ -171,6 +172,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._log_to_backend = log_to_backend
         self._setup_log(default_log_to_backend=log_to_backend)
         self._artifacts_manager = Artifacts(self)
+        self._hyper_params_manager = HyperParams(self)
 
     def _setup_log(self, default_log_to_backend=None, replace_existing=False):
         """

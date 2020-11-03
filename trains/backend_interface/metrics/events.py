@@ -301,7 +301,7 @@ class UploadEvent(MetricsEventAdapter):
             if output is None:
                 from ...debugging.log import LoggerRoot
                 LoggerRoot.get_base_logger().warning(
-                    'Skipping upload, could not find object file \'{}\''.format(output.as_posix()))
+                    'Skipping upload, could not find object file \'{}\''.format(self._local_image_path))
                 return None
 
         return self.FileEntry(

@@ -306,7 +306,7 @@ class Artifacts(object):
 
     def upload_artifact(self, name, artifact_object=None, metadata=None, preview=None,
                         delete_after_upload=False, auto_pickle=True, wait_on_upload=False):
-        # type: (str, Optional[object], Optional[dict], Optional[str], bool, bool) -> bool
+        # type: (str, Optional[object], Optional[dict], Optional[str], bool, bool, bool) -> bool
         if not Session.check_min_api_version('2.3'):
             LoggerRoot.get_base_logger().warning('Artifacts not supported by your TRAINS-server version, '
                                                  'please upgrade to the latest server version')
@@ -689,7 +689,7 @@ class Artifacts(object):
             self, local_file, name, delete_after_upload=False, override_filename=None, override_filename_ext=None,
             wait_on_upload=False
     ):
-        # type: (str, str, bool, Optional[str], Optional[str], Optional[bool]) -> str
+        # type: (str, str, bool, Optional[str], Optional[str], bool) -> str
         """
         Upload local file and return uri of the uploaded file (uploading in the background)
         """

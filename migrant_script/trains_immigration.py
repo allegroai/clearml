@@ -5,12 +5,12 @@ import multiprocessing
 import os
 from os.path import expanduser
 
-from migrant_classes.migrant_factory import MigrantFactory
+from migrant_script.migrant_classes.migrant_factory import MigrantFactory
 from trains import Task
 from concurrent.futures import ThreadPoolExecutor
 from trains.backend_api.session.client import APIClient
 
-from db_util.dblib import close
+from migrant_script.db_util.dblib import close
 
 def chunks(l, n):
     n = max(1, n)
@@ -79,13 +79,10 @@ def main(path):
 
 
 if __name__ == "__main__":
-    # parser = argparse.ArgumentParser(description="Emigration from Mflow to Trains")
-    # parser.add_argument(
-    #     "Path", metavar="path", type=str, help="the path/address to mlruns directory"
-    # )
-    #
-    # args = parser.parse_args()
-    # main(args.Path)
+    parser = argparse.ArgumentParser(description="Emigration from Mflow to Trains")
+    parser.add_argument(
+        "Path", metavar="path", type=str, help="the path/address to mlruns directory"
+    )
 
-    delete_all_tasks_from_project('mlflow_migrant')
-    main('http://10.69.0.93:5000')
+    args = parser.parse_args()
+    main(args.Path)

@@ -1,16 +1,16 @@
 import os
 import re
 
-from migrant_script.migrant_classes.migrant import Migrant
-from migrant_script.db_util.dblib import *
-import migrant_script.parsers as parsers
+from migrant_classes.migrant import Migrant
+from db_util.dblib import *
+import parsers
 from urllib.parse import urlparse
 
 
 class DBMigrant(Migrant):
     def __init__(self, addresses,_):
-        self.branch = "Remote_DataBase"
         super().__init__(addresses)
+        self.branch = "Remote_DataBase"
 
     def read_general_information(self, id, _):
         info = get_run_by_run_uuid(id)
@@ -29,8 +29,9 @@ class DBMigrant(Migrant):
             if "artifact_uri" in self.info[id][self.general_information].keys()
             else ""
         )
-        if re.match(r"^[Ss]3:/", artifact_address):
-            pass
+        if re.match(r"^(?:s3://)|(?:gs://)|(?:azure://)", artifact_address):
+            parts = artifact_address.split('/')
+            self.insert_artifact_by_type(id, "storage-server", parts[-1], artifact_address)
         elif re.match(r"^[Ff]ile:/", artifact_address):
             p = urlparse(artifact_address)
             path = os.path.abspath(os.path.join(p.netloc, p.path))

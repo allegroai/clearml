@@ -1,7 +1,7 @@
 import os
 from abc import ABC, abstractmethod
 import threading
-import migrant_script.parsers as parsers
+import parsers
 from trains import Task
 import shutil
 
@@ -25,8 +25,8 @@ class Migrant(ABC):
             "log-model.history": parsers.log_model_history_tag_parser(self),
         }
         self.info = {}
-        self.thread_path = None
         self.mlflow_url = None
+        self.branch = None
         super().__init__()
 
     @abstractmethod
@@ -59,9 +59,6 @@ class Migrant(ABC):
             url_parts = output_log_web_page.split('projects')
             project_id = url_parts[1].split('/')[1]
             self.project_link = url_parts[0] + '/projects/' + project_id
-        if self.thread_path:
-            if os.path.isdir(self.thread_path):
-                shutil.rmtree(self.thread_path)
 
 
     @abstractmethod
@@ -103,8 +100,9 @@ class Migrant(ABC):
             elif type == "dictionary":
                 for name, obj in l:
                     task.upload_artifact(name=name, artifact_object=obj)
-
-
+            elif type == "storage-server":
+                for name, obj in l:
+                    task.upload_artifact(name=name, artifact_object=obj)
 
     @abstractmethod
     def transmit_information(self, id):

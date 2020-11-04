@@ -1,16 +1,18 @@
 import os
 import re
-from migrant_script.migrant_classes.local_migrant import LocalMigrant
-from migrant_script.migrant_classes.db_migrant import DBMigrant
-from migrant_script.migrant_classes.http_migrant import HttpMigrant
+from migrant_classes.local_migrant import LocalMigrant
+from migrant_classes.db_migrant import DBMigrant
+from migrant_classes.http_migrant import HttpMigrant
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
-from migrant_script.db_util.dblib import get_run_uuids
-from migrant_script.db_util.dblib import init_session
-from migrant_script.db_util.dblib import validate_db_uri
+from db_util.dblib import get_run_uuids
+from db_util.dblib import init_session
+from db_util.dblib import validate_db_uri
 import mlflow
 import mlflow.server
+from urllib.parse import urlparse
+
 
 class MigrantFactory:
     def __init__(self, addr):
@@ -69,15 +71,17 @@ class MigrantFactory:
     def get_runs_from_local(self,path):
         ids_count = 0
         l = []
-        experiments = list(os.walk(path))[0][1]  # returns all the dirs in 'self.__path'
+        p = urlparse(path)
+        path_abs = os.path.abspath(os.path.join(p.netloc, p.path))
+        experiments = list(os.walk(path_abs))[0][1]  # returns all the dirs in 'self.__path'
         for experiment in experiments:
             if experiment.startswith("."):
                 continue
-            runs = list(os.walk(path + os.sep + experiment))[0][
+            runs = list(os.walk(path_abs + os.sep + experiment))[0][
                 1
             ]  # returns all the dirs in 'self.__path\experiment'
             for run in runs:
-                current_path = path + os.sep + experiment + os.sep + run + os.sep
+                current_path = path_abs + os.sep + experiment + os.sep + run + os.sep
                 id = experiment + run
                 l.append((id, current_path))
                 ids_count += 1

@@ -199,7 +199,7 @@ def generate_train_param(value, tag):
 
 
 def insert_param(migrant, id, value, tag, is_http_migrant = False):
-    if  (not is_http_migrant) and re.match(r"^[Ff]ile://", value):
+    if (not is_http_migrant) and re.match(r"^[Ff]ile://", value):
         p = urlparse(value)
         value = os.path.abspath(os.path.join(p.netloc, p.path))
         value = get_value_from_path(value)
@@ -209,6 +209,10 @@ def insert_param(migrant, id, value, tag, is_http_migrant = False):
         value = get_value_from_path(value)
         if value:
             migrant.insert_artifact(id, value)
+    elif re.match(r"^(?:s3://)|(?:gs://)|(?:azure://)", value):
+        parts = value.split('/')
+        value = ("storage-server", parts[-1], value)
+        migrant.insert_artifact(id, value)
     else:
         value = generate_train_param(value, tag)
         migrant.info[id][migrant.params][tag] = value

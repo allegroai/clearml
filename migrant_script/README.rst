@@ -15,7 +15,7 @@ To run the migrant script please provide <url> parameter.
 
 Supported url formats:
 
-- ``file:/path_to_store``
+- Local Computer : ``file://path_to_store``
 - SQLAlchemy database URI (e.g. ``<dialect>+<driver>://<username>:<password>@<host>:<port>/<database>`` )
 - mlflow tracking UI host address (e.g. ``http://<IP>:<PORT>`` )
 

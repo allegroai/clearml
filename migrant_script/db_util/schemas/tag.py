@@ -1,4 +1,4 @@
-from migrant_script.db_util.schemas.base import Base
+from db_util.schemas.base import Base
 from sqlalchemy import Column, String
 
 

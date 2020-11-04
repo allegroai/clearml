@@ -1,16 +1,12 @@
-from migrant_script.migrant_classes.migrant import Migrant
+from migrant_classes.migrant import Migrant
 import os
 import yaml
-import datetime
-import migrant_script.parsers as parsers
-
-from dateutil.tz import tzutc
-
+import parsers
 
 class LocalMigrant(Migrant):
     def __init__(self, paths,_):
-        self.branch = "Local"
         super().__init__(paths)
+        self.branch = "Local"
 
     def read_general_information(self, id, path):
         files = list(os.walk(path))[0][2]  # returns all the files in path

@@ -2,15 +2,14 @@ import argparse
 import concurrent
 import math
 import multiprocessing
-import os
-from os.path import expanduser
 
-from migrant_script.migrant_classes.migrant_factory import MigrantFactory
+
+from migrant_classes.migrant_factory import MigrantFactory
 from trains import Task
 from concurrent.futures import ThreadPoolExecutor
 from trains.backend_api.session.client import APIClient
 
-from migrant_script.db_util.dblib import close
+from db_util.dblib import close
 
 def chunks(l, n):
     n = max(1, n)
@@ -40,10 +39,6 @@ def thread_print(size, id, jobs, msgs):
 
 def main(path):
     project_link = None
-    home = expanduser('~')
-    tmp_dir = home + os.sep + '.tmp_mlflow_migration'
-    if not os.path.isdir(tmp_dir):
-        os.mkdir(tmp_dir)
     workers = multiprocessing.cpu_count()
     migrant_factory = MigrantFactory(path)
     l, ids_count = migrant_factory.get_runs()
@@ -86,3 +81,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     main(args.Path)
+
+    # delete_all_tasks_from_project('mlflow_migrant')
+    # main('file:///Users/***/Downloads/mlflow-master/examples/quickstart/mlruns')

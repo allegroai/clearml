@@ -1,26 +1,26 @@
 import os
 import re
 
-import migrant_script.parsers as parsers
+import parsers
 from os.path import expanduser
-from migrant_script.migrant_classes.migrant import Migrant
+from migrant_classes.migrant import Migrant
 import mlflow
 import mlflow.server
 
 
 class HttpMigrant(Migrant):
     def __init__(self, addresses,mlflow_url):
-        self.branch = "Remote_Http_server"
         mlflow.tracking.set_tracking_uri(mlflow_url)
-        self.runs = self.__seed(addresses)
+        self.runs = {}
+        self.__seed(addresses)
         super().__init__(addresses)
+        self.branch = "Remote_Http_server"
+
 
     def __seed(self,addresses):
-        res = {}
         for id,_ in addresses:
             mlflow_id = id[1:]
-            res[id] = mlflow.tracking.MlflowClient().get_run(mlflow_id)
-        return res
+            self.runs[id] = mlflow.tracking.MlflowClient().get_run(mlflow_id)
 
     def __get_run_by_run_id(self,id):
         return self.runs[id]
@@ -45,19 +45,11 @@ class HttpMigrant(Migrant):
             if "artifact_uri" in self.info[id][self.general_information].keys()
             else ""
         )
-        if not re.match(r"^[Ff]ile:/", artifact_address):
-            home = expanduser('~')
-            self.thread_path = home + os.sep +'.tmp_mlflow_migration' + os.sep + self.thread_id
-            experiment_path = self.thread_path + os.sep + id
-            try:
-                os.makedirs(experiment_path)
-            except OSError:
-                self.msgs['ERROR'].append('Can\'t create temporary artifact thread directory! Failed to migrate experiment\'s (' +str(id) + ') artifacts')
-                return
+        if re.match(r"^(?:s3:/)|(?:gs:/)|(?:azure:/)", artifact_address):
             artifacts = mlflow.tracking.MlflowClient().list_artifact(id[1:])
             for artifact in artifacts:
-                 mlflow.tracking.MlflowClient().download_artifacts(id[1:], artifact.path, dst_path=experiment_path)
-            parsers.get_all_artifact_files(self, id, experiment_path)
+                parts = artifact.path.split('/')
+                self.insert_artifact_by_type(id, "storage-server",parts[-1], artifact.path)
 
     def read_metrics(self, id, _):
         self.info[id][self.metrics] = []

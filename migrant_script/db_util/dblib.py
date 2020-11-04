@@ -1,10 +1,10 @@
 import sys
 import urllib
 
-from migrant_script.db_util.schemas.run import Run
-from migrant_script.db_util.schemas.metric import Metric
-from migrant_script.db_util.schemas.tag import Tag
-from migrant_script.db_util.schemas.param import Param
+from db_util.schemas.run import Run
+from db_util.schemas.metric import Metric
+from db_util.schemas.tag import Tag
+from db_util.schemas.param import Param
 from sqlalchemy import distinct
 
 __all__ = [
@@ -20,7 +20,7 @@ __all__ = [
 ]
 DATABASE_ENGINES = ["postgresql", "mysql", "sqlite", "mssql"]
 
-this = sys.modules["migrant_script.db_util.dblib"]
+this = sys.modules["db_util.dblib"]
 Session = None
 
 def validate_db_uri(db_uri):

@@ -1,5 +1,7 @@
 from __future__ import division
 
+import json
+
 import six
 import humanfriendly
 import pyparsing
@@ -81,3 +83,16 @@ def text_to_config_dict(text):
         six.raise_from(ValueError("Could not parse configuration text ({}):\n{}".format(pos, text)), None)
     except Exception:
         six.raise_from(ValueError("Could not parse configuration text:\n{}".format(text)), None)
+
+
+def verify_basic_value(value):
+    # return True if value of of basic type (json serializable)
+    if not isinstance(value,
+                      six.string_types + six.integer_types +
+                      (six.text_type, float, list, tuple, dict, type(None))):
+        return False
+    try:
+        json.dumps(value)
+        return True
+    except TypeError:
+        return False

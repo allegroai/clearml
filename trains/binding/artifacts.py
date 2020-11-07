@@ -319,7 +319,8 @@ class Artifacts(object):
         if preview:
             preview = str(preview)
 
-        # convert string to object if try is a file/folder (dont try to serialize long texts
+        # try to convert string Path object (it might reference a file/folder)
+        # dont not try to serialize long texts.
         if isinstance(artifact_object, six.string_types) and len(artifact_object) < 2048:
             # noinspection PyBroadException
             try:

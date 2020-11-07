@@ -48,8 +48,9 @@ from .config.cache import SessionCache
 from .debugging.log import LoggerRoot
 from .errors import UsageError
 from .logger import Logger
-from .model import Model, InputModel, OutputModel, ARCHIVED_TAG
+from .model import Model, InputModel, OutputModel
 from .task_parameters import TaskParameters
+from .utilities.config import verify_basic_value
 from .utilities.args import argparser_parseargs_called, get_argparser_last_args, \
     argparser_update_currenttask
 from .utilities.dicts import ReadOnlyDict, merge_dicts
@@ -2075,7 +2076,7 @@ class Task(_Task):
                             if hasattr(task.data.execution, 'artifacts') else None
                         if ((str(task._status) in (
                                 str(tasks.TaskStatusEnum.published), str(tasks.TaskStatusEnum.closed)))
-                                or task.output_model_id or (ARCHIVED_TAG in task_tags)
+                                or task.output_model_id or (cls.archived_tag in task_tags)
                                 or (cls._development_tag not in task_tags)
                                 or task_artifacts):
                             # If the task is published or closed, we shouldn't reset it so we can't use it in dev mode

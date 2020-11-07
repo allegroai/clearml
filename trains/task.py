@@ -42,6 +42,7 @@ from .binding.frameworks.tensorflow_bind import TensorflowBinding
 from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
 from .binding.joblib_bind import PatchedJoblib
 from .binding.matplotlib_bind import PatchedMatplotlib
+from .binding.hydra_bind import PatchHydra
 from .config import config, DEV_TASK_NO_REUSE, get_is_master_node
 from .config import running_remotely, get_remote_task_id
 from .config.cache import SessionCache
@@ -337,7 +338,7 @@ class Task(_Task):
             .. code-block:: py
 
                auto_connect_frameworks={'matplotlib': True, 'tensorflow': True, 'pytorch': True,
-                    'xgboost': True, 'scikit': True, 'fastai': True, 'lightgbm': True}
+                    'xgboost': True, 'scikit': True, 'fastai': True, 'lightgbm': True, 'hydra': True}
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
             These plots appear in in the **Trains Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab,
@@ -493,6 +494,8 @@ class Task(_Task):
             PatchOsFork.patch_fork()
             if auto_connect_frameworks:
                 is_auto_connect_frameworks_bool = not isinstance(auto_connect_frameworks, dict)
+                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('hydra', True):
+                    PatchHydra.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('scikit', True):
                     PatchedJoblib.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('matplotlib', True):

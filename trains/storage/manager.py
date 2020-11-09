@@ -10,7 +10,7 @@ from pathlib2 import Path
 from .util import encode_string_to_filename
 from ..debugging.log import LoggerRoot
 from .cache import CacheManager
-
+import tarfile
 
 class StorageManager(object):
     """
@@ -97,13 +97,16 @@ class StorageManager(object):
         :return: cached folder containing the extracted archive content
         """
         # only zip files
-        if not cached_file or not str(cached_file).lower().endswith('.zip'):
+        if not cached_file or (not str(cached_file).lower().endswith('.zip')\
+                and not str(cached_file).lower().endswith('.tar.gz')):
             return cached_file
 
         cached_folder = Path(cached_file).parent
-        archive_suffix = cached_file.rpartition(".")[0]
-        name = encode_string_to_filename(name)
-        target_folder = Path("{0}_artifacts_archive_{1}".format(archive_suffix, name))
+        archive_prefix = cached_file.rpartition(".")[0]
+        archive_suffix = cached_file.rpartition(".")[2]
+        if name:
+            name = encode_string_to_filename(name)
+        target_folder = Path("{0}_artifacts_archive_{1}".format(archive_prefix, name))
         if target_folder.exists():
             # noinspection PyBroadException
             try:
@@ -117,7 +120,12 @@ class StorageManager(object):
             temp_target_folder = cached_folder / "{0}_{1}_{2}".format(
                 target_folder.name, time() * 1000, str(random()).replace('.', ''))
             temp_target_folder.mkdir(parents=True, exist_ok=True)
-            ZipFile(cached_file).extractall(path=temp_target_folder.as_posix())
+            if archive_suffix == 'zip':
+                ZipFile(cached_file).extractall(path=temp_target_folder.as_posix())
+            elif archive_suffix == 'gz':
+                file = tarfile.open(cached_file)
+                file.extractall(temp_target_folder)  # specify which folder to extract to
+                file.close()
             # we assume we will have such folder if we already extract the zip file
             # noinspection PyBroadException
             try:

@@ -102,13 +102,14 @@ class StorageManager(object):
         cached_file = Path(cached_file)
 
         # we support zip and tar.gz files auto-extraction
-        if not any(x in cached_file.suffixes for x in ['.tar', '.gz','.zip']):
+        if not cached_file.suffix == '.zip' and \
+                not cached_file.suffixes[-2:] == [".tar", ".gz"]:
             return str(cached_file)
 
         cached_folder = cached_file.parent
 
         name = encode_string_to_filename(name) if name else name
-        target_folder = Path("{0}/{1}_artifacts_archive_{2}".format(cached_file.parent,cached_file.stem, name))
+        target_folder = Path("{0}/{1}_artifacts_archive_{2}".format(cached_file.parent, cached_file.stem, name))
         if target_folder.exists():
             # noinspection PyBroadException
             try:
@@ -124,14 +125,14 @@ class StorageManager(object):
             temp_target_folder.mkdir(parents=True, exist_ok=True)
             if cached_file.suffix == '.zip':
                 ZipFile(cached_file).extractall(path=temp_target_folder.as_posix())
-            elif any(x in cached_file.suffixes for x in ['.tar', '.gz']):
+            elif cached_file.suffixes[-2:] == [".tar", ".gz"]:
                 with tarfile.open(str(cached_file)) as file:
                     file.extractall(temp_target_folder)
 
-            # we assume we will have such folder if we already extract the zip file
+            # we assume we will have such folder if we already extract the file
             # noinspection PyBroadException
             try:
-                # if rename fails, it means that someone else already manged to extract the zip, delete the current
+                # if rename fails, it means that someone else already manged to extract the file, delete the current
                 # folder and return the already existing cached zip folder
                 shutil.move(temp_target_folder.as_posix(), target_folder.as_posix())
             except Exception:
@@ -152,7 +153,7 @@ class StorageManager(object):
                         )
                     )
         except Exception as ex:
-            # failed extracting zip file:
+            # failed extracting the file:
             base_logger.warning(
                 "Exception {}\nFailed extracting zip file {}".format(ex, str(cached_file))
             )

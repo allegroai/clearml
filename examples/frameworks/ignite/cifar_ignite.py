@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 from trains import Task, StorageManager
 
-#Trains Initializations
+# Trains Initializations
 task = Task.init(project_name='Image Example', task_name='image classification CIFAR10')
 params = {'number_of_epochs': 20, 'batch_size': 64, 'dropout': 0.25, 'base_lr': 0.001, 'momentum': 0.9, 'loss_report': 100}
 params = task.connect(params)  # enabling configuration override by trains
@@ -27,25 +27,33 @@ manager = StorageManager()
 
 dataset_path = Path(manager.get_local_copy(remote_url="https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz"))
 
-#Dataset and Dataloader initializations
+# Dataset and Dataloader initializations
 transform = transforms.Compose([transforms.ToTensor()])
 
-trainset = datasets.CIFAR10(root=dataset_path, train=True,
-                                        download=False, transform=transform)
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=params.get('batch_size', 4),
-                                          shuffle=True, num_workers=10)
+trainset = datasets.CIFAR10(root=dataset_path,
+                            train=True,
+                            download=False,
+                            transform=transform)
+trainloader = torch.utils.data.DataLoader(trainset,
+                                          batch_size=params.get('batch_size', 4),
+                                          shuffle=True,
+                                          num_workers=10)
 
-testset = datasets.CIFAR10(root=dataset_path, train=False,
-                                       download=False, transform=transform)
-testloader = torch.utils.data.DataLoader(testset, batch_size=params.get('batch_size', 4),
-                                         shuffle=False, num_workers=10)
+testset = datasets.CIFAR10(root=dataset_path,
+                           train=False,
+                           download=False,
+                           transform=transform)
+testloader = torch.utils.data.DataLoader(testset,
+                                         batch_size=params.get('batch_size', 4),
+                                         shuffle=False,
+                                         num_workers=10)
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
 tb_logger = TensorboardLogger(log_dir="cifar-output")
 
 
-#Helper function to store predictions and scores using matplotlib
+# Helper function to store predictions and scores using matplotlib
 def predictions_gt_images_handler(engine, logger, *args, **kwargs):
     x, _ = engine.state.batch
     y_pred, y = engine.state.output
@@ -89,7 +97,7 @@ class Net(nn.Module):
         return x
 
 
-#Training
+# Training
 def run(epochs, lr, momentum, log_interval):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     net = Net().to(device)

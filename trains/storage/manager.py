@@ -1,5 +1,5 @@
-import os
 import shutil
+import tarfile
 from random import random
 from time import time
 from typing import Optional
@@ -7,10 +7,10 @@ from zipfile import ZipFile
 
 from pathlib2 import Path
 
+from .cache import CacheManager
 from .util import encode_string_to_filename
 from ..debugging.log import LoggerRoot
-from .cache import CacheManager
-import tarfile
+
 
 class StorageManager(object):
     """
@@ -91,22 +91,24 @@ class StorageManager(object):
     @classmethod
     def _extract_to_cache(cls, cached_file, name):
         """
-        Extract cached file zip file to cache folder
+        Extract cached file zip file to cache folderv
         :param str cached_file: local copy of archive file
         :param str name: cache context
         :return: cached folder containing the extracted archive content
         """
-        # only zip files
-        if not cached_file or (not str(cached_file).lower().endswith('.zip')\
-                and not str(cached_file).lower().endswith('.tar.gz')):
+        if not cached_file:
             return cached_file
 
-        cached_folder = Path(cached_file).parent
-        archive_prefix = cached_file.rpartition(".")[0]
-        archive_suffix = cached_file.rpartition(".")[2]
-        if name:
-            name = encode_string_to_filename(name)
-        target_folder = Path("{0}_artifacts_archive_{1}".format(archive_prefix, name))
+        cached_file = Path(cached_file)
+
+        # we support zip and tar.gz files auto-extraction
+        if not any(x in cached_file.suffixes for x in ['.tar', '.gz','.zip']):
+            return str(cached_file)
+
+        cached_folder = cached_file.parent
+
+        name = encode_string_to_filename(name) if name else name
+        target_folder = Path("{0}/{1}_artifacts_archive_{2}".format(cached_file.parent,cached_file.stem, name))
         if target_folder.exists():
             # noinspection PyBroadException
             try:
@@ -120,12 +122,12 @@ class StorageManager(object):
             temp_target_folder = cached_folder / "{0}_{1}_{2}".format(
                 target_folder.name, time() * 1000, str(random()).replace('.', ''))
             temp_target_folder.mkdir(parents=True, exist_ok=True)
-            if archive_suffix == 'zip':
+            if cached_file.suffix == '.zip':
                 ZipFile(cached_file).extractall(path=temp_target_folder.as_posix())
-            elif archive_suffix == 'gz':
-                file = tarfile.open(cached_file)
-                file.extractall(temp_target_folder)  # specify which folder to extract to
-                file.close()
+            elif any(x in cached_file.suffixes for x in ['.tar', '.gz']):
+                with tarfile.open(str(cached_file)) as file:
+                    file.extractall(temp_target_folder)
+
             # we assume we will have such folder if we already extract the zip file
             # noinspection PyBroadException
             try:
@@ -152,7 +154,7 @@ class StorageManager(object):
         except Exception as ex:
             # failed extracting zip file:
             base_logger.warning(
-                "Exception {}\nFailed extracting zip file {}".format(ex, cached_file)
+                "Exception {}\nFailed extracting zip file {}".format(ex, str(cached_file))
             )
             # noinspection PyBroadException
             try:

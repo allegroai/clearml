@@ -1,24 +1,21 @@
+from pathlib import Path
+
+import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-
-
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
-
+from ignite.contrib.handlers import TensorboardLogger
 from ignite.engine import Events, create_supervised_trainer, create_supervised_evaluator
+from ignite.handlers import global_step_from_engine
 from ignite.metrics import Accuracy, Loss, Recall
 from ignite.utils import setup_logger
+from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 from trains import Task, StorageManager
-from torch.utils.tensorboard import SummaryWriter
-from ignite.handlers import global_step_from_engine
-from ignite.contrib.handlers import TensorboardLogger
-from pathlib import Path
-import tarfile
-import matplotlib.pyplot as plt
 
 #Trains Initializations
 task = Task.init(project_name='Image Example', task_name='image classification CIFAR10')
@@ -28,20 +25,17 @@ print(params)  # printing actual configuration (after override in remote mode)
 
 manager = StorageManager()
 
-#Dataset and Dataloader initializations
 dataset_path = Path(manager.get_local_copy(remote_url="https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz"))
 
+#Dataset and Dataloader initializations
 transform = transforms.Compose([transforms.ToTensor()])
 
-my_tar = tarfile.open(dataset_path)
-my_tar.extractall(dataset_path.parent) # specify which folder to extract to
-my_tar.close()
-trainset = datasets.CIFAR10(root=dataset_path.parent, train=True,
+trainset = datasets.CIFAR10(root=dataset_path, train=True,
                                         download=False, transform=transform)
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=params.get('batch_size', 4),
                                           shuffle=True, num_workers=10)
 
-testset = datasets.CIFAR10(root=dataset_path.parent, train=False,
+testset = datasets.CIFAR10(root=dataset_path, train=False,
                                        download=False, transform=transform)
 testloader = torch.utils.data.DataLoader(testset, batch_size=params.get('batch_size', 4),
                                          shuffle=False, num_workers=10)

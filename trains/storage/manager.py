@@ -111,7 +111,7 @@ class StorageManager(object):
         cached_folder = cached_file.parent
 
         name = encode_string_to_filename(name) if name else name
-        target_folder = Path("{0}/{1}_artifacts_archive_{2}".format(cached_file.parent, cached_file.stem, name))
+        target_folder = Path("{0}/{1}_artifacts_archive_{2}".format(cached_folder, cached_file.stem, name))
         if target_folder.exists():
             # noinspection PyBroadException
             try:

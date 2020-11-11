@@ -128,7 +128,7 @@ class StorageManager(object):
             if cached_file.suffix == ".zip":
                 ZipFile(cached_file).extractall(path=temp_target_folder.as_posix())
             elif cached_file.suffixes[-2:] == [".tar", ".gz"]:
-                with tarfile.open(str(cached_file)) as file:
+                with tarfile.open(cached_file) as file:
                     file.extractall(temp_target_folder)
 
             # we assume we will have such folder if we already extract the file

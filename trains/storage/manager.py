@@ -91,7 +91,7 @@ class StorageManager(object):
     @classmethod
     def _extract_to_cache(cls, cached_file, name):
         """
-        Extract cached file zip file to cache folderv
+        Extract cached file to cache folder
         :param str cached_file: local copy of archive file
         :param str name: cache context
         :return: cached folder containing the extracted archive content
@@ -102,8 +102,10 @@ class StorageManager(object):
         cached_file = Path(cached_file)
 
         # we support zip and tar.gz files auto-extraction
-        if not cached_file.suffix == '.zip' and \
-                not cached_file.suffixes[-2:] == [".tar", ".gz"]:
+        if (
+            not cached_file.suffix == ".zip"
+            and not cached_file.suffixes[-2:] == [".tar", ".gz"]
+        ):
             return str(cached_file)
 
         cached_folder = cached_file.parent
@@ -123,7 +125,7 @@ class StorageManager(object):
             temp_target_folder = cached_folder / "{0}_{1}_{2}".format(
                 target_folder.name, time() * 1000, str(random()).replace('.', ''))
             temp_target_folder.mkdir(parents=True, exist_ok=True)
-            if cached_file.suffix == '.zip':
+            if cached_file.suffix == ".zip":
                 ZipFile(cached_file).extractall(path=temp_target_folder.as_posix())
             elif cached_file.suffixes[-2:] == [".tar", ".gz"]:
                 with tarfile.open(str(cached_file)) as file:

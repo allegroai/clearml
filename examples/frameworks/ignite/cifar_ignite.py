@@ -187,5 +187,4 @@ def run(epochs, lr, momentum, log_interval):
     print('Task ID number is: {}'.format(task.id))
 
 
-
 run(params.get('number_of_epochs'), params.get('base_lr'), params.get('momentum'), 10)

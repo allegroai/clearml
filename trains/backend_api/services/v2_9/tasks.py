@@ -3838,10 +3838,8 @@ class DeleteHyperParamsRequest(Request):
             self._property_hyperparams = None
             return
 
-        self.assert_isinstance(value, "hyperparams", dict)
-        self.assert_isinstance(value.keys(), "hyperparams_keys", six.string_types, is_array=True)
-        self.assert_isinstance(value.values(), "hyperparams_values", (SectionParams, dict), is_array=True)
-        value = dict((k, SectionParams(**v) if isinstance(v, dict) else v) for k, v in value.items())
+        self.assert_isinstance(value, "hyperparams", (ParamKey, dict), is_array=True)
+        value = [(ParamKey(**v) if isinstance(v, dict) else v) for v in value]
 
         self._property_hyperparams = value
 
@@ -4745,11 +4743,8 @@ class EditConfigurationRequest(Request):
             self._property_configuration = None
             return
 
-        self.assert_isinstance(value, "configuration", dict)
-        self.assert_isinstance(value.keys(), "configuration_keys", six.string_types, is_array=True)
-        self.assert_isinstance(value.values(), "configuration_values", (ConfigurationItem, dict), is_array=True)
-
-        value = dict((k, ConfigurationItem(**v) if isinstance(v, dict) else v) for k, v in value.items())
+        self.assert_isinstance(value, "configuration", (dict, ConfigurationItem), is_array=True)
+        value = [(ConfigurationItem(**v) if isinstance(v, dict) else v) for v in value]
 
         self._property_configuration = value
 
@@ -4905,10 +4900,8 @@ class EditHyperParamsRequest(Request):
             self._property_hyperparams = None
             return
 
-        self.assert_isinstance(value, "hyperparams", dict)
-        self.assert_isinstance(value.keys(), "hyperparams_keys", six.string_types, is_array=True)
-        self.assert_isinstance(value.values(), "hyperparams_values", (SectionParams, dict), is_array=True)
-        value = dict((k, SectionParams(**v) if isinstance(v, dict) else v) for k, v in value.items())
+        self.assert_isinstance(value, "hyperparams", (dict, ParamsItem), is_array=True)
+        value = [(ParamsItem(**v) if isinstance(v, dict) else v) for v in value]
 
         self._property_hyperparams = value
 
@@ -7000,7 +6993,8 @@ class GetHyperParamsResponse(Response):
         'properties': {
             'params': {
                 'description': 'Hyper parameters (keyed by task ID)',
-                'type': ['object', 'null'],
+                'type': 'array',
+                'items': {'type': 'object'}
             },
         },
         'type': 'object',
@@ -7021,8 +7015,8 @@ class GetHyperParamsResponse(Response):
             self._property_params = None
             return
 
-        self.assert_isinstance(value, "params", (dict,))
-        self._property_params = value
+        self.assert_isinstance(value, "params", (dict,), is_array=True)
+        self._property_params = list(value)
 
 
 class GetTypesRequest(Request):

@@ -572,7 +572,7 @@ class SearchStrategy(object):
         except ValueError:
             raise ValueError("Could not find base task id {}".format(self._base_task_id))
         # check if the hyper-parameters exist:
-        task_parameters = task.get_parameters_as_dict()
+        task_parameters = task.get_parameters(backwards_compatibility=False)
         missing_params = [h.name for h in self._hyper_parameters if h.name not in task_parameters]
         if missing_params:
             logger.warning('Could not find requested hyper-parameters {} on base task {}'.format(
@@ -819,7 +819,7 @@ class HyperParameterOptimizer(object):
             execution_queue='default',  # type: str
             optimization_time_limit=None,  # type: Optional[float]
             compute_time_limit=None,  # type: Optional[float]
-            auto_connect_task=True,  # type: bool
+            auto_connect_task=True,  # type: Union[bool, Task]
             always_create_task=False,  # type: bool
             **optimizer_kwargs  # type: Any
     ):
@@ -854,11 +854,11 @@ class HyperParameterOptimizer(object):
             The values are:
 
             - ``True`` - The optimization argument and configuration will be stored in the Task. All arguments will
-              be under the hyper-parameter section as ``opt/<arg>``, and the hyper_parameters will stored in the
-              Task ``connect_configuration`` (see artifacts/hyper-parameter).
+              be under the hyper-parameter section ``opt``, and the optimization hyper_parameters space will
+              stored in the Task configuration object section.
 
             - ``False`` - Do not store with Task.
-
+            - ``Task`` - A specific Task object to connect the optimization process with.
         :param bool always_create_task: Always create a new Task
 
             The values are:
@@ -910,7 +910,7 @@ class HyperParameterOptimizer(object):
         """
 
         # create a new Task, if we do not have one already
-        self._task = Task.current_task()
+        self._task = auto_connect_task if isinstance(auto_connect_task, Task) else Task.current_task()
         if not self._task and always_create_task:
             base_task = Task.get_task(task_id=base_task_id)
             self._task = Task.init(

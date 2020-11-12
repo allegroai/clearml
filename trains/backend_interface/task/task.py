@@ -3,16 +3,17 @@ import itertools
 import json
 import logging
 import os
-import sys
 import re
+import sys
 from copy import copy
 from enum import Enum
-from tempfile import gettempdir
 from multiprocessing import RLock
-from pathlib2 import Path
+from tempfile import gettempdir
 from threading import Thread
 from typing import Optional, Any, Sequence, Callable, Mapping, Union, List
 from uuid import uuid4
+
+from pathlib2 import Path
 
 try:
     # noinspection PyCompatibility
@@ -25,6 +26,7 @@ from collections import OrderedDict
 from six.moves.urllib.parse import quote
 
 from ...utilities.locks import RLock as FileRLock
+from ...utilities.attrs import readonly
 from ...binding.artifacts import Artifacts
 from ...backend_interface.task.development.worker import DevWorker
 from ...backend_api import Session
@@ -49,7 +51,7 @@ from ...storage.helper import StorageHelper, StorageError
 from .access import AccessMixin
 from .log import TaskHandler
 from .repo import ScriptInfo, pip_freeze
-from .repo.util import get_command_output
+from .hyperparams import HyperParams
 from ...config import config, PROC_MASTER_ID_ENV_VAR, SUPPRESS_UPDATE_MESSAGE_ENV_VAR
 
 
@@ -60,11 +62,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     _anonymous_dataview_id = '__anonymous__'
     _development_tag = 'development'
+    archived_tag = readonly('archived')
     _default_configuration_section_name = 'General'
     _legacy_parameters_section_name = 'Args'
     _force_requirements = {}
 
     _store_diff = config.get('development.store_uncommitted_code_diff', False)
+    _store_remote_diff = config.get('development.store_code_diff_from_remote', False)
     _offline_filename = 'task.json'
 
     class TaskTypes(Enum):
@@ -170,6 +174,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._log_to_backend = log_to_backend
         self._setup_log(default_log_to_backend=log_to_backend)
         self._artifacts_manager = Artifacts(self)
+        self._hyper_params_manager = HyperParams(self)
 
     def _setup_log(self, default_log_to_backend=None, replace_existing=False):
         """
@@ -276,7 +281,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             result, script_requirements = ScriptInfo.get(
                 filepaths=[self._calling_filename, sys.argv[0], ]
                 if ScriptInfo.is_running_from_module() else [sys.argv[0], self._calling_filename, ],
-                log=self.log, create_requirements=False, check_uncommitted=self._store_diff
+                log=self.log, create_requirements=False,
+                check_uncommitted=self._store_diff, uncommitted_from_remote=self._store_remote_diff
             )
             for msg in result.warning_messages:
                 self.get_logger().report_text(msg)
@@ -837,6 +843,26 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             merged into a single key-value pair dictionary.
         :param kwargs: Key-value pairs, merged into the parameters dictionary created from ``args``.
         """
+        def stringify(value):
+            # return empty string if value is None
+            if value is None:
+                return ""
+
+            str_value = str(value)
+            if isinstance(value, (tuple, list, dict)) and 'None' in re.split(r'[ ,\[\]{}()]', str_value):
+                # If we have None in the string we have to use json to replace it with null,
+                # otherwise we end up with None as string when running remotely
+                try:
+                    str_json = json.dumps(value)
+                    # verify we actually have a null in the string, otherwise prefer the str cast
+                    # This is because we prefer to have \' as in str and not \" used in json
+                    if 'null' in re.split(r'[ ,\[\]{}()]', str_json):
+                        return str_json
+                except TypeError:
+                    # if we somehow failed to json serialize, revert to previous std casting
+                    pass
+            return str_value
+
         if not all(isinstance(x, (dict, Iterable)) for x in args):
             raise ValueError('only dict or iterable are supported as positional arguments')
 
@@ -882,7 +908,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             parameters.update(new_parameters)
 
             # force cast all variables to strings (so that we can later edit them in UI)
-            parameters = {k: str(v) if v is not None else "" for k, v in parameters.items()}
+            parameters = {k: stringify(v) for k, v in parameters.items()}
 
             if use_hyperparams:
                 # build nested dict from flat parameters dict:
@@ -923,6 +949,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     hyperparams[section_name] = section
 
                 self._edit(hyperparams=hyperparams)
+                self.data.hyperparams = hyperparams
             else:
                 execution = self.data.execution
                 if execution is None:
@@ -965,6 +992,25 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         params = self.get_parameters()
         return params.get(name, default)
+
+    def delete_parameter(self, name):
+        # type: (str) -> bool
+        """
+        Delete a parameter byt it's full name Section/name.
+
+        :param name: Parameter name in full, i.e. Section/name. For example, 'Args/batch_size'
+        :return: True if the parameter was deleted successfully
+        """
+        if not Session.check_min_api_version('2.9'):
+            raise ValueError("Delete hyper parameter is not supported by your trains-server, "
+                             "upgrade to the latest version")
+        with self._edit_lock:
+            paramkey = tasks.ParamKey(section=name.split('/', 1)[0], name=name.split('/', 1)[1])
+            res = self.send(tasks.DeleteHyperParamsRequest(
+                task=self.id, hyperparams=[paramkey]), raise_on_errors=False)
+            self.reload()
+
+        return res.ok()
 
     def update_parameters(self, *args, **kwargs):
         # type: (*dict, **Any) -> ()
@@ -1673,6 +1719,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             extra['hyperparams'] = task.hyperparams
         if hasattr(task, 'configuration'):
             extra['configuration'] = task.configuration
+        if getattr(task, 'system_tags', None):
+            extra['system_tags'] = [t for t in task.system_tags if t not in (cls._development_tag, cls.archived_tag)]
 
         req = tasks.CreateRequest(
             name=name or task.name,

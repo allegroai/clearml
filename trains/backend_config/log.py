@@ -1,4 +1,5 @@
 import logging.config
+from copy import deepcopy
 
 from pathlib2 import Path
 
@@ -27,4 +28,5 @@ def initialize(logging_config=None, extra=None):
         Logger.manager.loggerClass = _Logger
 
     if logging_config is not None:
-        logging.config.dictConfig(dict(logging_config))
+        # Use deepcopy since Python's logging infrastructure might modify the dict
+        logging.config.dictConfig(deepcopy(dict(logging_config)))

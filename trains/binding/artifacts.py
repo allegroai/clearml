@@ -462,6 +462,8 @@ class Artifacts(object):
             uri = artifact_object
             artifact_type = 'custom'
             artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
+            if preview:
+                artifact_type_data.preview = preview
         elif isinstance(artifact_object, six.string_types):
             # if we got here, we should store it as text file.
             artifact_type = 'string'

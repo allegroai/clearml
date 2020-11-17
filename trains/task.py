@@ -1056,9 +1056,21 @@ class Task(_Task):
                     self._set_model_config(config_dict=configuration)
                 configuration = ProxyDictPostWrite(self, _update_config_dict, **configuration)
             else:
+                # noinspection PyBroadException
+                try:
+                    remote_configuration = self._get_configuration_dict(name=name) \
+                        if multi_config_support else self._get_model_config_dict()
+                except Exception:
+                    remote_configuration = None
+
+                if remote_configuration is None:
+                    LoggerRoot.get_base_logger().warning(
+                        "Could not retrieve remote configuration named \'{}\'\n"
+                        "Using default configuration: {}".format(name, str(configuration)))
+                    return configuration
+
                 configuration.clear()
-                configuration.update(self._get_configuration_dict(name=name) if multi_config_support
-                                     else self._get_model_config_dict())
+                configuration.update(remote_configuration)
                 configuration = ProxyDictPreWrite(False, False, **configuration)
             return configuration
 

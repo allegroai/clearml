@@ -376,12 +376,13 @@ class Artifacts(object):
         elif isinstance(artifact_object, dict):
             artifact_type = 'JSON'
             artifact_type_data.content_type = 'application/json'
-            preview = preview or json.dumps(artifact_object, sort_keys=True, indent=4)
+            json_text = json.dumps(artifact_object, sort_keys=True, indent=4)
             override_filename_ext_in_uri = '.json'
             override_filename_in_uri = name + override_filename_ext_in_uri
             fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
-            os.write(fd, bytes(preview.encode()))
+            os.write(fd, bytes(json_text.encode()))
             os.close(fd)
+            preview = preview or json_text
             if len(preview) < self.max_preview_size_bytes:
                 artifact_type_data.preview = preview
             else:

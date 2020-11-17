@@ -19,7 +19,7 @@ class PatchedMatplotlib:
     _patched_original_plot = None
     _patched_original_figure = None
     _patched_original_savefig = None
-    __patched_original_imshow = None
+    _patched_original_imshow = None
     __patched_original_draw_all = None
     __patched_draw_all_recursion_guard = False
     _global_plot_counter = -1
@@ -46,7 +46,7 @@ class PatchedMatplotlib:
             raise ValueError(text)
 
         def __getattr__(self, item):
-            def bypass(*args, **kwargs):
+            def bypass(*_, **__):
                 pass
             return bypass
 
@@ -459,6 +459,9 @@ class PatchedMatplotlib:
 
             last_iteration = iter if iter is not None else PatchedMatplotlib._get_last_iteration()
 
+            report_as_debug_sample = not plotly_fig and (
+                    force_save_as_image or not PatchedMatplotlib._support_image_plot)
+
             if not title:
                 if mpl_fig.texts:
                     plot_title = mpl_fig.texts[0].get_text()
@@ -468,10 +471,19 @@ class PatchedMatplotlib:
 
                 if plot_title:
                     title = PatchedMatplotlib._enforce_unique_title_per_iteration(plot_title, last_iteration)
+                elif report_as_debug_sample:
+                    PatchedMatplotlib._global_image_counter += 1
+                    title = 'untitled {:02d}'.format(
+                        PatchedMatplotlib._global_image_counter % PatchedMatplotlib._global_image_counter_limit)
                 else:
                     PatchedMatplotlib._global_plot_counter += 1
-                    mod_ = 1 if plotly_fig else PatchedMatplotlib._global_image_counter_limit
-                    title = 'untitled %02d' % (PatchedMatplotlib._global_plot_counter % mod_)
+                    title = 'untitled {:02d}'.format(
+                        PatchedMatplotlib._global_plot_counter % PatchedMatplotlib._global_image_counter_limit)
+
+            # by now we should have a title, if the iteration was known list us as globally reported.
+            # we later use it to check if externally someone was actually reporting iterations
+            if iter is None:
+                PatchedMatplotlib._matplotlib_reported_titles.add(title)
 
             # remove borders and size, we should let the web take care of that
             if plotly_fig:
@@ -485,17 +497,14 @@ class PatchedMatplotlib:
                     plotly_dict['layout'] = {}
                 plotly_dict['layout']['title'] = series or title
 
-                PatchedMatplotlib._matplotlib_reported_titles.add(title)
                 reporter.report_plot(title=title, series=series or 'plot', plot=plotly_dict, iter=last_iteration)
             else:
                 # this is actually a failed plot, we should put it under plots:
                 # currently disabled
-                if force_save_as_image or not PatchedMatplotlib._support_image_plot:
-                    PatchedMatplotlib._matplotlib_reported_titles.add(title)
+                if report_as_debug_sample:
                     logger.report_image(title=title, series=series or 'plot image', local_path=image,
                                         delete_after_upload=True, iteration=last_iteration)
                 else:
-                    PatchedMatplotlib._matplotlib_reported_titles.add(title)
                     # noinspection PyProtectedMember
                     logger._report_image_plot_and_upload(
                         title=title, series=series or 'plot image', path=image,

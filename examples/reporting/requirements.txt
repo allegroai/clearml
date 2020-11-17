@@ -5,3 +5,4 @@ matplotlib >= 2.2.4 ; python_version < '3.6'
 numpy
 pandas
 pillow>=4.0
+six

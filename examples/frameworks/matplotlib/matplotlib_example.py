@@ -22,6 +22,7 @@ plt.show()
 area = (40 * np.random.rand(N))**2
 plt.scatter(x, y, s=area, c=colors, alpha=0.5)
 task.logger.report_matplotlib_figure(title="My Plot Title", series="My Plot Series", iteration=10, figure=plt)
+plt.show()
 
 # Create another plot - with a name
 x = np.linspace(0, 10, 30)

@@ -166,3 +166,7 @@ class StorageManager(object):
                 pass
             return cached_file
         return target_folder
+
+    @classmethod
+    def get_files_server(cls):
+        return Session.get_files_server_host()

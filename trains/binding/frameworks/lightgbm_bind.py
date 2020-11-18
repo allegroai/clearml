@@ -120,11 +120,11 @@ class PatchLIGHTgbmModelIO(PatchBaseModelIO):
             return callback
         
         if args:
-            kwargs['params'] = args.pop(0)
-        if args:
-            kwargs['train_set'] = args.pop(0)
-        if args:
-            raise ValueError('It only supports 2 position argument {params} and {trian_set}')
+            kwargs['params'] = args[0]
+            if len(args) == 2:
+                kwargs['train_set'] = args[1]
+            elif len(args) > 2:
+                raise ValueError('It only supports 2 position argument {params} and {trian_set}')
 
         kwargs.setdefault("callbacks", []).append(trains_lightgbm_callback())
         ret = original_fn(**kwargs)

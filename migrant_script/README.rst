@@ -24,6 +24,10 @@ Run::
 
     python trains_immigration.py <url>
 
+Options
+_______
+``-a`` Or ``--analysis`` - Printing migration CPU time for analysis
+
 Important Note
 --------------
 According to MLflow tracking UI migration -  artifacts migration from remote computer unsupported, only from storage server (e.g. S3)

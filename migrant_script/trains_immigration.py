@@ -2,6 +2,8 @@ import argparse
 import concurrent
 import math
 import multiprocessing
+from tqdm import tqdm
+
 
 
 from migrant_classes.migrant_factory import MigrantFactory
@@ -10,13 +12,28 @@ from concurrent.futures import ThreadPoolExecutor
 from trains.backend_api.session.client import APIClient
 
 from db_util.dblib import close
+from time_counter import Timer
+
 
 def chunks(l, n):
+    # type: (list[str],int) -> List[List[(str,str)]]
+    """
+    <Description>
+
+    :param list[str] l:
+    :param int n:
+    """
     n = max(1, n)
-    return (l[i : i + n] for i in range(0, len(l), n))
+    return [l[i : i + n] for i in range(0, len(l), n)]
 
 
 def delete_all_tasks_from_project(pr_name):
+    # type: (str) -> ()
+    """
+    <Description>
+
+    :param str pr_name:
+    """
     client = APIClient()
     tasks = Task.get_tasks(project_name=pr_name)
     for task in tasks:
@@ -24,53 +41,102 @@ def delete_all_tasks_from_project(pr_name):
 
 
 def task(migrant):
+    # type: (Migrant) -> (Dict[str,List[str]],str,int)
+    """
+    <Description>
+
+    :param Migrant migrant:
+    """
     migrant.read()
     migrant.seed()
-    return migrant.size, migrant.thread_id, migrant.paths, migrant.msgs, migrant.project_link
+    return migrant.msgs, migrant.project_link, migrant.migration_count
 
+def print_failures(l):
+    # type: (List[List[str]]) -> ()
+    """
+    <Description>
 
+    :param List[List[str]] l:
+    """
+    new_l = (m for sl in l for m in sl)
+    for failed in new_l:
+        print(failed)
+def print_errors(l):
+    # type: (List[List[str]]) -> ()
+    """
+    <Description>
 
-def thread_print(size, id, jobs, msgs):
-    if size - len(msgs['FAILED']) == 0:
-        print("Thread ", id, ": failed to migrant the following experiments: ", jobs, ' messages: ', msgs['FAILED'])
-    else:
-        print("Thread ", id, ": migrant ", size - len(msgs['FAILED']), " experiments: ", jobs, ' messages: ', msgs)
+    :param List[List[str]] l:
+    """
+    new_l = (m for sl in l for m in sl)
+    for error in new_l:
+        print(error)
 
+def main(path, analysis):
+    # type: (str,bool) -> ()
+    """
+    <Description>
 
-def main(path):
+    :param str path:
+    :param bool analysis:
+    """
+    timer = Timer()
     project_link = None
+    error_list = []
+    failure_list = []
     workers = multiprocessing.cpu_count()
     migrant_factory = MigrantFactory(path)
     l, ids_count = migrant_factory.get_runs()
     chunk_size = math.ceil(ids_count / workers)
-    print("Experiments count: ", ids_count)
-    print("Chunk size: ", chunk_size)
+
+    completed_migrations = 0
+    project_indicator = False;
+    project_list = Task.get_projects()
+    for project in project_list:
+        if project.name == "mlflow_migrant":
+            project_indicator = True;
+            break;
+
     if chunk_size==0:
         print("No experiments to migrate")
         return
-    elif chunk_size == 1:
-        print("Workers count: 1")
-        migrant = migrant_factory.create(l)
-        size, id, jobs, msgs, project_link = task(migrant)
-        thread_print(size, id, jobs, msgs)
     else:
-        print("Workers count: ", workers)
         jobs = chunks(l, chunk_size)
         futures = []
-        with ThreadPoolExecutor(max_workers=workers) as executor:
-            for job_chunk in jobs:
-                migrant = migrant_factory.create(job_chunk)
-                future = executor.submit(task, migrant)
-                futures.append(future)
-            for future in concurrent.futures.as_completed(futures):
-                try:
-                    size, id, jobs, msgs, project_link = future.result()
-                    thread_print(size, id, jobs, msgs)
-                except Exception as e:
-                    print("Error: ", e)
+        text = 'progressbar'
+        print("Experiments count: ", ids_count)
+        print("Chunk size: ", chunk_size)
+        print("Workers count: ", workers)
+
+        with tqdm(total=ids_count, desc=text) as pbar:
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                for job_chunk in jobs:
+                    migrant = migrant_factory.create(job_chunk,pbar,timer,analysis,project_indicator)
+                    future = executor.submit(task, migrant)
+                    futures.append(future)
+                for future in concurrent.futures.as_completed(futures):
+                    try:
+                        msgs, project_link_per_task, migration_count = future.result()
+                        completed_migrations+=migration_count
+                        failure_list.append(msgs["FAILED"])
+                        error_list.append(msgs["ERROR"])
+                        if not project_link:
+                            project_link = project_link_per_task
+                    except Exception as e:
+                        error_list.append(["Error: "+ str(e)])
     close()
+    print_failures(failure_list);
+    print_errors(error_list);
+
+    if completed_migrations == 0:
+        print("Failed to migrate all the experiments")
+    elif completed_migrations == 1:
+        print("one experiment succeeded to migrate")
+    else:
+        print(completed_migrations, "experiments succeeded to migrate")
     print("All tasks completed")
     print("Link to the project: ", project_link)
+    timer.print_times()
 
 
 if __name__ == "__main__":
@@ -79,8 +145,10 @@ if __name__ == "__main__":
         "Path", metavar="path", type=str, help="the path/address to mlruns directory"
     )
 
-    args = parser.parse_args()
-    main(args.Path)
+    parser.add_argument(
+        "-a","--analysis", help="print analysis information", action="store_true",default=False
+    )
 
-    # delete_all_tasks_from_project('mlflow_migrant')
-    # main('file:///Users/***/Downloads/mlflow-master/examples/quickstart/mlruns')
+    args = parser.parse_args()
+
+    main(args.Path, analysis = args.analysis)

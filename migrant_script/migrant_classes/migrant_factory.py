@@ -42,9 +42,9 @@ class MigrantFactory:
     # def registerBuilder(self, key, builder):
     #     self._builders[key] = builder
 
-    def create(self, l):
+    def create(self, l, pbar,timer,analysis,project_indicator):
         builder = self._builders.get(self.type)
-        return builder(l,self.addr)
+        return builder(l,self.addr,pbar,timer,analysis,project_indicator)
 
     def get_runs_from_http(self,address):
         res = []

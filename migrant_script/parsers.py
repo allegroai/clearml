@@ -156,13 +156,6 @@ def __get_description(tag, value):
 
 
 def generate_train_param(value, tag):
-    # "epochs": {
-    #     "section": "Args",
-    #     "name": "epochs",
-    #     "value": "6",
-    #     "type": "int",
-    #     "description": "number of epochs to train (default: 6)"
-    # }
     if re.match(r"^\d*\.\d+", value):
         value = {
             "section": "Args",

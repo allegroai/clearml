@@ -128,7 +128,7 @@ def get_tags_by_run_uuid(run_uuid):
 def get_run_by_run_uuid(run_uuid):
     session = this.Session()
     values = (
-        session.query(Run.start_time, Run.end_time, Run.artifact_uri)
+        session.query(Run.start_time, Run.end_time, Run.artifact_uri,Run.name)
         .filter(Run.run_uuid == run_uuid)
         .all()
     )

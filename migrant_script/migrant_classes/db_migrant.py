@@ -8,19 +8,21 @@ from urllib.parse import urlparse
 
 
 class DBMigrant(Migrant):
-    def __init__(self, addresses,_):
-        super().__init__(addresses)
+    def __init__(self, addresses,_, pbar,timer,analysis,project_indicator):
+        super().__init__(addresses, pbar,timer,analysis,project_indicator)
         self.branch = "Remote_DataBase"
 
     def read_general_information(self, id, _):
         info = get_run_by_run_uuid(id)
-        start_time, end_time, artifact_uri = info
+        start_time, end_time, artifact_uri, name = info
         data_time_start, data_time_end = parsers.parse_DateTime(start_time,end_time)
         self.info[id][self.general_information] = {
             "started": data_time_start,
             "completed": data_time_end,
             "artifact_uri": artifact_uri,
+            "name": name
         }
+
 
     def read_artifacts(self, id, _):
         self.info[id][self.artifacts] = {}
@@ -113,3 +115,6 @@ class DBMigrant(Migrant):
 
     def transmit_information(self, id):
         super().transmit_information(id)
+
+    def call_func(self, func_name ,id,func, *args):
+        return super().call_func(func_name ,id,func, *args)

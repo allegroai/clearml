@@ -9,11 +9,11 @@ import mlflow.server
 
 
 class HttpMigrant(Migrant):
-    def __init__(self, addresses,mlflow_url):
+    def __init__(self, addresses,mlflow_url,pbar,timer,analysis,project_indicator):
         mlflow.tracking.set_tracking_uri(mlflow_url)
         self.runs = {}
         self.__seed(addresses)
-        super().__init__(addresses)
+        super().__init__(addresses,pbar,timer,analysis,project_indicator)
         self.branch = "Remote_Http_server"
 
 
@@ -35,7 +35,8 @@ class HttpMigrant(Migrant):
         self.info[id][self.general_information] = {
             "started": data_time_start,
             "completed": data_time_end,
-            "artifact_uri": artifact_uri
+            "artifact_uri": artifact_uri,
+            "name": '' # No supported (MLflow)API for get\set run name.
         }
 
     def read_artifacts(self, id, _):
@@ -131,3 +132,6 @@ class HttpMigrant(Migrant):
 
     def transmit_information(self, id):
         super().transmit_information(id)
+
+    def call_func(self, func_name ,id,func, *args):
+        return super().call_func(func_name ,id,func, *args)

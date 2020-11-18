@@ -4,8 +4,8 @@ import yaml
 import parsers
 
 class LocalMigrant(Migrant):
-    def __init__(self, paths,_):
-        super().__init__(paths)
+    def __init__(self, paths,_,pbar,timer,analysis,project_indicator):
+        super().__init__(paths,pbar,timer,analysis,project_indicator)
         self.branch = "Local"
 
     def read_general_information(self, id, path):
@@ -25,10 +25,11 @@ class LocalMigrant(Migrant):
                         else None
                     )
                     data_time_start, data_time_end = parsers.parse_DateTime(timestamp_start_time, timestamp_end_time)
-
+                    name = documents["name"]
                     self.info[id][self.general_information] = {
                         "started": data_time_start,
                         "completed": data_time_end,
+                        "name": name
                     }
                     break
 
@@ -132,3 +133,6 @@ class LocalMigrant(Migrant):
 
     def transmit_information(self, id):
         super().transmit_information(id)
+
+    def call_func(self, func_name ,id,func, *args):
+        return super().call_func(func_name ,id,func, *args)

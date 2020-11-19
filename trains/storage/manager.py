@@ -169,4 +169,5 @@ class StorageManager(object):
 
     @classmethod
     def get_files_server(cls):
+        from ..backend_api import Session
         return Session.get_files_server_host()

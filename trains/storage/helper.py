@@ -567,9 +567,13 @@ class StorageHelper(object):
         dest_path = self._canonize_url(dest_path)
 
         if cb and self.scheme in _HttpDriver.schemes:
+            # store original callback
+            a_cb = cb
+
             # quote link
-            def callback(path):
-                return cb(quote_url(path) if path else path)
+            def callback(a_path):
+                return a_cb(quote_url(a_path) if a_path else a_path)
+            # replace callback with wrapper
             cb = callback
 
         if async_enable:

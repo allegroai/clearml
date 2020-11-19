@@ -1546,6 +1546,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self._app_server = Session.get_app_server_host()
         return self._app_server
 
+    def _is_remote_main_task(self):
+        # type: () -> bool
+        """
+        :return: return True if running remotely and this Task is the registered main task
+        """
+        return running_remotely() and get_remote_task_id() == self.id
+
     def _edit(self, **kwargs):
         # type: (**Any) -> Any
         with self._edit_lock:

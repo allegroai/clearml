@@ -747,7 +747,8 @@ class InputModel(Model):
         """
         self._set_task(task)
 
-        if running_remotely() and task.input_model and task.is_main_task():
+        # noinspection PyProtectedMember
+        if running_remotely() and task.input_model and (task.is_main_task() or task._is_remote_main_task()):
             self._base_model = task.input_model
             self._base_model_id = task.input_model.id
         else:
@@ -996,7 +997,8 @@ class OutputModel(BaseModel):
         if self._task != task:
             raise ValueError('Can only connect preexisting model to task, but this is a fresh model')
 
-        if running_remotely() and task.is_main_task():
+        # noinspection PyProtectedMember
+        if running_remotely() and (task.is_main_task() or task._is_remote_main_task()):
             if self._floating_data:
                 # noinspection PyProtectedMember
                 self._floating_data.design = _Model._wrap_design(self._task._get_model_config_text()) or \

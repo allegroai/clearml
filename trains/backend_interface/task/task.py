@@ -172,56 +172,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if running_remotely() or DevWorker.report_stdout:
             log_to_backend = False
         self._log_to_backend = log_to_backend
-        self._setup_log(default_log_to_backend=log_to_backend)
         self._artifacts_manager = Artifacts(self)
         self._hyper_params_manager = HyperParams(self)
-
-    def _setup_log(self, default_log_to_backend=None, replace_existing=False):
-        """
-        Setup logging facilities for this task.
-        :param default_log_to_backend: Should this task log to the backend. If not specified, value for this option
-        will be obtained from the environment, with this value acting as a default in case configuration for this is
-        missing.
-        If the value for this option is false, we won't touch the current logger configuration regarding TaskHandler(s)
-        :param replace_existing: If True and another task is already logging to the backend, replace the handler with
-        a handler for this task.
-        """
-        # Make sure urllib is never in debug/info,
-        disable_urllib3_info = config.get('log.disable_urllib3_info', True)
-        if disable_urllib3_info and logging.getLogger('urllib3').isEnabledFor(logging.INFO):
-            logging.getLogger('urllib3').setLevel(logging.WARNING)
-
-        log_to_backend = get_log_to_backend(default=default_log_to_backend) or self._log_to_backend
-        if not log_to_backend:
-            return
-
-        # Handle the root logger and our own logger. We use set() to make sure we create no duplicates
-        # in case these are the same logger...
-        loggers = {logging.getLogger(), LoggerRoot.get_base_logger()}
-
-        # Find all TaskHandler handlers for these loggers
-        handlers = {logger: h for logger in loggers for h in logger.handlers if isinstance(h, TaskHandler)}
-
-        if handlers and not replace_existing:
-            # Handlers exist and we shouldn't replace them
-            return
-
-        # Remove all handlers, we'll add new ones
-        for logger, handler in handlers.items():
-            logger.removeHandler(handler)
-
-        # Create a handler that will be used in all loggers. Since our handler is a buffering handler, using more
-        # than one instance to report to the same task will result in out-of-order log reports (grouped by whichever
-        # handler instance handled them)
-        backend_handler = TaskHandler(task=self)
-
-        # Add backend handler to both loggers:
-        # 1. to root logger root logger
-        # 2. to our own logger as well, since our logger is not propagated to the root logger
-        #    (if we propagate our logger will be caught be the root handlers as well, and
-        #    we do not want that)
-        for logger in loggers:
-            logger.addHandler(backend_handler)
 
     def _validate(self, check_output_dest_credentials=True):
         raise_errors = self._raise_on_validation_errors

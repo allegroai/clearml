@@ -1,8 +1,9 @@
 import json
+import logging
 import math
 
 try:
-    from collections.abc import Iterable
+    from collections.abc import Iterable  # noqa
 except ImportError:
     from collections import Iterable
 
@@ -17,7 +18,8 @@ from ...utilities.plotly_reporter import create_2d_histogram_plot, create_value_
     create_2d_scatter_series, create_3d_scatter_series, create_line_plot, plotly_scatter3d_layout_dict, \
     create_image_plot, create_plotly_table
 from ...utilities.py3_interop import AbstractContextManager
-from .events import ScalarEvent, VectorEvent, ImageEvent, PlotEvent, ImageEventNoUpload, UploadEvent, MediaEvent
+from .events import ScalarEvent, VectorEvent, ImageEvent, PlotEvent, ImageEventNoUpload, \
+    UploadEvent, MediaEvent, ConsoleEvent
 from ...config import config
 
 
@@ -143,7 +145,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param value: Reported value
         :type value: float
         :param iter: Iteration number
-        :type value: int
+        :type iter: int
         """
         ev = ScalarEvent(metric=self._normalize_name(title), variant=self._normalize_name(series), value=value,
                          iter=iter)
@@ -157,9 +159,9 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param series: Series (AKA variant)
         :type series: str
         :param values: Reported values
-        :type value: [float]
+        :type values: [float]
         :param iter: Iteration number
-        :type value: int
+        :type iter: int
         """
         if not isinstance(values, Iterable):
             raise ValueError('values: expected an iterable')
@@ -190,7 +192,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type plot: str or dict
         :param iter: Iteration number
         :param round_digits: number of digits after the dot to leave
-        :type value: int
+        :type round_digits: int
         """
         def floatstr(o):
             if o != o:
@@ -251,7 +253,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             for presentation of processing. Currently only http(s), file and s3 schemes are supported.
         :type src: str
         :param iter: Iteration number
-        :type value: int
+        :type iter: int
         """
         ev = ImageEventNoUpload(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter,
                                 src=src)
@@ -268,7 +270,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             for presentation of processing. Currently only http(s), file and s3 schemes are supported.
         :type src: str
         :param iter: Iteration number
-        :type value: int
+        :type iter: int
         """
         ev = ImageEventNoUpload(metric=self._normalize_name(title), variant=self._normalize_name(series), iter=iter,
                                 src=src)
@@ -290,6 +292,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type path: str
         :param image: Image data. Required unless filename is provided.
         :type image: A PIL.Image.Image object or a 3D numpy.ndarray object
+        :param upload_uri: Destination URL
         :param max_image_history: maximum number of image to store per metric/variant combination
         use negative value for unlimited. default is set in global configuration (default=5)
         :param delete_after_upload: if True, one the file was uploaded the local copy will be deleted
@@ -321,6 +324,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param path: A path to an image file. Required unless matrix is provided.
         :type path: str
         :param stream: File/String stream
+        :param upload_uri: Destination URL
         :param file_extension: file extension to use when stream is passed
         :param max_history: maximum number of files to store per metric/variant combination
         use negative value for unlimited. default is set in global configuration (default=5)
@@ -353,7 +357,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             A row for each dataset(bar in a bar group). A column for each bucket.
         :type histogram: numpy array
         :param iter: Iteration number
-        :type value: int
+        :type iter: int
         :param labels: The labels for each bar group.
         :type labels: list of strings.
         :param xlabels: The labels of the x axis.
@@ -466,7 +470,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param series: Series (AKA variant)
         :type series: str
         :param data: A scattered data: pairs of x,y as rows in a numpy array
-        :type scatter: ndarray
+        :type data: ndarray
         :param iter: Iteration number
         :type iter: int
         :param mode: (type str) 'lines'/'markers'/'lines+markers'
@@ -520,16 +524,17 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param xtitle: optional x-axis title
         :param ytitle: optional y-axis title
         :param ztitle: optional z-axis title
+        :param fill: optional
         :param comment: comment underneath the title
         :param layout_config: optional dictionary for layout configuration, passed directly to plotly
         :type layout_config: dict or None
         """
         data_series = data if isinstance(data, list) else [data]
 
-        def get_labels(i):
+        def get_labels(a_i):
             if labels and isinstance(labels, list):
                 try:
-                    item = labels[i]
+                    item = labels[a_i]
                 except IndexError:
                     item = labels[-1]
                 if isinstance(item, list):
@@ -666,11 +671,11 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param series: Series (AKA variant)
         :type series: str
         :param iter: Iteration number
-        :type value: int
+        :type iter: int
         :param path: A path to an image file. Required unless matrix is provided.
         :type path: str
         :param matrix: A 3D numpy.ndarray object containing image data (RGB). Required unless filename is provided.
-        :type matrix: str
+        :type matrix: np.ndarray
         :param upload_uri: upload image destination (str)
         :type upload_uri: str
         :param max_image_history: maximum number of image to store per metric/variant combination
@@ -686,8 +691,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
                       file_history_size=max_image_history)
 
         if matrix is not None:
-            width = matrix.shape[1]
-            height = matrix.shape[0]
+            width = matrix.shape[1]  # noqa
+            height = matrix.shape[0]  # noqa
         else:
             # noinspection PyBroadException
             try:
@@ -721,6 +726,21 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             plot=plotly_dict,
             iter=iter,
         )
+
+    def report_console(self, message, level=logging.INFO):
+        """
+        Report a scalar value
+        :param message: message (AKA metric)
+        :type message: str
+        :param level: log level (int or string, log level)
+        :type level: int
+        """
+        ev = ConsoleEvent(
+            message=message,
+            level=level,
+            worker=self.session.worker,
+        )
+        self._report(ev)
 
     @classmethod
     def _normalize_name(cls, name):

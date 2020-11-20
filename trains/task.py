@@ -190,6 +190,7 @@ class Task(_Task):
         auto_connect_arg_parser=True,  # type: Union[bool, Mapping[str, bool]]
         auto_connect_frameworks=True,  # type: Union[bool, Mapping[str, bool]]
         auto_resource_monitoring=True,  # type: bool
+        auto_connect_streams=True,  # type: Union[bool, Mapping[str, bool]]
     ):
         # type: (...) -> Task
         """
@@ -350,6 +351,24 @@ class Task(_Task):
             - ``False`` - Do not automatically create.
             - Class Type - Create ResourceMonitor object of the specified class type.
 
+        :param auto_connect_streams: Control the automatic logging of stdout and stderr
+
+            The values are:
+
+            - ``True`` - Automatically connect (default)
+            -  ``False`` - Do not automatically connect
+            - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of stdout and
+              stderr. The dictionary keys are 'stdout' , 'stderr' and 'logging', the values are booleans.
+              Keys missing from the dictionary default to ``False``, and an empty dictionary defaults to ``False``.
+              Notice, the default behaviour is logging stdout/stderr the
+              `logging` module is logged as a by product of the stderr logging
+
+            For example:
+
+            .. code-block:: py
+
+               auto_connect_streams={'stdout': True, 'stderr': True`, 'logging': False}
+
         :return: The main execution Task (Task context).
         """
 
@@ -390,7 +409,7 @@ class Task(_Task):
                 # create a new logger (to catch stdout/err)
                 cls.__main_task._logger = None
                 cls.__main_task.__reporter = None
-                cls.__main_task.get_logger()
+                cls.__main_task._get_logger(auto_connect_streams=auto_connect_streams)
                 cls.__main_task._artifacts_manager = Artifacts(cls.__main_task)
                 # unregister signal hooks, they cause subprocess to hang
                 # noinspection PyProtectedMember
@@ -453,7 +472,8 @@ class Task(_Task):
                         continue_last_task=continue_last_task,
                         detect_repo=False if (
                                 isinstance(auto_connect_frameworks, dict) and
-                                not auto_connect_frameworks.get('detect_repository', True)) else True
+                                not auto_connect_frameworks.get('detect_repository', True)) else True,
+                        auto_connect_streams=auto_connect_streams,
                     )
                     # set defaults
                     if cls._offline_mode:
@@ -545,7 +565,7 @@ class Task(_Task):
         # Make sure we start the logger, it will patch the main logging object and pipe all output
         # if we are running locally and using development mode worker, we will pipe all stdout to logger.
         # The logger will automatically take care of all patching (we just need to make sure to initialize it)
-        logger = task.get_logger()
+        logger = task._get_logger(auto_connect_streams=auto_connect_streams)
         # show the debug metrics page in the log, it is very convenient
         if not is_sub_process_task_id:
             if cls._offline_mode:
@@ -2110,7 +2130,7 @@ class Task(_Task):
     @classmethod
     def _create_dev_task(
         cls, default_project_name, default_task_name, default_task_type,
-            reuse_last_task_id, continue_last_task=False, detect_repo=True,
+            reuse_last_task_id, continue_last_task=False, detect_repo=True,  auto_connect_streams=True
     ):
         if not default_project_name or not default_task_name:
             # get project name and task name from repository name and entry_point
@@ -2230,8 +2250,7 @@ class Task(_Task):
         task.reload()
 
         # force update of base logger to this current task (this is the main logger task)
-        task._setup_log(replace_existing=True)
-        logger = task.get_logger()
+        logger = task._get_logger(auto_connect_streams=auto_connect_streams)
         if closed_old_task:
             logger.report_text('TRAINS Task: Closing old development task id={}'.format(default_task.get('id')))
         # print warning, reusing/creating a task
@@ -2271,8 +2290,8 @@ class Task(_Task):
 
         return task
 
-    def _get_logger(self, flush_period=NotSet):
-        # type: (Optional[float]) -> Logger
+    def _get_logger(self, flush_period=NotSet, auto_connect_streams=False):
+        # type: (Optional[float], Union[bool, dict]) -> Logger
         """
         get a logger object for reporting based on the task
 
@@ -2288,10 +2307,15 @@ class Task(_Task):
             # do not recreate logger after task was closed/quit
             if self._at_exit_called:
                 raise ValueError("Cannot use Task Logger after task was closed")
-            # force update of base logger to this current task (this is the main logger task)
-            self._setup_log(replace_existing=self.is_main_task())
             # Get a logger object
-            self._logger = Logger(private_task=self)
+            self._logger = Logger(
+                private_task=self,
+                connect_stdout=(auto_connect_streams is True) or
+                               (isinstance(auto_connect_streams, dict) and auto_connect_streams.get('stdout', False)),
+                connect_stderr=(auto_connect_streams is True) or
+                               (isinstance(auto_connect_streams, dict) and auto_connect_streams.get('stderr', False)),
+                connect_logging=isinstance(auto_connect_streams, dict) and auto_connect_streams.get('logging', False),
+            )
             # make sure we set our reported to async mode
             # we make sure we flush it in self._at_exit
             self._reporter.async_enable = True

@@ -5,13 +5,15 @@ from typing import Any, Sequence, Union, List, Optional, Tuple, Dict, TYPE_CHECK
 
 import numpy as np
 import six
+from PIL import Image
+from pathlib2 import Path
+
+from .debugging.log import LoggerRoot
 
 try:
     import pandas as pd
 except ImportError:
     pd = None
-from PIL import Image
-from pathlib2 import Path
 
 from .backend_interface.logger import StdStreamPatch, LogFlusher
 from .backend_interface.task import Task as _Task
@@ -19,7 +21,6 @@ from .backend_interface.task.development.worker import DevWorker
 from .backend_interface.task.log import TaskHandler
 from .backend_interface.util import mutually_exclusive
 from .config import running_remotely, get_cache_dir, config
-from .debugging.log import LoggerRoot
 from .errors import UsageError
 from .storage.helper import StorageHelper
 from .utilities.plotly_reporter import SeriesInfo
@@ -29,9 +30,8 @@ warnings.filterwarnings('always', category=DeprecationWarning, module=__name__)
 
 
 if TYPE_CHECKING:
-    from matplotlib.figure import Figure as MatplotlibFigure
-    from matplotlib import pyplot
-    from plotly.graph_objects import Figure
+    from matplotlib.figure import Figure as MatplotlibFigure  # noqa
+    from matplotlib import pyplot  # noqa
 
 
 class Logger(object):
@@ -60,7 +60,7 @@ class Logger(object):
     _tensorboard_logging_auto_group_scalars = False
     _tensorboard_single_series_per_graph = config.get('metrics.tensorboard_single_series_per_graph', False)
 
-    def __init__(self, private_task):
+    def __init__(self, private_task, connect_stdout=True, connect_stderr=True, connect_logging=False):
         """
         .. warning::
             **Do not construct Logger manually!**
@@ -73,12 +73,26 @@ class Logger(object):
         self._default_upload_destination = None
         self._flusher = None
         self._report_worker = None
-        self._task_handler = None
         self._graph_titles = {}
         self._tensorboard_series_force_prefix = None
+        self._task_handler = TaskHandler(task=self._task, capacity=100)
+        self._connect_std_streams = connect_stdout or connect_stderr
+        self._connect_logging = connect_logging
 
-        if self._task.is_main_task():
-            StdStreamPatch.patch_std_streams(self)
+        # Make sure urllib is never in debug/info,
+        disable_urllib3_info = config.get('log.disable_urllib3_info', True)
+        if disable_urllib3_info and logging.getLogger('urllib3').isEnabledFor(logging.INFO):
+            logging.getLogger('urllib3').setLevel(logging.WARNING)
+
+        StdStreamPatch.patch_std_streams(self, connect_stdout=connect_stdout, connect_stderr=connect_stderr)
+
+        if self._connect_logging:
+            StdStreamPatch.patch_logging_formatter(self)
+        elif not self._connect_std_streams:
+            # make sure that at least the main trains logger is connect
+            base_logger = LoggerRoot.get_base_logger()
+            if base_logger and base_logger.handlers:
+                StdStreamPatch.patch_logging_formatter(self, base_logger.handlers[0])
 
     @classmethod
     def current_logger(cls):
@@ -381,6 +395,7 @@ class Logger(object):
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
 
+        # noinspection PyArgumentList
         series = [self.SeriesInfo(**s) if isinstance(s, dict) else s for s in series]
 
         # if task was not started, we have to start it
@@ -832,7 +847,7 @@ class Logger(object):
                 upload_uri = storage.verify_upload(folder_uri=upload_uri)
 
             if isinstance(image, Image.Image):
-                image = np.array(image)
+                image = np.array(image)  # noqa
             # noinspection PyProtectedMember
             self._task._reporter.report_image_and_upload(
                 title=title,
@@ -1068,7 +1083,7 @@ class Logger(object):
         :param float period: The period to flush the logger in seconds. To set no periodic flush,
             specify ``None`` or ``0``.
         """
-        if self._task.is_main_task() and DevWorker.report_stdout and DevWorker.report_period and \
+        if self._task.is_main_task() and self._task_handler and DevWorker.report_period and \
                 not running_remotely() and period is not None:
             period = min(period or DevWorker.report_period, DevWorker.report_period)
 
@@ -1098,6 +1113,30 @@ class Logger(object):
         """
         self.report_image(title=title, series=series, iteration=iteration, local_path=path, image=matrix,
                           max_image_history=max_image_history, delete_after_upload=delete_after_upload)
+
+    def capture_logging(self):
+        # type: () -> "_LoggingContext"
+        """
+        Return context capturing all the logs (via logging) reported under the context
+
+        :return: a ContextManager
+        """
+        class _LoggingContext(object):
+            def __init__(self, a_logger):
+                self.logger = a_logger
+
+            def __enter__(self, *_, **__):
+                if not self.logger:
+                    return
+                StdStreamPatch.patch_logging_formatter(self.logger)
+
+            def __exit__(self, *_, **__):
+                if not self.logger:
+                    return
+                StdStreamPatch.remove_patch_logging_formatter()
+
+        # Do nothing if we already have full logging support
+        return _LoggingContext(None if self._connect_logging else self)
 
     @classmethod
     def tensorboard_auto_group_scalars(cls, group_scalars=False):
@@ -1137,7 +1176,7 @@ class Logger(object):
     def _remove_std_logger(cls):
         StdStreamPatch.remove_std_logger()
 
-    def _console(self, msg, level=logging.INFO, omit_console=False, *args, **kwargs):
+    def _console(self, msg, level=logging.INFO, omit_console=False, *args, **_):
         # type: (str, int, bool, Any, Any) -> None
         """
         print text to log (same as print to console, and also prints to console)
@@ -1158,29 +1197,32 @@ class Logger(object):
                                msg='Logger failed casting log level "%s" to integer' % str(level))
             level = logging.INFO
 
-        if not running_remotely():
-            # noinspection PyBroadException
-            try:
-                record = self._task.log.makeRecord(
-                    "console", level=level, fn='', lno=0, func='', msg=msg, args=args, exc_info=None
-                )
-                # find the task handler that matches our task
-                if not self._task_handler:
-                    self._task_handler = [h for h in LoggerRoot.get_base_logger().handlers
-                                          if isinstance(h, TaskHandler) and h.task_id == self._task.id][0]
-                self._task_handler.emit(record)
-            except Exception:
-                # avoid infinite loop, output directly to stderr
+        # noinspection PyProtectedMember
+        if not running_remotely() or not self._task._is_remote_main_task():
+            if self._task_handler:
+                # noinspection PyBroadException
                 try:
-                    # make sure we are writing to the original stdout
-                    StdStreamPatch.stderr_original_write(
-                        'trains.Logger failed sending log [level {}]: "{}"\n'.format(level, msg))
+                    record = self._task.log.makeRecord(
+                        "console", level=level, fn='', lno=0, func='', msg=msg, args=args, exc_info=None
+                    )
+                    # find the task handler that matches our task
+                    self._task_handler.emit(record)
                 except Exception:
-                    pass
+                    # avoid infinite loop, output directly to stderr
+                    # noinspection PyBroadException
+                    try:
+                        # make sure we are writing to the original stdout
+                        StdStreamPatch.stderr_original_write(
+                            'trains.Logger failed sending log [level {}]: "{}"\n'.format(level, msg))
+                    except Exception:
+                        pass
+            else:
+                # noinspection PyProtectedMember
+                self._task._reporter.report_console(message=msg, level=level)
 
         if not omit_console:
             # if we are here and we grabbed the stdout, we need to print the real thing
-            if DevWorker.report_stdout and not running_remotely():
+            if self._connect_std_streams and not running_remotely():
                 # noinspection PyBroadException
                 try:
                     # make sure we are writing to the original stdout
@@ -1218,7 +1260,7 @@ class Logger(object):
         :param path: A path to an image file. Required unless matrix is provided.
         :type path: str
         :param matrix: A 3D numpy.ndarray object containing image data (RGB). Required unless filename is provided.
-        :type matrix: str
+        :type matrix: np.array
         :param max_image_history: maximum number of image to store per metric/variant combination \
         use negative value for unlimited. default is set in global configuration (default=5)
         :type max_image_history: int
@@ -1306,14 +1348,15 @@ class Logger(object):
         pass
 
     def _flush_stdout_handler(self):
-        if self._task_handler and DevWorker.report_stdout:
+        if self._task_handler:
             self._task_handler.flush()
 
     def _close_stdout_handler(self, wait=True):
         # detach the sys stdout/stderr
-        StdStreamPatch.remove_std_logger(self)
+        if self._connect_std_streams:
+            StdStreamPatch.remove_std_logger(self)
 
-        if self._task_handler and DevWorker.report_stdout:
+        if self._task_handler:
             t = self._task_handler
             self._task_handler = None
             t.close(wait)

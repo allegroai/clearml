@@ -171,7 +171,7 @@ class PrintPatchLogger(object):
     patched = False
     lock = threading.Lock()
     recursion_protect_lock = threading.RLock()
-    lf_flush_period = config.get("development.worker.console_lf_flush_period", 0)
+    cr_flush_period = config.get("development.worker.console_cr_flush_period", 0)
 
     def __init__(self, stream, logger=None, level=logging.INFO):
         PrintPatchLogger.patched = True
@@ -196,16 +196,16 @@ class PrintPatchLogger(object):
                 do_cr = '\r' in message
                 self._cur_line += message
 
-                if not do_flush and do_cr and PrintPatchLogger.lf_flush_period and self._force_lf_flush:
+                if not do_flush and do_cr and PrintPatchLogger.cr_flush_period and self._force_lf_flush:
                     self._cur_line += '\n'
                     do_flush = True
 
                 self._force_lf_flush = False
 
-                if (not do_flush and (PrintPatchLogger.lf_flush_period or not do_cr)) or not message:
+                if (not do_flush and (PrintPatchLogger.cr_flush_period or not do_cr)) or not message:
                     return
 
-                if PrintPatchLogger.lf_flush_period and self._cur_line:
+                if PrintPatchLogger.cr_flush_period and self._cur_line:
                     self._cur_line = '\n'.join(line.split('\r')[-1] for line in self._cur_line.split('\n'))
 
                 last_lf = self._cur_line.rindex('\n' if do_flush else '\r')
@@ -263,11 +263,11 @@ class LogFlusher(threading.Thread):
         self._period = period
         self._logger = logger
         self._exit_event = threading.Event()
-        self._lf_last_flush = 0
+        self._cr_last_flush = 0
         try:
-            self._lf_flush_period = float(PrintPatchLogger.lf_flush_period)
+            self._cr_flush_period = float(PrintPatchLogger.cr_flush_period)
         except (ValueError, TypeError):
-            self._lf_flush_period = 0
+            self._cr_flush_period = 0
 
     @property
     def period(self):
@@ -279,12 +279,12 @@ class LogFlusher(threading.Thread):
         while True:
             period = self._period
             while not self._exit_event.wait(period or 1.0):
-                if self._lf_flush_period and time() - self._lf_last_flush > self._lf_flush_period:
+                if self._cr_flush_period and time() - self._cr_last_flush > self._cr_flush_period:
                     if isinstance(sys.stdout, PrintPatchLogger):
                         sys.stdout.force_lf_flush()
                     if isinstance(sys.stderr, PrintPatchLogger):
                         sys.stderr.force_lf_flush()
-                    self._lf_last_flush = time()
+                    self._cr_last_flush = time()
                 # now signal the real flush
                 self._logger.flush()
 

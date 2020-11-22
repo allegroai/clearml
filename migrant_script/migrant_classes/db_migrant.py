@@ -23,7 +23,6 @@ class DBMigrant(Migrant):
             "name": name
         }
 
-
     def read_artifacts(self, id, _):
         self.info[id][self.artifacts] = {}
         artifact_address = (
@@ -67,10 +66,15 @@ class DBMigrant(Migrant):
             parsers.insert_param(self, id, value, tag)
 
     def read_tags(self, id, _):
-        self.info[id][self.tags] = {}
+        self.info[id][self.tags] = {"VALUETAG":{}}
         tags_pairs = get_tags_by_run_uuid(id)
         for name, value in tags_pairs:
-            tag = name.replace("mlflow.", "")
+            if "mlflow." in name:
+                tag = name.replace("mlflow.", "")
+            elif name.startswith("."):
+                continue
+            else:
+                tag = "VALUETAG_" + name
             self.tag_parsers[tag](
                 id, value
             ) if tag in self.tag_parsers.keys() else parsers.tag_parser(
@@ -118,3 +122,6 @@ class DBMigrant(Migrant):
 
     def call_func(self, func_name ,id,func, *args):
         return super().call_func(func_name ,id,func, *args)
+
+    def get_run_name_by_id(self, id):
+        return super().get_run_name_by_id(id)

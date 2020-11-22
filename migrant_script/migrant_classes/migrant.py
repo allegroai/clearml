@@ -6,6 +6,23 @@ from trains.model import ARCHIVED_TAG
 from tqdm import tqdm
 
 class Migrant(ABC):
+    """
+        The ``Migrant`` class is a code template for a Migrant object which,
+
+        The ``Migrant`` class and its methods allow you to create and manage
+
+        .. warning::
+
+        For detailed information about creating Migrant objects, see the following methods:
+
+            -
+            -
+            -
+
+        .. note::
+
+        """
+
     artifacts = "artifacts"
     metrics = "metrics"
     params = "params"
@@ -14,6 +31,11 @@ class Migrant(ABC):
     skip_tags = ["project.backend", "project.entryPoint", "parentRunId", "best_run","model_summary"]
 
     def __init__(self, paths, pbar, timer,analysis, project_indicator):
+        """
+        .. warning::
+            **Do not construct Migrant manually!**
+            Please use :meth:`MigrantFactory.create`
+        """
         self.paths = paths
         self.size = len(paths)
         self.migration_count = 0
@@ -29,6 +51,7 @@ class Migrant(ABC):
             "log-model.history": parsers.log_model_history_tag_parser(self),
         }
         self.info = {}
+        self.ID_to_Name = {}
         self.mlflow_url = None
         self.branch = None
         super().__init__()
@@ -85,10 +108,12 @@ class Migrant(ABC):
     @abstractmethod
     def seed(self):
         for id in self.get_ids():
+            if "runName" in self.info[id][self.tags].keys():
+                self.ID_to_Name[id] = self.info[id][self.tags]["runName"]
 
             task = self.call_func('Task.create', id,
                            lambda id_: Task.create(project_name="mlflow_migrant", task_name=id_),
-                           id if self.info[id][self.general_information]["name"] == '' else self.info[id][self.general_information]["name"])
+                           self.get_run_name_by_id(id))
 
             self.call_func('transmit_information', id,
                            lambda id_: self.transmit_information(id_),
@@ -115,7 +140,7 @@ class Migrant(ABC):
     def transmit_metrics(self, id):
         task = self.call_func('Task.get_task', id,
                               lambda id_: Task.get_task(project_name="mlflow_migrant", task_name=id_),
-                              id)
+                              self.get_run_name_by_id(id))
         logger = task.get_logger()
         metrics = self.get_metrics(id)
         for graph_name, series_name, table in metrics:
@@ -137,7 +162,7 @@ class Migrant(ABC):
         )
         task = self.call_func('Task.get_task', id,
                               lambda id_: Task.get_task(project_name="mlflow_migrant", task_name=id_),
-                              id)
+                              self.get_run_name_by_id(id))
         for type, l in artifacts.items():
             if type == "folder":
                 for name, obj in l:
@@ -167,11 +192,11 @@ class Migrant(ABC):
 
         task = self.call_func('Task.get_task', id,
                               lambda id_: Task.get_task(project_name="mlflow_migrant", task_name=id_),
-                              id)
+                              self.get_run_name_by_id(id))
 
         task_values = self.call_func('task.export_task', id,
                               lambda _ : task.export_task(),
-                                     id)
+                                     self.get_run_name_by_id(id))
 
         task_values["comment"] = (
             tags["note.content"] if "note.content" in tags.keys() else ""
@@ -201,6 +226,11 @@ class Migrant(ABC):
         self.call_func('task.update_task', id,
                               lambda _task_values : task.update_task(_task_values),
                                      task_values)
+
+        if len(tags["VALUETAG"].keys()) > 0:
+            self.call_func('task.connect_configuration', id,
+                                lambda _dict: task.connect_configuration(_dict,name="MLflow Tags"),
+                                        tags["VALUETAG"])
 
     @abstractmethod
     def read_general_information(self, id, path):
@@ -267,3 +297,7 @@ class Migrant(ABC):
             if self.general_information in self.info[id].keys()
             else {}
         )
+
+    @abstractmethod
+    def get_run_name_by_id(self,id):
+        return self.ID_to_Name[id] if id in self.ID_to_Name.keys() else id

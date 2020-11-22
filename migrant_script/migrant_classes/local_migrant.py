@@ -9,7 +9,7 @@ class LocalMigrant(Migrant):
         self.branch = "Local"
 
     def read_general_information(self, id, path):
-        files = list(os.walk(path))[0][2]  # returns all the files in path
+        files = list(os.walk(path))[0][2]
         for name in files:
             if name.endswith(".yaml"):
                 with open(path + os.sep + name) as file:
@@ -59,10 +59,10 @@ class LocalMigrant(Migrant):
 
     def __read_all_sub_directories_content(self, reader, path, path_tree, id):
         contents = list(os.walk(path))
-        files = contents[0][2]  # returns all the files in 'path'
+        files = contents[0][2]
         for name in files:
             reader(id, name, path, path_tree)
-        dirs = contents[0][1]  # returns all the dirs in 'path'
+        dirs = contents[0][1]
         current_tree = path_tree.copy()
         for dir in dirs:
             current_tree.append(dir)
@@ -73,7 +73,7 @@ class LocalMigrant(Migrant):
 
     def read_params(self, id, path):
         self.info[id][self.params] = {}
-        files = list(os.walk(path))[0][2]  # returns all the files in path
+        files = list(os.walk(path))[0][2]
         for name in files:
             tag = name.strip().replace("mlflow.", "")
             with open(path + os.sep + name) as file:
@@ -81,13 +81,19 @@ class LocalMigrant(Migrant):
                 parsers.insert_param(self, id, value, tag)
 
     def read_tags(self, id, path):
-        self.info[id][self.tags] = {}
-        files = list(os.walk(path))[0][2]  # returns all the files in path
+        self.info[id][self.tags] = {"VALUETAG":{}}
+        files = list(os.walk(path))[0][2]
         for name in files:
             with open(path + os.sep + name) as file:
-                tag = name.strip().replace("mlflow.", "")
+                if "mlflow." in name:
+                    tag = name.strip().replace("mlflow.", "")
+                elif name.startswith("."):
+                    continue
+                else:
+                    tag = "VALUETAG_" + name.strip()
                 if tag in self.skip_tags:
                     continue
+
                 value = file.readline().strip()
                 self.tag_parsers[tag](
                     id, value
@@ -136,3 +142,6 @@ class LocalMigrant(Migrant):
 
     def call_func(self, func_name ,id,func, *args):
         return super().call_func(func_name ,id,func, *args)
+
+    def get_run_name_by_id(self, id):
+        return super().get_run_name_by_id(id)

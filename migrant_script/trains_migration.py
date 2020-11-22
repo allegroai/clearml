@@ -2,6 +2,8 @@ import argparse
 import concurrent
 import math
 import multiprocessing
+import traceback
+
 from tqdm import tqdm
 
 
@@ -22,9 +24,10 @@ def chunks(l, n):
 
     :param list[str] l:
     :param int n:
+    :return:
     """
     n = max(1, n)
-    return [l[i : i + n] for i in range(0, len(l), n)]
+    return (l[i : i + n] for i in range(0, len(l), n))
 
 
 def delete_all_tasks_from_project(pr_name):
@@ -104,10 +107,6 @@ def main(path, analysis):
         jobs = chunks(l, chunk_size)
         futures = []
         text = 'progressbar'
-        print("Experiments count: ", ids_count)
-        print("Chunk size: ", chunk_size)
-        print("Workers count: ", workers)
-
         with tqdm(total=ids_count, desc=text) as pbar:
             with ThreadPoolExecutor(max_workers=workers) as executor:
                 for job_chunk in jobs:
@@ -123,7 +122,8 @@ def main(path, analysis):
                         if not project_link:
                             project_link = project_link_per_task
                     except Exception as e:
-                        error_list.append(["Error: "+ str(e)])
+                        tb1 = traceback.TracebackException.from_exception(e)
+                        error_list.append(["Error: " + ''.join(tb1.format())])
     close()
     print_failures(failure_list);
     print_errors(error_list);
@@ -134,7 +134,6 @@ def main(path, analysis):
         print("one experiment succeeded to migrate")
     else:
         print(completed_migrations, "experiments succeeded to migrate")
-    print("All tasks completed")
     print("Link to the project: ", project_link)
     timer.print_times()
 

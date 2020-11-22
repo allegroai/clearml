@@ -37,10 +37,8 @@ class MigrantFactory:
         elif validate_db_uri(address):
             return 'db'
         else:
-            None
-
-    # def registerBuilder(self, key, builder):
-    #     self._builders[key] = builder
+            print('Warning: misleading URL argument (continue running with Local configuration).')
+            return 'file'
 
     def create(self, l, pbar,timer,analysis,project_indicator):
         builder = self._builders.get(self.type)
@@ -73,13 +71,13 @@ class MigrantFactory:
         l = []
         p = urlparse(path)
         path_abs = os.path.abspath(os.path.join(p.netloc, p.path))
-        experiments = list(os.walk(path_abs))[0][1]  # returns all the dirs in 'self.__path'
+        experiments = list(os.walk(path_abs))[0][1]
         for experiment in experiments:
             if experiment.startswith("."):
                 continue
             runs = list(os.walk(path_abs + os.sep + experiment))[0][
                 1
-            ]  # returns all the dirs in 'self.__path\experiment'
+            ]
             for run in runs:
                 current_path = path_abs + os.sep + experiment + os.sep + run + os.sep
                 id = experiment + run

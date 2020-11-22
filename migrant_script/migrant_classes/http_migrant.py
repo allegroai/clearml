@@ -84,10 +84,15 @@ class HttpMigrant(Migrant):
             parsers.insert_param(self, id, value, param_name,True)
 
     def read_tags(self, id, _):
-        self.info[id][self.tags] = {}
+        self.info[id][self.tags] = {"VALUETAG":{}}
         tags = self.__get_run_by_run_id(id).data.tags
         for name in tags.keys():
-            tag = name.replace("mlflow.", "")
+            if "mlflow." in name:
+                tag = name.replace("mlflow.", "")
+            elif name.startswith("."):
+                continue
+            else:
+                tag = "VALUETAG_" + name
             self.tag_parsers[tag](
                 id, tags[name]
             ) if tag in self.tag_parsers.keys() else parsers.tag_parser(
@@ -135,3 +140,6 @@ class HttpMigrant(Migrant):
 
     def call_func(self, func_name ,id,func, *args):
         return super().call_func(func_name ,id,func, *args)
+
+    def get_run_name_by_id(self, id):
+        return super().get_run_name_by_id(id)

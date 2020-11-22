@@ -10,7 +10,10 @@ from dateutil.tz import tzutc
 import datetime
 
 def tag_parser(migrant, id, tag, value):
-    migrant.info[id][migrant.tags][tag] = value
+    if(tag.startswith("VALUETAG_")):
+        migrant.info[id][migrant.tags]["VALUETAG"][tag.replace("VALUETAG_","")] = value
+    else:
+        migrant.info[id][migrant.tags][tag] = value
 
 
 def source_name_parser(migrant):

@@ -16,7 +16,8 @@ class Timer:
             "Task.create": {},
             "Task.get_task": {},
             "task.export_task": {},
-            "task.update_task": {}
+            "task.update_task": {},
+            "task.connect_configuration": {}
         }
         self.dict_end = {
             "read_general_information": {},
@@ -30,7 +31,8 @@ class Timer:
             "Task.create": {},
             "Task.get_task": {},
             "task.export_task": {},
-            "task.update_task": {}
+            "task.update_task": {},
+            "task.connect_configuration": {}
 
         }
         self.current_milli_time = lambda: int(round(time.time() * 1000))

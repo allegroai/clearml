@@ -31,11 +31,11 @@ def source_name_parser(migrant):
 
 
 def log_model_history_tag_parser(migrant):
-    # type: (Migrant) -> function(str,str)
+    # type: (Migrant) -> any
     """
 
     :param migrant: Migrant object
-    :return: return True if Task was imported/updated
+    :return:
     """
 
     def f(id, value):

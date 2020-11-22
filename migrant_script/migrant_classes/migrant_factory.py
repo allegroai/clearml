@@ -37,8 +37,8 @@ class MigrantFactory:
         elif validate_db_uri(address):
             return 'db'
         else:
-            print('Warning: misleading URL argument (continue running with Local configuration).')
-            return 'file'
+            print('Warning: misleading URL argument, please run again with appropriate url prefix (e.g., file://<path>).')
+            return None
 
     def create(self, l, pbar,timer,analysis,project_indicator):
         builder = self._builders.get(self.type)

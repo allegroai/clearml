@@ -1,5 +1,2 @@
-# This file may be used to create an environment using:
-# $ conda create --name <env> --file <this file>
-# platform: osx-64
 mlflow==1.12.1
 trains==0.16.3

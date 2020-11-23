@@ -1,35 +1,32 @@
-=================================================
-Migrant script: Emigration form Mlflow to Trains
-=================================================
-Migrant all your tracking experiments, and models.
+==============================================================
+Migration script: Migrate your projects form Mlflow to Trains!
+==============================================================
+Mirgrate all of the tracked experiments, artfiacts, configurations and metrics.
 
 Installing
 ----------
-install the requirements by run::
+install the requirements by running:
 
-    conda install --file requirements.txt
+    pip install -r requirements.txt
 
-Using Migrant
-_____________
-To run the migrant script please provide <url> parameter.
 
-Supported url formats:
+Using Migrate Script
+____________________
+To run the migration script please provide a valid <path> for mlflow projects.
 
-- Local Computer : ``file://path_to_store``
+Supported paths:
+
+- Local Computer : ``file://path_to_mlruns_folder``
 - SQLAlchemy database URI (e.g. ``<dialect>+<driver>://<username>:<password>@<host>:<port>/<database>`` )
-- mlflow tracking UI host address (e.g. ``http://<IP>:<PORT>`` )
+- mlflow tracking UI server address (e.g. ``http://<IP>:<PORT>`` )
 
 Run::
 
-    python trains_immigration.py <url>
+    python trains_immigration.py <path
 
-Options
-_______
-``-a`` or ``--analysis`` - Printing migration CPU usage for analysis.
 
 Important Notes
 ---------------
-- According to MLflow tracking UI migration -  artifacts migration from remote computer unsupported, only from storage server (e.g. S3).
-- If the <url> parameter in illegal format the script will stop running.
-- MLflow tags (e.g., "estimator_class" etc.) will be recorded in Trains configuration tab under "MLflow Tags" attribute.
-- The migrated experiments will be named by mlflow run-uuid number. If the experiments got new names before migration the names will be migrated only in local migration or database migration (exclude HTTP migration).
+- Migrating artifacts from remote HTTP server is only supported if artifacts are stored in an external storage (e.g. S3) and not locally.
+- MLflow tags (e.g., "estimator_class" etc.) will be recorded in Trains configuration tab under "MLflow Tags" section.
+- Custom MLFlow project names (not run-uuid) won't be reocrded when migrating from a remote HTTP server (MLFlow API limitation)

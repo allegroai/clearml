@@ -139,9 +139,9 @@ def main(path, analysis):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Emigration from Mflow to Trains")
+    parser = argparse.ArgumentParser(description="Migration from Mflow to Trains")
     parser.add_argument(
-        "Path", metavar="path", type=str, help="the path/address to mlruns directory"
+        "Path", metavar="path", type=str, help="path or address to MLFlow server (mlruns folder on local machine)"
     )
 
     parser.add_argument(

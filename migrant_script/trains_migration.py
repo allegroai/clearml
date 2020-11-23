@@ -96,7 +96,7 @@ def main(path, analysis):
     project_indicator = False;
     project_list = Task.get_projects()
     for project in project_list:
-        if project.name == "mlflow_migrant":
+        if project.name == "mlflow migration":
             project_indicator = True;
             break;
 
@@ -129,12 +129,10 @@ def main(path, analysis):
     print_errors(error_list);
 
     if completed_migrations == 0:
-        print("Failed to migrate all the experiments")
-    elif completed_migrations == 1:
-        print("one experiment succeeded to migrate")
+        print("Failed to migrate experiments")
     else:
         print(completed_migrations, "experiments succeeded to migrate")
-    print("Link to the project: ", project_link)
+    print("Link to the migrated project: ", project_link)
     timer.print_times()
 
 

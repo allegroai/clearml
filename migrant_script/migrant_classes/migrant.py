@@ -5,6 +5,9 @@ from trains import Task
 from trains.model import ARCHIVED_TAG
 from tqdm import tqdm
 
+from global_variables import PROJECT_NAME
+
+
 class Migrant(ABC):
     """
         The ``Migrant`` class is a code template for a Migrant object which,
@@ -73,7 +76,7 @@ class Migrant(ABC):
         for id, path in self.paths:
             if self.project_exist:
                 task = self.call_func('Task.get_task', id,
-                                      lambda id_: Task.get_task(project_name="mlflow migration", task_name=id_),
+                                      lambda id_: Task.get_task(project_name=PROJECT_NAME, task_name=id_),
                                       id)
                 if task:
                     task_tags = task.data.system_tags if hasattr(task.data, 'system_tags') else task.data.tags
@@ -112,7 +115,7 @@ class Migrant(ABC):
                 self.ID_to_Name[id] = self.info[id][self.tags]["runName"]
 
             task = self.call_func('Task.create', id,
-                           lambda id_: Task.create(project_name="mlflow migration", task_name=id_),
+                           lambda id_: Task.create(project_name=PROJECT_NAME, task_name=id_),
                            self.get_run_name_by_id(id))
 
             self.call_func('transmit_information', id,
@@ -139,7 +142,7 @@ class Migrant(ABC):
     @abstractmethod
     def transmit_metrics(self, id):
         task = self.call_func('Task.get_task', id,
-                              lambda id_: Task.get_task(project_name="mlflow migration", task_name=id_),
+                              lambda id_: Task.get_task(project_name=PROJECT_NAME, task_name=id_),
                               self.get_run_name_by_id(id))
         logger = task.get_logger()
         metrics = self.get_metrics(id)
@@ -161,7 +164,7 @@ class Migrant(ABC):
             else {}
         )
         task = self.call_func('Task.get_task', id,
-                              lambda id_: Task.get_task(project_name="mlflow migration", task_name=id_),
+                              lambda id_: Task.get_task(project_name=PROJECT_NAME, task_name=id_),
                               self.get_run_name_by_id(id))
         for type, l in artifacts.items():
             if type == "folder":
@@ -191,7 +194,7 @@ class Migrant(ABC):
         tags = self.get_tags(id)
 
         task = self.call_func('Task.get_task', id,
-                              lambda id_: Task.get_task(project_name="mlflow migration", task_name=id_),
+                              lambda id_: Task.get_task(project_name=PROJECT_NAME, task_name=id_),
                               self.get_run_name_by_id(id))
 
         task_values = self.call_func('task.export_task', id,

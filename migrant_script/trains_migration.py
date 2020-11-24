@@ -6,8 +6,7 @@ import traceback
 
 from tqdm import tqdm
 
-
-
+from global_variables import *
 from migrant_classes.migrant_factory import MigrantFactory
 from trains import Task
 from concurrent.futures import ThreadPoolExecutor
@@ -142,10 +141,6 @@ if __name__ == "__main__":
         "Path", metavar="path", type=str, help="path or address to MLFlow server (mlruns folder on local machine)"
     )
 
-    parser.add_argument(
-        "-a","--analysis", help="print analysis information", action="store_true",default=False
-    )
-
     args = parser.parse_args()
 
-    main(args.Path, analysis = args.analysis)
+    main(args.Path, analysis = ANALYSIS)

@@ -118,11 +118,12 @@ class PatchLIGHTgbmModelIO(PatchBaseModelIO):
                 except Exception:
                     pass
             return callback
-        params, train_set = args
+        
         kwargs.setdefault("callbacks", []).append(trains_lightgbm_callback())
-        ret = original_fn(params, train_set, **kwargs)
+        ret = original_fn(*args, **kwargs)
         if not PatchLIGHTgbmModelIO.__main_task:
             return ret
+        params = args[0] if args else kwargs['params']
         for k, v in params.items():
             if isinstance(v, set):
                 params[k] = list(v)

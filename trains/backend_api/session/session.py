@@ -12,7 +12,7 @@ from six.moves.urllib.parse import urlparse, urlunparse
 
 from .callresult import CallResult
 from .defs import ENV_VERBOSE, ENV_HOST, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_WEB_HOST, \
-    ENV_FILES_HOST, ENV_OFFLINE_MODE
+    ENV_FILES_HOST, ENV_OFFLINE_MODE, ENV_TRAINS_NO_DEFAULT_SERVER
 from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
 from ..config import load
@@ -57,7 +57,8 @@ class Session(TokenManager):
     _client = [(__package__.partition(".")[0], __version__)]
 
     api_version = '2.1'
-    default_host = "https://demoapi.trains.allegro.ai"
+    default_demo_host = "https://demoapi.trains.allegro.ai"
+    default_host = default_demo_host
     default_web = "https://demoapp.trains.allegro.ai"
     default_files = "https://demofiles.trains.allegro.ai"
     default_key = "EGRTCO8JMSIGI6S39GTP43NFWXDQOW"
@@ -140,6 +141,11 @@ class Session(TokenManager):
         if not host:
             raise ValueError("host is required in init or config")
 
+        if ENV_TRAINS_NO_DEFAULT_SERVER.get() and host == self.default_demo_host:
+            raise ValueError(
+                "Configuration file or environment could not be located and default demo server is disabled"
+            )
+
         self._ssl_error_count_verbosity = self.config.get(
             "api.ssl_error_count_verbosity", self._ssl_error_count_verbosity)
 
@@ -148,6 +154,8 @@ class Session(TokenManager):
             "api.http.retries", ConfigTree()).as_plain_ordered_dict()
         http_retries_config["status_forcelist"] = self._retry_codes
         self.__http_session = get_http_session_with_retry(**http_retries_config)
+        self.__http_session.write_timeout = self._write_session_timeout
+        self.__http_session.request_size_threshold = self._write_session_data_size
 
         self.__worker = worker or self.get_worker_host_name()
 
@@ -341,9 +349,8 @@ class Session(TokenManager):
             raise ValueError("Expecting list, tuple or generator in 'data' or 'json'")
 
         if not data and not json:
-            raise ValueError(
-                "Missing data (data or json), batch requests are meaningless without it."
-            )
+            # Missing data (data or json), batch requests are meaningless without it.
+            return None
 
         headers = headers.copy() if headers else {}
         headers["Content-Type"] = "application/json-lines"
@@ -439,11 +446,12 @@ class Session(TokenManager):
                 headers=headers,
             )
             # TODO: handle multiple results in this case
-            try:
-                res = next(r for r in res if r.status_code != 200)
-            except StopIteration:
-                # all are 200
-                res = res[0]
+            if res is not None:
+                try:
+                    res = next(r for r in res if r.status_code != 200)
+                except StopIteration:
+                    # all are 200
+                    res = res[0]
         else:
             res = self.send_request(
                 service=req_obj._service,

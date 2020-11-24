@@ -35,3 +35,7 @@ def quote_url(url):
         return url
     parsed = parsed._replace(path=quote(parsed.path))
     return urlunparse(parsed)
+
+
+def encode_string_to_filename(text):
+    return quote(text, safe=" ")

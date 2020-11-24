@@ -3,7 +3,7 @@
 
 ## :confetti_ball: Now with Full ML/DL DevOps - See [TRAINS AGENT](https://github.com/allegroai/trains-agent) and [Services](https://github.com/allegroai/trains-server#trains-agent-services--)
 ## :station: [Documentation is here!](https://allegro.ai/docs) `wubba lubba dub dub` and a [Slack Channel](https://join.slack.com/t/allegroai-trains/shared_invite/enQtOTQyMTI1MzQxMzE4LTY5NTUxOTY1NmQ1MzQ5MjRhMGRhZmM4ODE5NTNjMTg2NTBlZGQzZGVkMWU3ZDg1MGE1MjQxNDEzMWU2NmVjZmY) :train2: 
-## Features: [AWS autoscaler wizard](https://allegro.ai/docs/examples/services/aws_autoscaler/aws_autoscaler/) :robot: [Hyper-Parameter Optimization](https://allegro.ai/docs/examples/optimization/hyper-parameter-optimization/examples_hyperparam_opt/) and :electric_plug: [Pipelines](https://github.com/allegroai/trains/blob/master/examples/automation/task_piping_example.py)
+## Features: [AWS autoscaler wizard](https://allegro.ai/docs/examples/services/aws_autoscaler/aws_autoscaler/) :robot: [Hyper-Parameter Optimization](https://allegro.ai/docs/examples/optimization/hyper-parameter-optimization/examples_hyperparam_opt/) and :electric_plug: [Pipeline Controllers](https://allegro.ai/docs/examples/pipeline/pipeline_controller/)
 
 "Because it’s a jungle out there"
 

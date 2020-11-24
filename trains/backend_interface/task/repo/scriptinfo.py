@@ -24,6 +24,7 @@ class ScriptInfoError(Exception):
 
 class ScriptRequirements(object):
     _max_requirements_size = 512 * 1024
+    _packages_remove_version = ('setuptools', )
 
     def __init__(self, root_folder):
         self._root_folder = root_folder
@@ -33,7 +34,8 @@ class ScriptRequirements(object):
         try:
             from ....utilities.pigar.reqs import get_installed_pkgs_detail
             from ....utilities.pigar.__main__ import GenerateReqs
-            installed_pkgs = get_installed_pkgs_detail()
+            installed_pkgs = self._remove_package_versions(
+                get_installed_pkgs_detail(), self._packages_remove_version)
             gr = GenerateReqs(save_path='', project_path=self._root_folder, installed_pkgs=installed_pkgs,
                               ignores=['.git', '.hg', '.idea', '__pycache__', '.ipynb_checkpoints',
                                        'site-packages', 'dist-packages'])
@@ -122,11 +124,18 @@ class ScriptRequirements(object):
                     if not r.get('channel') or r.get('channel') == 'pypi':
                         continue
                     # check if we have it in our required packages
-                    name = r['name'].lower().replace('-', '_')
+                    name = r['name'].lower()
                     # hack support pytorch/torch different naming convention
                     if name == 'pytorch':
                         name = 'torch'
-                    k, v = reqs_lower.get(name, (None, None))
+                    k, v = None, None
+                    if name in reqs_lower:
+                        k, v = reqs_lower.get(name, (None, None))
+                    else:
+                        name = name.replace('-', '_')
+                        if name in reqs_lower:
+                            k, v = reqs_lower.get(name, (None, None))
+
                     if k and v is not None:
                         if v.version:
                             conda_requirements += '{0} {1} {2}\n'.format(k, '==', v.version)
@@ -206,6 +215,13 @@ class ScriptRequirements(object):
         return (requirements_txt if len(requirements_txt) < ScriptRequirements._max_requirements_size
                 else requirements_txt_packages_only,
                 conda_requirements)
+
+    @staticmethod
+    def _remove_package_versions(installed_pkgs, package_names_to_remove_version):
+        installed_pkgs = {k: (v[0], None if str(k) in package_names_to_remove_version else v[1])
+                          for k, v in installed_pkgs.items()}
+
+        return installed_pkgs
 
 
 class _JupyterObserver(object):
@@ -544,7 +560,8 @@ class ScriptInfo(object):
 
         try:
             # Use os.path.relpath as it calculates up dir movements (../)
-            entry_point = os.path.relpath(str(script_path), str(Path.cwd()))
+            entry_point = os.path.relpath(
+                str(script_path), str(cls._get_working_dir(repo_root, return_abs=True)))
         except ValueError:
             # Working directory not under repository root
             entry_point = script_path.relative_to(repo_root)
@@ -552,14 +569,41 @@ class ScriptInfo(object):
         return Path(entry_point).as_posix()
 
     @classmethod
-    def _get_working_dir(cls, repo_root):
+    def _cwd(cls):
+        # return the current working directory (solve for hydra changing it)
+        # check if running with hydra
+        if sys.modules.get('hydra'):
+            # noinspection PyBroadException
+            try:
+                # noinspection PyPackageRequirements
+                import hydra
+                return Path(hydra.utils.get_original_cwd()).absolute()
+            except Exception:
+                pass
+        return Path.cwd().absolute()
+
+    @classmethod
+    def _get_working_dir(cls, repo_root, return_abs=False):
+        # get the repository working directory (might be different from actual cwd)
         repo_root = Path(repo_root).absolute()
+        cwd = cls._cwd()
 
         try:
-            return Path.cwd().relative_to(repo_root).as_posix()
+            # do not change: test if we are under the repo root folder, it will throw an exception if we are not
+            relative = cwd.relative_to(repo_root).as_posix()
+            return cwd.as_posix() if return_abs else relative
         except ValueError:
-            # Working directory not under repository root
-            return os.path.curdir
+            # Working directory not under repository root, default to repo root
+            return repo_root.as_posix() if return_abs else '.'
+
+    @classmethod
+    def _absolute_path(cls, file_path, cwd):
+        # return the absolute path, relative to a specific working directory (cwd)
+        file_path = Path(file_path)
+        if file_path.is_absolute():
+            return file_path.as_posix()
+        # Convert to absolute and squash 'path/../folder'
+        return os.path.abspath((Path(cwd).absolute() / file_path).as_posix())
 
     @classmethod
     def _get_script_code(cls, script_path):
@@ -573,12 +617,14 @@ class ScriptInfo(object):
         return ''
 
     @classmethod
-    def _get_script_info(cls, filepaths, check_uncommitted=True, create_requirements=True, log=None):
+    def _get_script_info(cls, filepaths, check_uncommitted=True, create_requirements=True, log=None,
+                         uncommitted_from_remote=False):
         jupyter_filepath = cls._get_jupyter_notebook_filename()
         if jupyter_filepath:
             scripts_path = [Path(os.path.normpath(jupyter_filepath)).absolute()]
         else:
-            scripts_path = [Path(os.path.normpath(f)).absolute() for f in filepaths if f]
+            cwd = cls._cwd()
+            scripts_path = [Path(cls._absolute_path(os.path.normpath(f), cwd)) for f in filepaths if f]
             if all(not f.is_file() for f in scripts_path):
                 raise ScriptInfoError(
                     "Script file {} could not be found".format(scripts_path)
@@ -607,7 +653,8 @@ class ScriptInfo(object):
         else:
             try:
                 for i, d in enumerate(scripts_dir):
-                    repo_info = plugin.get_info(str(d), include_diff=check_uncommitted)
+                    repo_info = plugin.get_info(
+                        str(d), include_diff=check_uncommitted, diff_from_remote=uncommitted_from_remote)
                     if not repo_info.is_empty():
                         script_dir = d
                         script_path = scripts_path[i]
@@ -681,13 +728,14 @@ class ScriptInfo(object):
                 script_requirements)
 
     @classmethod
-    def get(cls, filepaths=None, check_uncommitted=True, create_requirements=True, log=None):
+    def get(cls, filepaths=None, check_uncommitted=True, create_requirements=True, log=None,
+            uncommitted_from_remote=False):
         try:
             if not filepaths:
                 filepaths = [sys.argv[0], ]
             return cls._get_script_info(
                 filepaths=filepaths, check_uncommitted=check_uncommitted,
-                create_requirements=create_requirements, log=log)
+                create_requirements=create_requirements, log=log, uncommitted_from_remote=uncommitted_from_remote)
         except Exception as ex:
             if log:
                 log.warning("Failed auto-detecting task repository: {}".format(ex))

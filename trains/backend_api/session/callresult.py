@@ -52,16 +52,34 @@ class CallResult(object):
             self.__response_data = None
 
     @classmethod
+    def _make_raw_response(cls, request_cls=None, service=None, action=None, status_code=200, text=None):
+        service = service or (request_cls._service if request_cls else 'unknown')
+        action = action or (request_cls._action if request_cls else 'unknown')
+        return cls(request_cls=request_cls, meta=ResponseMeta.from_raw_data(
+            status_code=status_code, text=text, endpoint='%(service)s.%(action)s' % locals()))
+
+    @classmethod
     def from_result(cls, res, request_cls=None, logger=None, service=None, action=None, session=None):
         """ From requests result """
         response_cls = get_response_cls(request_cls)
+
+        if res is None:
+            return cls._make_raw_response(
+                request_cls=request_cls,
+                service=service,
+                action=action
+            )
+
         try:
             data = res.json()
         except ValueError:
-            service = service or (request_cls._service if request_cls else 'unknown')
-            action = action or (request_cls._action if request_cls else 'unknown')
-            return cls(request_cls=request_cls, meta=ResponseMeta.from_raw_data(
-                status_code=res.status_code, text=res.text, endpoint='%(service)s.%(action)s' % locals()))
+            return cls._make_raw_response(
+                request_cls=request_cls,
+                service=service,
+                action=action,
+                status_code=res.status_code,
+                text=res.text
+            )
         if 'meta' not in data:
             raise ValueError('Missing meta section in response payload')
         try:

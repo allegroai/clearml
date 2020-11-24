@@ -51,6 +51,7 @@ class Detector(object):
     """
 
     _fallback = '_fallback'
+    _remote = '_remote'
 
     @attr.s
     class Commands(object):
@@ -66,6 +67,10 @@ class Detector(object):
         # alternative commands
         branch_fallback = attr.ib(default=None, type=list)
         diff_fallback = attr.ib(default=None, type=list)
+        # remote commands
+        commit_remote = attr.ib(default=None, type=list)
+        diff_remote = attr.ib(default=None, type=list)
+        diff_fallback_remote = attr.ib(default=None, type=list)
 
     def __init__(self, type_name, name=None):
         self.type_name = type_name
@@ -75,17 +80,17 @@ class Detector(object):
         """ Returns a RepoInfo instance containing a command for each info attribute """
         return self.Commands()
 
-    def _get_command_output(self, path, name, command):
+    def _get_command_output(self, path, name, command, commands=None, strip=True):
         """ Run a command and return its output """
         try:
-            return get_command_output(command, path)
+            return get_command_output(command, path, strip=strip)
 
         except (CalledProcessError, UnicodeDecodeError) as ex:
             if not name.endswith(self._fallback):
-                fallback_command = attr.asdict(self._get_commands()).get(name + self._fallback)
+                fallback_command = attr.asdict(commands or self._get_commands()).get(name + self._fallback)
                 if fallback_command:
                     try:
-                        return get_command_output(fallback_command, path)
+                        return get_command_output(fallback_command, path, strip=strip)
                     except (CalledProcessError, UnicodeDecodeError):
                         pass
             _logger.warning("Can't get {} information for {} repo in {}".format(name, self.type_name, path))
@@ -97,11 +102,12 @@ class Detector(object):
             )
             return ""
 
-    def _get_info(self, path, include_diff=False):
+    def _get_info(self, path, include_diff=False, diff_from_remote=False):
         """
         Get repository information.
         :param path: Path to repository
         :param include_diff: Whether to include the diff command's output (if available)
+        :param diff_from_remote: Whether to store the remote diff/commit based on the remote commit (not local commit)
         :return: RepoInfo instance
         """
         path = str(path)
@@ -109,13 +115,40 @@ class Detector(object):
         if not include_diff:
             commands.diff = None
 
+        # skip the local commands
+        if diff_from_remote and commands:
+            for name, command in attr.asdict(commands).items():
+                if name.endswith(self._remote) and command:
+                    setattr(commands, name[:-len(self._remote)], None)
+
         info = Result(
             **{
-                name: self._get_command_output(path, name, command)
+                name: self._get_command_output(path, name, command, commands=commands, strip=bool(name != 'diff'))
                 for name, command in attr.asdict(commands).items()
-                if command and not name.endswith(self._fallback)
+                if command and not name.endswith(self._fallback) and not name.endswith(self._remote)
             }
         )
+
+        if diff_from_remote and commands:
+            for name, command in attr.asdict(commands).items():
+                if name.endswith(self._remote) and command:
+                    setattr(commands, name[:-len(self._remote)], command+[info.branch])
+
+            info = attr.assoc(
+                info,
+                **{
+                    name[:-len(self._remote)]: self._get_command_output(
+                        path, name[:-len(self._remote)], command + [info.branch],
+                        commands=commands, strip=name.startswith('diff'))
+                    for name, command in attr.asdict(commands).items()
+                    if command and (
+                            name.endswith(self._remote) and
+                            not name[:-len(self._remote)].endswith(self._fallback)
+                    )
+                }
+            )
+            # make sure we match the modified with the git remote diff state
+            info.modified = bool(info.diff)
 
         return info
 
@@ -123,14 +156,15 @@ class Detector(object):
         # check if there are uncommitted changes in the current repository
         return info
 
-    def get_info(self, path, include_diff=False):
+    def get_info(self, path, include_diff=False, diff_from_remote=False):
         """
         Get repository information.
         :param path: Path to repository
         :param include_diff: Whether to include the diff command's output (if available)
+        :param diff_from_remote: Whether to store the remote diff/commit based on the remote commit (not local commit)
         :return: RepoInfo instance
         """
-        info = self._get_info(path, include_diff)
+        info = self._get_info(path, include_diff, diff_from_remote=diff_from_remote)
         return self._post_process_info(info)
 
     def _is_repo_type(self, script_path):
@@ -200,6 +234,9 @@ class GitDetector(Detector):
             modified=["git", "ls-files", "-m"],
             branch_fallback=["git", "rev-parse", "--abbrev-ref", "HEAD"],
             diff_fallback=["git", "diff"],
+            diff_remote=["git", "diff", "--submodule=diff", ],
+            commit_remote=["git", "rev-parse", ],
+            diff_fallback_remote=["git", "diff", ],
         )
 
     def _post_process_info(self, info):
@@ -234,7 +271,7 @@ class EnvDetector(Detector):
         except Exception:
             return Path.cwd()
 
-    def _get_info(self, _, include_diff=False):
+    def _get_info(self, _, include_diff=False, diff_from_remote=None):
         repository_url = VCS_REPOSITORY_URL.get()
 
         if not repository_url:

@@ -7,6 +7,7 @@ import sys
 import threading
 import time
 from argparse import ArgumentParser
+from operator import attrgetter
 from tempfile import mkstemp, mkdtemp
 from zipfile import ZipFile, ZIP_DEFLATED
 
@@ -16,7 +17,7 @@ try:
 except ImportError:
     from collections import Sequence as CollectionsSequence
 
-from typing import Optional, Union, Mapping, Sequence, Any, Dict, Iterable, TYPE_CHECKING
+from typing import Optional, Union, Mapping, Sequence, Any, Dict, Iterable, TYPE_CHECKING, Callable
 
 import psutil
 import six
@@ -35,19 +36,22 @@ from .binding.absl_bind import PatchAbsl
 from .binding.artifacts import Artifacts, Artifact
 from .binding.environ_bind import EnvironmentBind, PatchOsFork
 from .binding.frameworks.fastai_bind import PatchFastai
+from .binding.frameworks.lightgbm_bind import PatchLIGHTgbmModelIO
 from .binding.frameworks.pytorch_bind import PatchPyTorchModelIO
 from .binding.frameworks.tensorflow_bind import TensorflowBinding
 from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
 from .binding.joblib_bind import PatchedJoblib
 from .binding.matplotlib_bind import PatchedMatplotlib
+from .binding.hydra_bind import PatchHydra
 from .config import config, DEV_TASK_NO_REUSE, get_is_master_node
 from .config import running_remotely, get_remote_task_id
 from .config.cache import SessionCache
 from .debugging.log import LoggerRoot
 from .errors import UsageError
 from .logger import Logger
-from .model import Model, InputModel, OutputModel, ARCHIVED_TAG
+from .model import Model, InputModel, OutputModel
 from .task_parameters import TaskParameters
+from .utilities.config import verify_basic_value
 from .utilities.args import argparser_parseargs_called, get_argparser_last_args, \
     argparser_update_currenttask
 from .utilities.dicts import ReadOnlyDict, merge_dicts
@@ -159,6 +163,7 @@ class Task(_Task):
         self._detect_repo_async_thread = None
         self._resource_monitor = None
         self._calling_filename = None
+        self._remote_functions_generated = {}
         # register atexit, so that we mark the task as stopped
         self._at_exit_called = False
 
@@ -185,6 +190,7 @@ class Task(_Task):
         auto_connect_arg_parser=True,  # type: Union[bool, Mapping[str, bool]]
         auto_connect_frameworks=True,  # type: Union[bool, Mapping[str, bool]]
         auto_resource_monitoring=True,  # type: bool
+        auto_connect_streams=True,  # type: Union[bool, Mapping[str, bool]]
     ):
         # type: (...) -> Task
         """
@@ -333,7 +339,7 @@ class Task(_Task):
             .. code-block:: py
 
                auto_connect_frameworks={'matplotlib': True, 'tensorflow': True, 'pytorch': True,
-                    'xgboost': True, 'scikit': True}
+                    'xgboost': True, 'scikit': True, 'fastai': True, 'lightgbm': True, 'hydra': True}
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
             These plots appear in in the **Trains Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab,
@@ -343,6 +349,25 @@ class Task(_Task):
 
             - ``True`` - Automatically create resource monitoring plots. (default)
             - ``False`` - Do not automatically create.
+            - Class Type - Create ResourceMonitor object of the specified class type.
+
+        :param auto_connect_streams: Control the automatic logging of stdout and stderr
+
+            The values are:
+
+            - ``True`` - Automatically connect (default)
+            -  ``False`` - Do not automatically connect
+            - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of stdout and
+              stderr. The dictionary keys are 'stdout' , 'stderr' and 'logging', the values are booleans.
+              Keys missing from the dictionary default to ``False``, and an empty dictionary defaults to ``False``.
+              Notice, the default behaviour is logging stdout/stderr the
+              `logging` module is logged as a by product of the stderr logging
+
+            For example:
+
+            .. code-block:: py
+
+               auto_connect_streams={'stdout': True, 'stderr': True`, 'logging': False}
 
         :return: The main execution Task (Task context).
         """
@@ -384,7 +409,7 @@ class Task(_Task):
                 # create a new logger (to catch stdout/err)
                 cls.__main_task._logger = None
                 cls.__main_task.__reporter = None
-                cls.__main_task.get_logger()
+                cls.__main_task._get_logger(auto_connect_streams=auto_connect_streams)
                 cls.__main_task._artifacts_manager = Artifacts(cls.__main_task)
                 # unregister signal hooks, they cause subprocess to hang
                 # noinspection PyProtectedMember
@@ -447,7 +472,8 @@ class Task(_Task):
                         continue_last_task=continue_last_task,
                         detect_repo=False if (
                                 isinstance(auto_connect_frameworks, dict) and
-                                not auto_connect_frameworks.get('detect_repository', True)) else True
+                                not auto_connect_frameworks.get('detect_repository', True)) else True,
+                        auto_connect_streams=auto_connect_streams,
                     )
                     # set defaults
                     if cls._offline_mode:
@@ -488,6 +514,8 @@ class Task(_Task):
             PatchOsFork.patch_fork()
             if auto_connect_frameworks:
                 is_auto_connect_frameworks_bool = not isinstance(auto_connect_frameworks, dict)
+                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('hydra', True):
+                    PatchHydra.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('scikit', True):
                     PatchedJoblib.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('matplotlib', True):
@@ -501,8 +529,12 @@ class Task(_Task):
                     PatchXGBoostModelIO.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('fastai', True):
                     PatchFastai.update_current_task(task)
+                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('lightgbm', True):
+                    PatchLIGHTgbmModelIO.update_current_task(task)
             if auto_resource_monitoring and not is_sub_process_task_id:
-                task._resource_monitor = ResourceMonitor(
+                resource_monitor_cls = auto_resource_monitoring \
+                    if isinstance(auto_resource_monitoring, six.class_types) else ResourceMonitor
+                task._resource_monitor = resource_monitor_cls(
                     task, report_mem_used_per_process=not config.get(
                         'development.worker.report_global_mem_used', False))
                 task._resource_monitor.start()
@@ -533,7 +565,7 @@ class Task(_Task):
         # Make sure we start the logger, it will patch the main logging object and pipe all output
         # if we are running locally and using development mode worker, we will pipe all stdout to logger.
         # The logger will automatically take care of all patching (we just need to make sure to initialize it)
-        logger = task.get_logger()
+        logger = task._get_logger(auto_connect_streams=auto_connect_streams)
         # show the debug metrics page in the log, it is very convenient
         if not is_sub_process_task_id:
             if cls._offline_mode:
@@ -929,7 +961,9 @@ class Task(_Task):
             - argparse - An argparse object for parameters.
             - dict - A dictionary for parameters.
             - TaskParameters - A TaskParameters object.
-            - model - A model object for initial model warmup, or for model update/snapshot uploading.
+            - Model - A model object for initial model warmup, or for model update/snapshot uploading.
+            - Class type - A Class type, storing all class properties (excluding '_' prefix properties)
+            - Object - A class instance, storing all instance properties (excluding '_' prefix properties)
 
         :param str name: A section name associated with the connected object. Default: 'General'
             Currently only supported for `dict` / `TaskParameter` objects
@@ -941,13 +975,15 @@ class Task(_Task):
 
         :raise: Raise an exception on unsupported objects.
         """
-
+        # dispatching by match order
         dispatch = (
             (OutputModel, self._connect_output_model),
             (InputModel, self._connect_input_model),
             (ArgumentParser, self._connect_argparse),
             (dict, self._connect_dictionary),
             (TaskParameters, self._connect_task_parameters),
+            (type, self._connect_object),
+            (object, self._connect_object),
         )
 
         multi_config_support = Session.check_min_api_version('2.9')
@@ -1032,7 +1068,7 @@ class Task(_Task):
                     # noinspection PyProtectedMember
                     task._set_model_config(config_dict=config_dict)
 
-            if not running_remotely() or not self.is_main_task():
+            if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):
                 if multi_config_support:
                     self._set_configuration(
                         name=name, description=description, config_type='dictionary', config_dict=configuration)
@@ -1040,14 +1076,26 @@ class Task(_Task):
                     self._set_model_config(config_dict=configuration)
                 configuration = ProxyDictPostWrite(self, _update_config_dict, **configuration)
             else:
+                # noinspection PyBroadException
+                try:
+                    remote_configuration = self._get_configuration_dict(name=name) \
+                        if multi_config_support else self._get_model_config_dict()
+                except Exception:
+                    remote_configuration = None
+
+                if remote_configuration is None:
+                    LoggerRoot.get_base_logger().warning(
+                        "Could not retrieve remote configuration named \'{}\'\n"
+                        "Using default configuration: {}".format(name, str(configuration)))
+                    return configuration
+
                 configuration.clear()
-                configuration.update(self._get_configuration_dict(name=name) if multi_config_support
-                                     else self._get_model_config_dict())
+                configuration.update(remote_configuration)
                 configuration = ProxyDictPreWrite(False, False, **configuration)
             return configuration
 
         # it is a path to a local file
-        if not running_remotely() or not self.is_main_task():
+        if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):
             # check if not absolute path
             configuration_path = Path(configuration)
             if not configuration_path.is_file():
@@ -1104,7 +1152,7 @@ class Task(_Task):
             raise ValueError("connect_label_enumeration supports only `dict` type, "
                              "{} is not supported".format(type(enumeration)))
 
-        if not running_remotely() or not self.is_main_task():
+        if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):
             self.set_model_label_enumeration(enumeration)
         else:
             # pop everything
@@ -1279,6 +1327,8 @@ class Task(_Task):
         metadata=None,  # type: Optional[Mapping]
         delete_after_upload=False,  # type: bool
         auto_pickle=True,  # type: bool
+        preview=None,  # type: Any
+        wait_on_upload=False,  # type: bool
     ):
         # type: (...) -> bool
         """
@@ -1311,6 +1361,11 @@ class Task(_Task):
             pathlib2.Path, dict, pandas.DataFrame, numpy.ndarray, PIL.Image, url (string), local_file (string)
             the artifact_object will be pickled and uploaded as pickle file artifact (with file extension .pkl)
 
+        :param Any preview: The artifact preview
+
+        :param bool wait_on_upload: Whether or not the upload should be synchronous, forcing the upload to complete
+            before continuing.
+
         :return: The status of the upload.
 
         - ``True`` - Upload succeeded.
@@ -1319,8 +1374,8 @@ class Task(_Task):
         :raise: If the artifact object type is not supported, raise a ``ValueError``.
         """
         return self._artifacts_manager.upload_artifact(
-            name=name, artifact_object=artifact_object, metadata=metadata,
-            delete_after_upload=delete_after_upload, auto_pickle=auto_pickle)
+            name=name, artifact_object=artifact_object, metadata=metadata, delete_after_upload=delete_after_upload,
+            auto_pickle=auto_pickle, preview=preview, wait_on_upload=wait_on_upload)
 
     def get_models(self):
         # type: () -> Dict[str, Sequence[Model]]
@@ -1507,6 +1562,111 @@ class Task(_Task):
         """
         self._arguments.copy_from_dict(flatten_dictionary(dictionary))
 
+    def get_user_properties(self, value_only=False):
+        # type: (bool) -> Dict[str, Union[str, dict]]
+        """
+        Get user properties for this task.
+        Returns a dictionary mapping user property name to user property details dict.
+        :param value_only: If True, returned user property details will be a string representing the property value.
+        """
+        if not Session.check_min_api_version("2.9"):
+            self.log.info("User properties are not supported by the server")
+            return {}
+
+        section = "properties"
+
+        params = self._hyper_params_manager.get_hyper_params(
+            sections=[section], projector=attrgetter("value") if value_only else None
+        )
+
+        return dict(params.get(section, {}))
+
+    def set_user_properties(
+            self,
+            *iterables,  # type: Union[Mapping[str, Union[str, dict, None]], Iterable[dict]]
+            **properties  # type: Union[str, dict, None]
+    ):
+        # type: (...) -> bool
+        """
+        Set user properties for this task.
+        A user property ca contain the following fields (all of type string):
+            * name
+            * value
+            * description
+            * type
+
+        :param iterables: Properties iterables, each can be:
+            * A dictionary of string key (name) to either a string value (value) a dict (property details). If the value
+              is a dict, it must contain a "value" field. For example:
+
+            .. code-block:: py
+
+                {
+                  "property_name": {"description": "This is a user property", "value": "property value"},
+                  "another_property_name": {"description": "This is another user property", "value": "another value"},
+                  "yet_another_property_name": "some value"
+                }
+
+            * An iterable of dicts (each representing property details). Each dict must contain a "name" field and a
+              "value" field. For example:
+
+            .. code-block:: py
+
+                [
+                  {
+                    "name": "property_name",
+                    "description": "This is a user property",
+                    "value": "property value"
+                  },
+                  {
+                    "name": "another_property_name",
+                    "description": "This is another user property",
+                    "value": "another value"
+                  }
+                ]
+
+        :param properties: Additional properties keyword arguments. Key is the property name, and value can be
+            a string (property value) or a dict (property details). If the value is a dict, it must contain a "value"
+            field. For example:
+
+            .. code-block:: py
+
+                {
+                  "property_name": "string as property value",
+                  "another_property_name":
+                  {
+                    "type": "string",
+                    "description": "This is user property",
+                    "value": "another value"
+                  }
+                }
+        """
+        if not Session.check_min_api_version("2.9"):
+            self.log.info("User properties are not supported by the server")
+            return False
+
+        return self._hyper_params_manager.edit_hyper_params(
+            properties,
+            *iterables,
+            replace='none',
+            force_section="properties",
+        )
+
+    def delete_user_properties(self, *iterables):
+        # type: (Iterable[Union[dict, Iterable[str, str]]]) -> bool
+        """
+        Delete hyper-parameters for this task.
+        :param iterables: Hyper parameter key iterables. Each an iterable whose possible values each represent
+         a hyper-parameter entry to delete, value formats are:
+            * A dictionary containing a 'section' and 'name' fields
+            * An iterable (e.g. tuple, list etc.) whose first two items denote 'section' and 'name'
+        """
+        if not Session.check_min_api_version("2.9"):
+            self.log.info("User properties are not supported by the server")
+            return False
+
+        return self._hyper_params_manager.delete_hyper_params(*iterables)
+
     def set_base_docker(self, docker_cmd):
         # type: (str) -> ()
         """
@@ -1519,8 +1679,25 @@ class Task(_Task):
 
         super(Task, self).set_base_docker(docker_cmd)
 
+    def set_resource_monitor_iteration_timeout(self, seconds_from_start=1800):
+        # type: (float) -> bool
+        """
+        Set the ResourceMonitor maximum duration (in seconds) to wait until first scalar/plot is reported.
+        If timeout is reached without any reporting, the ResourceMonitor will start reporting machine statistics based
+        on seconds from Task start time (instead of based on iteration)
+
+        :param seconds_from_start: Maximum number of seconds to wait for scalar/plot reporting before defaulting
+            to machine statistics reporting based on seconds from experiment start time
+        :return: True if success
+        """
+        if not self._resource_monitor:
+            return False
+        self._resource_monitor.wait_for_first_iteration = seconds_from_start
+        self._resource_monitor.max_check_first_iteration = seconds_from_start
+        return True
+
     def execute_remotely(self, queue_name=None, clone=False, exit_process=True):
-        # type: (Optional[str], bool, bool) -> ()
+        # type: (Optional[str], bool, bool) -> Optional[Task]
         """
         If task is running locally (i.e., not by ``trains-agent``), then clone the Task and enqueue it for remote
         execution; or, stop the execution of the current Task, reset its state, and enqueue it. If ``exit==True``,
@@ -1547,10 +1724,12 @@ class Task(_Task):
             .. warning::
 
                 If ``clone==False``, then ``exit_process`` must be ``True``.
+
+        :return Task: return the task object of the newly generated remotely excuting task
         """
         # do nothing, we are running remotely
-        if running_remotely():
-            return
+        if running_remotely() and self.is_main_task():
+            return None
 
         if not clone and not exit_process:
             raise ValueError(
@@ -1580,13 +1759,96 @@ class Task(_Task):
             Task.enqueue(task, queue_name=queue_name)
             LoggerRoot.get_base_logger().warning(
                 'Switching to remote execution, output log page {}'.format(task.get_output_log_web_page()))
+        else:
+            # Remove the development system tag
+            system_tags = [t for t in task.get_system_tags() if t != self._development_tag]
+            self.set_system_tags(system_tags)
 
         # leave this process.
         if exit_process:
             LoggerRoot.get_base_logger().warning('Terminating local execution process')
             exit(0)
 
-        return
+        return task
+
+    def create_function_task(self, func, func_name=None, task_name=None, **kwargs):
+        # type: (Callable, Optional[str], Optional[str], **Optional[Any]) -> Optional[Task]
+        """
+        Create a new task, and call ``func`` with the specified kwargs.
+        One can think of this call as remote forking, where the newly created instance is the new Task
+        calling the specified func with the appropriate kwargs and leave once the func terminates.
+        Notice that a remote executed function cannot create another child remote executed function.
+
+        .. note::
+            - Must be called from the main Task, i.e. the one created by Task.init(...)
+            - The remote Tasks inherits the environment from the creating Task
+            - In the remote Task, the entrypoint is the same as the creating Task
+            - In the remote Task, the execution is the same until reaching this function call
+
+        :param func: A function to execute remotely as a single Task.
+            On the remote executed Task the entry-point and the environment are copied from this
+            calling process, only this function call redirect the the execution flow to the called func,
+            alongside the passed arguments
+        :param func_name: A unique identifier of the function. Default the function name without the namespace.
+            For example Class.foo() becomes 'foo'
+        :param task_name: The newly create Task name. Default: the calling Task name + function name
+        :param kwargs: name specific arguments for the target function.
+            These arguments will appear under the configuration, "Function" section
+
+        :return Task: Return the newly created Task or None if running remotely and execution is skipped
+        """
+        if not self.is_main_task():
+            raise ValueError("Only the main Task object can call execute_function_remotely()")
+        if not callable(func):
+            raise ValueError("func must be callable")
+        if not Session.check_min_api_version('2.9'):
+            raise ValueError("Remote function execution is not supported, "
+                             "please upgrade to the latest server version")
+
+        func_name = str(func_name or func.__name__).strip()
+        if func_name in self._remote_functions_generated:
+            raise ValueError("Function name must be unique, a function by the name '{}' "
+                             "was already created by this Task.".format(func_name))
+
+        section_name = 'Function'
+        tag_name = 'func'
+        func_marker = '__func_readonly__'
+
+        # sanitize the dict, leave only basic types that we might want to override later in the UI
+        func_params = {k: v for k, v in kwargs.items() if verify_basic_value(v)}
+        func_params[func_marker] = func_name
+
+        # do not query if we are running locally, there is no need.
+        task_func_marker = self.running_locally() or self.get_parameter('{}/{}'.format(section_name, func_marker))
+
+        # if we are running locally or if we are running remotely but we are not a forked tasks
+        # condition explained:
+        # (1) running in development mode creates all the forked tasks
+        # (2) running remotely but this is not one of the forked tasks (i.e. it is missing the fork tag attribute)
+        if self.running_locally() or not task_func_marker:
+            self._wait_for_repo_detection(300)
+            task = self.clone(self, name=task_name or '{} <{}>'.format(self.name, func_name), parent=self.id)
+            task.set_system_tags((task.get_system_tags() or []) + [tag_name])
+            task.connect(func_params, name=section_name)
+            self._remote_functions_generated[func_name] = task.id
+            return task
+
+        # check if we are one of the generated functions and if this is us,
+        # if we are not the correct function, not do nothing and leave
+        if task_func_marker != func_name:
+            self._remote_functions_generated[func_name] = len(self._remote_functions_generated) + 1
+            return
+
+        # mark this is us:
+        self._remote_functions_generated[func_name] = self.id
+
+        # this is us for sure, let's update the arguments and call the function
+        self.connect(func_params, name=section_name)
+        func_params.pop(func_marker, None)
+        kwargs.update(func_params)
+        func(**kwargs)
+        # This is it, leave the process
+        exit(0)
 
     def wait_for_status(
             self,
@@ -1868,7 +2130,7 @@ class Task(_Task):
     @classmethod
     def _create_dev_task(
         cls, default_project_name, default_task_name, default_task_type,
-            reuse_last_task_id, continue_last_task=False, detect_repo=True,
+            reuse_last_task_id, continue_last_task=False, detect_repo=True,  auto_connect_streams=True
     ):
         if not default_project_name or not default_task_name:
             # get project name and task name from repository name and entry_point
@@ -1935,7 +2197,7 @@ class Task(_Task):
                             if hasattr(task.data.execution, 'artifacts') else None
                         if ((str(task._status) in (
                                 str(tasks.TaskStatusEnum.published), str(tasks.TaskStatusEnum.closed)))
-                                or task.output_model_id or (ARCHIVED_TAG in task_tags)
+                                or task.output_model_id or (cls.archived_tag in task_tags)
                                 or (cls._development_tag not in task_tags)
                                 or task_artifacts):
                             # If the task is published or closed, we shouldn't reset it so we can't use it in dev mode
@@ -1988,8 +2250,7 @@ class Task(_Task):
         task.reload()
 
         # force update of base logger to this current task (this is the main logger task)
-        task._setup_log(replace_existing=True)
-        logger = task.get_logger()
+        logger = task._get_logger(auto_connect_streams=auto_connect_streams)
         if closed_old_task:
             logger.report_text('TRAINS Task: Closing old development task id={}'.format(default_task.get('id')))
         # print warning, reusing/creating a task
@@ -2029,8 +2290,8 @@ class Task(_Task):
 
         return task
 
-    def _get_logger(self, flush_period=NotSet):
-        # type: (Optional[float]) -> Logger
+    def _get_logger(self, flush_period=NotSet, auto_connect_streams=False):
+        # type: (Optional[float], Union[bool, dict]) -> Logger
         """
         get a logger object for reporting based on the task
 
@@ -2046,10 +2307,15 @@ class Task(_Task):
             # do not recreate logger after task was closed/quit
             if self._at_exit_called:
                 raise ValueError("Cannot use Task Logger after task was closed")
-            # force update of base logger to this current task (this is the main logger task)
-            self._setup_log(replace_existing=self.is_main_task())
             # Get a logger object
-            self._logger = Logger(private_task=self)
+            self._logger = Logger(
+                private_task=self,
+                connect_stdout=(auto_connect_streams is True) or
+                               (isinstance(auto_connect_streams, dict) and auto_connect_streams.get('stdout', False)),
+                connect_stderr=(auto_connect_streams is True) or
+                               (isinstance(auto_connect_streams, dict) and auto_connect_streams.get('stderr', False)),
+                connect_logging=isinstance(auto_connect_streams, dict) and auto_connect_streams.get('logging', False),
+            )
             # make sure we set our reported to async mode
             # we make sure we flush it in self._at_exit
             self._reporter.async_enable = True
@@ -2160,7 +2426,7 @@ class Task(_Task):
                     if parsed_args is None and parser == _parser:
                         parsed_args = _parsed_args
 
-        if running_remotely() and self.is_main_task():
+        if running_remotely() and (self.is_main_task() or self._is_remote_main_task()):
             self._arguments.copy_to_parser(parser, parsed_args)
         else:
             self._arguments.copy_defaults_from_argparse(
@@ -2183,7 +2449,7 @@ class Task(_Task):
 
         self._try_set_connected_parameter_type(self._ConnectedParametersType.dictionary)
 
-        if not running_remotely() or not self.is_main_task():
+        if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):
             self._arguments.copy_from_dict(flatten_dictionary(dictionary), prefix=name)
             dictionary = ProxyDictPostWrite(self, _update_args_dict, **dictionary)
         else:
@@ -2197,7 +2463,7 @@ class Task(_Task):
     def _connect_task_parameters(self, attr_class, name=None):
         self._try_set_connected_parameter_type(self._ConnectedParametersType.task_parameters)
 
-        if running_remotely() and self.is_main_task():
+        if running_remotely() and (self.is_main_task() or self._is_remote_main_task()):
             parameters = self.get_parameters()
             if not name:
                 attr_class.update_from_dict(parameters)
@@ -2207,6 +2473,28 @@ class Task(_Task):
         else:
             self.set_parameters(attr_class.to_dict(), __parameters_prefix=name)
         return attr_class
+
+    def _connect_object(self, an_object, name=None):
+        def verify_type(key, value):
+            if str(key).startswith('_') or not isinstance(value, self._parameters_allowed_types):
+                return False
+            # verify everything is json able (i.e. basic types)
+            try:
+                json.dumps(value)
+                return True
+            except TypeError:
+                return False
+
+        a_dict = {k: v for k, v in an_object.__dict__.items() if verify_type(k, v)}
+        if running_remotely() and (self.is_main_task() or self._is_remote_main_task()):
+            a_dict = self._connect_dictionary(a_dict, name)
+            for k, v in a_dict.items():
+                if getattr(an_object, k, None) != a_dict[k]:
+                    setattr(an_object, k, v)
+
+            return an_object
+        else:
+            return self._connect_dictionary(a_dict, name)
 
     def _validate(self, check_output_dest_credentials=False):
         if running_remotely():

@@ -166,7 +166,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
 
     def update(self, model_file=None, design=None, labels=None, name=None, comment=None, tags=None,
                task_id=None, project_id=None, parent_id=None, uri=None, framework=None,
-               upload_storage_uri=None, target_filename=None, iteration=None):
+               upload_storage_uri=None, target_filename=None, iteration=None, system_tags=None):
         """ Update model weights file and various model properties """
 
         if self.id is None:
@@ -189,6 +189,9 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         task = task_id or self.data.task
         project = project_id or self.data.project
         parent = parent_id or self.data.parent
+        tags = tags or self.data.tags
+        if Session.check_min_api_version('2.3'):
+            system_tags = system_tags or self.data.system_tags
 
         self._edit(
             uri=uri,
@@ -201,15 +204,17 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             task=task,
             project=project,
             parent=parent,
+            tags=tags,
+            system_tags=system_tags,
         )
 
     def edit(self, design=None, labels=None, name=None, comment=None, tags=None,
-             uri=None, framework=None, iteration=None):
+             uri=None, framework=None, iteration=None, system_tags=None):
         return self._edit(design=design, labels=labels, name=name, comment=comment, tags=tags,
-                          uri=uri, framework=framework, iteration=iteration)
+                          uri=uri, framework=framework, iteration=iteration, system_tags=system_tags)
 
     def _edit(self, design=None, labels=None, name=None, comment=None, tags=None,
-              uri=None, framework=None, iteration=None, **extra):
+              uri=None, framework=None, iteration=None, system_tags=None, **extra):
         def offline_store(**kwargs):
             for k, v in kwargs.items():
                 setattr(self.data, k, v or getattr(self.data, k, None))
@@ -218,9 +223,16 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             return offline_store(design=design, labels=labels, name=name, comment=comment, tags=tags,
                                  uri=uri, framework=framework, iteration=iteration, **extra)
 
-        if tags:
-            extra.update({'system_tags': tags or self.data.system_tags}
-                         if hasattr(self.data, 'system_tags') else {'tags': tags or self.data.tags})
+        if Session.check_min_api_version('2.3'):
+            if tags is not None:
+                extra.update({'tags': tags})
+            if system_tags is not None:
+                extra.update({'system_tags': system_tags})
+        elif tags is not None or system_tags is not None:
+            if tags and system_tags:
+                system_tags = system_tags[:]
+                system_tags += [t for t in tags if t not in system_tags]
+            extra.update({'system_tags': system_tags or tags or self.data.system_tags})
 
         self.send(models.EditRequest(
             model=self.id,

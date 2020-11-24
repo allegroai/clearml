@@ -11,9 +11,10 @@ from plotly.subplots import make_subplots
 from attr import attrib, attrs
 from typing import Sequence, Optional, Mapping, Callable, Any, Union
 
-from trains import Task
-from trains.automation import TrainsJob
-from trains.model import BaseModel
+from ..task import Task
+from ..automation import TrainsJob
+from ..model import BaseModel
+from ..utilities.plotly_reporter import create_plotly_table
 
 
 class PipelineController(object):
@@ -43,7 +44,7 @@ class PipelineController(object):
             pool_frequency=0.2,  # type: float
             default_execution_queue=None,  # type: Optional[str]
             pipeline_time_limit=None,  # type: Optional[float]
-            auto_connect_task=True,  # type: bool
+            auto_connect_task=True,  # type: Union[bool, Task]
             always_create_task=False,  # type: bool
             add_pipeline_tags=False,  # type: bool
     ):
@@ -56,11 +57,12 @@ class PipelineController(object):
         :param float pipeline_time_limit: The maximum time (minutes) for the entire pipeline process. The
             default is ``None``, indicating no time limit.
         :param bool auto_connect_task: Store pipeline arguments and configuration in the Task
-            - ``True`` - The pipeline argument and configuration will be stored in the Task. All arguments will
-              be under the hyper-parameter section as ``opt/<arg>``, and the hyper_parameters will stored in the
-              Task ``connect_configuration`` (see artifacts/hyper-parameter).
+            - ``True`` - The pipeline argument and configuration will be stored in the current Task. All arguments will
+              be under the hyper-parameter section ``Pipeline``, and the pipeline DAG will be stored as a
+              Task configuration object named ``Pipeline``.
 
             - ``False`` - Do not store with Task.
+            - ``Task`` - A specific Task object to connect the pipeline with.
         :param bool always_create_task: Always create a new Task
             - ``True`` - No current Task initialized. Create a new task named ``Pipeline`` in the ``base_task_id``
               project.
@@ -79,7 +81,7 @@ class PipelineController(object):
         self._stop_event = None
         self._experiment_created_cb = None
         self._add_pipeline_tags = add_pipeline_tags
-        self._task = Task.current_task()
+        self._task = auto_connect_task if isinstance(auto_connect_task, Task) else Task.current_task()
         self._step_ref_pattern = re.compile(self._step_pattern)
         if not self._task and always_create_task:
             self._task = Task.init(
@@ -91,7 +93,7 @@ class PipelineController(object):
         # make sure all the created tasks are our children, as we are creating them
         if self._task:
             self._task.add_tags([self._tag])
-            self._auto_connect_task = auto_connect_task
+            self._auto_connect_task = bool(auto_connect_task)
 
     def add_step(
             self,
@@ -362,7 +364,7 @@ class PipelineController(object):
         return True
 
     def _verify_node(self, node):
-        # type: (Node) -> bool
+        # type: (PipelineController.Node) -> bool
         """
         Raise ValueError on verification errors
 
@@ -407,7 +409,7 @@ class PipelineController(object):
         return not bool(set(self._nodes.keys()) - visited)
 
     def _launch_node(self, node):
-        # type: (Node) -> ()
+        # type: (PipelineController.Node) -> ()
         """
         Launch a single node (create and enqueue a TrainsJob)
 
@@ -446,7 +448,8 @@ class PipelineController(object):
             source=[],
             target=[],
             value=[],
-            hovertemplate='%{target.label}<extra></extra>',
+            # hovertemplate='%{target.label}<extra></extra>',
+            hovertemplate='<extra></extra>',
         )
         visited = []
         node_params = []
@@ -466,7 +469,8 @@ class PipelineController(object):
                 #     '<br />'.join('{}: {}'.format(k, v) for k, v in (node.parameters or {}).items()))
                 sankey_node['label'].append(
                     '{}<br />'.format(node.name) +
-                    '<br />'.join('{}: {}'.format(k, v) for k, v in (node.parameters or {}).items()))
+                    '<br />'.join('{}: {}'.format(k, v if len(str(v)) < 24 else (str(v)[:24]+' ...'))
+                                  for k, v in (node.parameters or {}).items()))
                 sankey_node['color'].append(
                     ("blue" if not node.job or not node.job.is_failed() else "red")
                     if node.executed is not None else ("green" if node.job else "lightsteelblue"))
@@ -479,46 +483,64 @@ class PipelineController(object):
             nodes = next_nodes
 
         # make sure we have no independent (unconnected) nodes
+        single_nodes = []
         for i in [n for n in range(len(visited)) if n not in sankey_link['source'] and n not in sankey_link['target']]:
-            sankey_link['source'].append(i)
-            sankey_link['target'].append(i)
-            sankey_link['value'].append(0.1)
+            single_nodes.append(i)
 
-        fig = make_subplots(
-            rows=2, cols=1,
-            shared_xaxes=True,
-            vertical_spacing=0.03,
-            specs=[[{"type": "table"}],
-                   [{"type": "sankey"}], ]
-        )
-        # noinspection PyUnresolvedReferences
-        fig.add_trace(
-            go.Sankey(
-                node=sankey_node, link=sankey_link, textfont=dict(color='rgba(0,0,0,0)', size=1)
-            ),
-            row=1, col=1
-        )
-        # noinspection PyUnresolvedReferences
-        fig.add_trace(
-            go.Table(
-                header=dict(
-                    values=["Pipeline Step", "Task ID", "Parameters"],
-                    align="left",
-                ),
-                cells=dict(
-                    values=[visited,
-                            [self._nodes[v].executed or (self._nodes[v].job.task_id() if self._nodes[v].job else '')
-                             for v in visited],
-                            [str(p) for p in node_params]],
-                    align="left")
-            ),
-            row=2, col=1
+        # create the sankey graph
+        dag_flow = go.Sankey(
+            node=sankey_node, link=sankey_link, textfont=dict(color='rgba(0,0,0,0)', size=1)
         )
 
-        # fig = go.Figure(data=[go.Sankey(
-        #     node=sankey_node, link=sankey_link, textfont=dict(color='rgba(0,0,0,0)', size=1))],)
+        # create the detailed parameter table
+        table_values = [["Pipeline Step", "Task ID", "Parameters"]]
+        table_values += [
+            [v, self._nodes[v].executed or (self._nodes[v].job.task_id() if self._nodes[v].job else ''), str(n)]
+            for v, n in zip(visited, node_params)]
+
+        # hack, show single node sankey
+        if single_nodes:
+            singles_flow = go.Scatter(
+                    x=list(range(len(single_nodes))), y=[1]*len(single_nodes),
+                    text=[v for i, v in enumerate(sankey_node['label']) if i in single_nodes],
+                    mode='markers',
+                    hovertemplate="%{text}<extra></extra>",
+                    marker=dict(
+                        color=[v for i, v in enumerate(sankey_node['color']) if i in single_nodes],
+                        size=[40]*len(single_nodes),
+                    ),
+                    showlegend=False,
+                )
+            # only single nodes
+            if len(single_nodes) == len(sankey_node['label']):
+                fig = go.Figure(singles_flow)
+            else:
+                # both single nodes and DAG
+                fig = make_subplots(
+                    rows=2, cols=1,
+                    row_heights=[4, 1],
+                    shared_xaxes=False,
+                    vertical_spacing=0.03,
+                    specs=[[{"type": "sankey"}],
+                           [{"type": "xy"}]]
+                )
+                fig.add_trace(dag_flow, row=1, col=1)
+                fig.add_trace(singles_flow, row=2, col=1)
+        else:
+            # create the sankey plot
+            fig = go.Figure(dag_flow)
+
+        # remove background and axis (for scatter)
+        fig.layout.template.layout.plot_bgcolor = None
+        fig.layout.xaxis.visible = False
+        fig.layout.yaxis.visible = False
+
+        # report DAG
         self._task.get_logger().report_plotly(
-            title='Pipeline', series='execution flow', iteration=0, figure=fig)
+            title='Pipeline', series='Execution Flow', iteration=0, figure=fig)
+        # report detailed table
+        self._task.get_logger().report_table(
+            title='Pipeline Details', series='Execution Details', iteration=0, table_plot=table_values)
 
     def _force_task_configuration_update(self):
         pipeline_dag = self._serialize()
@@ -618,7 +640,7 @@ class PipelineController(object):
                 pass
 
     def __verify_step_reference(self, node, step_ref_string):
-        # type: (Node, str) -> bool
+        # type: (PipelineController.Node, str) -> bool
         """
         Verify the step reference. For example "${step1.parameters.Args/param}"
         :param Node node: calling reference node (used for logging)

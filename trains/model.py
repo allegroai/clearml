@@ -26,8 +26,6 @@ from .config import running_remotely, get_cache_dir
 if TYPE_CHECKING:
     from .task import Task
 
-ARCHIVED_TAG = "archived"
-
 
 class Framework(Options):
     """
@@ -48,6 +46,7 @@ class Framework(Options):
     paddlepaddle = 'PaddlePaddle'
     scikitlearn = 'ScikitLearn'
     xgboost = 'XGBoost'
+    lightgbm = 'LightGBM'
     parquet = 'Parquet'
 
     __file_extensions_mapping = {
@@ -76,7 +75,7 @@ class Framework(Options):
         '.cfg': (darknet, ),
         '__model__': (paddlepaddle, ),
         '.pkl': (scikitlearn, keras, xgboost),
-        '.parquet': (parquet),
+        '.parquet': (parquet, ),
     }
 
     @classmethod
@@ -89,7 +88,7 @@ class Framework(Options):
                 if frameworks and filename.endswith(ext):
                     fw = framework_selector(frameworks)
                     if fw:
-                        return (fw, ext)
+                        return fw, ext
 
         # If no framework, try finding first framework matching the extension, otherwise (or if no match) try matching
         # the given extension to the given framework. If no match return an empty extension
@@ -102,6 +101,8 @@ class Framework(Options):
 
 @six.add_metaclass(abc.ABCMeta)
 class BaseModel(object):
+    # noinspection PyProtectedMember
+    _archived_tag = _Task.archived_tag
     _package_tag = "package"
 
     @property
@@ -177,6 +178,29 @@ class BaseModel(object):
         self._get_base_model().update(tags=value)
 
     @property
+    def system_tags(self):
+        # type: () -> List[str]
+        """
+        A list of system tags describing the model.
+
+        :return: The list of tags.
+        """
+        data = self._get_model_data()
+        return data.system_tags if Session.check_min_api_version('2.3') else data.tags
+
+    @system_tags.setter
+    def system_tags(self, value):
+        # type: (List[str]) -> None
+        """
+        Set the list of system tags describing the model.
+
+        :param value: The tags.
+
+        :type value: list(str)
+        """
+        self._get_base_model().update(system_tags=value)
+
+    @property
     def config_text(self):
         # type: () -> str
         """
@@ -184,6 +208,7 @@ class BaseModel(object):
 
         :return: The configuration.
         """
+        # noinspection PyProtectedMember
         return _Model._unwrap_design(self._get_model_data().design)
 
     @property
@@ -210,11 +235,11 @@ class BaseModel(object):
 
     @property
     def task(self):
-        # type: () -> str
+        # type: () -> _Task
         """
-        Return the creating task id (str)
+        Return the creating task object
 
-        :return: The Task ID.
+        :return: The Task object.
         """
         return self._task or self._get_base_model().task
 
@@ -275,7 +300,7 @@ class BaseModel(object):
         :return: The model weights, or a list of the locally stored filenames.
         """
         # check if model was packaged
-        if self._package_tag not in self._get_model_data().tags:
+        if not self._is_package():
             raise ValueError('Model is not packaged')
 
         # download packaged model
@@ -331,9 +356,12 @@ class BaseModel(object):
         pass
 
     def _set_package_tag(self):
-        if self._package_tag not in self.tags:
-            self.tags.append(self._package_tag)
-            self._get_base_model().edit(tags=self.tags)
+        if self._package_tag not in self.system_tags:
+            self.system_tags.append(self._package_tag)
+            self._get_base_model().edit(system_tags=self.system_tags)
+
+    def _is_package(self):
+        return self._package_tag in (self.system_tags or [])
 
     @staticmethod
     def _config_dict_to_text(config):
@@ -390,7 +418,7 @@ class Model(BaseModel):
 
         :return: A local path to the model (or a downloaded copy of it).
         """
-        if extract_archive and self._package_tag in self.tags:
+        if extract_archive and self._is_package():
             return self.get_weights_package(return_path=True, raise_on_error=raise_on_error)
         return self.get_weights(raise_on_error=raise_on_error)
 
@@ -419,6 +447,7 @@ class InputModel(Model):
     We can connect the model to a task as input model, then when running remotely override it with the UI.
     """
 
+    # noinspection PyProtectedMember
     _EMPTY_MODEL_ID = _Model._EMPTY_MODEL_ID
 
     @classmethod
@@ -485,7 +514,7 @@ class InputModel(Model):
         :param tags: The list of tags which describe the model. (Optional)
         :type tags: list(str)
         :param str comment: A comment / description for the model. (Optional)
-        :type comment str:
+        :type comment: str
         :param is_package: Is the imported weights file is a package (Optional)
 
             - ``True`` - Is a package. Add a package tag to the model.
@@ -509,8 +538,9 @@ class InputModel(Model):
         # convert local to file to remote one
         weights_url = CacheManager.get_remote_url(weights_url)
 
-        extra = {'system_tags': ["-" + ARCHIVED_TAG]} \
-            if Session.check_min_api_version('2.3') else {'tags': ["-" + ARCHIVED_TAG]}
+        extra = {'system_tags': ["-" + cls.archived_tag]} \
+            if Session.check_min_api_version('2.3') else {'tags': ["-" + cls.archived_tag]}
+        # noinspection PyProtectedMember
         result = _Model._get_default_session().send(models.GetAllRequest(
             uri=[weights_url],
             only_fields=["id", "name", "created"],
@@ -553,6 +583,7 @@ class InputModel(Model):
             task_id = None
 
         if not framework:
+            # noinspection PyProtectedMember
             framework, file_ext = Framework._get_file_ext(
                 framework=framework,
                 filename=weights_url
@@ -615,11 +646,13 @@ class InputModel(Model):
         weights_url = CacheManager.get_remote_url(weights_url)
 
         if not load_archived:
-            extra = {'system_tags': ["-" + ARCHIVED_TAG]} \
-                if Session.check_min_api_version('2.3') else {'tags': ["-" + ARCHIVED_TAG]}
+            # noinspection PyTypeChecker
+            extra = {'system_tags': ["-" + _Task.archived_tag]} \
+                if Session.check_min_api_version('2.3') else {'tags': ["-" + cls._archived_tag]}
         else:
             extra = {}
 
+        # noinspection PyProtectedMember
         result = _Model._get_default_session().send(models.GetAllRequest(
             uri=[weights_url],
             only_fields=["id", "name", "created"],
@@ -673,7 +706,9 @@ class InputModel(Model):
             upload_storage_uri=None,
             model_id=cls._EMPTY_MODEL_ID,
         )
+        # noinspection PyProtectedMember
         m._data.design = _Model._wrap_design(design)
+        # noinspection PyProtectedMember
         m._data.labels = label_enumeration
         return this_model
 
@@ -712,7 +747,8 @@ class InputModel(Model):
         """
         self._set_task(task)
 
-        if running_remotely() and task.input_model and task.is_main_task():
+        # noinspection PyProtectedMember
+        if running_remotely() and task.input_model and (task.is_main_task() or task._is_remote_main_task()):
             self._base_model = task.input_model
             self._base_model_id = task.input_model.id
         else:
@@ -722,13 +758,16 @@ class InputModel(Model):
             if model.id != self._EMPTY_MODEL_ID:
                 task.set_input_model(model_id=model.id)
             # only copy the model design if the task has no design to begin with
+            # noinspection PyProtectedMember
             if not self._task._get_model_config_text():
+                # noinspection PyProtectedMember
                 task._set_model_config(config_text=model.model_design)
             if not self._task.get_labels_enumeration():
                 task.set_model_label_enumeration(model.data.labels)
 
         # If there was an output model connected, it may need to be updated by
         # the newly connected input model
+        # noinspection PyProtectedMember
         self.task._reconnect_output_model()
 
 
@@ -774,6 +813,7 @@ class OutputModel(BaseModel):
 
         :return: The configuration.
         """
+        # noinspection PyProtectedMember
         return _Model._unwrap_design(self._get_model_data().design)
 
     @config_text.setter
@@ -906,6 +946,7 @@ class OutputModel(BaseModel):
 
         self._model_local_filename = None
         self._base_model = None
+        # noinspection PyProtectedMember
         self._floating_data = create_dummy_model(
             design=_Model._wrap_design(config_text),
             labels=label_enumeration or task.get_labels_enumeration(),
@@ -917,7 +958,9 @@ class OutputModel(BaseModel):
             upload_storage_uri=task.output_uri,
         )
         if base_model_id:
+            # noinspection PyBroadException
             try:
+                # noinspection PyProtectedMember
                 _base_model = self._task._get_output_model(model_id=base_model_id)
                 _base_model.update(
                     labels=self._floating_data.labels,
@@ -954,26 +997,33 @@ class OutputModel(BaseModel):
         if self._task != task:
             raise ValueError('Can only connect preexisting model to task, but this is a fresh model')
 
-        if running_remotely() and task.is_main_task():
+        # noinspection PyProtectedMember
+        if running_remotely() and (task.is_main_task() or task._is_remote_main_task()):
             if self._floating_data:
+                # noinspection PyProtectedMember
                 self._floating_data.design = _Model._wrap_design(self._task._get_model_config_text()) or \
                     self._floating_data.design
                 self._floating_data.labels = self._task.get_labels_enumeration() or \
                     self._floating_data.labels
             elif self._base_model:
+                # noinspection PyProtectedMember
                 self._base_model.update(design=_Model._wrap_design(self._task._get_model_config_text()) or
                                         self._base_model.design)
                 self._base_model.update(labels=self._task.get_labels_enumeration() or self._base_model.labels)
 
         elif self._floating_data is not None:
             # we copy configuration / labels if they exist, obviously someone wants them as the output base model
+            # noinspection PyProtectedMember
             design = _Model._unwrap_design(self._floating_data.design)
             if design:
+                # noinspection PyProtectedMember
                 if not task._get_model_config_text():
                     if not Session.check_min_api_version('2.9'):
                         design = self._floating_data.design
+                    # noinspection PyProtectedMember
                     task._set_model_config(config_text=design)
             else:
+                # noinspection PyProtectedMember
                 self._floating_data.design = _Model._wrap_design(self._task._get_model_config_text())
 
             if self._floating_data.labels:
@@ -981,6 +1031,7 @@ class OutputModel(BaseModel):
             else:
                 self._floating_data.labels = self._task.get_labels_enumeration()
 
+        # noinspection PyProtectedMember
         self.task._save_output_model(self)
 
     def set_upload_destination(self, uri):
@@ -1033,7 +1084,8 @@ class OutputModel(BaseModel):
         auto_delete_file=True,  # type: bool
         register_uri=None,  # type: Optional[str]
         iteration=None,  # type: Optional[int]
-        update_comment=True  # type: bool
+        update_comment=True,  # type: bool
+        is_package=False,  # type: bool
     ):
         # type: (...) -> str
         """
@@ -1061,6 +1113,7 @@ class OutputModel(BaseModel):
 
             - ``True`` - Update model comment (Default)
             - ``False`` - Do not update
+        :param bool is_package: Mark the weights file as compressed package, usually a zip file.
 
         :return: The uploaded URI.
         """
@@ -1099,6 +1152,7 @@ class OutputModel(BaseModel):
 
         # select the correct file extension based on the framework,
         # or update the framework based on the file extension
+        # noinspection PyProtectedMember
         framework, file_ext = Framework._get_file_ext(
             framework=self._get_model_data().framework,
             filename=target_filename or weights_filename or register_uri
@@ -1151,7 +1205,11 @@ class OutputModel(BaseModel):
         else:
             output_uri = None
 
+        if is_package:
+            self._set_package_tag()
+
         # make sure that if we are in dev move we report that we are training (not debugging)
+        # noinspection PyProtectedMember
         self._task._output_model_updated()
 
         return output_uri
@@ -1267,6 +1325,7 @@ class OutputModel(BaseModel):
             # update the model object (this will happen if we resumed a training task)
             result = self._get_force_base_model().edit(design=config_text)
         else:
+            # noinspection PyProtectedMember
             self._floating_data.design = _Model._wrap_design(config_text)
             result = Waitable()
 
@@ -1329,6 +1388,7 @@ class OutputModel(BaseModel):
         self._base_model = self._task.create_output_model()
         # update the model from the task inputs
         labels = self._task.get_labels_enumeration()
+        # noinspection PyProtectedMember
         config_text = self._task._get_model_config_text()
         parent = self._task.output_model_id or self._task.input_model_id
         self._base_model.update(

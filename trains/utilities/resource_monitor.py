@@ -26,8 +26,8 @@ class ResourceMonitor(object):
         self._sample_frequency = sample_frequency_per_sec
         self._report_frequency = report_frequency_sec
         self._first_report_sec = first_report_sec or report_frequency_sec
-        self._wait_for_first_iteration = wait_for_first_iteration_to_start_sec
-        self._max_check_first_iteration = max_wait_for_first_iteration_to_start_sec
+        self.wait_for_first_iteration = wait_for_first_iteration_to_start_sec
+        self.max_check_first_iteration = max_wait_for_first_iteration_to_start_sec
         self._num_readouts = 0
         self._readouts = {}
         self._previous_readouts = {}
@@ -104,11 +104,11 @@ class ResourceMonitor(object):
             if fallback_to_sec_as_iterations is None:
                 if IsTensorboardInit.tensorboard_used():
                     fallback_to_sec_as_iterations = False
-                elif seconds_since_started >= self._wait_for_first_iteration:
+                elif seconds_since_started >= self.wait_for_first_iteration:
                     self._task.get_logger().report_text('TRAINS Monitor: Could not detect iteration reporting, '
                                                         'falling back to iterations as seconds-from-start')
                     fallback_to_sec_as_iterations = True
-            elif fallback_to_sec_as_iterations is True and seconds_since_started <= self._max_check_first_iteration:
+            elif fallback_to_sec_as_iterations is True and seconds_since_started <= self.max_check_first_iteration:
                 if self._check_logger_reported():
                     fallback_to_sec_as_iterations = False
                     self._task.get_logger().report_text('TRAINS Monitor: Reporting detected, '

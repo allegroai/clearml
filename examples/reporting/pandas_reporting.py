@@ -29,14 +29,24 @@ def report_table(logger, iteration=0):
 
     # Report table - CSV from path
     csv_url = "https://raw.githubusercontent.com/plotly/datasets/master/Mining-BTC-180.csv"
-    logger.report_table("table csv", "remote csv", iteration=iteration, url=csv_url)
+    logger.report_table("table - csv", "remote csv", iteration=iteration, url=csv_url)
+
+    # Report table - Created with list of lists
+    logger.report_table("table - list of lists",
+                        "List of lists",
+                        iteration=iteration,
+                        table_plot=[
+                            ["Last Name", "First Name", "Age"],
+                            ["Doe", "John", "25"],
+                            ["Smith", "Peter", "30"],
+                        ])
 
 
 def main():
     # Create the experiment Task
-    task = Task.init(project_name="examples", task_name="pandas table reporting")
+    task = Task.init(project_name="examples", task_name="table reporting")
 
-    print('reporting pandas tablea into the plots section')
+    print('reporting pandas tables and python lists as tables into the plots section')
 
     # Get the task logger,
     # You can also call Task.current_task().get_logger() from anywhere in your code.

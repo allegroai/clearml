@@ -1,6 +1,7 @@
 import abc
 import hashlib
 import time
+from logging import getLevelName
 from multiprocessing import Lock
 
 import attr
@@ -130,6 +131,24 @@ class ScalarEvent(MetricsEventAdapter):
         return events.MetricsScalarEvent(
             value=self._value,
             **self._get_base_dict())
+
+
+class ConsoleEvent(MetricsEventAdapter):
+    """ Console log event adapter """
+
+    def __init__(self, message, level, worker, **kwargs):
+        self._value = str(message)
+        self._level = getLevelName(level) if isinstance(level, int) else str(level)
+        self._worker = worker
+        super(ConsoleEvent, self).__init__(metric=None, variant=None, iter=0, **kwargs)
+
+    def get_api_event(self):
+        return events.TaskLogEvent(
+            task=self._task,
+            timestamp=self._timestamp,
+            level=self._level,
+            worker=self._worker,
+            msg=self._value)
 
 
 class VectorEvent(MetricsEventAdapter):
@@ -301,7 +320,7 @@ class UploadEvent(MetricsEventAdapter):
             if output is None:
                 from ...debugging.log import LoggerRoot
                 LoggerRoot.get_base_logger().warning(
-                    'Skipping upload, could not find object file \'{}\''.format(output.as_posix()))
+                    'Skipping upload, could not find object file \'{}\''.format(self._local_image_path))
                 return None
 
         return self.FileEntry(

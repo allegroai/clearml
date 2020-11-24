@@ -117,7 +117,7 @@ def _traced_call_func(name, fnc):
     return _traced_call_int
 
 
-def _patch_module(module, prefix='', basepath=None, basemodule=None):
+def _patch_module(module, prefix='', basepath=None, basemodule=None, exclude_prefixes=[], only_prefix=[]):
     if isinstance(module, str):
         if basemodule is None:
             basemodule = module + '.'
@@ -152,6 +152,10 @@ def _patch_module(module, prefix='', basepath=None, basemodule=None):
     if prefix.startswith('trains.backend_api.services.'):
         return
 
+    for skip in exclude_prefixes:
+        if prefix.startswith(skip):
+            return
+
     for fn in (m for m in dir(module) if not m.startswith('__')):
         if fn in ('schema_property') or fn.startswith('_PostImportHookPatching__'):
             continue
@@ -161,11 +165,22 @@ def _patch_module(module, prefix='', basepath=None, basemodule=None):
         except Exception:
             continue
         if inspect.ismodule(fnc):
-            _patch_module(fnc, prefix=prefix, basepath=basepath, basemodule=basemodule)
+            _patch_module(fnc, prefix=prefix, basepath=basepath, basemodule=basemodule,
+                          exclude_prefixes=exclude_prefixes, only_prefix=only_prefix)
         elif inspect.isclass(fnc):
-            _patch_module(fnc, prefix=prefix, basepath=basepath, basemodule=basemodule)
+            _patch_module(fnc, prefix=prefix, basepath=basepath, basemodule=basemodule,
+                          exclude_prefixes=exclude_prefixes, only_prefix=only_prefix)
         elif inspect.isroutine(fnc):
-            pass  # _log_stderr('Patching: {}'.format(prefix+fn))
+
+            if only_prefix and all(p not in (prefix+str(fn)) for p in only_prefix):
+                continue
+
+            for skip in exclude_prefixes:
+                if (prefix+str(fn)).startswith(skip):
+                    continue
+
+            # _log_stderr('Patching: {}'.format(prefix+fn))
+
             if inspect.isclass(module):
                 # check if this is even in our module
                 if hasattr(fnc, '__module__') and fnc.__module__ != module.__module__:
@@ -191,7 +206,7 @@ def _patch_module(module, prefix='', basepath=None, basemodule=None):
                 setattr(module, fn, _traced_call_func(prefix + fn, fnc))
 
 
-def trace_trains(stream=None, level=1):
+def trace_trains(stream=None, level=1, exclude_prefixes=[], only_prefix=[]):
     """
     DEBUG ONLY - Add full Trains package code trace
     Output trace to filename or stream, default is sys.stderr
@@ -237,8 +252,7 @@ def trace_trains(stream=None, level=1):
     __stream_write('{:9}:{:5}:{:8}: {:14}\n'.format('seconds', 'pid', 'tid', 'self'))
     __stream_write('{:9}:{:5}:{:8}:{:15}\n'.format('-' * 9, '-' * 5, '-' * 8, '-' * 15))
     __trace_start = time.time()
-
-    _patch_module('trains')
+    _patch_module('trains', exclude_prefixes=exclude_prefixes or [], only_prefix=only_prefix or [])
 
 
 def trace_level(level=1):

@@ -1,7 +1,11 @@
 """ Argparse utilities"""
 import sys
 from six import PY2
-from argparse import ArgumentParser, _SubParsersAction
+from argparse import ArgumentParser
+try:
+    from argparse import _SubParsersAction
+except ImportError:
+    _SubParsersAction = type(None)
 
 
 class PatchArgumentParser:
@@ -36,19 +40,20 @@ class PatchArgumentParser:
 
     @staticmethod
     def _patched_parse_args(original_parse_fn, self, args=None, namespace=None):
+        current_task = PatchArgumentParser._current_task
         # if we are running remotely, we always have a task id, so we better patch the argparser as soon as possible.
-        if not PatchArgumentParser._current_task:
-            from ..config import running_remotely
+        if not current_task:
+            from ..config import running_remotely, get_remote_task_id
             if running_remotely():
                 # this will cause the current_task() to set PatchArgumentParser._current_task
                 from trains import Task
                 # noinspection PyBroadException
                 try:
-                    Task.init()
+                    current_task = Task.get_task(task_id=get_remote_task_id())
                 except Exception:
                     pass
         # automatically connect to current task:
-        if PatchArgumentParser._current_task:
+        if current_task:
             from ..config import running_remotely
 
             if PatchArgumentParser._calling_current_task:
@@ -70,7 +75,7 @@ class PatchArgumentParser:
             try:
                 # sync to/from task
                 # noinspection PyProtectedMember
-                PatchArgumentParser._current_task._connect_argparse(
+                current_task._connect_argparse(
                     self, args=args, namespace=namespace,
                     parsed_args=parsed_args[0] if isinstance(parsed_args, tuple) else parsed_args
                 )

@@ -3,16 +3,17 @@ import itertools
 import json
 import logging
 import os
-import sys
 import re
+import sys
 from copy import copy
 from enum import Enum
-from tempfile import gettempdir
 from multiprocessing import RLock
-from pathlib2 import Path
+from tempfile import gettempdir
 from threading import Thread
 from typing import Optional, Any, Sequence, Callable, Mapping, Union, List
 from uuid import uuid4
+
+from pathlib2 import Path
 
 try:
     # noinspection PyCompatibility
@@ -25,6 +26,7 @@ from collections import OrderedDict
 from six.moves.urllib.parse import quote
 
 from ...utilities.locks import RLock as FileRLock
+from ...utilities.attrs import readonly
 from ...binding.artifacts import Artifacts
 from ...backend_interface.task.development.worker import DevWorker
 from ...backend_api import Session
@@ -48,8 +50,8 @@ from ...debugging.log import LoggerRoot
 from ...storage.helper import StorageHelper, StorageError
 from .access import AccessMixin
 from .log import TaskHandler
-from .repo import ScriptInfo
-from .repo.util import get_command_output
+from .repo import ScriptInfo, pip_freeze
+from .hyperparams import HyperParams
 from ...config import config, PROC_MASTER_ID_ENV_VAR, SUPPRESS_UPDATE_MESSAGE_ENV_VAR
 
 
@@ -60,11 +62,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     _anonymous_dataview_id = '__anonymous__'
     _development_tag = 'development'
+    archived_tag = readonly('archived')
     _default_configuration_section_name = 'General'
     _legacy_parameters_section_name = 'Args'
     _force_requirements = {}
 
     _store_diff = config.get('development.store_uncommitted_code_diff', False)
+    _store_remote_diff = config.get('development.store_code_diff_from_remote', False)
     _offline_filename = 'task.json'
 
     class TaskTypes(Enum):
@@ -168,55 +172,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if running_remotely() or DevWorker.report_stdout:
             log_to_backend = False
         self._log_to_backend = log_to_backend
-        self._setup_log(default_log_to_backend=log_to_backend)
         self._artifacts_manager = Artifacts(self)
-
-    def _setup_log(self, default_log_to_backend=None, replace_existing=False):
-        """
-        Setup logging facilities for this task.
-        :param default_log_to_backend: Should this task log to the backend. If not specified, value for this option
-        will be obtained from the environment, with this value acting as a default in case configuration for this is
-        missing.
-        If the value for this option is false, we won't touch the current logger configuration regarding TaskHandler(s)
-        :param replace_existing: If True and another task is already logging to the backend, replace the handler with
-        a handler for this task.
-        """
-        # Make sure urllib is never in debug/info,
-        disable_urllib3_info = config.get('log.disable_urllib3_info', True)
-        if disable_urllib3_info and logging.getLogger('urllib3').isEnabledFor(logging.INFO):
-            logging.getLogger('urllib3').setLevel(logging.WARNING)
-
-        log_to_backend = get_log_to_backend(default=default_log_to_backend) or self._log_to_backend
-        if not log_to_backend:
-            return
-
-        # Handle the root logger and our own logger. We use set() to make sure we create no duplicates
-        # in case these are the same logger...
-        loggers = {logging.getLogger(), LoggerRoot.get_base_logger()}
-
-        # Find all TaskHandler handlers for these loggers
-        handlers = {logger: h for logger in loggers for h in logger.handlers if isinstance(h, TaskHandler)}
-
-        if handlers and not replace_existing:
-            # Handlers exist and we shouldn't replace them
-            return
-
-        # Remove all handlers, we'll add new ones
-        for logger, handler in handlers.items():
-            logger.removeHandler(handler)
-
-        # Create a handler that will be used in all loggers. Since our handler is a buffering handler, using more
-        # than one instance to report to the same task will result in out-of-order log reports (grouped by whichever
-        # handler instance handled them)
-        backend_handler = TaskHandler(task=self)
-
-        # Add backend handler to both loggers:
-        # 1. to root logger root logger
-        # 2. to our own logger as well, since our logger is not propagated to the root logger
-        #    (if we propagate our logger will be caught be the root handlers as well, and
-        #    we do not want that)
-        for logger in loggers:
-            logger.addHandler(backend_handler)
+        self._hyper_params_manager = HyperParams(self)
 
     def _validate(self, check_output_dest_credentials=True):
         raise_errors = self._raise_on_validation_errors
@@ -276,7 +233,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             result, script_requirements = ScriptInfo.get(
                 filepaths=[self._calling_filename, sys.argv[0], ]
                 if ScriptInfo.is_running_from_module() else [sys.argv[0], self._calling_filename, ],
-                log=self.log, create_requirements=False, check_uncommitted=self._store_diff
+                log=self.log, create_requirements=False,
+                check_uncommitted=self._store_diff, uncommitted_from_remote=self._store_remote_diff
             )
             for msg in result.warning_messages:
                 self.get_logger().report_text(msg)
@@ -309,10 +267,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             if result.script and script_requirements:
                 entry_point_filename = None if config.get('development.force_analyze_entire_repo', False) else \
                     os.path.join(result.script['working_dir'], entry_point)
-                if config.get('development.detect_with_pip_freeze', False):
-                    conda_requirements = ""
+                if config.get('development.detect_with_pip_freeze', False) or \
+                        config.get('development.detect_with_conda_freeze', False):
+                    requirements, conda_requirements = pip_freeze(
+                        config.get('development.detect_with_conda_freeze', False))
                     requirements = '# Python ' + sys.version.replace('\n', ' ').replace('\r', ' ') + '\n\n'\
-                                   + get_command_output([sys.executable, "-m", "pip", "freeze"])
+                                   + requirements
                 else:
                     requirements, conda_requirements = script_requirements.get_requirements(
                         entry_point_filename=entry_point_filename)
@@ -655,7 +615,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :type tags: [str]
         """
         self._conditionally_start_task()
-        self._get_output_model(upload_required=False).update_for_task(model_uri, self.id, name, comment, tags)
+        self._get_output_model(upload_required=False).update_for_task(
+            uri=model_uri, task_id=self.id, name=name, comment=comment, tags=tags)
 
     def update_output_model_and_upload(
             self,
@@ -834,6 +795,26 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             merged into a single key-value pair dictionary.
         :param kwargs: Key-value pairs, merged into the parameters dictionary created from ``args``.
         """
+        def stringify(value):
+            # return empty string if value is None
+            if value is None:
+                return ""
+
+            str_value = str(value)
+            if isinstance(value, (tuple, list, dict)) and 'None' in re.split(r'[ ,\[\]{}()]', str_value):
+                # If we have None in the string we have to use json to replace it with null,
+                # otherwise we end up with None as string when running remotely
+                try:
+                    str_json = json.dumps(value)
+                    # verify we actually have a null in the string, otherwise prefer the str cast
+                    # This is because we prefer to have \' as in str and not \" used in json
+                    if 'null' in re.split(r'[ ,\[\]{}()]', str_json):
+                        return str_json
+                except TypeError:
+                    # if we somehow failed to json serialize, revert to previous std casting
+                    pass
+            return str_value
+
         if not all(isinstance(x, (dict, Iterable)) for x in args):
             raise ValueError('only dict or iterable are supported as positional arguments')
 
@@ -879,7 +860,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             parameters.update(new_parameters)
 
             # force cast all variables to strings (so that we can later edit them in UI)
-            parameters = {k: str(v) if v is not None else "" for k, v in parameters.items()}
+            parameters = {k: stringify(v) for k, v in parameters.items()}
 
             if use_hyperparams:
                 # build nested dict from flat parameters dict:
@@ -920,6 +901,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     hyperparams[section_name] = section
 
                 self._edit(hyperparams=hyperparams)
+                self.data.hyperparams = hyperparams
             else:
                 execution = self.data.execution
                 if execution is None:
@@ -962,6 +944,25 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         params = self.get_parameters()
         return params.get(name, default)
+
+    def delete_parameter(self, name):
+        # type: (str) -> bool
+        """
+        Delete a parameter byt it's full name Section/name.
+
+        :param name: Parameter name in full, i.e. Section/name. For example, 'Args/batch_size'
+        :return: True if the parameter was deleted successfully
+        """
+        if not Session.check_min_api_version('2.9'):
+            raise ValueError("Delete hyper parameter is not supported by your trains-server, "
+                             "upgrade to the latest version")
+        with self._edit_lock:
+            paramkey = tasks.ParamKey(section=name.split('/', 1)[0], name=name.split('/', 1)[1])
+            res = self.send(tasks.DeleteHyperParamsRequest(
+                task=self.id, hyperparams=[paramkey]), raise_on_errors=False)
+            self.reload()
+
+        return res.ok()
 
     def update_parameters(self, *args, **kwargs):
         # type: (*dict, **Any) -> ()
@@ -1006,7 +1007,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Set the base docker image for this experiment
         If provided, this value will be used by trains-agent to execute this experiment
         inside the provided docker image.
+        When running remotely the call is ignored
         """
+        if not self.running_locally():
+            return
+
         with self._edit_lock:
             self.reload()
             execution = self.data.execution
@@ -1183,6 +1188,20 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         self._set_task_property("comment", str(comment))
         self._edit(comment=comment)
+
+    def set_task_type(self, task_type):
+        # type: (Union[str, TaskTypes]) -> ()
+        """
+        Set the task_type for the Task.
+
+        :param task_type: The task_type of the Task (see optional values in TaskTypes).
+        :type task_type: str or TaskTypes
+        """
+        if not isinstance(task_type, self.TaskTypes):
+            task_type = self.TaskTypes(task_type)
+
+        self._set_task_property("task_type", str(task_type))
+        self._edit(type=task_type)
 
     def set_initial_iteration(self, offset=0):
         # type: (int) -> int
@@ -1479,6 +1498,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self._app_server = Session.get_app_server_host()
         return self._app_server
 
+    def _is_remote_main_task(self):
+        # type: () -> bool
+        """
+        :return: return True if running remotely and this Task is the registered main task
+        """
+        return running_remotely() and get_remote_task_id() == self.id
+
     def _edit(self, **kwargs):
         # type: (**Any) -> Any
         with self._edit_lock:
@@ -1647,6 +1673,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not hasattr(task, 'system_tags') and not tags and task.tags:
             tags = [t for t in task.tags if t != cls._development_tag]
 
+        extra = {}
+        if hasattr(task, 'hyperparams'):
+            extra['hyperparams'] = task.hyperparams
+        if hasattr(task, 'configuration'):
+            extra['configuration'] = task.configuration
+        if getattr(task, 'system_tags', None):
+            extra['system_tags'] = [t for t in task.system_tags if t not in (cls._development_tag, cls.archived_tag)]
+
         req = tasks.CreateRequest(
             name=name or task.name,
             type=task.type,
@@ -1657,7 +1691,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             project=project if project else task.project,
             output_dest=output_dest,
             execution=execution.as_plain_ordered_dict(),
-            script=task.script
+            script=task.script,
+            **extra
         )
         res = cls._send(session=session, log=log, req=req)
         cloned_task_id = res.response.id

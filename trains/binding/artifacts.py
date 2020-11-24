@@ -154,8 +154,10 @@ class Artifact(object):
         # noinspection PyProtectedMember
         if self.type == 'numpy' and np:
             self._object = np.load(local_file)[self.name]
-        elif self.type in ('pandas', Artifacts._pd_artifact_type) and pd:
+        elif self.type == Artifacts._pd_artifact_type and pd:
             self._object = pd.read_csv(local_file)
+        elif self.type == 'pandas' and pd:
+            self._object = pd.read_csv(local_file, index_col=[0])
         elif self.type == 'image':
             self._object = Image.open(local_file)
         elif self.type == 'JSON':
@@ -303,8 +305,8 @@ class Artifacts(object):
         self.flush()
 
     def upload_artifact(self, name, artifact_object=None, metadata=None, preview=None,
-                        delete_after_upload=False, auto_pickle=True):
-        # type: (str, Optional[object], Optional[dict], Optional[str], bool, bool) -> bool
+                        delete_after_upload=False, auto_pickle=True, wait_on_upload=False):
+        # type: (str, Optional[object], Optional[dict], Optional[str], bool, bool, bool) -> bool
         if not Session.check_min_api_version('2.3'):
             LoggerRoot.get_base_logger().warning('Artifacts not supported by your TRAINS-server version, '
                                                  'please upgrade to the latest server version')
@@ -317,7 +319,8 @@ class Artifacts(object):
         if preview:
             preview = str(preview)
 
-        # convert string to object if try is a file/folder (dont try to serialize long texts
+        # try to convert string Path object (it might reference a file/folder)
+        # dont not try to serialize long texts.
         if isinstance(artifact_object, six.string_types) and len(artifact_object) < 2048:
             # noinspection PyBroadException
             try:
@@ -373,12 +376,13 @@ class Artifacts(object):
         elif isinstance(artifact_object, dict):
             artifact_type = 'JSON'
             artifact_type_data.content_type = 'application/json'
-            preview = preview or json.dumps(artifact_object, sort_keys=True, indent=4)
+            json_text = json.dumps(artifact_object, sort_keys=True, indent=4)
             override_filename_ext_in_uri = '.json'
             override_filename_in_uri = name + override_filename_ext_in_uri
             fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
-            os.write(fd, bytes(preview.encode()))
+            os.write(fd, bytes(json_text.encode()))
             os.close(fd)
+            preview = preview or json_text
             if len(preview) < self.max_preview_size_bytes:
                 artifact_type_data.preview = preview
             else:
@@ -459,6 +463,8 @@ class Artifacts(object):
             uri = artifact_object
             artifact_type = 'custom'
             artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
+            if preview:
+                artifact_type_data.preview = preview
         elif isinstance(artifact_object, six.string_types):
             # if we got here, we should store it as text file.
             artifact_type = 'string'
@@ -536,7 +542,8 @@ class Artifacts(object):
             uri = self._upload_local_file(local_filename, name,
                                           delete_after_upload=delete_after_upload,
                                           override_filename=override_filename_in_uri,
-                                          override_filename_ext=override_filename_ext_in_uri)
+                                          override_filename_ext=override_filename_ext_in_uri,
+                                          wait_on_upload=wait_on_upload)
 
         timestamp = int(time())
 
@@ -683,12 +690,15 @@ class Artifacts(object):
             self._task.set_artifacts(self._task_artifact_list)
 
     def _upload_local_file(
-            self, local_file, name, delete_after_upload=False, override_filename=None, override_filename_ext=None
+            self, local_file, name, delete_after_upload=False, override_filename=None, override_filename_ext=None,
+            wait_on_upload=False
     ):
-        # type: (str, str, bool, Optional[str], Optional[str]) -> str
+        # type: (str, str, bool, Optional[str], Optional[str], bool) -> str
         """
         Upload local file and return uri of the uploaded file (uploading in the background)
         """
+        from trains.storage import StorageManager
+
         upload_uri = self._task.output_uri or self._task.get_logger().get_default_upload_destination()
         if not isinstance(local_file, Path):
             local_file = Path(local_file)
@@ -699,13 +709,23 @@ class Artifacts(object):
                          override_filename=override_filename,
                          override_filename_ext=override_filename_ext,
                          override_storage_key_prefix=self._get_storage_uri_prefix())
-        _, uri = ev.get_target_full_upload_uri(upload_uri)
+        _, uri = ev.get_target_full_upload_uri(upload_uri, quote_uri=False)
 
         # send for upload
         # noinspection PyProtectedMember
-        self._task._reporter._report(ev)
+        if wait_on_upload:
+            StorageManager.upload_file(local_file, uri)
+            if delete_after_upload:
+                try:
+                    os.unlink(local_file)
+                except OSError:
+                    LoggerRoot.get_base_logger().warning('Failed removing temporary {}'.format(local_file))
+        else:
+            self._task._reporter._report(ev)
 
-        return uri
+        _, quoted_uri = ev.get_target_full_upload_uri(upload_uri)
+
+        return quoted_uri
 
     def _get_statistics(self, artifacts_dict=None):
         # type: (Optional[Dict[str, Artifact]]) -> str

@@ -206,7 +206,8 @@ class UploadEvent(MetricsEventAdapter):
     def _replace_slash(part):
         # replace the three quote symbols we cannot have,
         # notice % will be converted to %25 when the link is quoted, so we should not use it
-        return part.replace('\\', '/').strip('/').replace('/', '.slash.').replace('?', '0x3F').replace('#', '0x23')
+        return part.replace('\\', '/').strip('/').replace('/', '.slash.').replace('?', '0x3F').\
+            replace('#', '0x23').replace('"', '0x22')
 
     def __init__(self, metric, variant, image_data, local_image_path=None, iter=0, upload_uri=None,
                  file_history_size=None, delete_after_upload=False, **kwargs):

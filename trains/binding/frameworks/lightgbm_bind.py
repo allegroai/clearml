@@ -123,9 +123,10 @@ class PatchLIGHTgbmModelIO(PatchBaseModelIO):
         ret = original_fn(*args, **kwargs)
         if not PatchLIGHTgbmModelIO.__main_task:
             return ret
-        params = args[0] if args else kwargs['params']
+        params = args[0] if args else kwargs.get('params', {})
         for k, v in params.items():
             if isinstance(v, set):
                 params[k] = list(v)
-        PatchLIGHTgbmModelIO.__main_task.connect(params)
+        if params:
+            PatchLIGHTgbmModelIO.__main_task.connect(params)
         return ret

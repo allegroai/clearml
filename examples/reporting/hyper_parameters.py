@@ -24,7 +24,6 @@ task = Task.init(project_name='examples', task_name='hyper-parameters example')
 flags.DEFINE_integer('echo3', 3, 'Text to echo.')
 flags.DEFINE_string('echo5', '5', 'Text to echo.', module_name='test')
 
-
 parameters = {
     'list': [1, 2, 3],
     'dict': {'a': 1, 'b': 2},
@@ -33,7 +32,7 @@ parameters = {
     'float': 2.2,
     'string': 'my string',
 }
-parameters = task.connect(parameters)
+parameters = task.connect_configuration(parameters, name='test')
 
 # adding new parameter after connect (will be logged as well)
 parameters['new_param'] = 'this is new'

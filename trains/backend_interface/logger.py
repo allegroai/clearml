@@ -124,11 +124,15 @@ class StdStreamPatch(object):
     def stdout_original_write(*args, **kwargs):
         if StdStreamPatch._stdout_original_write:
             StdStreamPatch._stdout_original_write(*args, **kwargs)
+        else:
+            sys.stdout.write(*args, **kwargs)
 
     @staticmethod
     def stderr_original_write(*args, **kwargs):
         if StdStreamPatch._stderr_original_write:
             StdStreamPatch._stderr_original_write(*args, **kwargs)
+        else:
+            sys.stderr.write(*args, **kwargs)
 
     @staticmethod
     def _stdout__patched__write__(*args, **kwargs):

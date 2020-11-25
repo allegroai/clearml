@@ -1,4 +1,3 @@
-import hashlib
 import json
 import mimetypes
 import os
@@ -25,6 +24,7 @@ from ..backend_api.services import tasks
 from ..backend_interface.metrics.events import UploadEvent
 from ..debugging.log import LoggerRoot
 from ..storage.helper import remote_driver_schemes
+from ..storage.util import sha256sum
 
 try:
     import pandas as pd
@@ -536,7 +536,7 @@ class Artifacts(object):
                     local_filename.as_posix()))
                 return False
 
-            file_hash, _ = self.sha256sum(local_filename.as_posix())
+            file_hash, _ = sha256sum(local_filename.as_posix(), block_size=Artifacts._hash_block_size)
             file_size = local_filename.stat().st_size
 
             uri = self._upload_local_file(local_filename, name,
@@ -634,7 +634,8 @@ class Artifacts(object):
         os.close(fd)
         local_csv = Path(local_csv)
         pd_artifact.to_csv(local_csv.as_posix(), index=False, compression=self._compression)
-        current_sha2, file_sha2 = self.sha256sum(local_csv.as_posix(), skip_header=32)
+        current_sha2, file_sha2 = sha256sum(
+            local_csv.as_posix(), skip_header=32, block_size=Artifacts._hash_block_size)
         if name in self._last_artifacts_upload:
             previous_sha2 = self._last_artifacts_upload[name]
             if previous_sha2 == current_sha2:
@@ -806,28 +807,3 @@ class Artifacts(object):
             # noinspection PyProtectedMember
             self._storage_prefix = self._task._get_output_destination_suffix()
         return self._storage_prefix
-
-    @staticmethod
-    def sha256sum(filename, skip_header=0):
-        # type: (str, int) -> (Optional[str], Optional[str])
-        # create sha2 of the file, notice we skip the header of the file (32 bytes)
-        # because sometimes that is the only change
-        h = hashlib.sha256()
-        file_hash = hashlib.sha256()
-        b = bytearray(Artifacts._hash_block_size)
-        mv = memoryview(b)
-        try:
-            with open(filename, 'rb', buffering=0) as f:
-                # skip header
-                if skip_header:
-                    file_hash.update(f.read(skip_header))
-                # noinspection PyUnresolvedReferences
-                for n in iter(lambda: f.readinto(mv), 0):
-                    h.update(mv[:n])
-                    if skip_header:
-                        file_hash.update(mv[:n])
-        except Exception as e:
-            LoggerRoot.get_base_logger().warning(str(e))
-            return None, None
-
-        return h.hexdigest(), file_hash.hexdigest() if skip_header else None

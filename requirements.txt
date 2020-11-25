@@ -10,7 +10,6 @@ jsonschema>=2.6.0
 numpy>=1.10
 pathlib2>=2.3.0
 Pillow>=4.1.1
-plotly>=3.9.0
 psutil>=3.4.2
 pyparsing>=2.0.3
 python-dateutil>=2.6.1

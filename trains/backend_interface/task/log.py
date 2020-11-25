@@ -29,7 +29,7 @@ class TaskHandler(BufferingHandler):
     def task_id(self, value):
         self._task_id = value
 
-    def __init__(self, task, capacity=buffer_capacity):
+    def __init__(self, task, capacity=buffer_capacity, connect_logger=True):
         super(TaskHandler, self).__init__(capacity)
         self.task_id = task.id
         self.session = task.session
@@ -41,6 +41,7 @@ class TaskHandler(BufferingHandler):
         self._thread = None
         self._pending = 0
         self._offline_log_filename = None
+        self._connect_logger = connect_logger
         if task.is_offline():
             offline_folder = Path(task.get_offline_mode_folder())
             offline_folder.mkdir(parents=True, exist_ok=True)
@@ -58,7 +59,7 @@ class TaskHandler(BufferingHandler):
 
         # if we need to add handlers to the base_logger,
         # it will not automatically create stream one when first used, so we must manually configure it.
-        if not TaskHandler.__once:
+        if self._connect_logger and not TaskHandler.__once:
             base_logger = getLogger()
             if len(base_logger.handlers) == 1 and isinstance(base_logger.handlers[0], TaskHandler):
                 if record.name != 'console' and not record.name.startswith('trains.'):

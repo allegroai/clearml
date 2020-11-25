@@ -30,7 +30,6 @@ class PatchedMatplotlib:
     _support_image_plot = False
     _matplotlylib = None
     _plotly_renderer = None
-    _patched_mpltools_get_spine_visible = False
     _lock_renderer = threading.RLock()
     _recursion_guard = {}
     _matplot_major_version = 0
@@ -102,17 +101,9 @@ class PatchedMatplotlib:
             sys.modules['matplotlib'].pyplot.imshow = PatchedMatplotlib.patched_imshow
             sys.modules['matplotlib'].figure.Figure.savefig = PatchedMatplotlib.patched_savefig
             # patch plotly so we know it failed us.
-            from plotly.matplotlylib import renderer
+            from ..utilities.plotlympl import renderer
+            # noinspection PyProtectedMember
             renderer.warnings = PatchedMatplotlib._PatchWarnings()
-
-            # ignore deprecation warnings from plotly to matplotlib
-            try:
-                import warnings
-                warnings.filterwarnings(action='ignore', category=matplotlib.MatplotlibDeprecationWarning,
-                                        module='plotly')
-                warnings.filterwarnings(action='ignore', category=UserWarning, module='plotly')
-            except Exception:
-                pass
 
         except Exception:
             return False
@@ -167,10 +158,11 @@ class PatchedMatplotlib:
             return True
 
         # create plotly renderer
+        # noinspection PyBroadException
         try:
-            from plotly import optional_imports
-            PatchedMatplotlib._matplotlylib = optional_imports.get_module('plotly.matplotlylib')
-            PatchedMatplotlib._plotly_renderer = PatchedMatplotlib._matplotlylib.PlotlyRenderer()
+            from ..utilities import plotlympl
+            PatchedMatplotlib._matplotlylib = plotlympl
+            PatchedMatplotlib._plotly_renderer = plotlympl.PlotlyRenderer()
         except Exception:
             return False
 
@@ -324,7 +316,7 @@ class PatchedMatplotlib:
         try:
             import matplotlib.pyplot as plt
             from matplotlib import _pylab_helpers
-            from plotly.io import templates
+
             if specific_fig is None:
                 # store the figure object we just created (if it is not already there)
                 stored_figure = stored_figure or _pylab_helpers.Gcf.get_active()
@@ -350,7 +342,7 @@ class PatchedMatplotlib:
 
             # convert to plotly
             image = None
-            plotly_fig = None
+            plotly_dict = None
             image_format = 'jpeg'
             fig_dpi = 300
             if force_save_as_image:
@@ -367,13 +359,7 @@ class PatchedMatplotlib:
                     def our_mpl_to_plotly(fig):
                         if not PatchedMatplotlib._update_plotly_renderers():
                             return None
-                        if not PatchedMatplotlib._patched_mpltools_get_spine_visible and \
-                                PatchedMatplotlib._matplot_major_version and \
-                                PatchedMatplotlib._matplot_major_version >= 3 and \
-                                PatchedMatplotlib._matplot_minor_version >= 3:
-                            from plotly.matplotlylib import mpltools
-                            mpltools.get_spine_visible = lambda *_, **__: True
-                            PatchedMatplotlib._patched_mpltools_get_spine_visible = True
+
                         plotly_renderer = PatchedMatplotlib._matplotlylib.PlotlyRenderer()
                         PatchedMatplotlib._matplotlylib.Exporter(plotly_renderer, close_mpl=False).run(fig)
 
@@ -382,7 +368,7 @@ class PatchedMatplotlib:
                             # noinspection PyBroadException
                             try:
                                 # check if all values can be cast to float
-                                [float(t.get_text().replace('−', '-')) for t in x_ticks]
+                                _ = [float(t.get_text().replace('−', '-')) for t in x_ticks]
                             except Exception:
                                 # noinspection PyBroadException
                                 try:
@@ -409,13 +395,7 @@ class PatchedMatplotlib:
                                     pass
                         return deepcopy(plotly_renderer.plotly_fig)
 
-                    plotly_fig = our_mpl_to_plotly(mpl_fig)
-                    # noinspection PyBroadException
-                    try:
-                        if 'none' in templates:
-                            plotly_fig._layout_obj.template = templates['none']
-                    except Exception:
-                        pass
+                    plotly_dict = our_mpl_to_plotly(mpl_fig)
                 except Exception as ex:
                     # this was an image, change format to png
                     image_format = 'jpeg' if 'selfie' in str(ex) else 'png'
@@ -424,8 +404,8 @@ class PatchedMatplotlib:
                     PatchedMatplotlib._lock_renderer.release()
 
             # plotly could not serialize the plot, we should convert to image
-            if not plotly_fig:
-                plotly_fig = None
+            if not plotly_dict:
+                plotly_dict = None
                 # noinspection PyBroadException
                 try:
                     # first try SVG if we fail then fallback to png
@@ -459,7 +439,7 @@ class PatchedMatplotlib:
 
             last_iteration = iter if iter is not None else PatchedMatplotlib._get_last_iteration()
 
-            report_as_debug_sample = not plotly_fig and (
+            report_as_debug_sample = not plotly_dict and (
                     force_save_as_image or not PatchedMatplotlib._support_image_plot)
 
             if not title:
@@ -486,15 +466,14 @@ class PatchedMatplotlib:
                 PatchedMatplotlib._matplotlib_reported_titles.add(title)
 
             # remove borders and size, we should let the web take care of that
-            if plotly_fig:
-                plotly_fig.layout.margin = {}
-                plotly_fig.layout.autosize = True
-                plotly_fig.layout.height = None
-                plotly_fig.layout.width = None
+            if plotly_dict:
                 # send the plot event
-                plotly_dict = plotly_fig.to_plotly_json()
                 if not plotly_dict.get('layout'):
                     plotly_dict['layout'] = {}
+                plotly_dict['layout']['margin'] = {}
+                plotly_dict['layout']['autosize'] = True
+                plotly_dict['layout']['height'] = None
+                plotly_dict['layout']['width'] = None
                 plotly_dict['layout']['title'] = series or title
 
                 reporter.report_plot(title=title, series=series or 'plot', plot=plotly_dict, iter=last_iteration)

@@ -715,10 +715,10 @@ class Artifacts(object):
         # send for upload
         # noinspection PyProtectedMember
         if wait_on_upload:
-            StorageManager.upload_file(local_file, uri)
+            StorageManager.upload_file(local_file.as_posix(), uri)
             if delete_after_upload:
                 try:
-                    os.unlink(local_file)
+                    os.unlink(local_file.as_posix())
                 except OSError:
                     LoggerRoot.get_base_logger().warning('Failed removing temporary {}'.format(local_file))
         else:

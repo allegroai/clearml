@@ -1109,7 +1109,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # type: (Optional[str], Optional[str]) -> ()
 
         # if running remotely and we are the main task, skip setting ourselves.
-        if self._is_main_remote_task():
+        if self._is_remote_main_task():
             return
 
         if not project_id:
@@ -1202,7 +1202,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._edit(comment=comment)
 
     def set_task_type(self, task_type):
-        # type: (Union[str, TaskTypes]) -> ()
+        # type: (Union[str, Task.TaskTypes]) -> ()
         """
         Set the task_type for the Task.
 
@@ -1627,9 +1627,6 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not config_text:
             return None
         return text_to_config_dict(config_text)
-
-    def _is_main_remote_task(self):
-        return running_remotely() and get_remote_task_id() == self.id
 
     def get_offline_mode_folder(self):
         # type: () -> (Optional[Path])

@@ -1584,7 +1584,7 @@ class Task(_Task):
     def set_user_properties(
             self,
             *iterables,  # type: Union[Mapping[str, Union[str, dict, None]], Iterable[dict]]
-            **properties  # type: Union[str, dict, None]
+            **properties  # type: Union[str, dict, int, float, None]
     ):
         # type: (...) -> bool
         """
@@ -1646,8 +1646,8 @@ class Task(_Task):
             return False
 
         return self._hyper_params_manager.edit_hyper_params(
-            properties,
-            *iterables,
+            iterables=list(properties.items()) + (
+                list(iterables.items()) if isinstance(iterables, dict) else list(iterables)),
             replace='none',
             force_section="properties",
         )

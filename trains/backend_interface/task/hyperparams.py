@@ -54,7 +54,7 @@ class HyperParams(object):
 
     def edit_hyper_params(
         self,
-        *iterables,  # type: Union[Mapping[str, Union[str, dict, None]], Iterable[dict, tasks.ParamsItem]]
+        iterables,  # type: Union[Mapping[str, Union[str, dict, None]], Iterable[dict, tasks.ParamsItem]]
         replace=None,  # type: Optional[str]
         default_section=None,  # type: Optional[str]
         force_section=None  # type: Optional[str]
@@ -89,8 +89,11 @@ class HyperParams(object):
                 item = value
             elif isinstance(value, dict):
                 item = tasks.ParamsItem(**value)
+            elif isinstance(value, tuple):
+                item = tasks.ParamsItem(name=str(value[0]), value=str(value[1]))
             else:
                 item = tasks.ParamsItem(value=str(value))
+
             if name:
                 item.name = str(name)
             if not item.name:
@@ -105,11 +108,15 @@ class HyperParams(object):
             return item
 
         props = {}
+        if isinstance(iterables, dict):
+            iterables = [iterables]
+
         for i in iterables:
             if isinstance(i, dict):
                 props.update({name: make_item(value, name) for name, value in i.items()})
             else:
-                props.update({item.name: item for item in map(make_item, i)})
+                item = make_item(i)
+                props.update({item.name: item})
 
         res = self.task.session.send(
             tasks.EditHyperParamsRequest(

@@ -21,8 +21,8 @@ def pip_freeze(combine_conda_with_pip=False):
             # check if this is a pypi package, if it is, leave it outside
             if not r.get('channel') or r.get('channel') == 'pypi':
                 name = (r['name'].replace('-', '_'), r['name'])
-                pip_req_line = [l for l in pip_lines
-                                if l.split('==', 1)[0].strip() in name or l.split('@', 1)[0].strip() in name]
+                pip_req_line = [pip_l for pip_l in pip_lines
+                                if pip_l.split('==', 1)[0].strip() in name or pip_l.split('@', 1)[0].strip() in name]
                 if pip_req_line and \
                         ('@' not in pip_req_line[0] or
                          not pip_req_line[0].split('@', 1)[1].strip().startswith('file://')):

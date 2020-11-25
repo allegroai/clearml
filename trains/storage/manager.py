@@ -133,12 +133,12 @@ class StorageManager(object):
                 target_folder.name, time() * 1000, str(random()).replace('.', ''))
             temp_target_folder.mkdir(parents=True, exist_ok=True)
             if suffix == ".zip":
-                ZipFile(cached_file).extractall(path=temp_target_folder.as_posix())
+                ZipFile(cached_file.as_posix()).extractall(path=temp_target_folder.as_posix())
             elif suffix == ".tar.gz":
-                with tarfile.open(cached_file) as file:
+                with tarfile.open(cached_file.as_posix()) as file:
                     file.extractall(temp_target_folder.as_posix())
             elif suffix == ".tgz":
-                with tarfile.open(cached_file, mode='r:gz') as file:
+                with tarfile.open(cached_file.as_posix(), mode='r:gz') as file:
                     file.extractall(temp_target_folder.as_posix())
 
             # we assume we will have such folder if we already extract the file
@@ -152,29 +152,22 @@ class StorageManager(object):
                     target_folder.touch(exist_ok=True)
                 else:
                     base_logger.warning(
-                        "Failed renaming {0} to {1}".format(
-                            temp_target_folder, target_folder
-                        )
-                    )
+                        "Failed renaming {0} to {1}".format(temp_target_folder.as_posix(), target_folder.as_posix()))
                 try:
-                    shutil.rmtree(temp_target_folder)
+                    shutil.rmtree(temp_target_folder.as_posix())
                 except Exception as ex:
                     base_logger.warning(
-                        "Exception {}\nFailed deleting folder {}".format(
-                            ex, temp_target_folder
-                        )
-                    )
+                        "Exception {}\nFailed deleting folder {}".format(ex, temp_target_folder.as_posix()))
         except Exception as ex:
             # failed extracting the file:
             base_logger.warning(
-                "Exception {}\nFailed extracting zip file {}".format(ex, str(cached_file))
-            )
+                "Exception {}\nFailed extracting zip file {}".format(ex, cached_file.as_posix()))
             # noinspection PyBroadException
             try:
                 target_folder.rmdir()
             except Exception:
                 pass
-            return cached_file
+            return cached_file.as_posix()
         return target_folder.as_posix()
 
     @classmethod

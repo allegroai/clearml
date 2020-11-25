@@ -1236,6 +1236,7 @@ class _Boto3Driver(_Driver):
                     aws_secret_access_key=cfg.secret,
                     endpoint_url=endpoint,
                     use_ssl=cfg.secure,
+                    verify=cfg.verify,
                     config=botocore.client.Config(
                         max_pool_connections=max(
                             _Boto3Driver._min_pool_connections,

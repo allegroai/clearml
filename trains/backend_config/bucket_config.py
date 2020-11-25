@@ -29,6 +29,7 @@ class S3BucketConfig(object):
     acl = attrib(type=str, converter=_none_to_empty_string, default="")
     secure = attrib(type=bool, default=True)
     region = attrib(type=str, converter=_none_to_empty_string, default="")
+    verify = attrib(type=bool, default=True)
 
     def update(self, key, secret, multipart=True, region=None):
         self.key = key

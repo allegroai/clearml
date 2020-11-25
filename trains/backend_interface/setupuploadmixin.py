@@ -9,7 +9,7 @@ class SetupUploadMixin(object):
     storage_uri = abstractproperty()
 
     def setup_upload(
-            self, bucket_name, host=None, access_key=None, secret_key=None, region=None, multipart=True, https=True):
+            self, bucket_name, host=None, access_key=None, secret_key=None, region=None, multipart=True, https=True, verify=True):
         """
         Setup upload options (currently only S3 is supported)
 
@@ -30,6 +30,8 @@ class SetupUploadMixin(object):
         :type https: bool
         :param region: Bucket region. Required if the bucket doesn't reside in the default region (us-east-1)
         :type region: str
+        :param verify: Whether or not to verify SSL certificates. Only required when using a Non-AWS S3 solution that only supports HTTPS with self-signed certificate.
+        :type verify: bool
         """
         self._bucket_config = S3BucketConfig(
             bucket=bucket_name,
@@ -38,7 +40,8 @@ class SetupUploadMixin(object):
             secret=secret_key,
             multipart=multipart,
             secure=https,
-            region=region
+            region=region,
+            verify=verify
         )
         self.storage_uri = ('s3://%(host)s/%(bucket_name)s' if host else 's3://%(bucket_name)s') % locals()
         StorageHelper.add_configuration(self._bucket_config, log=self.log)

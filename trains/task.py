@@ -2305,7 +2305,7 @@ class Task(_Task):
 
         if not self._logger:
             # do not recreate logger after task was closed/quit
-            if self._at_exit_called:
+            if self._at_exit_called and self._at_exit_called in (True, get_current_thread_id(), ):
                 raise ValueError("Cannot use Task Logger after task was closed")
             # Get a logger object
             self._logger = Logger(

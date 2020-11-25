@@ -63,6 +63,11 @@ an_optimizer = HyperParameterOptimizer(
     # This is the experiment we want to optimize
     base_task_id=args['template_task_id'],
     # here we define the hyper-parameters to optimize
+    # Notice: The parameter name should exactly match what you see in the UI: <section_name>/<parameter>
+    # For Example, here we see in the base experiment a section Named: "General"
+    # under it a parameter named "batch_size", this becomes "General/batch_size"
+    # If you have `argparse` for example, then arguments will appear under the "Args" section,
+    # and you should instead pass "Args/batch_size"
     hyper_parameters=[
         UniformIntegerParameterRange('General/layer_1', min_value=128, max_value=512, step_size=128),
         UniformIntegerParameterRange('General/layer_2', min_value=128, max_value=512, step_size=128),

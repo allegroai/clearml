@@ -1,4 +1,5 @@
 # Plese read this https://github.com/keras-team/autokeras#installation before doing changes
 autokeras
 tensorflow>=2.3.0
+trains
 git+https://github.com/keras-team/keras-tuner.git@1.0.2rc2

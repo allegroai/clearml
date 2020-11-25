@@ -8,7 +8,6 @@ from platform import system
 
 from pathlib2 import Path
 from six import BytesIO
-from tqdm import tqdm
 
 default_level = logging.INFO
 
@@ -181,6 +180,8 @@ class TqdmLog(object):
             self._log.log(self._level, self._buf)
 
     def __init__(self, total, desc='', log_level=20, ascii=False, logger=None, smoothing=0, mininterval=5, initial=0):
+        from tqdm import tqdm
+
         self._io = self._TqdmIO(level=log_level, logger=logger)
         self._tqdm = tqdm(total=total, desc=desc, file=self._io, ascii=ascii if not system() == 'Windows' else True,
                           smoothing=smoothing,

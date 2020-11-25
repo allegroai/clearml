@@ -1105,8 +1105,20 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # fixed seed for the time being
         pass
 
-    def set_project(self, project_id):
-        # type: (str) -> ()
+    def set_project(self, project_id=None, project_name=None):
+        # type: (Optional[str], Optional[str]) -> ()
+
+        # if running remotely and we are the main task, skip setting ourselves.
+        if self._is_main_remote_task():
+            return
+
+        if not project_id:
+            assert isinstance(project_name, six.string_types)
+            res = self.send(projects.GetAllRequest(name=exact_match_regex(project_name)), raise_on_errors=False)
+            if not res or not res.response or not res.response.projects or len(res.response.projects) != 1:
+                return False
+            project_id = res.response.projects[0].id
+
         assert isinstance(project_id, six.string_types)
         self._set_task_property("project", project_id)
         self._edit(project=project_id)
@@ -1615,6 +1627,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not config_text:
             return None
         return text_to_config_dict(config_text)
+
+    def _is_main_remote_task(self):
+        return running_remotely() and get_remote_task_id() == self.id
 
     def get_offline_mode_folder(self):
         # type: () -> (Optional[Path])

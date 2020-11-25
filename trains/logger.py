@@ -75,7 +75,8 @@ class Logger(object):
         self._report_worker = None
         self._graph_titles = {}
         self._tensorboard_series_force_prefix = None
-        self._task_handler = TaskHandler(task=self._task, capacity=100)
+        self._task_handler = TaskHandler(task=self._task, capacity=100) \
+            if private_task.is_main_task() or (connect_stdout or connect_stderr or connect_logging) else None
         self._connect_std_streams = connect_stdout or connect_stderr
         self._connect_logging = connect_logging
 

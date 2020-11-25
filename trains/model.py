@@ -945,6 +945,7 @@ class OutputModel(BaseModel):
         config_text = self._resolve_config(config_text=config_text, config_dict=config_dict)
 
         self._model_local_filename = None
+        self._last_uploaded_url = None
         self._base_model = None
         # noinspection PyProtectedMember
         self._floating_data = create_dummy_model(
@@ -1205,6 +1206,8 @@ class OutputModel(BaseModel):
         else:
             output_uri = None
 
+        self._last_uploaded_url = output_uri
+
         if is_package:
             self._set_package_tag()
 
@@ -1432,6 +1435,9 @@ class OutputModel(BaseModel):
             raise ValueError('Model is published and cannot be changed')
 
         return True
+
+    def _get_last_uploaded_filename(self):
+        return Path(self._last_uploaded_url or self.url).name
 
 
 class Waitable(object):

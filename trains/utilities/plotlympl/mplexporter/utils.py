@@ -243,7 +243,8 @@ def get_axis_properties(axis):
 
 def get_grid_style(axis):
     gridlines = axis.get_gridlines()
-    if axis._gridOnMajor and len(gridlines) > 0:
+    _gridOnMajor = axis._gridOnMajor if hasattr(axis, '_gridOnMajor') else axis._major_tick_kw['gridOn']
+    if _gridOnMajor and len(gridlines) > 0:
         color = export_color(gridlines[0].get_color())
         alpha = gridlines[0].get_alpha()
         dasharray = get_dasharray(gridlines[0])

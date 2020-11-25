@@ -18,11 +18,19 @@ class Renderer(object):
 
     @staticmethod
     def ax_has_xgrid(ax):
-        return bool(ax and ax.xaxis._gridOnMajor and ax.yaxis.get_gridlines())
+        if not ax:
+            return False
+        _gridOnMajor = ax.xaxis._gridOnMajor if hasattr(ax.xaxis, '_gridOnMajor') \
+            else ax.xaxis._major_tick_kw['gridOn']
+        return bool(ax and _gridOnMajor and ax.yaxis.get_gridlines())
 
     @staticmethod
     def ax_has_ygrid(ax):
-        return bool(ax and ax.yaxis._gridOnMajor and ax.yaxis.get_gridlines())
+        if not ax:
+            return False
+        _gridOnMajor = ax.yaxis._gridOnMajor if hasattr(ax.yaxis, '_gridOnMajor') \
+            else ax.yaxis._major_tick_kw['gridOn']
+        return bool(ax and _gridOnMajor and ax.yaxis.get_gridlines())
 
     @property
     def current_ax_zoomable(self):

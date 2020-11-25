@@ -195,11 +195,12 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type round_digits: int
         """
         def floatstr(o):
+            inf_value = math.inf if six.PY3 else float("inf")
             if o != o:
                 return 'nan'
-            elif o == math.inf:
+            elif o == inf_value:
                 return 'inf'
-            elif o == -math.inf:
+            elif o == -inf_value:
                 return '-inf'
             return round(o, ndigits=round_digits) if round_digits is not None else o
 

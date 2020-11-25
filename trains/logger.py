@@ -344,9 +344,9 @@ class Logger(object):
             reporter_table = table
         else:
             reporter_table = table.fillna(str(np.nan))
-            replace("NaN", np.nan, math.nan)
-            replace("Inf", np.inf, math.inf)
-            replace("-Inf", -np.inf, np.NINF, -math.inf)
+            replace("NaN", np.nan, math.nan if six.PY3 else float("nan"))
+            replace("Inf", np.inf, math.inf if six.PY3 else float("inf"))
+            replace("-Inf", -np.inf, np.NINF, -math.inf if six.PY3 else -float("inf"))
         # noinspection PyProtectedMember
         return self._task._reporter.report_table(
             title=title,

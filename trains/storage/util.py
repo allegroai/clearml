@@ -1,6 +1,12 @@
+import hashlib
+import sys
+from typing import Optional
+
 from six.moves.urllib.parse import quote, urlparse, urlunparse
 import six
 import fnmatch
+
+from ..debugging.log import LoggerRoot
 
 
 def get_config_object_matcher(**patterns):
@@ -39,3 +45,35 @@ def quote_url(url):
 
 def encode_string_to_filename(text):
     return quote(text, safe=" ")
+
+
+def sha256sum(filename, skip_header=0, block_size=65536):
+    # type: (str, int, int) -> (Optional[str], Optional[str])
+    # create sha2 of the file, notice we skip the header of the file (32 bytes)
+    # because sometimes that is the only change
+    h = hashlib.sha256()
+    file_hash = hashlib.sha256()
+    b = bytearray(block_size)
+    mv = memoryview(b)
+    try:
+        with open(filename, 'rb', buffering=0) as f:
+            # skip header
+            if skip_header:
+                file_hash.update(f.read(skip_header))
+            # noinspection PyUnresolvedReferences
+            for n in iter(lambda: f.readinto(mv), 0):
+                h.update(mv[:n])
+                if skip_header:
+                    file_hash.update(mv[:n])
+    except Exception as e:
+        LoggerRoot.get_base_logger().warning(str(e))
+        return None, None
+
+    return h.hexdigest(), file_hash.hexdigest() if skip_header else None
+
+
+def is_windows():
+    """
+    :return: True if currently running on windows OS
+    """
+    return sys.platform == 'win32'

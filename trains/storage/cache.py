@@ -17,6 +17,8 @@ class CacheManager(object):
     _default_context = "global"
     _local_to_remote_url_lookup = OrderedDict()
     __local_to_remote_url_lookup_max_size = 1024
+    _context_to_folder_lookup = dict()
+    _default_context_folder_template = "{0}_artifacts_archive_{1}"
 
     class CacheContext(object):
         def __init__(self, cache_context, default_cache_file_limit=10):
@@ -43,7 +45,7 @@ class CacheManager(object):
                 return direct_access
 
             # check if we already have the file in our cache
-            cached_file, cached_size = self._get_cache_file(remote_url)
+            cached_file, cached_size = self.get_cache_file(remote_url)
             if cached_size is not None and not force_download:
                 CacheManager._add_remote_url(remote_url, cached_file)
                 return cached_file
@@ -70,9 +72,19 @@ class CacheManager(object):
             filename = url.split("/")[-1]
             return "{}.{}".format(str_hash, quote_url(filename))
 
-        def _get_cache_file(self, remote_url):
+        def get_cache_folder(self):
+            """
+            :return: full path to current contexts cache folder
+            """
+            folder = Path(
+                get_cache_dir() / CacheManager._storage_manager_folder / self._context
+            )
+            return folder.as_posix()
+
+        def get_cache_file(self, remote_url=None, local_filename=None):
             """
             :param remote_url: check if we have the remote url in our cache
+            :param local_filename: if local_file is given, search for the local file/directory in the cache folder
             :return: full path to file name, current file size or None
             """
             def safe_time(x):
@@ -101,7 +113,7 @@ class CacheManager(object):
                 get_cache_dir() / CacheManager._storage_manager_folder / self._context
             )
             folder.mkdir(parents=True, exist_ok=True)
-            local_filename = self._get_hashed_url_file(remote_url)
+            local_filename = local_filename or self._get_hashed_url_file(remote_url)
             new_file = folder / local_filename
             new_file_exists = new_file.exists()
             if new_file_exists:
@@ -190,3 +202,14 @@ class CacheManager(object):
         if len(CacheManager._local_to_remote_url_lookup) > CacheManager.__local_to_remote_url_lookup_max_size:
             # pop the first item (FIFO)
             CacheManager._local_to_remote_url_lookup.popitem(last=False)
+
+    @classmethod
+    def set_context_folder_lookup(cls, context, name_template):
+        cls._context_to_folder_lookup[str(context)] = str(name_template)
+        return str(name_template)
+
+    @classmethod
+    def get_context_folder_lookup(cls, context):
+        if not context:
+            return cls._default_context_folder_template
+        return cls._context_to_folder_lookup.get(str(context), cls._default_context_folder_template)

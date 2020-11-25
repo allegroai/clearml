@@ -1,3 +1,4 @@
+import os
 import shutil
 import tarfile
 from random import random
@@ -7,9 +8,9 @@ from zipfile import ZipFile
 
 from pathlib2 import Path
 
-from .cache import CacheManager
 from .util import encode_string_to_filename
 from ..debugging.log import LoggerRoot
+from .cache import CacheManager
 
 
 class StorageManager(object):
@@ -42,7 +43,7 @@ class StorageManager(object):
             cache_context=cache_context
         ).get_local_copy(remote_url=remote_url, force_download=force_download)
         if extract_archive and cached_file:
-            return cls._extract_to_cache(cached_file, name)
+            return cls._extract_to_cache(cached_file, name, cache_context)
 
         return cached_file
 
@@ -89,11 +90,14 @@ class StorageManager(object):
         ).set_cache_limit(cache_file_limit)
 
     @classmethod
-    def _extract_to_cache(cls, cached_file, name):
+    def _extract_to_cache(cls, cached_file, name, cache_context=None, target_folder=None):
+        # type: (str, str, Optional[str], Optional[str]) -> str
         """
         Extract cached file to cache folder
         :param str cached_file: local copy of archive file
-        :param str name: cache context
+        :param str name: name of the target file
+        :param str cache_context: cache context id
+        :param str target_folder: specify target path to use for archive extraction
         :return: cached folder containing the extracted archive content
         """
         if not cached_file:
@@ -102,21 +106,24 @@ class StorageManager(object):
         cached_file = Path(cached_file)
 
         # we support zip and tar.gz files auto-extraction
-        if (
-            not cached_file.suffix == ".zip"
-            and not cached_file.suffixes[-2:] == [".tar", ".gz"]
-        ):
+        suffix = cached_file.suffix.lower()
+        if suffix == '.gz':
+            suffix = ''.join(a.lower() for a in cached_file.suffixes[-2:])
+
+        if suffix not in (".zip", ".tgz", ".tar.gz"):
             return str(cached_file)
 
-        cached_folder = cached_file.parent
+        cached_folder = Path(cached_file).parent
+        archive_suffix = cached_file.name[:-len(suffix)]
+        name = encode_string_to_filename(name)
+        target_folder = Path(
+            target_folder or CacheManager.get_context_folder_lookup(cache_context).format(archive_suffix, name))
 
-        name = encode_string_to_filename(name) if name else name
-        target_folder = Path("{0}/{1}_artifacts_archive_{2}".format(cached_folder, cached_file.stem, name))
         if target_folder.exists():
             # noinspection PyBroadException
             try:
                 target_folder.touch(exist_ok=True)
-                return target_folder
+                return target_folder.as_posix()
             except Exception:
                 pass
 
@@ -125,11 +132,14 @@ class StorageManager(object):
             temp_target_folder = cached_folder / "{0}_{1}_{2}".format(
                 target_folder.name, time() * 1000, str(random()).replace('.', ''))
             temp_target_folder.mkdir(parents=True, exist_ok=True)
-            if cached_file.suffix == ".zip":
+            if suffix == ".zip":
                 ZipFile(cached_file).extractall(path=temp_target_folder.as_posix())
-            elif cached_file.suffixes[-2:] == [".tar", ".gz"]:
+            elif suffix == ".tar.gz":
                 with tarfile.open(cached_file) as file:
-                    file.extractall(temp_target_folder)
+                    file.extractall(temp_target_folder.as_posix())
+            elif suffix == ".tgz":
+                with tarfile.open(cached_file, mode='r:gz') as file:
+                    file.extractall(temp_target_folder.as_posix())
 
             # we assume we will have such folder if we already extract the file
             # noinspection PyBroadException
@@ -165,7 +175,7 @@ class StorageManager(object):
             except Exception:
                 pass
             return cached_file
-        return target_folder
+        return target_folder.as_posix()
 
     @classmethod
     def get_files_server(cls):

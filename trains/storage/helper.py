@@ -691,7 +691,7 @@ class StorageHelper(object):
             except (ValueError, AttributeError, KeyError):
                 pass
 
-            # if driver supports download with call back, use it (it might be faster)
+            # if driver supports download with callback, use it (it might be faster)
             if hasattr(self._driver, 'download_object'):
                 # callback
                 cb = _DownloadProgressReport(total_size_mb, verbose,

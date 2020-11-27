@@ -1,7 +1,7 @@
 import yaml
 
 from six import PY2
-from argparse import _StoreAction, ArgumentError, _StoreConstAction, _SubParsersAction, SUPPRESS
+from argparse import _StoreAction, ArgumentError, _StoreConstAction, _SubParsersAction, SUPPRESS  # noqa
 from copy import copy
 import types
 
@@ -79,11 +79,13 @@ class _Arguments(object):
     @classmethod
     def _add_to_defaults(cls, a_parser, defaults, descriptions, arg_types,
                          a_args=None, a_namespace=None, a_parsed_args=None):
+        # noinspection PyProtectedMember
         actions = [
             a for a in a_parser._actions
             if isinstance(a, _StoreAction) or isinstance(a, _StoreConstAction)
         ]
         args_dict = {}
+        # noinspection PyBroadException
         try:
             if isinstance(a_parsed_args, dict):
                 args_dict = a_parsed_args
@@ -118,6 +120,7 @@ class _Arguments(object):
         defaults.update(defaults_)
 
         # deal with sub parsers
+        # noinspection PyProtectedMember
         sub_parsers = [
             a for a in a_parser._actions
             if isinstance(a, _SubParsersAction)
@@ -138,6 +141,17 @@ class _Arguments(object):
         return defaults, descriptions, arg_types
 
     def copy_defaults_from_argparse(self, parser, args=None, namespace=None, parsed_args=None):
+        task_defaults, task_defaults_descriptions, task_defaults_types = \
+            self._get_defaults_from_argparse(parser, args=args, namespace=namespace, parsed_args=parsed_args)
+
+        # Store to task
+        self._task.update_parameters(
+            task_defaults,
+            __parameters_descriptions=task_defaults_descriptions,
+            __parameters_types=task_defaults_types
+        )
+
+    def _get_defaults_from_argparse(self, parser, args=None, namespace=None, parsed_args=None):
         task_defaults = {}
         task_defaults_descriptions = {}
         task_defaults_types = {}
@@ -156,6 +170,7 @@ class _Arguments(object):
 
         # Verify arguments
         for k, v in task_defaults.items():
+            # noinspection PyBroadException
             try:
                 if type(v) is list:
                     task_defaults[k] = str(v)
@@ -179,21 +194,18 @@ class _Arguments(object):
             task_defaults = dict(
                 [(k, v) for k, v in task_defaults.items() if self._exclude_parser_args.get(k, True)])
 
-        # Store to task
-        self._task.update_parameters(
-            task_defaults,
-            __parameters_descriptions=task_defaults_descriptions,
-            __parameters_types=task_defaults_types
-        )
+        return task_defaults, task_defaults_descriptions, task_defaults_types
 
     @classmethod
     def _find_parser_action(cls, a_parser, name):
         # find by name
+        # noinspection PyProtectedMember
         _actions = [(a_parser, a) for a in a_parser._actions if a.dest == name]
         if _actions:
             return _actions
         # iterate over subparsers
         _actions = []
+        # noinspection PyProtectedMember
         sub_parsers = [a for a in a_parser._actions if isinstance(a, _SubParsersAction)]
         for sub_parser in sub_parsers:
             for choice in sub_parser.choices.values():
@@ -205,15 +217,15 @@ class _Arguments(object):
 
     def copy_to_parser(self, parser, parsed_args):
         def cast_to_bool_int(value, strip=False):
-            strip_v = value if not strip else str(value).lower().strip()
-            if strip_v == 'false' or not strip_v:
+            a_strip_v = value if not strip else str(value).lower().strip()
+            if a_strip_v == 'false' or not a_strip_v:
                 return False
-            elif strip_v == 'true':
+            elif a_strip_v == 'true':
                 return True
             else:
                 # first try to cast to integer
                 try:
-                    return int(strip_v)
+                    return int(a_strip_v)
                 except (ValueError, TypeError):
                     return None
 
@@ -257,6 +269,7 @@ class _Arguments(object):
                     if current_action.default is not None or const_value not in (None, ''):
                         arg_parser_arguments[k] = const_value
                 elif current_action and (current_action.nargs in ('+', '*') or isinstance(current_action.nargs, int)):
+                    # noinspection PyBroadException
                     try:
                         v = yaml.load(v.strip(), Loader=yaml.SafeLoader)
                         if not isinstance(v, (list, tuple)):
@@ -282,6 +295,7 @@ class _Arguments(object):
                         # because isinstance(var_type, type(None)) === False
                         var_type = str
                     # now we should try and cast the value if we can
+                    # noinspection PyBroadException
                     try:
                         v = var_type(v)
                         # cast back to int if it's the same value
@@ -313,7 +327,7 @@ class _Arguments(object):
                         arg_parser_arguments[k] = v
                 elif current_action and current_action.type:
                     # if we have an action type and value (v) is None, and cannot be casted, leave as is
-                    if isinstance(current_action.type, types.FunctionType) and not v:
+                    if isinstance(current_action.type, types.FunctionType) and not v:  # noqa
                         # noinspection PyBroadException
                         try:
                             v = current_action.type(v)
@@ -345,6 +359,7 @@ class _Arguments(object):
                         pass
 
                 # add as default
+                # noinspection PyBroadException
                 try:
                     if current_action and isinstance(current_action, _SubParsersAction):
                         if v not in (None, '') or current_action.default not in (None, ''):
@@ -364,6 +379,26 @@ class _Arguments(object):
                     pass
                 except Exception:
                     pass
+
+        # if API supports sections, we can update back the Args section with all the missing default
+        if Session.check_min_api_version('2.9'):
+            # noinspection PyBroadException
+            try:
+                task_defaults, task_defaults_descriptions, task_defaults_types = \
+                    self._get_defaults_from_argparse(parser, parsed_args=parsed_args)
+                # select what's missing, and update it
+                missing_keys = [k for k in task_defaults.keys() if k[len(self._prefix_args):] not in task_arguments]
+                task_defaults = {k: v for k, v in task_defaults.items() if k in missing_keys}
+                task_defaults_descriptions = {k: v for k, v in task_defaults_descriptions.items() if k in missing_keys}
+                task_defaults_types = {k: v for k, v in task_defaults_types.items() if k in missing_keys}
+                if task_defaults:
+                    self._task.update_parameters(
+                        task_defaults,
+                        __parameters_descriptions=task_defaults_descriptions,
+                        __parameters_types=task_defaults_types
+                    )
+            except Exception:
+                pass
 
         # if we already have an instance of parsed args, we should update its values
         # this instance should already contain our defaults
@@ -441,6 +476,7 @@ class _Arguments(object):
                                                (str(k), str(param), str(k), str(v)))
                         continue
             elif v_type == list:
+                # noinspection PyBroadException
                 try:
                     p = str(param).strip()
                     param = yaml.load(p, Loader=yaml.SafeLoader)
@@ -449,6 +485,7 @@ class _Arguments(object):
                                            (str(k), str(param), str(k), str(v)))
                     continue
             elif v_type == tuple:
+                # noinspection PyBroadException
                 try:
                     p = str(param).strip().replace('(', '[', 1)[::-1].replace(')', ']', 1)[::-1]
                     param = tuple(yaml.load(p, Loader=yaml.SafeLoader))
@@ -457,6 +494,7 @@ class _Arguments(object):
                                            (str(k), str(param), str(k), str(v)))
                     continue
             elif v_type == dict:
+                # noinspection PyBroadException
                 try:
                     p = str(param).strip()
                     param = yaml.load(p, Loader=yaml.SafeLoader)
@@ -469,8 +507,10 @@ class _Arguments(object):
                 # do not change this comparison because isinstance(v_type, type(None)) === False
                 if v_type == type(None):  # noqa: E721
                     dictionary[k] = str(param) if param else None
-                else:
+                if v_type == str:  # noqa: E721
                     dictionary[k] = v_type(param)
+                else:
+                    dictionary[k] = None if param == '' else v_type(param)
             except Exception:
                 self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
                                        (str(k), str(param), str(k), str(v)))

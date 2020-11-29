@@ -118,7 +118,7 @@ class PatchLIGHTgbmModelIO(PatchBaseModelIO):
                 except Exception:
                     pass
             return callback
-        
+
         kwargs.setdefault("callbacks", []).append(trains_lightgbm_callback())
         ret = original_fn(*args, **kwargs)
         if not PatchLIGHTgbmModelIO.__main_task:

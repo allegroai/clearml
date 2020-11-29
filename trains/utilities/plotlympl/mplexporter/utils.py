@@ -28,7 +28,7 @@ def export_color(color):
     else:
         c = colorConverter.to_rgba(color)
         return "rgba(" + ", ".join(str(int(np.round(val * 255)))
-                                        for val in c[:3])+', '+str(c[3])+")"
+                                   for val in c[:3]) + ', ' + str(c[3]) + ")"
 
 
 def _many_to_one(input_dict):
@@ -36,6 +36,7 @@ def _many_to_one(input_dict):
     return dict((key, val)
                 for keys, val in input_dict.items()
                 for key in keys)
+
 
 LINESTYLES = _many_to_one({('solid', '-', (None, None)): 'none',
                            ('dashed', '--'): "6,6",
@@ -179,7 +180,7 @@ def get_text_style(text):
     style['color'] = export_color(text.get_color())
     style['halign'] = text.get_horizontalalignment()  # left, center, right
     style['valign'] = text.get_verticalalignment()  # baseline, center, top
-    style['malign'] = text._multialignment # text alignment when '\n' in text
+    style['malign'] = text._multialignment  # text alignment when '\n' in text
     style['rotation'] = text.get_rotation()
     style['zorder'] = text.get_zorder()
     return style
@@ -269,7 +270,7 @@ def get_axes_properties(ax):
              'dynamic': ax.get_navigate(),
              'axison': ax.axison,
              'frame_on': ax.get_frame_on(),
-             'patch_visible':ax.patch.get_visible(),
+             'patch_visible': ax.patch.get_visible(),
              'axes': [get_axis_properties(ax.xaxis),
                       get_axis_properties(ax.yaxis)]}
 

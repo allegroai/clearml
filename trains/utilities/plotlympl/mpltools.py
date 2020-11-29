@@ -83,7 +83,7 @@ def convert_dash(mpl_dash):
 
 
 def convert_path(path):
-    verts = path[0]  # may use this later
+    verts = path[0]  # noqa: F841,  may use this later
     code = tuple(path[1])
     if code in PATH_MAP:
         return PATH_MAP[code]
@@ -118,7 +118,7 @@ def hex_to_rgb(value):
     """
     value = value.lstrip("#")
     lv = len(value)
-    return tuple(int(value[i : i + lv // 3], 16) for i in range(0, lv, lv // 3))
+    return tuple(int(value[i: i + lv // 3], 16) for i in range(0, lv, lv // 3))
 
 
 def merge_color_and_opacity(color, opacity):
@@ -542,7 +542,7 @@ def mpl_dates_to_datestrings(dates, mpl_formatter):
         try:
             dates = matplotlib.dates.epoch2num([date * 24 * 60 * 60 for date in dates])
             dates = matplotlib.dates.num2date(dates)
-        except:
+        except:  # noqa: E722
             return _dates
 
     # the rest of mpl dates are in floating point days since
@@ -551,7 +551,7 @@ def mpl_dates_to_datestrings(dates, mpl_formatter):
     else:
         try:
             dates = matplotlib.dates.num2date(dates)
-        except:
+        except:  # noqa: E722
             return _dates
 
     time_stings = [

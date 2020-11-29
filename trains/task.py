@@ -367,7 +367,7 @@ class Task(_Task):
 
             .. code-block:: py
 
-               auto_connect_streams={'stdout': True, 'stderr': True`, 'logging': False}
+               auto_connect_streams={'stdout': True, 'stderr': True, 'logging': False}
 
         :return: The main execution Task (Task context).
         """

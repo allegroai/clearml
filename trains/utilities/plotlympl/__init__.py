@@ -13,3 +13,8 @@ from __future__ import absolute_import
 
 from .renderer import PlotlyRenderer
 from .mplexporter import Exporter
+
+__all__ = [
+    "PlotlyRenderer",
+    "Exporter"
+]

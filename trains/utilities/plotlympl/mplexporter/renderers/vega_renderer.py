@@ -14,7 +14,7 @@ class VegaRenderer(Renderer):
         self.scales = []
         self.axes = []
         self.marks = []
-            
+
     def open_axes(self, ax, props):
         if len(self.axes) > 0:
             warnings.warn("multiple axes not yet supported")
@@ -24,12 +24,12 @@ class VegaRenderer(Renderer):
                             domain=props['xlim'],
                             type="linear",
                             range="width",
-                        ),
+                            ),
                        dict(name="y",
                             domain=props['ylim'],
                             type="linear",
                             range="height",
-                        ),]
+                            ), ]
 
     def draw_line(self, data, coordinates, style, label, mplobj=None):
         if coordinates != 'data':
@@ -51,7 +51,7 @@ class VegaRenderer(Renderer):
                                    "strokeWidth": {"value": style['linewidth']},
                                }
                            }
-                       })
+                           })
 
     def draw_markers(self, data, coordinates, style, label, mplobj=None):
         if coordinates != 'data':
@@ -75,7 +75,7 @@ class VegaRenderer(Renderer):
                                    "strokeWidth": {"value": style['edgewidth']},
                                }
                            }
-                       })
+                           })
 
     def draw_text(self, text, position, coordinates, style,
                   text_type=None, mplobj=None):

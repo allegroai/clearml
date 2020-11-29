@@ -1,6 +1,7 @@
 import abc
 import hashlib
 import time
+from functools import reduce
 from logging import getLevelName
 from multiprocessing import Lock
 
@@ -207,10 +208,8 @@ class UploadEvent(MetricsEventAdapter):
         # replace the three quote symbols we cannot have,
         # notice % will be converted to %25 when the link is quoted, so we should not use it
         # Replace quote safe characters: ";" | "/" | "?" | ":" | "@" | "&" | "=" | "+" | "$" | ","
-        return part.replace('\\', '/').strip('/').replace('/', '.slash.').replace('?', '0x3f').\
-            replace('#', '0x23').replace('"', '0x22').replace(';', '0x3b').replace(':', '0x3a').\
-            replace('@', '0x40').replace('&', '0x26').replace('=', '0x3d').replace('+', '0x2b').\
-            replace('$', '0x24').replace(',', '0x2c')
+        return reduce(lambda a, b: a.replace(b, "0x{:02x}".format(ord(b))), "#\"\';?:@&=+$,%!",
+                      part.replace('\\', '/').strip('/').replace('/', '.slash.'))
 
     def __init__(self, metric, variant, image_data, local_image_path=None, iter=0, upload_uri=None,
                  file_history_size=None, delete_after_upload=False, **kwargs):

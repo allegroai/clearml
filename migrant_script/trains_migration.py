@@ -95,7 +95,7 @@ def main(path, analysis):
     project_indicator = False;
     project_list = Task.get_projects()
     for project in project_list:
-        if project.name == "mlflow migration":
+        if project.name == PROJECT_NAME:
             project_indicator = True;
             break;
 

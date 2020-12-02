@@ -86,35 +86,36 @@ class HyperParams(object):
 
         def make_item(value, name=None):
             if isinstance(value, tasks.ParamsItem):
-                item = value
+                a_item = value
             elif isinstance(value, dict):
-                item = tasks.ParamsItem(**value)
+                a_item = tasks.ParamsItem(**{k: None if v is None else str(v) for k, v in value.items()})
+            elif isinstance(value, tuple) and len(value) == 2 and isinstance(value[1], dict) and 'value' in value[1]:
+                a_item = tasks.ParamsItem(
+                    name=str(value[0]), **{k: None if v is None else str(v) for k, v in value[1].items()})
             elif isinstance(value, tuple):
-                item = tasks.ParamsItem(name=str(value[0]), value=str(value[1]))
+                a_item = tasks.ParamsItem(name=str(value[0]), value=str(value[1]))
             else:
-                item = tasks.ParamsItem(value=str(value))
+                a_item = tasks.ParamsItem(value=str(value))
 
             if name:
-                item.name = str(name)
-            if not item.name:
+                a_item.name = str(name)
+            if not a_item.name:
                 raise ValueError("Missing hyper-param name for '{}'".format(value))
-            section = force_section or item.section or default_section
+            section = force_section or a_item.section or default_section
             if not section:
                 raise ValueError("Missing hyper-param section for '{}'".format(value))
+            # force string value
             if escape_unsafe:
-                item.section, item.name = self._escape_unsafe_values(section, item.name)
+                a_item.section, a_item.name = self._escape_unsafe_values(section, a_item.name)
             else:
-                item.section = section
-            return item
+                a_item.section = section
+            return a_item
 
         props = {}
         if isinstance(iterables, dict):
-            iterables = [iterables]
-
-        for i in iterables:
-            if isinstance(i, dict):
-                props.update({name: make_item(value, name) for name, value in i.items()})
-            else:
+            props.update({name: make_item(name=name, value=value) for name, value in iterables.items()})
+        else:
+            for i in iterables:
                 item = make_item(i)
                 props.update({item.name: item})
 

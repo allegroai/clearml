@@ -1595,6 +1595,14 @@ class Task(_Task):
             * description
             * type
 
+        Examples:
+            task.set_user_properties(backbone='great', stable=True)
+            task.set_user_properties(backbone={"type": int, "description": "network type", "value": "great"}, )
+            task.set_user_properties(
+                {"name": "backbone", "description": "network type", "value": "great"},
+                {"name": "stable", "description": "is stable", "value": True},
+            )
+
         :param iterables: Properties iterables, each can be:
             * A dictionary of string key (name) to either a string value (value) a dict (property details). If the value
               is a dict, it must contain a "value" field. For example:

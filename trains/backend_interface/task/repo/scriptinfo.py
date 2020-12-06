@@ -649,7 +649,8 @@ class ScriptInfo(object):
         auxiliary_git_diff = None
 
         if not plugin:
-            log.info("No repository found, storing script code instead")
+            if log:
+                log.info("No repository found, storing script code instead")
         else:
             try:
                 for i, d in enumerate(scripts_dir):

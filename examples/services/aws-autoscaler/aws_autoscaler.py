@@ -178,11 +178,9 @@ def run_wizard():
             ),
             "key_name": get_input(
                 "the Amazon Key Pair name",
-                required=True,
             ),
             "security_group_ids": input_list(
                 "Amazon Security Group ID",
-                required=True,
             ),
         }
 

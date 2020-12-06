@@ -79,7 +79,11 @@ def input_list(
     default=None,  # type: Optional[str]
     new_line=False,  # type: bool
 ):
-    res_list = [get_input(key, description, question, required, default, new_line)]
+    res = get_input(key, description, question, required, default, new_line)
+    if not res:
+        return None
+
+    res_list = [res]
     while input_bool("\nDefine another {}? [y/N]".format(key)):
         response = get_input(
                     key=key,

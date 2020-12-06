@@ -1404,6 +1404,26 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return [projects.Project(**p.to_dict()) for p in res.response.projects]
         return []
 
+    @classmethod
+    def get_project_id(cls, project_name):
+        # type: (str) -> Optional[str]
+        """
+        Return a the project unique id (str).
+        If for than one project match the project_name, return the last updated project
+        If no project matched the requested name, returns None
+
+        :return: Project unique ID (str), or None if no project was found.
+        """
+        assert project_name
+        assert isinstance(project_name, str)
+        res = cls._send(
+            cls._get_default_session(),
+            projects.GetAllRequest(order_by=['last_update'], name=exact_match_regex(project_name)),
+            raise_on_errors=False)
+        if res and res.response and res.response.projects:
+            return [projects.Project(**p.to_dict()).id for p in res.response.projects][0]
+        return None
+
     @staticmethod
     def running_locally():
         # type: () -> bool

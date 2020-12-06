@@ -674,6 +674,10 @@ class StorageHelper(object):
             # chunks size is ignored and always 5Mb
             chunk_size_mb = 5
 
+            # make sure we have the destination folder
+            # noinspection PyBroadException
+            Path(temp_local_path).parent.mkdir(parents=True, exist_ok=True)
+
             # try to get file size
             try:
                 if isinstance(self._driver, _HttpDriver) and obj:

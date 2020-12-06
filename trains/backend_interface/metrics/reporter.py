@@ -1,6 +1,7 @@
 import json
 import logging
 import math
+from time import time
 
 try:
     from collections.abc import Iterable  # noqa
@@ -134,6 +135,13 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._exit_flag = True
         self._flush_event.set()
         self._thread.join()
+
+    def wait_for_events(self, timeout=None, step=2.0):
+        tic = time()
+        while self._events or self.get_num_results():
+            self.wait_for_results(timeout=step)
+            if timeout and time() - tic >= timeout:
+                break
 
     def report_scalar(self, title, series, value, iter):
         """

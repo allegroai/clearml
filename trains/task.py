@@ -1215,6 +1215,9 @@ class Task(_Task):
             self._logger._flush_stdout_handler()
         if self.__reporter:
             self.__reporter.flush()
+            if wait_for_uploads:
+                self.__reporter.wait_for_events()
+
         LoggerRoot.flush()
 
         return True

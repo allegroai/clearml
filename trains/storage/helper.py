@@ -1578,7 +1578,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
             except ImportError:
                 raise UsageError(
                     'Azure blob storage driver not found. '
-                    'Please install driver using "pip install \'azure.storage.blob>=2.0.1\'"'
+                    'Please install driver using "pip install \'azure.storage.blob<=2.1.0\'"'
                 )
 
             self.name = name

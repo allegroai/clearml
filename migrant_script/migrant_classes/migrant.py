@@ -74,26 +74,32 @@ class Migrant(ABC):
     def read(self):
         self.thread_id = threading.current_thread().ident
         for id, path in self.paths:
+            self.info[id] = {}
+
+            self.call_func('read_tags', id,
+                           lambda id_, path_: self.read_tags(id_, path_),
+                           id, path + self.tags)
+
             if self.project_exist:
                 task = self.call_func('Task.get_task', id,
                                       lambda id_: Task.get_task(project_name=PROJECT_NAME, task_name=id_),
-                                      id)
+                                      self.get_run_name_by_id(id))
                 if task:
                     task_tags = task.data.system_tags if hasattr(task.data, 'system_tags') else task.data.tags
                     if not ARCHIVED_TAG in task_tags:
-                        self.msgs['FAILED'].append('task '+ id +' already exist, if you want to migrate it again, you can archive it in Allegro Trains')
+                        del self.info[id]
+                        self.msgs['FAILED'].append(
+                            'task ' + id + ' already exist, if you want to migrate it again, you can archive it in Allegro Trains')
                         self.pbar.update(1)
                         continue
 
-            self.info[id] = {}
-
             self.call_func('read_general_information', id,
-                                  lambda id_,path_: self.read_general_information(id_, path_),
-                                  id,path)
+                           lambda id_, path_: self.read_general_information(id_, path_),
+                           id, path)
 
             self.call_func('read_artifacts', id,
-                                  lambda id_,path_: self.read_artifacts(id_, path_),
-                                  id,path + self.artifacts)
+                           lambda id_, path_: self.read_artifacts(id_, path_),
+                           id, path + self.artifacts)
 
             self.call_func('read_metrics', id,
                            lambda id_, path_: self.read_metrics(id_, path_),
@@ -102,11 +108,6 @@ class Migrant(ABC):
             self.call_func('read_params', id,
                            lambda id_, path_: self.read_params(id_, path_),
                            id, path + self.params)
-
-            self.call_func('read_tags', id,
-                           lambda id_, path_: self.read_tags(id_, path_),
-                           id, path + self.tags)
-
 
     @abstractmethod
     def seed(self):

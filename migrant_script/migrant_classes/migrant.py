@@ -31,9 +31,9 @@ class Migrant(ABC):
     params = "params"
     tags = "tags"
     general_information = "general_information"
-    skip_tags = ["project.backend", "project.entryPoint", "parentRunId", "best_run","model_summary"]
+    skip_tags = ["project.backend", "project.entryPoint", "parentRunId", "best_run", "model_summary"]
 
-    def __init__(self, paths, pbar, timer,analysis, project_indicator):
+    def __init__(self, paths, pbar, timer, analysis, project_indicator):
         """
         .. warning::
             **Do not construct Migrant manually!**
@@ -47,7 +47,7 @@ class Migrant(ABC):
         self.analysis = analysis
         self.project_exist = project_indicator
         self.timer = timer
-        self.msgs = {'ERROR':[], 'FAILED':[]}
+        self.msgs = {'ERROR': [], 'FAILED': []}
         self.project_link = None
         self.tag_parsers = {
             "source.name": parsers.source_name_parser(self),
@@ -60,7 +60,7 @@ class Migrant(ABC):
         super().__init__()
 
     @abstractmethod
-    def call_func(self, func_name ,id,func, *args):
+    def call_func(self, func_name, id, func, *args):
         res = None
         if self.analysis:
             self.timer.start(func_name, self.thread_id, id)
@@ -76,9 +76,16 @@ class Migrant(ABC):
         for id, path in self.paths:
             self.info[id] = {}
 
+            self.call_func('read_general_information', id,
+                           lambda id_, path_: self.read_general_information(id_, path_),
+                           id, path)
+
             self.call_func('read_tags', id,
                            lambda id_, path_: self.read_tags(id_, path_),
                            id, path + self.tags)
+
+            if "runName" in self.info[id][self.tags].keys():
+                self.ID_to_Name[id] = self.info[id][self.tags]["runName"]
 
             if self.project_exist:
                 task = self.call_func('Task.get_task', id,
@@ -92,10 +99,6 @@ class Migrant(ABC):
                             'task ' + id + ' already exist, if you want to migrate it again, you can archive it in Allegro Trains')
                         self.pbar.update(1)
                         continue
-
-            self.call_func('read_general_information', id,
-                           lambda id_, path_: self.read_general_information(id_, path_),
-                           id, path)
 
             self.call_func('read_artifacts', id,
                            lambda id_, path_: self.read_artifacts(id_, path_),
@@ -112,12 +115,9 @@ class Migrant(ABC):
     @abstractmethod
     def seed(self):
         for id in self.get_ids():
-            if "runName" in self.info[id][self.tags].keys():
-                self.ID_to_Name[id] = self.info[id][self.tags]["runName"]
-
             task = self.call_func('Task.create', id,
-                           lambda id_: Task.create(project_name=PROJECT_NAME, task_name=id_),
-                           self.get_run_name_by_id(id))
+                                  lambda id_: Task.create(project_name=PROJECT_NAME, task_name=id_),
+                                  self.get_run_name_by_id(id))
 
             self.call_func('transmit_information', id,
                            lambda id_: self.transmit_information(id_),
@@ -137,7 +137,7 @@ class Migrant(ABC):
             url_parts = output_log_web_page.split('projects')
             project_id = url_parts[1].split('/')[1]
             self.project_link = url_parts[0] + '/projects/' + project_id
-            self.migration_count +=1
+            self.migration_count += 1
             self.pbar.update(1)
 
     @abstractmethod
@@ -199,7 +199,7 @@ class Migrant(ABC):
                               self.get_run_name_by_id(id))
 
         task_values = self.call_func('task.export_task', id,
-                              lambda _ : task.export_task(),
+                                     lambda _: task.export_task(),
                                      self.get_run_name_by_id(id))
 
         task_values["comment"] = (
@@ -228,13 +228,13 @@ class Migrant(ABC):
         task_values["user"] = tags["user"]
 
         self.call_func('task.update_task', id,
-                              lambda _task_values : task.update_task(_task_values),
-                                     task_values)
+                       lambda _task_values: task.update_task(_task_values),
+                       task_values)
 
         if len(tags["VALUETAG"].keys()) > 0:
             self.call_func('task.connect_configuration', id,
-                                lambda _dict: task.connect_configuration(_dict,name="MLflow Tags"),
-                                        tags["VALUETAG"])
+                           lambda _dict: task.connect_configuration(_dict, name="MLflow Tags"),
+                           tags["VALUETAG"])
 
     @abstractmethod
     def read_general_information(self, id, path):
@@ -303,5 +303,5 @@ class Migrant(ABC):
         )
 
     @abstractmethod
-    def get_run_name_by_id(self,id):
+    def get_run_name_by_id(self, id):
         return self.ID_to_Name[id] if id in self.ID_to_Name.keys() else id

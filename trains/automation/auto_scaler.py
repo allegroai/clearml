@@ -15,10 +15,10 @@ from ..backend_api.session.client import APIClient
 class AutoScaler(object):
     @attr.s
     class Settings(object):
-        git_user = attr.ib(default=None)
-        git_pass = attr.ib(default=None)
-        cloud_credentials_key = attr.ib(default=None)
-        cloud_credentials_secret = attr.ib(default=None)
+        git_user = attr.ib(default="")
+        git_pass = attr.ib(default="")
+        cloud_credentials_key = attr.ib(default="")
+        cloud_credentials_secret = attr.ib(default="")
         cloud_credentials_region = attr.ib(default=None)
         default_docker_image = attr.ib(default="nvidia/cuda")
         max_idle_time_min = attr.ib(validator=instance_of(int), default=15)

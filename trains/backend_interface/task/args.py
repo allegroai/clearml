@@ -507,7 +507,7 @@ class _Arguments(object):
                 # do not change this comparison because isinstance(v_type, type(None)) === False
                 if v_type == type(None):  # noqa: E721
                     dictionary[k] = str(param) if param else None
-                if v_type == str:  # noqa: E721
+                elif v_type == str:  # noqa: E721
                     dictionary[k] = v_type(param)
                 else:
                     dictionary[k] = None if param == '' else v_type(param)

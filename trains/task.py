@@ -1831,7 +1831,7 @@ class Task(_Task):
         :return Task: Return the newly created Task or None if running remotely and execution is skipped
         """
         if not self.is_main_task():
-            raise ValueError("Only the main Task object can call execute_function_remotely()")
+            raise ValueError("Only the main Task object can call create_function_task()")
         if not callable(func):
             raise ValueError("func must be callable")
         if not Session.check_min_api_version('2.9'):

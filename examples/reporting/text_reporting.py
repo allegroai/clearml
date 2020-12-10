@@ -1,5 +1,7 @@
 # TRAINS - Example of manual graphs and  statistics reporting
 #
+from __future__ import print_function
+
 import logging
 import sys
 

@@ -942,12 +942,11 @@ class Task(_Task):
         :param tags: A list of tags which describe the Task to add.
         """
 
-        if not running_remotely() or not self.is_main_task():
-            if isinstance(tags, six.string_types):
-                tags = tags.split(" ")
+        if isinstance(tags, six.string_types):
+            tags = tags.split(" ")
 
-            self.data.tags.extend(tags)
-            self._edit(tags=list(set(self.data.tags)))
+        self.data.tags = list(set((self.data.tags or []) + tags))
+        self._edit(tags=self.data.tags)
 
     def connect(self, mutable, name=None):
         # type: (Any, Optional[str]) -> Any

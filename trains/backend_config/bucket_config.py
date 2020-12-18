@@ -89,13 +89,14 @@ class BaseBucketConfigurations(object):
 
 class S3BucketConfigurations(BaseBucketConfigurations):
     def __init__(
-        self, buckets=None, default_key="", default_secret="", default_region=""
+        self, buckets=None, default_key="", default_secret="", default_region="", default_host=""
     ):
         super(S3BucketConfigurations, self).__init__()
         self._buckets = buckets if buckets else list()
         self._default_key = default_key
         self._default_secret = default_secret
         self._default_region = default_region
+        self._default_host = default_host
         self._default_multipart = True
 
     @classmethod
@@ -107,12 +108,14 @@ class S3BucketConfigurations(BaseBucketConfigurations):
         default_key = s3_configuration.get("key") or getenv("AWS_ACCESS_KEY_ID", "")
         default_secret = s3_configuration.get("secret") or getenv("AWS_SECRET_ACCESS_KEY", "")
         default_region = s3_configuration.get("region") or getenv("AWS_DEFAULT_REGION", "")
+        default_host = s3_configuration.get("host") or getenv("AWS_HOST", "")
 
         default_key = _none_to_empty_string(default_key)
         default_secret = _none_to_empty_string(default_secret)
         default_region = _none_to_empty_string(default_region)
+        default_host = _none_to_empty_string(default_host)
 
-        return cls(config_list, default_key, default_secret, default_region)
+        return cls(config_list, default_key, default_secret, default_region, default_host)
 
     def add_config(self, bucket_config):
         self._buckets.insert(0, bucket_config)

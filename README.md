@@ -1,4 +1,4 @@
-# Allegro Trains
+# Allegro Trains - new name is coming soon ;)
 ## Auto-Magical Experiment Manager, Version Control and ML-Ops for AI
 
 ## :confetti_ball: Now with Full ML/DL DevOps - See [TRAINS AGENT](https://github.com/allegroai/trains-agent) and [Services](https://github.com/allegroai/trains-server#trains-agent-services--)

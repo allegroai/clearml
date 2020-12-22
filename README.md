@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://app.community.clear.ml"><img src="https://github.com/allegroai/trains/blob/master/docs/clearml-logo.svg?raw=true" width="250px"></a>
+<a href="https://app.community.clear.ml"><img src="https://github.com/allegroai/clearml/blob/master/docs/clearml-logo.svg?raw=true" width="250px"></a>
 
 
 **ClearML - Auto-Magical Suite of tools to streamline your ML workflow 
@@ -20,9 +20,9 @@ Experiment Manager, ML-Ops and Data-Management**
 #### *Formerly known as Allegro Trains*
 ClearML is a ML/DL development and production suite, it contains three main modules:
 
-- [Experiment Manager](#clearml-experiment-management) - Automagical experiment tracking, environments and results
-- [ML-Ops](https://github.com/allegroai/trains-agent) - Automation, Pipelines & Orchestration solution for ML/DL jobs (K8s / Cloud / bare-metal)  
-- [Data-Management](https://github.com/allegroai/clearml/doc/clearml-data.md) - Fully differentiable data management & version control solution on top of object-storage 
+- [Experiment Manager](#clearml-experiment-manager) - Automagical experiment tracking, environments and results
+- [ML-Ops](https://github.com/allegroai/clearml-agent) - Automation, Pipelines & Orchestration solution for ML/DL jobs (K8s / Cloud / bare-metal)  
+- [Data-Management](https://github.com/allegroai/clearml/blob/master/docs/clearml-task.md) - Fully differentiable data management & version control solution on top of object-storage 
   (S3/GS/Azure/NAS)  
   
 
@@ -37,7 +37,7 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting]() &
 </div>
 
 ---
-<a href="https://app.community.clear.ml"><img src="https://github.com/allegroai/trains/blob/master/docs/webapp_screenshots.gif?raw=true" width="100%"></a>
+<a href="https://app.community.clear.ml"><img src="https://github.com/allegroai/clearml/blob/master/docs/webapp_screenshots.gif?raw=true" width="100%"></a>
 
 ## ClearML Experiment Manager
 
@@ -58,10 +58,10 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting]() &
     * Model snapshots (With optional automatic upload to central storage: Shared folder, S3, GS, Azure, Http)
     * Artifacts log & store (Shared folder, S3, GS, Azure, Http)
     * Tensorboard/TensorboardX scalars, metrics, histograms, **images, audio and video samples**
-    * [Matplotlib & Seaborn](https://github.com/allegroai/trains/tree/master/examples/frameworks/matplotlib)
+    * [Matplotlib & Seaborn](https://github.com/allegroai/clearml/tree/master/examples/frameworks/matplotlib)
     * [ClearML Explicit Logging](https://allegro.ai/clearml/docs/examples/reporting/) interface for complete flexibility.
 * Extensive platform support and integrations
-    * Supported ML/DL frameworks: [PyTorch](https://github.com/allegroai/trains/tree/master/examples/frameworks/pytorch)(incl' ignite/lightning), [Tensorflow](https://github.com/allegroai/trains/tree/master/examples/frameworks/tensorflow), [Keras](https://github.com/allegroai/trains/tree/master/examples/frameworks/keras), [AutoKeras](https://github.com/allegroai/trains/tree/master/examples/frameworks/autokeras), [XGBoost](https://github.com/allegroai/trains/tree/master/examples/frameworks/xgboost) and [Scikit-Learn](https://github.com/allegroai/trains/tree/master/examples/frameworks/scikit-learn)
+    * Supported ML/DL frameworks: [PyTorch](https://github.com/allegroai/clearml/tree/master/examples/frameworks/pytorch)(incl' ignite/lightning), [Tensorflow](https://github.com/allegroai/clearml/tree/master/examples/frameworks/tensorflow), [Keras](https://github.com/allegroai/clearml/tree/master/examples/frameworks/keras), [AutoKeras](https://github.com/allegroai/clearml/tree/master/examples/frameworks/autokeras), [XGBoost](https://github.com/allegroai/clearml/tree/master/examples/frameworks/xgboost) and [Scikit-Learn](https://github.com/allegroai/clearml/tree/master/examples/frameworks/scikit-learn)
     * Seamless integration (including version control) with **Jupyter Notebook**
     and [*PyCharm* remote debugging](https://github.com/allegroai/trains-pycharm-plugin)
       
@@ -93,8 +93,8 @@ The ClearML run-time components:
 ## Additional Modules 
 
 - [clearml-session](https://github.com/allegroai/clearml-session) - **Launch remote JupyterLab / VSCode-server inside any docker, on Cloud/On-Prem machines**
-- [clearml-task](https://github.com/allegroai/clearml/doc/clearml-task.md) - Run any codebase on remote machines with full remote logging of Tensorboard, Matplotlib & Console outputs 
-- [clearml-data](https://github.com/allegroai/clearml/doc/clearml-data.md) - **CLI for managing and versioning your datasets, including creating / uploading / downloading of data from S3/GS/Azure/NAS** 
+- [clearml-task](https://github.com/allegroai/clearml/blob/master/docs/clearml-task.md) - Run any codebase on remote machines with full remote logging of Tensorboard, Matplotlib & Console outputs 
+- [clearml-data](https://github.com/allegroai/clearml/blob/master/docs/datasets.md) - **CLI for managing and versioning your datasets, including creating / uploading / downloading of data from S3/GS/Azure/NAS** 
 - [AWS Auto-Scaler](examples/services/aws-autoscaler/aws_autoscaler.py) - Automatically spin EC2 instances based on your workloads with preconfigured budget! No need for K8s!
 - [Hyper-Parameter Optimization](examples/services/hyper-parameter-optimization/hyper_parameter_optimizer.py) - Optimize any code with black-box approach and state of the art Bayesian optimization algorithms 
 - [Automation Pipeline](examples/pipeline/pipeline_controller.py) - Build pipelines based on existing experiments / jobs, supports building pipelines of pipelines!  
@@ -138,17 +138,17 @@ Apache License, Version 2.0 (see the [LICENSE](https://www.apache.org/licenses/L
 
 More information in the [official documentation](https://allegro.ai//clearml/docs) and [on YouTube](https://www.youtube.com/c/AllegroAI).
 
-For examples and use cases, check the [examples folder](https://github.com/allegroai/trains/tree/master/examples) and [corresponding documentation](https://allegro.ai/clearml/docs/examples/examples_overview/).
+For examples and use cases, check the [examples folder](https://github.com/allegroai/clearml/tree/master/examples) and [corresponding documentation](https://allegro.ai/clearml/docs/examples/examples_overview/).
 
 If you have any questions: post on our [Slack Channel](https://join.slack.com/t/allegroai-trains/shared_invite/enQtOTQyMTI1MzQxMzE4LTY5NTUxOTY1NmQ1MzQ5MjRhMGRhZmM4ODE5NTNjMTg2NTBlZGQzZGVkMWU3ZDg1MGE1MjQxNDEzMWU2NmVjZmY), or tag your questions on [stackoverflow](https://stackoverflow.com/questions/tagged/trains) with '**trains**' tag.
 
-For feature requests or bug reports, please use [GitHub issues](https://github.com/allegroai/trains/issues).
+For feature requests or bug reports, please use [GitHub issues](https://github.com/allegroai/clearml/issues).
 
 Additionally, you can always find us at *clearml@allegro.ai*
 
 ## Contributing
 
-See the ClearML [Guidelines for Contributing](https://github.com/allegroai/trains/blob/master/docs/contributing.md).
+See the ClearML [Guidelines for Contributing](https://github.com/allegroai/clearml/blob/master/docs/contributing.md).
 
 
 _May the force (and the goddess of learning rates) be with you!_

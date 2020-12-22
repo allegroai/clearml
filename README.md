@@ -6,7 +6,7 @@
 **ClearML - Auto-Magical Suite of tools to streamline your ML workflow 
 </br>Experiment Manager, ML-Ops and Data-Management**
 
-[![GitHub license](https://img.shields.io/github/license/allegroai/trains.svg)](https://img.shields.io/github/license/allegroai/clearml.svg)
+[![GitHub license](https://img.shields.io/github/license/allegroai/clearml.svg)](https://img.shields.io/github/license/allegroai/clearml.svg)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/clearml.svg)](https://img.shields.io/pypi/pyversions/clearml.svg)
 [![PyPI version shields.io](https://img.shields.io/pypi/v/clearml.svg)](https://img.shields.io/pypi/v/clearml.svg)
 [![PyPI status](https://img.shields.io/pypi/status/clearml.svg)](https://pypi.python.org/pypi/clearml/)

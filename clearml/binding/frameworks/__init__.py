@@ -114,7 +114,7 @@ class WeightsFileHandler(object):
         Add a pre-save/load callback for weights files and return its handle. If the callback was already added,
          return the existing handle.
 
-        Use this callback to modify the weights filename registered in the Trains Server. In case Trains is
+        Use this callback to modify the weights filename registered in the ClearML Server. In case ClearML is
          configured to upload the weights file, this will affect the uploaded filename as well.
          Callback returning None will disable the tracking of the current call Model save,
          it will not disable saving it to disk, just the logging/tracking/uploading.
@@ -422,7 +422,7 @@ class WeightsFileHandler(object):
                     # HACK: if pytorch-lightning is used, remove the temp '.part' file extension
                     if sys.modules.get('pytorch_lightning') and target_filename.lower().endswith('.part'):
                         target_filename = target_filename[:-len('.part')]
-                    fd, temp_file = mkstemp(prefix='.trains.upload_model_', suffix='.tmp')
+                    fd, temp_file = mkstemp(prefix='.clearml.upload_model_', suffix='.tmp')
                     os.close(fd)
                     shutil.copy(files[0], temp_file)
                     trains_out_model.update_weights(

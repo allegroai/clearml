@@ -8,7 +8,7 @@ import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten, Conv2D
 from tensorflow.keras import Model
 
-from trains import Task
+from clearml import Task
 
 
 task = Task.init(project_name='examples',

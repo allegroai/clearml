@@ -6,7 +6,7 @@ from sklearn.model_selection import learning_curve
 from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import SVC
 
-from trains import Task
+from clearml import Task
 
 
 def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None, n_jobs=None,

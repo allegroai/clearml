@@ -1,7 +1,7 @@
-# TRAINS - Example reporting video or audio links/file
+# ClearML - Example reporting video or audio links/file
 #
 import os
-from trains import Task, Logger
+from clearml import Task, Logger
 
 
 task = Task.init(project_name="examples", task_name="audio and video reporting")

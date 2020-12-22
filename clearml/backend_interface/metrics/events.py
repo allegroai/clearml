@@ -50,6 +50,7 @@ class MetricsEventAdapter(object):
         url = attr.attrib(default=None)
 
         exception = attr.attrib(default=None)
+        retries = attr.attrib(default=None)
 
         delete_local_file = attr.attrib(default=True)
         """ Local file path, if exists, delete the file after upload completed """
@@ -198,6 +199,7 @@ class UploadEvent(MetricsEventAdapter):
     _format = '.' + str(config.get('metrics.images.format', 'JPEG')).upper().lstrip('.')
     _quality = int(config.get('metrics.images.quality', 87))
     _subsampling = int(config.get('metrics.images.subsampling', 0))
+    _upload_retries = 3
 
     _metric_counters = {}
     _metric_counters_lock = Lock()
@@ -253,7 +255,7 @@ class UploadEvent(MetricsEventAdapter):
             self._upload_filename += filename_ext
 
         self._override_storage_key_prefix = kwargs.pop('override_storage_key_prefix', None)
-
+        self.retries = self._upload_retries
         super(UploadEvent, self).__init__(metric, variant, iter=iter, **kwargs)
 
     @classmethod
@@ -334,6 +336,7 @@ class UploadEvent(MetricsEventAdapter):
             key_prop='key',
             upload_uri=self._upload_uri,
             delete_local_file=local_file if self._delete_after_upload else None,
+            retries=self.retries,
         )
 
     def get_target_full_upload_uri(self, storage_uri, storage_key_prefix=None, quote_uri=True):

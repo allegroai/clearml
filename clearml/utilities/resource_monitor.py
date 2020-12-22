@@ -41,7 +41,7 @@ class ResourceMonitor(object):
         self._last_process_pool = {}
         self._last_process_id_list = []
         if not self._gpustat:
-            self._task.get_logger().report_text('TRAINS Monitor: GPU monitoring is not available')
+            self._task.get_logger().report_text('ClearML Monitor: GPU monitoring is not available')
         else:  # if running_remotely():
             try:
                 active_gpus = os.environ.get('NVIDIA_VISIBLE_DEVICES', '') or \
@@ -105,13 +105,13 @@ class ResourceMonitor(object):
                 if IsTensorboardInit.tensorboard_used():
                     fallback_to_sec_as_iterations = False
                 elif seconds_since_started >= self.wait_for_first_iteration:
-                    self._task.get_logger().report_text('TRAINS Monitor: Could not detect iteration reporting, '
+                    self._task.get_logger().report_text('ClearML Monitor: Could not detect iteration reporting, '
                                                         'falling back to iterations as seconds-from-start')
                     fallback_to_sec_as_iterations = True
             elif fallback_to_sec_as_iterations is True and seconds_since_started <= self.max_check_first_iteration:
                 if self._check_logger_reported():
                     fallback_to_sec_as_iterations = False
-                    self._task.get_logger().report_text('TRAINS Monitor: Reporting detected, '
+                    self._task.get_logger().report_text('ClearML Monitor: Reporting detected, '
                                                         'reverting back to iteration based reporting')
 
             clear_readouts = True
@@ -231,7 +231,7 @@ class ResourceMonitor(object):
                 # something happened and we can't use gpu stats,
                 self._gpustat_fail += 1
                 if self._gpustat_fail >= 3:
-                    self._task.get_logger().report_text('TRAINS Monitor: GPU monitoring failed getting GPU reading, '
+                    self._task.get_logger().report_text('ClearML Monitor: GPU monitoring failed getting GPU reading, '
                                                         'switching off GPU monitoring')
                     self._gpustat = None
 

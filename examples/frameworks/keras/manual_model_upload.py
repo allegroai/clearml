@@ -1,11 +1,11 @@
-# TRAINS - Example of manual model configuration and uploading
+# ClearML - Example of manual model configuration and uploading
 #
 import os
 from tempfile import gettempdir
 
 from keras import Input, layers, Model
 
-from trains import Task
+from clearml import Task
 
 
 task = Task.init(project_name='examples', task_name='Model configuration and upload')

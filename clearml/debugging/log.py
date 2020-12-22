@@ -56,7 +56,7 @@ class LoggerRoot(object):
         # avoid nested imports
         from ..config import get_log_redirect_level
 
-        LoggerRoot.__base_logger = logging.getLogger('trains')
+        LoggerRoot.__base_logger = logging.getLogger('clearml')
         level = level if level is not None else default_level
         LoggerRoot.__base_logger.setLevel(level)
 

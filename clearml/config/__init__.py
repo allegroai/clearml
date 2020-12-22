@@ -135,7 +135,10 @@ def dev_worker_name():
 def __set_is_master_node():
     # noinspection PyBroadException
     try:
-        force_master_node = os.environ.pop('TRAINS_FORCE_MASTER_NODE', None)
+        # pop both set the first
+        env_a = os.environ.pop('CLEARML_FORCE_MASTER_NODE', None)
+        env_b = os.environ.pop('TRAINS_FORCE_MASTER_NODE', None)
+        force_master_node = env_a or env_b
     except Exception:
         force_master_node = None
 

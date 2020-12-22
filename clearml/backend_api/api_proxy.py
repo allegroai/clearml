@@ -8,7 +8,7 @@ from ..utilities.check_updates import Version
 
 
 class ApiServiceProxy(object):
-    _main_services_module = "trains.backend_api.services"
+    _main_services_module = "clearml.backend_api.services"
     _available_versions = None
 
     def __init__(self, module):

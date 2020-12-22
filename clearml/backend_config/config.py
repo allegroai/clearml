@@ -88,7 +88,7 @@ class Config(object):
         self._folder_name = config_folder or DEFAULT_CONFIG_FOLDER
         self._roots = []
         self._config = ConfigTree()
-        self._env = env or os.environ.get("TRAINS_ENV", Environment.default)
+        self._env = env or os.environ.get("CLEARML_ENV", os.environ.get("TRAINS_ENV", Environment.default))
         self.config_paths = set()
         self.is_server = is_server
 
@@ -139,7 +139,7 @@ class Config(object):
         else:
             env_config_paths = []
 
-        env_config_path_override = os.environ.get(ENV_CONFIG_PATH_OVERRIDE_VAR)
+        env_config_path_override = ENV_CONFIG_PATH_OVERRIDE_VAR.get()
         if env_config_path_override:
             env_config_paths = [expanduser(env_config_path_override)]
 
@@ -166,7 +166,7 @@ class Config(object):
             )
 
         local_config_files = LOCAL_CONFIG_FILES
-        local_config_override = os.environ.get(LOCAL_CONFIG_FILE_OVERRIDE_VAR)
+        local_config_override = LOCAL_CONFIG_FILE_OVERRIDE_VAR.get()
         if local_config_override:
             local_config_files = [expanduser(local_config_override)]
 

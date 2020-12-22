@@ -1,9 +1,9 @@
 import pickle
-from trains import Task, StorageManager
+from clearml import Task, StorageManager
 from sklearn.model_selection import train_test_split
 
 
-# Connecting TRAINS
+# Connecting ClearML
 task = Task.init(project_name="examples", task_name="pipeline step 2 process dataset")
 
 # program arguments

@@ -31,7 +31,7 @@ import tempfile
 import tensorflow as tf
 
 from tensorflow.examples.tutorials.mnist import input_data
-from trains import Task
+from clearml import Task
 
 FLAGS = None
 task = Task.init(project_name='examples', task_name='Tensorflow mnist with summaries example')

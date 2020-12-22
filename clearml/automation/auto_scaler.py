@@ -102,15 +102,15 @@ class AutoScaler(object):
 
     def spin_up_worker(self, resource, worker_id_prefix, queue_name):
         """
-        Creates a new worker for trains (cloud-specific implementation).
+        Creates a new worker for clearml (cloud-specific implementation).
         First, create an instance in the cloud and install some required packages.
-        Then, define trains-agent environment variables and run trains-agent for the specified queue.
+        Then, define clearml-agent environment variables and run clearml-agent for the specified queue.
         NOTE: - Will wait until instance is running
               - This implementation assumes the instance image already has docker installed
 
         :param str resource: resource name, as defined in self.resource_configurations and self.queues.
         :param str worker_id_prefix: worker name prefix
-        :param str queue_name: trains queue to listen to
+        :param str queue_name: clearml queue to listen to
         """
         pass
 
@@ -137,17 +137,17 @@ class AutoScaler(object):
         minutes would be removed.
         """
 
-        # Worker's id in trains would be composed from prefix, name, instance_type and cloud_id separated by ';'
+        # Worker's id in clearml would be composed from prefix, name, instance_type and cloud_id separated by ';'
         workers_pattern = re.compile(
             r"^(?P<prefix>[^:]+):(?P<name>[^:]+):(?P<instance_type>[^:]+):(?P<cloud_id>[^:]+)"
         )
 
-        # Set up the environment variables for trains
-        os.environ["TRAINS_API_HOST"] = self.api_server
-        os.environ["TRAINS_WEB_HOST"] = self.web_server
-        os.environ["TRAINS_FILES_HOST"] = self.files_server
-        os.environ["TRAINS_API_ACCESS_KEY"] = self.access_key
-        os.environ["TRAINS_API_SECRET_KEY"] = self.secret_key
+        # Set up the environment variables for clearml
+        os.environ["CLEARML_API_HOST"] = self.api_server
+        os.environ["CLEARML_WEB_HOST"] = self.web_server
+        os.environ["CLEARML_FILES_HOST"] = self.files_server
+        os.environ["CLEARML_API_ACCESS_KEY"] = self.access_key
+        os.environ["CLEARML_API_SECRET_KEY"] = self.secret_key
         api_client = APIClient()
 
         # Verify the requested queues exist and create those that doesn't exist
@@ -234,7 +234,7 @@ class AutoScaler(object):
                 # skip resource types that might be needed
                 if resources in required_idle_resources:
                     continue
-                # Remove from both aws and trains all instances that are idle for longer than MAX_IDLE_TIME_MIN
+                # Remove from both aws and clearml all instances that are idle for longer than MAX_IDLE_TIME_MIN
                 if time() - timestamp > self.max_idle_time_min * 60.0:
                     cloud_id = workers_pattern.match(worker.id)["cloud_id"]
                     self.spin_down_worker(cloud_id)

@@ -178,7 +178,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._report(ev)
 
     def report_matplotlib(self, title, series, figure, iter, force_save_as_image=False, logger=None):
-        from trains.binding.matplotlib_bind import PatchedMatplotlib
+        from clearml.binding.matplotlib_bind import PatchedMatplotlib
         PatchedMatplotlib.report_figure(
             title=title,
             series=series,

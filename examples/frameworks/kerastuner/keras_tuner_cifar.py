@@ -3,9 +3,9 @@
 import kerastuner as kt
 import tensorflow as tf
 import tensorflow_datasets as tfds
-from trains.external.kerastuner import TrainsTunerLogger
+from clearml.external.kerastuner import TrainsTunerLogger
 
-from trains import Task
+from clearml import Task
 
 physical_devices = tf.config.list_physical_devices('GPU')
 if physical_devices:

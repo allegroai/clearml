@@ -52,21 +52,21 @@ class ScriptRequirements(object):
         try:
             # noinspection PyPackageRequirements,PyUnresolvedReferences
             import boto3  # noqa: F401
-            modules.add('boto3', 'trains.storage', 0)
+            modules.add('boto3', 'clearml.storage', 0)
         except Exception:
             pass
         # noinspection PyBroadException
         try:
             # noinspection PyPackageRequirements,PyUnresolvedReferences
             from google.cloud import storage  # noqa: F401
-            modules.add('google_cloud_storage', 'trains.storage', 0)
+            modules.add('google_cloud_storage', 'clearml.storage', 0)
         except Exception:
             pass
         # noinspection PyBroadException
         try:
             # noinspection PyPackageRequirements,PyUnresolvedReferences
             from azure.storage.blob import ContentSettings  # noqa: F401
-            modules.add('azure_storage_blob', 'trains.storage', 0)
+            modules.add('azure_storage_blob', 'clearml.storage', 0)
         except Exception:
             pass
 
@@ -100,7 +100,7 @@ class ScriptRequirements(object):
             from ..task import Task
             # noinspection PyProtectedMember
             for package, version in Task._force_requirements.items():
-                modules.add(package, 'trains', 0)
+                modules.add(package, 'clearml', 0)
         except Exception:
             pass
 
@@ -265,7 +265,7 @@ class _JupyterObserver(object):
 
     @classmethod
     def _daemon(cls, jupyter_notebook_filename):
-        from trains import Task
+        from clearml import Task
 
         # load jupyter notebook package
         # noinspection PyBroadException
@@ -715,12 +715,12 @@ class ScriptInfo(object):
             jupyter_filepath=jupyter_filepath,
         )
 
-        if repo_info.modified:
-            messages.append(
-                "======> WARNING! UNCOMMITTED CHANGES IN REPOSITORY {} <======".format(
-                    script_info.get("repository", "")
-                )
-            )
+        # if repo_info.modified:
+        #     messages.append(
+        #         "======> WARNING! UNCOMMITTED CHANGES IN REPOSITORY {} <======".format(
+        #             script_info.get("repository", "")
+        #         )
+        #     )
 
         if not any(script_info.values()):
             script_info = None

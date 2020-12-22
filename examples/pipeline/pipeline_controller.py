@@ -1,5 +1,5 @@
-from trains import Task
-from trains.automation.controller import PipelineController
+from clearml import Task
+from clearml.automation.controller import PipelineController
 
 
 task = Task.init(project_name='examples', task_name='pipeline demo',

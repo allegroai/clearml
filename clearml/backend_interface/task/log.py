@@ -62,7 +62,7 @@ class TaskHandler(BufferingHandler):
         if self._connect_logger and not TaskHandler.__once:
             base_logger = getLogger()
             if len(base_logger.handlers) == 1 and isinstance(base_logger.handlers[0], TaskHandler):
-                if record.name != 'console' and not record.name.startswith('trains.'):
+                if record.name != 'console' and not record.name.startswith('clearml.'):
                     base_logger.removeHandler(self)
                     basicConfig()
                     base_logger.addHandler(self)
@@ -149,7 +149,7 @@ class TaskHandler(BufferingHandler):
             self._last_event = None
             batch_requests = events.AddBatchRequest(requests=[events.AddRequest(e) for e in record_events if e])
         except Exception:
-            self.__log_stderr("WARNING: trains.log - Failed logging task to backend ({:d} lines)".format(len(buffer)))
+            self.__log_stderr("WARNING: clearml.log - Failed logging task to backend ({:d} lines)".format(len(buffer)))
             batch_requests = None
 
         if batch_requests and batch_requests.requests:
@@ -253,7 +253,7 @@ class TaskHandler(BufferingHandler):
         write = sys.stderr._original_write if hasattr(sys.stderr, '_original_write') else sys.stderr.write
         write('{asctime} - {name} - {levelname} - {message}\n'.format(
             asctime=Formatter().formatTime(makeLogRecord({})),
-            name='trains.log', levelname=getLevelName(level), message=msg))
+            name='clearml.log', levelname=getLevelName(level), message=msg))
 
     @classmethod
     def report_offline_session(cls, task, folder):

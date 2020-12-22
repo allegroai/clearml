@@ -22,7 +22,7 @@ class Monitor(object):
         self._project_ids = None
         self._projects = None
         self._projects_refresh_timestamp = None
-        self._trains_apiclient = None
+        self._clearml_apiclient = None
 
     def set_projects(self, project_names=None, project_names_re=None, project_ids=None):
         # type: (Optional[Sequence[str]], Optional[Sequence[str]], Optional[Sequence[str]]) -> ()
@@ -167,10 +167,10 @@ class Monitor(object):
     def _get_api_client(self):
         # type: () -> APIClient
         """
-        Return an APIClient object to directly query the trains-server
+        Return an APIClient object to directly query the clearml-server
 
         :return: APIClient object
         """
-        if not self._trains_apiclient:
-            self._trains_apiclient = APIClient()
-        return self._trains_apiclient
+        if not self._clearml_apiclient:
+            self._clearml_apiclient = APIClient()
+        return self._clearml_apiclient

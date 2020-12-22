@@ -1,4 +1,4 @@
-from trains import Task, StorageManager
+from clearml import Task, StorageManager
 
 # create an dataset experiment
 task = Task.init(project_name="examples", task_name="pipeline step 1 dataset artifact")

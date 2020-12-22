@@ -9,29 +9,30 @@ import psutil
 
 # make sure we have jupyter in the auto requirements
 import jupyter  # noqa
-from trains import Task
+from clearml import Task
 
 
-# initialize TRAINS
+# initialize ClearML
 task = Task.init(
     project_name="DevOps", task_name="Allocate Jupyter Notebook Instance", task_type=Task.TaskTypes.service)
 
-# get rid of all the runtime TRAINS
+# get rid of all the runtime ClearML
 preserve = (
-    "TRAINS_API_HOST",
-    "TRAINS_WEB_HOST",
-    "TRAINS_FILES_HOST",
-    "TRAINS_CONFIG_FILE",
-    "TRAINS_API_ACCESS_KEY",
-    "TRAINS_API_SECRET_KEY",
-    "TRAINS_API_HOST_VERIFY_CERT",
-    "TRAINS_DOCKER_IMAGE",
+    "_API_HOST",
+    "_WEB_HOST",
+    "_FILES_HOST",
+    "_CONFIG_FILE",
+    "_API_ACCESS_KEY",
+    "_API_SECRET_KEY",
+    "_API_HOST_VERIFY_CERT",
+    "_DOCKER_IMAGE",
 )
 
 # setup os environment
 env = deepcopy(os.environ)
 for key in os.environ:
-    if key.startswith("TRAINS") and key not in preserve:
+    if (key.startswith("TRAINS") and key[6:] not in preserve) or \
+            (key.startswith("CLEARML") and key[7:] not in preserve):
         env.pop(key, None)
 
 # Add jupyter server base folder
@@ -44,7 +45,7 @@ param = {
 task.connect(param)
 
 # set default docker image, with network configuration
-os.environ["TRAINS_DOCKER_IMAGE"] = param['default_docker_for_jupyter']
+os.environ["CLEARML_DOCKER_IMAGE"] = param['default_docker_for_jupyter']
 task.set_base_docker("{} --network host".format(param['default_docker_for_jupyter']))
 
 
@@ -79,11 +80,11 @@ if param.get("ssh_server"):
             "sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && "
             "sed 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' -i /etc/pam.d/sshd && "  # noqa: W605
             'echo "export VISIBLE=now" >> /etc/profile && '
-            'echo "export TRAINS_CONFIG_FILE={trains_config_file}" >> /etc/profile && '
+            'echo "export TRAINS_CONFIG_FILE={clearml_config_file}" >> /etc/profile && '
             "/usr/sbin/sshd -p {port}".format(
                 password=ssh_password,
                 port=port,
-                trains_config_file=os.environ.get("TRAINS_CONFIG_FILE"),
+                clearml_config_file=os.environ.get("TRAINS_CONFIG_FILE"),
             )
         )
 

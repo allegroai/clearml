@@ -1,8 +1,8 @@
-# TRAINS - Example of manual graphs and  statistics reporting
+# ClearML - Example of manual graphs and  statistics reporting
 #
 import numpy as np
 
-from trains import Task, Logger
+from clearml import Task, Logger
 
 
 def report_plots(logger, iteration=0):
@@ -117,6 +117,7 @@ def main():
     # Get the task logger,
     # You can also call Task.current_task().get_logger() from anywhere in your code.
     logger = task.get_logger()
+    #logger.report_scatter2d()
 
     # report graphs
     report_plots(logger)

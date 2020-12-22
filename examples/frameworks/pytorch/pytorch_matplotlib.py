@@ -1,4 +1,4 @@
-# TRAINS - Example of Pytorch and matplotlib integration and reporting
+# ClearML - Example of Pytorch and matplotlib integration and reporting
 #
 """
 Neural Transfer Using PyTorch
@@ -60,7 +60,7 @@ import torchvision.transforms as transforms
 import torchvision.models as models
 
 import copy
-from trains import Task
+from clearml import Task
 
 
 task = Task.init(project_name='examples', task_name='pytorch with matplotlib example', task_type=Task.TaskTypes.testing)

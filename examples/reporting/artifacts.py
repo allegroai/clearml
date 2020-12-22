@@ -4,7 +4,7 @@ from time import sleep
 import pandas as pd
 import numpy as np
 from PIL import Image
-from trains import Task
+from clearml import Task
 
 task = Task.init('examples', 'artifacts example')
 

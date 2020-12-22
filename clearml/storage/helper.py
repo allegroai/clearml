@@ -681,6 +681,7 @@ class StorageHelper(object):
             # try to get file size
             try:
                 if isinstance(self._driver, _HttpDriver) and obj:
+                    obj = self._driver._get_download_object(obj)
                     total_size_mb = float(obj.headers.get('Content-Length', 0)) / (1024 * 1024)
                 elif hasattr(obj, 'size'):
                     size = obj.size
@@ -785,12 +786,12 @@ class StorageHelper(object):
     def check_write_permissions(self, dest_path=None):
         # create a temporary file, then de;ete it
         base_url = dest_path or self._base_url
-        dest_path = base_url + '/.trains.test'
+        dest_path = base_url + '/.clearml.test'
         # do not check http/s connection permissions
         if dest_path.startswith('http'):
             return True
         try:
-            self.upload_from_stream(stream=six.BytesIO(b'trains'), dest_path=dest_path)
+            self.upload_from_stream(stream=six.BytesIO(b'clearml'), dest_path=dest_path)
             self.delete(path=dest_path)
         except Exception:
             raise ValueError('Insufficient permissions for {}'.format(base_url))
@@ -1024,6 +1025,11 @@ class _HttpDriver(_Driver):
                 return self._default_backend_session.add_auth_headers({})
             return None
 
+    class _HttpSessionHandle(object):
+        def __init__(self, url, is_stream, container_name, object_name):
+            self.url, self.is_stream, self.container_name, self.object_name = \
+                url, is_stream, container_name, object_name
+
     def __init__(self, retries=5):
         self._retries = retries
         self._containers = {}
@@ -1055,24 +1061,39 @@ class _HttpDriver(_Driver):
     def list_container_objects(self, *args, **kwargs):
         raise NotImplementedError('List is not implemented for http protocol')
 
-    def delete_object(self, *args, **kwargs):
-        raise NotImplementedError('Delete is not implemented for http protocol')
+    def delete_object(self, obj, *args, **kwargs):
+        assert isinstance(obj, self._HttpSessionHandle)
+        container = self._containers[obj.container_name]
+        res = container.session.delete(obj.url, headers=container.get_headers(obj.url))
+        if res.status_code != requests.codes.ok:
+            raise ValueError('Failed deleting object %s (%d): %s' % (obj.object_name, res.status_code, res.text))
+        return res
 
     def get_object(self, container_name, object_name, *args, **kwargs):
-        container = self._containers[container_name]
-        # set stream flag before get request
-        container.session.stream = kwargs.get('stream', True)
+        is_stream = kwargs.get('stream', True)
         url = ''.join((container_name, object_name.lstrip('/')))
-        res = container.session.get(url, timeout=self.timeout, headers=container.get_headers(url))
+        return self._HttpSessionHandle(url, is_stream, container_name, object_name)
+
+    def _get_download_object(self, obj):
+        # bypass for session result
+        if not isinstance(obj, self._HttpSessionHandle):
+            return obj
+
+        container = self._containers[obj.container_name]
+        # set stream flag before we send the request
+        container.session.stream = obj.is_stream
+        res = container.session.get(obj.url, timeout=self.timeout, headers=container.get_headers(obj.url))
         if res.status_code != requests.codes.ok:
-            raise ValueError('Failed getting object %s (%d): %s' % (object_name, res.status_code, res.text))
+            raise ValueError('Failed getting object %s (%d): %s' % (obj.object_name, res.status_code, res.text))
         return res
 
     def download_object_as_stream(self, obj, chunk_size=64 * 1024, **_):
         # return iterable object
+        obj = self._get_download_object(obj)
         return obj.iter_content(chunk_size=chunk_size)
 
     def download_object(self, obj, local_path, overwrite_existing=True, delete_on_failure=True, callback=None, **_):
+        obj = self._get_download_object(obj)
         p = Path(local_path)
         if not overwrite_existing and p.is_file():
             log.warning('failed saving after download: overwrite=False and file exists (%s)' % str(p))

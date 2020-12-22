@@ -15,7 +15,7 @@ from ..logger import Logger
 from ..backend_api.services import workers as workers_service, tasks as tasks_services
 from ..task import Task
 
-logger = getLogger('trains.automation.optimization')
+logger = getLogger('clearml.automation.optimization')
 
 
 try:
@@ -878,9 +878,9 @@ class HyperParameterOptimizer(object):
                 :linenos:
                 :caption: Example
 
-                from trains import Task
-                from trains.automation import UniformParameterRange, DiscreteParameterRange
-                from trains.automation import GridSearch, RandomSearch, HyperParameterOptimizer
+                from clearml import Task
+                from clearml.automation import UniformParameterRange, DiscreteParameterRange
+                from clearml.automation import GridSearch, RandomSearch, HyperParameterOptimizer
 
                 task = Task.init('examples', 'HyperParameterOptimizer example')
                 an_optimizer = HyperParameterOptimizer(

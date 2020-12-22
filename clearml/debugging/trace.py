@@ -145,11 +145,11 @@ def _patch_module(module, prefix='', basepath=None, basemodule=None, exclude_pre
     prefix += module.__name__.split('.')[-1] + '.'
 
     # Do not patch low level network layer
-    if prefix.startswith('trains.backend_api.session.') and prefix != 'trains.backend_api.session.':
+    if prefix.startswith('clearml.backend_api.session.') and prefix != 'clearml.backend_api.session.':
         if not prefix.endswith('.Session.') and '.token_manager.' not in prefix:
             # print('SKIPPING: {}'.format(prefix))
             return
-    if prefix.startswith('trains.backend_api.services.'):
+    if prefix.startswith('clearml.backend_api.services.'):
         return
 
     for skip in exclude_prefixes:
@@ -208,7 +208,7 @@ def _patch_module(module, prefix='', basepath=None, basemodule=None, exclude_pre
 
 def trace_trains(stream=None, level=1, exclude_prefixes=[], only_prefix=[]):
     """
-    DEBUG ONLY - Add full Trains package code trace
+    DEBUG ONLY - Add full ClearML package code trace
     Output trace to filename or stream, default is sys.stderr
     Trace level
         -2: Trace function and arguments and returned call
@@ -244,7 +244,7 @@ def trace_trains(stream=None, level=1, exclude_prefixes=[], only_prefix=[]):
         __stream_flush = None
 
     from ..version import __version__
-    msg = 'Trains v{} - Starting Trace\n\n'.format(__version__)
+    msg = 'ClearML v{} - Starting Trace\n\n'.format(__version__)
     # print to actual stderr
     stderr_write(msg)
     # store to stream
@@ -252,7 +252,7 @@ def trace_trains(stream=None, level=1, exclude_prefixes=[], only_prefix=[]):
     __stream_write('{:9}:{:5}:{:8}: {:14}\n'.format('seconds', 'pid', 'tid', 'self'))
     __stream_write('{:9}:{:5}:{:8}:{:15}\n'.format('-' * 9, '-' * 5, '-' * 8, '-' * 15))
     __trace_start = time.time()
-    _patch_module('trains', exclude_prefixes=exclude_prefixes or [], only_prefix=only_prefix or [])
+    _patch_module('clearml', exclude_prefixes=exclude_prefixes or [], only_prefix=only_prefix or [])
 
 
 def trace_level(level=1):
@@ -343,7 +343,7 @@ def end_of_program():
 
 
 if __name__ == '__main__':
-    # from trains import Task
+    # from clearml import Task
     # task = Task.init(project_name="examples", task_name="trace test")
     # trace_trains('_trace.txt', level=2)
     print_traced_files('_trace_*.txt', lines_per_tid=10)

@@ -192,7 +192,7 @@ class WeightsGradientHistHelper(object):
 class EventTrainsWriter(object):
     """
     TF SummaryWriter implementation that converts the tensorboard's summary into
-    Trains events and reports the events (metrics) for an Trains task (logger).
+    ClearML events and reports the events (metrics) for an ClearML task (logger).
     """
     _add_lock = threading.RLock()
     _series_name_lookup = {}
@@ -298,8 +298,8 @@ class EventTrainsWriter(object):
     def __init__(self, logger, logdir=None, report_freq=100, image_report_freq=None,
                  histogram_update_freq_multiplier=10, histogram_granularity=50, max_keep_images=None):
         """
-        Create a compatible Trains backend to the TensorFlow SummaryToEventTransformer
-        Everything will be serialized directly to the Trains backend, instead of to the standard TF FileWriter
+        Create a compatible ClearML backend to the TensorFlow SummaryToEventTransformer
+        Everything will be serialized directly to the ClearML backend, instead of to the standard TF FileWriter
 
         :param logger: The task.logger to use for sending the metrics (def: task.get_logger())
         :param report_freq: How often to update the statistics values
@@ -846,7 +846,7 @@ class PatchSummaryToEventTransformer(object):
                 if PatchSummaryToEventTransformer.__original_getattribute is None:
                     PatchSummaryToEventTransformer.__original_getattribute = SummaryToEventTransformer.__getattribute__
                     SummaryToEventTransformer.__getattribute__ = PatchSummaryToEventTransformer._patched_getattribute
-                    setattr(SummaryToEventTransformer, 'trains',
+                    setattr(SummaryToEventTransformer, 'clearml',
                             property(PatchSummaryToEventTransformer.trains_object))
             except Exception as ex:
                 LoggerRoot.get_base_logger(TensorflowBinding).debug(str(ex))
@@ -859,7 +859,7 @@ class PatchSummaryToEventTransformer(object):
                     from torch.utils.tensorboard.writer import FileWriter as FileWriterT  # noqa
                     PatchSummaryToEventTransformer._original_add_eventT = FileWriterT.add_event
                     FileWriterT.add_event = PatchSummaryToEventTransformer._patched_add_eventT
-                    setattr(FileWriterT, 'trains', None)
+                    setattr(FileWriterT, 'clearml', None)
             except ImportError:
                 # this is a new version of TensorflowX
                 pass
@@ -875,7 +875,7 @@ class PatchSummaryToEventTransformer(object):
                     PatchSummaryToEventTransformer.__original_getattributeX = \
                         SummaryToEventTransformerX.__getattribute__
                     SummaryToEventTransformerX.__getattribute__ = PatchSummaryToEventTransformer._patched_getattributeX
-                    setattr(SummaryToEventTransformerX, 'trains',
+                    setattr(SummaryToEventTransformerX, 'clearml',
                             property(PatchSummaryToEventTransformer.trains_object))
             except ImportError:
                 # this is a new version of TensorflowX
@@ -890,7 +890,7 @@ class PatchSummaryToEventTransformer(object):
                         from tensorboardX.writer import FileWriter as FileWriterX  # noqa
                         PatchSummaryToEventTransformer._original_add_eventX = FileWriterX.add_event
                         FileWriterX.add_event = PatchSummaryToEventTransformer._patched_add_eventX
-                        setattr(FileWriterX, 'trains', None)
+                        setattr(FileWriterX, 'clearml', None)
                 except ImportError:
                     # this is a new version of TensorflowX
                     pass
@@ -899,38 +899,38 @@ class PatchSummaryToEventTransformer(object):
 
     @staticmethod
     def _patched_add_eventT(self, *args, **kwargs):
-        if not hasattr(self, 'trains') or not PatchSummaryToEventTransformer.__main_task:
+        if not hasattr(self, 'clearml') or not PatchSummaryToEventTransformer.__main_task:
             return PatchSummaryToEventTransformer._original_add_eventT(self, *args, **kwargs)
-        if not self.trains:
+        if not self.clearml:  # noqa
             # noinspection PyBroadException
             try:
                 logdir = self.get_logdir()
             except Exception:
                 logdir = None
-            self.trains = EventTrainsWriter(PatchSummaryToEventTransformer.__main_task.get_logger(),
+            self.clearml = EventTrainsWriter(PatchSummaryToEventTransformer.__main_task.get_logger(),
                                             logdir=logdir, **PatchSummaryToEventTransformer.defaults_dict)
         # noinspection PyBroadException
         try:
-            self.trains.add_event(*args, **kwargs)
+            self.clearml.add_event(*args, **kwargs)
         except Exception:
             pass
         return PatchSummaryToEventTransformer._original_add_eventT(self, *args, **kwargs)
 
     @staticmethod
     def _patched_add_eventX(self, *args, **kwargs):
-        if not hasattr(self, 'trains') or not PatchSummaryToEventTransformer.__main_task:
+        if not hasattr(self, 'clearml') or not PatchSummaryToEventTransformer.__main_task:
             return PatchSummaryToEventTransformer._original_add_eventX(self, *args, **kwargs)
-        if not self.trains:
+        if not self.clearml:
             # noinspection PyBroadException
             try:
                 logdir = self.get_logdir()
             except Exception:
                 logdir = None
-            self.trains = EventTrainsWriter(PatchSummaryToEventTransformer.__main_task.get_logger(),
+            self.clearml = EventTrainsWriter(PatchSummaryToEventTransformer.__main_task.get_logger(),
                                             logdir=logdir, **PatchSummaryToEventTransformer.defaults_dict)
         # noinspection PyBroadException
         try:
-            self.trains.add_event(*args, **kwargs)
+            self.clearml.add_event(*args, **kwargs)
         except Exception:
             pass
         return PatchSummaryToEventTransformer._original_add_eventX(self, *args, **kwargs)
@@ -947,17 +947,17 @@ class PatchSummaryToEventTransformer(object):
 
     @staticmethod
     def _patched_getattribute_(self, attr, get_base):
-        # no main task, zero chance we have an Trains event logger
+        # no main task, zero chance we have an ClearML event logger
         if PatchSummaryToEventTransformer.__main_task is None:
             return get_base(self, attr)
 
-        # check if we already have an Trains event logger
+        # check if we already have an ClearML event logger
         __dict__ = get_base(self, '__dict__')
         if 'event_writer' not in __dict__ or \
                 isinstance(__dict__['event_writer'], (ProxyEventsWriter, EventTrainsWriter)):
             return get_base(self, attr)
 
-        # patch the events writer field, and add a double Event Logger (Trains and original)
+        # patch the events writer field, and add a double Event Logger (ClearML and original)
         base_eventwriter = __dict__['event_writer']
         # noinspection PyBroadException
         try:
@@ -1062,7 +1062,7 @@ class PatchModelCheckPointCallback(object):
             if PatchModelCheckPointCallback.__original_getattribute is None and callbacks is not None:
                 PatchModelCheckPointCallback.__original_getattribute = callbacks.ModelCheckpoint.__getattribute__
                 callbacks.ModelCheckpoint.__getattribute__ = PatchModelCheckPointCallback._patched_getattribute
-                setattr(callbacks.ModelCheckpoint, 'trains',
+                setattr(callbacks.ModelCheckpoint, 'clearml',
                         property(PatchModelCheckPointCallback.trains_object))
 
         except Exception as ex:
@@ -1072,17 +1072,17 @@ class PatchModelCheckPointCallback(object):
     def _patched_getattribute(self, attr):
         get_base = PatchModelCheckPointCallback.__original_getattribute
 
-        # no main task, zero chance we have an Trains event logger
+        # no main task, zero chance we have an ClearML event logger
         if PatchModelCheckPointCallback.__main_task is None:
             return get_base(self, attr)
 
-        # check if we already have an Trains event logger
+        # check if we already have an ClearML event logger
         __dict__ = get_base(self, '__dict__')
         if 'model' not in __dict__ or \
                 isinstance(__dict__['model'], _ModelAdapter):
             return get_base(self, attr)
 
-        # patch the events writer field, and add a double Event Logger (Trains and original)
+        # patch the events writer field, and add a double Event Logger (ClearML and original)
         base_model = __dict__['model']
         defaults_dict = __dict__.get('_trains_defaults') or PatchModelCheckPointCallback.defaults_dict
         output_model = OutputModel(

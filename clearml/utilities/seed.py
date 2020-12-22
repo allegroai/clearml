@@ -12,7 +12,7 @@ def make_deterministic(seed=1337, cudnn_deterministic=False):
     Ensure deterministic behavior across PyTorch using the provided random seed.
     This function makes sure that torch, numpy and random use the same random seed.
 
-    When using trains's task, call this function using the task's random seed like so:
+    When using clearml's task, call this function using the task's random seed like so:
         make_deterministic(task.get_random_seed())
 
     :param int seed: Seed number

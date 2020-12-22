@@ -1,6 +1,6 @@
-# TRAINS - Example of manual graphs and statistics reporting
+# ClearML - Example of manual graphs and statistics reporting
 #
-from trains import Task, Logger
+from clearml import Task, Logger
 
 
 def report_scalars(logger):

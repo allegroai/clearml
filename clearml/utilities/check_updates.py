@@ -27,10 +27,10 @@ class CheckPackageUpdates(object):
             cls._package_version_checked = True
             client, version = Session._client[0]
             version = Version(version)
-            is_demo = 'https://demoapi.trains.allegro.ai/'.startswith(Session.get_api_server_host())
+            is_demo = 'https://demoapi.demo.clear.ml/'.startswith(Session.get_api_server_host())
 
             update_server_releases = requests.get(
-                'https://updates.trains.allegro.ai/updates',
+                'https://updates.clear.ml/updates',
                 json={"demo": is_demo,
                       "versions": {c: str(v) for c, v in Session._client},
                       "CI": str(os.environ.get('CI', ''))},
@@ -62,13 +62,13 @@ class CheckPackageUpdates(object):
     @staticmethod
     def get_version_from_updates_server(cur_version):
         """
-        Get the latest version for trains from updates server
-        :param cur_version: The current running version of trains
+        Get the latest version for clearml from updates server
+        :param cur_version: The current running version of clearml
         :type cur_version: Version
         """
         try:
-            _ = requests.get('https://updates.trains.allegro.ai/updates',
-                             data=json.dumps({"versions": {"trains": str(cur_version)}}),
+            _ = requests.get('https://updates.clear.ml/updates',
+                             data=json.dumps({"versions": {"clearml": str(cur_version)}}),
                              timeout=1.0)
             return
         except Exception:

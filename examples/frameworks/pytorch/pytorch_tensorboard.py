@@ -1,4 +1,4 @@
-# TRAINS - Example of pytorch with tensorboard>=v1.14
+# ClearML - Example of pytorch with tensorboard>=v1.14
 #
 from __future__ import print_function
 
@@ -14,7 +14,7 @@ from torchvision import datasets, transforms
 from torch.autograd import Variable
 from torch.utils.tensorboard import SummaryWriter
 
-from trains import Task
+from clearml import Task
 
 
 class Net(nn.Module):
@@ -99,7 +99,7 @@ def main():
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
     args = parser.parse_args()
-    task = Task.init(project_name='examples', task_name='pytorch with tensorboard')  # noqa: F841
+    Task.init(project_name='examples', task_name='pytorch with tensorboard')
     writer = SummaryWriter('runs')
     writer.add_text('TEXT', 'This is some text', 0)
     args.cuda = not args.no_cuda and torch.cuda.is_available()

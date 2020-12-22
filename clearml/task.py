@@ -77,8 +77,8 @@ class Task(_Task):
     configuration, label enumeration, models, and other artifacts.
 
     The term "main execution Task" refers to the Task context for current running experiment. Python experiment scripts
-    can create one, and only one, main execution Task. It is a traceable, and after a script runs and Trains stores
-    the Task in the **Trains Server** (backend), it is modifiable, reproducible, executable by a worker, and you
+    can create one, and only one, main execution Task. It is a traceable, and after a script runs and ClearML stores
+    the Task in the **ClearML Server** (backend), it is modifiable, reproducible, executable by a worker, and you
     can duplicate it for further experimentation.
 
     The ``Task`` class and its methods allow you to create and manage experiments, as well as perform
@@ -93,7 +93,7 @@ class Task(_Task):
     - Create a new reproducible Task - :meth:`Task.init`
 
       .. important::
-        In some cases, ``Task.init`` may return a Task object which is already stored in **Trains Server** (already
+        In some cases, ``Task.init`` may return a Task object which is already stored in **ClearML Server** (already
         initialized), instead of creating a new Task. For a detailed explanation of those cases, see the ``Task.init``
         method.
 
@@ -102,17 +102,17 @@ class Task(_Task):
     - Get another (different) Task - :meth:`Task.get_task`
 
     .. note::
-       The **Trains** documentation often refers to a Task as, "Task (experiment)".
+       The **ClearML** documentation often refers to a Task as, "Task (experiment)".
 
-       "Task" refers to the class in the Trains Python Client Package, the object in your Python experiment script,
-       and the entity with which **Trains Server** and **Trains Agent** work.
+       "Task" refers to the class in the ClearML Python Client Package, the object in your Python experiment script,
+       and the entity with which **ClearML Server** and **ClearML Agent** work.
 
        "Experiment" refers to your deep learning solution, including its connected components, inputs, and outputs,
-       and is the experiment you can view, analyze, compare, modify, duplicate, and manage using the Trains
+       and is the experiment you can view, analyze, compare, modify, duplicate, and manage using the ClearML
        **Web-App** (UI).
 
        Therefore, a "Task" is effectively an "experiment", and "Task (experiment)" encompasses its usage throughout
-       the Trains.
+       the ClearML.
 
        The exception to this Task behavior is sub-tasks (non-reproducible Tasks), which do not use the main execution
        Task. Creating a sub-task always creates a new Task with a new  Task ID.
@@ -197,7 +197,7 @@ class Task(_Task):
         Creates a new Task (experiment) if:
 
         - The Task never ran before. No Task with the same ``task_name`` and ``project_name`` is stored in
-          **Trains Server**.
+          **ClearML Server**.
         - The Task has run before (the same ``task_name`` and ``project_name``), and (a) it stored models and / or
           artifacts, or (b) its status is Published , or (c) it is Archived.
         - A new Task is forced by calling ``Task.init`` with ``reuse_last_task_id=False``.
@@ -215,7 +215,7 @@ class Task(_Task):
 
             .. code-block:: py
 
-                from trains import Task
+                from clearml import Task
                 task = Task.init('myProject', 'myTask')
 
             If this code runs again, it will not create a new Task. It does not store a model or artifact,
@@ -285,7 +285,7 @@ class Task(_Task):
                 This is equivalent to `continue_last_task=True` and `reuse_last_task_id=a_task_id_string`.
 
         :param str output_uri: The default location for output models and other artifacts. In the default location,
-            Trains creates a subfolder for the output. The subfolder structure is the following:
+            ClearML creates a subfolder for the output. The subfolder structure is the following:
 
                 <output destination name> / <project name> / <task name>.< Task ID>
 
@@ -297,9 +297,9 @@ class Task(_Task):
             - Azure Storage: ``azure://company.blob.core.windows.net/folder/``
 
             .. important::
-               For cloud storage, you must install the **Trains** package for your cloud storage type,
+               For cloud storage, you must install the **ClearML** package for your cloud storage type,
                and then configure your storage credentials. For detailed information, see
-               `Trains Python Client Extras <./references/trains_extras_storage/>`_ in the "Trains Python Client
+               `ClearML Python Client Extras <./references/clearml_extras_storage/>`_ in the "ClearML Python Client
                Reference" section.
 
         :param auto_connect_arg_parser: Automatically connect an argparse object to the Task
@@ -324,7 +324,7 @@ class Task(_Task):
 
         :param auto_connect_frameworks: Automatically connect frameworks This includes patching MatplotLib, XGBoost,
             scikit-learn, Keras callbacks, and TensorBoard/X to serialize plots, graphs, and the model location to
-            the **Trains Server** (backend), in addition to original output destination.
+            the **ClearML Server** (backend), in addition to original output destination.
 
             The values are:
 
@@ -342,7 +342,7 @@ class Task(_Task):
                     'xgboost': True, 'scikit': True, 'fastai': True, 'lightgbm': True, 'hydra': True}
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
-            These plots appear in in the **Trains Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab,
+            These plots appear in in the **ClearML Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab,
             with a title of **:resource monitor:**.
 
             The values are:
@@ -409,6 +409,7 @@ class Task(_Task):
                 # create a new logger (to catch stdout/err)
                 cls.__main_task._logger = None
                 cls.__main_task.__reporter = None
+                # noinspection PyProtectedMember
                 cls.__main_task._get_logger(auto_connect_streams=auto_connect_streams)
                 cls.__main_task._artifacts_manager = Artifacts(cls.__main_task)
                 # unregister signal hooks, they cause subprocess to hang
@@ -569,10 +570,10 @@ class Task(_Task):
         # show the debug metrics page in the log, it is very convenient
         if not is_sub_process_task_id:
             if cls._offline_mode:
-                logger.report_text('TRAINS running in offline mode, session stored in {}'.format(
+                logger.report_text('ClearML running in offline mode, session stored in {}'.format(
                     task.get_offline_mode_folder()))
             else:
-                logger.report_text('TRAINS results page: {}'.format(task.get_output_log_web_page()))
+                logger.report_text('ClearML results page: {}'.format(task.get_output_log_web_page()))
         # Make sure we start the dev worker if required, otherwise it will only be started when we write
         # something to the log.
         task._dev_mode_task_start()
@@ -580,55 +581,76 @@ class Task(_Task):
         return task
 
     @classmethod
-    def create(cls, project_name=None, task_name=None, task_type=TaskTypes.training):
-        # type: (Optional[str], Optional[str], Task.TaskTypes) -> Task
+    def create(
+        cls,
+        project_name=None,  # Optional[str]
+        task_name=None,  # Optional[str]
+        task_type=None,  # Optional[str]
+        repo=None,  # Optional[str]
+        branch=None,  # Optional[str]
+        commit=None,  # Optional[str]
+        script=None,  # Optional[str]
+        working_directory=None,  # Optional[str]
+        packages=None,  # Optional[Sequence[str]]
+        requirements_file=None,  # Optional[Union[str, Path]]
+        docker=None,  # Optional[str]
+        base_task_id=None,  # Optional[str]
+        add_task_init_call=True,  # bool
+    ):
+        # type: (...) -> Task
         """
-        Create a new, non-reproducible Task (experiment). This is called a sub-task.
+        Manually create and populate a new Task (experiment) in the system.
+        If the code does not already contain a call to ``Task.init``, pass add_task_init_call=True,
+        and the code will be patched in remote execution (i.e. when executed by `clearml-agent`
 
         .. note::
-           This method always creates a new, non-reproducible Task. To create a reproducible Task, call the
-           :meth:`Task.init` method. To reference another Task, call the  :meth:`Task.get_task` method .
+           This method **always** creates a new Task.
+           Use :meth:`Task.init` method to automatically create and populate task for the running process.
+           To reference an existing Task, call the  :meth:`Task.get_task` method .
 
-        :param str project_name: The name of the project in which the experiment will be created.
-            If ``project_name`` is ``None``, and the main execution Task is initialized (see :meth:`Task.init`),
-            then the main execution Task's project is used. Otherwise, if the project does
-            not exist, it is created. (Optional)
-        :param str task_name: The name of Task (experiment).
-        :param TaskTypes task_type: The task type.
+        :param project_name: Set the project name for the task. Required if base_task_id is None.
+        :param task_name: Set the name of the remote task. Required if base_task_id is None.
+        :param task_type: Optional, The task type to be created. Supported values: 'training', 'testing', 'inference',
+            'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc', 'custom'
+        :param repo: Remote URL for the repository to use, or path to local copy of the git repository
+            Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'
+        :param branch: Select specific repository branch/tag (implies the latest commit from the branch)
+        :param commit: Select specific commit id to use (default: latest commit,
+            or when used with local repository matching the local commit id)
+        :param script: Specify the entry point script for the remote execution. When used in tandem with
+            remote git repository the script should be a relative path inside the repository,
+            for example: './source/train.py' . When used with local repository path it supports a
+            direct path to a file inside the local repository itself, for example: '~/project/source/train.py'
+        :param working_directory: Working directory to launch the script from. Default: repository root folder.
+            Relative to repo root or local folder.
+        :param packages: Manually specify a list of required packages. Example: ["tqdm>=2.1", "scikit-learn"]
+        :param requirements_file: Specify requirements.txt file to install when setting the session.
+            If not provided, the requirements.txt from the repository will be used.
+        :param docker: Select the docker image to be executed in by the remote session
+        :param base_task_id: Use a pre-existing task in the system, instead of a local repo/script.
+            Essentially clones an existing task and overrides arguments/requirements.
+        :param add_task_init_call: If True, a 'Task.init()' call is added to the script entry point in remote execution.
 
-            Valid task types:
-
-            - ``TaskTypes.training`` (default)
-            - ``TaskTypes.testing``
-            - ``TaskTypes.inference``
-            - ``TaskTypes.data_processing``
-            - ``TaskTypes.application``
-            - ``TaskTypes.monitor``
-            - ``TaskTypes.controller``
-            - ``TaskTypes.optimizer``
-            - ``TaskTypes.service``
-            - ``TaskTypes.qc``
-            - ``TaskTypes.custom``
-
-        :return: A new experiment.
+        :return: The newly created Task (experiment)
         """
-        if not project_name:
+        if not project_name and not base_task_id:
             if not cls.__main_task:
                 raise ValueError("Please provide project_name, no global task context found "
                                  "(Task.current_task hasn't been called)")
             project_name = cls.__main_task.get_project_name()
+        from .backend_interface.task.populate import CreateAndPopulate
+        manual_populate = CreateAndPopulate(
+            project_name=project_name, task_name=task_name, task_type=task_type,
+            repo=repo, branch=branch, commit=commit,
+            script=script, working_directory=working_directory,
+            packages=packages, requirements_file=requirements_file,
+            docker=docker,
+            base_task_id=base_task_id,
+            add_task_init_call=add_task_init_call,
+            raise_on_missing_entries=False,
+        )
+        task = manual_populate.create_task()
 
-        try:
-            task = cls(
-                private=cls.__create_protection,
-                project_name=project_name,
-                task_name=task_name,
-                task_type=task_type,
-                log_to_backend=False,
-                force_create=True,
-            )
-        except Exception:
-            raise
         return task
 
     @classmethod
@@ -721,7 +743,7 @@ class Task(_Task):
             helper = StorageHelper.get(value)
             if not helper:
                 raise ValueError("Could not get access credentials for '{}' "
-                                 ", check configuration file ~/trains.conf".format(value))
+                                 ", check configuration file ~/clearml.conf".format(value))
             helper.check_write_permissions(value)
         self.storage_uri = value
 
@@ -758,7 +780,7 @@ class Task(_Task):
         """
         Get a Logger object for reporting, for this task context. You can view all Logger report output associated with
         the Task for which this method is called, including metrics, plots, text, tables, and images, in the
-        **Trains Web-App (UI)**.
+        **ClearML Web-App (UI)**.
 
         :return: The Logger object for the current Task (experiment).
         """
@@ -796,8 +818,8 @@ class Task(_Task):
         """
         assert isinstance(source_task, (six.string_types, Task))
         if not Session.check_min_api_version('2.4'):
-            raise ValueError("Trains-server does not support DevOps features, "
-                             "upgrade trains-server to 0.12.0 or above")
+            raise ValueError("ClearML-server does not support DevOps features, "
+                             "upgrade clearml-server to 0.12.0 or above")
 
         task_id = source_task if isinstance(source_task, six.string_types) else source_task.id
         if not parent:
@@ -820,7 +842,7 @@ class Task(_Task):
 
         .. note::
            A worker daemon must be listening at the queue for the worker to fetch the Task and execute it,
-           see `Use Case Examples <../trains_agent_ref/#use-case-examples>`_ on the "Trains Agent
+           see `Use Case Examples <../clearml_agent_ref/#use-case-examples>`_ on the "ClearML Agent
            Reference page.
 
         :param Task/str task: The Task to enqueue. Specify a Task object or  Task ID.
@@ -859,8 +881,8 @@ class Task(_Task):
         """
         assert isinstance(task, (six.string_types, Task))
         if not Session.check_min_api_version('2.4'):
-            raise ValueError("Trains-server does not support DevOps features, "
-                             "upgrade trains-server to 0.12.0 or above")
+            raise ValueError("ClearML-server does not support DevOps features, "
+                             "upgrade clearml-server to 0.12.0 or above")
 
         # make sure we have wither name ot id
         mutually_exclusive(queue_name=queue_name, queue_id=queue_id)
@@ -923,8 +945,8 @@ class Task(_Task):
         """
         assert isinstance(task, (six.string_types, Task))
         if not Session.check_min_api_version('2.4'):
-            raise ValueError("Trains-server does not support DevOps features, "
-                             "upgrade trains-server to 0.12.0 or above")
+            raise ValueError("ClearML-server does not support DevOps features, "
+                             "upgrade clearml-server to 0.12.0 or above")
 
         task_id = task if isinstance(task, six.string_types) else task.id
         session = cls._get_default_session()
@@ -990,7 +1012,7 @@ class Task(_Task):
             name = self._default_configuration_section_name
 
         if not multi_config_support and name and name != self._default_configuration_section_name:
-            raise ValueError("Multiple configurations is not supported with the current 'trains-server', "
+            raise ValueError("Multiple configurations is not supported with the current 'clearml-server', "
                              "please upgrade to the latest version")
 
         for mutable_type, method in dispatch:
@@ -1024,11 +1046,11 @@ class Task(_Task):
         :param configuration: The configuration. This is usually the configuration used in the model training process.
             Specify one of the following:
 
-            - A dictionary - A dictionary containing the configuration. Trains stores the configuration in
-              the **Trains Server** (backend), in a HOCON format (JSON-like format) which is editable.
-            - A ``pathlib2.Path`` string - A path to the configuration file. Trains stores the content of the file.
+            - A dictionary - A dictionary containing the configuration. ClearML stores the configuration in
+              the **ClearML Server** (backend), in a HOCON format (JSON-like format) which is editable.
+            - A ``pathlib2.Path`` string - A path to the configuration file. ClearML stores the content of the file.
               A local path must be relative path. When executing a Task remotely in a worker, the contents brought
-              from the **Trains Server** (backend) overwrites the contents of the file.
+              from the **ClearML Server** (backend) overwrites the contents of the file.
 
         :param str name: Configuration section name. default: 'General'
             Allowing users to store multiple configuration dicts/files
@@ -1038,10 +1060,10 @@ class Task(_Task):
         :return: If a dictionary is specified, then a dictionary is returned. If pathlib2.Path / string is
             specified, then a path to a local configuration file is returned. Configuration object.
         """
-        pathlib_Path = None
+        pathlib_Path = None  # noqa
         if not isinstance(configuration, (dict, Path, six.string_types)):
             try:
-                from pathlib import Path as pathlib_Path
+                from pathlib import Path as pathlib_Path  # noqa
             except ImportError:
                 pass
             if not pathlib_Path or not isinstance(configuration, pathlib_Path):
@@ -1053,7 +1075,7 @@ class Task(_Task):
             name = self._default_configuration_section_name
 
         if not multi_config_support and name and name != self._default_configuration_section_name:
-            raise ValueError("Multiple configurations is not supported with the current 'trains-server', "
+            raise ValueError("Multiple configurations is not supported with the current 'clearml-server', "
                              "please upgrade to the latest version")
 
         # parameter dictionary
@@ -1141,7 +1163,7 @@ class Task(_Task):
                 return configuration
 
             configuration_path = Path(configuration)
-            fd, local_filename = mkstemp(prefix='trains_task_config_',
+            fd, local_filename = mkstemp(prefix='clearml_task_config_',
                                          suffix=configuration_path.suffixes[-1] if
                                          configuration_path.suffixes else '.txt')
             os.write(fd, configuration_text.encode('utf-8'))
@@ -1187,7 +1209,7 @@ class Task(_Task):
         """
         Get a Logger object for reporting, for this task context. You can view all Logger report output associated with
         the Task for which this method is called, including metrics, plots, text, tables, and images, in the
-        **Trains Web-App (UI)**.
+        **ClearML Web-App (UI)**.
 
         :return: The Logger for the Task (experiment).
         """
@@ -1247,7 +1269,7 @@ class Task(_Task):
     def reset(self, set_started_on_success=False, force=False):
         # type: (bool, bool) -> None
         """
-        Reset a Task. Trains reloads a Task after a successful reset.
+        Reset a Task. ClearML reloads a Task after a successful reset.
         When a worker executes a Task remotely, the Task does not reset unless
         the ``force`` parameter is set to ``True`` (this avoids accidentally clearing logs and metrics).
 
@@ -1290,16 +1312,16 @@ class Task(_Task):
         # type: (str, pandas.DataFrame, Dict, Union[bool, Sequence[str]]) -> None
         """
         Register (add) an artifact for the current Task. Registered artifacts are dynamically sychronized with the
-        **Trains Server** (backend). If a registered artifact is updated, the update is stored in the
-        **Trains Server** (backend). Registered artifacts are primarily used for Data Audition.
+        **ClearML Server** (backend). If a registered artifact is updated, the update is stored in the
+        **ClearML Server** (backend). Registered artifacts are primarily used for Data Audition.
 
         The currently supported registered artifact object type is a pandas.DataFrame.
 
         See also :meth:`Task.unregister_artifact` and :meth:`Task.get_registered_artifacts`.
 
         .. note::
-           Trains also supports uploaded artifacts which are one-time uploads of static artifacts that are not
-           dynamically sychronized with the **Trains Server** (backend). These static artifacts include
+           ClearML also supports uploaded artifacts which are one-time uploads of static artifacts that are not
+           dynamically sychronized with the **ClearML Server** (backend). These static artifacts include
            additional object types. For more information, see :meth:`Task.upload_artifact`.
 
         :param str name: The name of the artifact.
@@ -1308,7 +1330,7 @@ class Task(_Task):
             If an artifact with the same name was previously registered, it is overwritten.
         :param object artifact: The artifact object.
         :param dict metadata: A dictionary of key-value pairs for any metadata. This dictionary appears with the
-            experiment in the **Trains Web-App (UI)**, **ARTIFACTS** tab.
+            experiment in the **ClearML Web-App (UI)**, **ARTIFACTS** tab.
         :param uniqueness_columns: A Sequence of columns for artifact uniqueness comparison criteria, or the default
             value of ``True``. If ``True``, the artifact uniqueness comparison criteria is all the columns,
             which is the same as ``artifact.columns``.
@@ -1323,13 +1345,13 @@ class Task(_Task):
     def unregister_artifact(self, name):
         # type: (str) -> None
         """
-        Unregister (remove) a registered artifact. This removes the artifact from the watch list that Trains uses
-        to synchronize artifacts with the **Trains Server** (backend).
+        Unregister (remove) a registered artifact. This removes the artifact from the watch list that ClearML uses
+        to synchronize artifacts with the **ClearML Server** (backend).
 
         .. important::
-           - Calling this method does not remove the artifact from a Task. It only stops Trains from
+           - Calling this method does not remove the artifact from a Task. It only stops ClearML from
              monitoring the artifact.
-           - When this method is called, Trains immediately takes the last snapshot of the artifact.
+           - When this method is called, ClearML immediately takes the last snapshot of the artifact.
         """
         self._artifacts_manager.unregister_artifact(name=name)
 
@@ -1361,12 +1383,12 @@ class Task(_Task):
 
         The currently supported upload (static) artifact types include:
 
-        - string / pathlib2.Path - A path to artifact file. If a wildcard or a folder is specified, then Trains
+        - string / pathlib2.Path - A path to artifact file. If a wildcard or a folder is specified, then ClearML
           creates and uploads a ZIP file.
-        - dict - Trains stores a dictionary as ``.json`` file and uploads it.
-        - pandas.DataFrame - Trains stores a pandas.DataFrame as ``.csv.gz`` (compressed CSV) file and uploads it.
-        - numpy.ndarray - Trains stores a numpy.ndarray as ``.npz`` file and uploads it.
-        - PIL.Image - Trains stores a PIL.Image as ``.png`` file and uploads it.
+        - dict - ClearML stores a dictionary as ``.json`` file and uploads it.
+        - pandas.DataFrame - ClearML stores a pandas.DataFrame as ``.csv.gz`` (compressed CSV) file and uploads it.
+        - numpy.ndarray - ClearML stores a numpy.ndarray as ``.npz`` file and uploads it.
+        - PIL.Image - ClearML stores a PIL.Image as ``.png`` file and uploads it.
         - Any - If called with auto_pickle=True, the object will be pickled and uploaded.
 
         :param str name: The artifact name.
@@ -1376,7 +1398,7 @@ class Task(_Task):
 
         :param object artifact_object:  The artifact object.
         :param dict metadata: A dictionary of key-value pairs for any metadata. This dictionary appears with the
-            experiment in the **Trains Web-App (UI)**, **ARTIFACTS** tab.
+            experiment in the **ClearML Web-App (UI)**, **ARTIFACTS** tab.
         :param bool delete_after_upload: After the upload, delete the local copy of the artifact
 
             - ``True`` - Delete the local copy of the artifact.
@@ -1416,7 +1438,7 @@ class Task(_Task):
 
             .. code-block:: py
 
-                {'input': [trains.Model()], 'output': [trains.Model()]}
+                {'input': [clearml.Model()], 'output': [clearml.Model()]}
 
         """
         task_models = {'input': self._get_models(model_type='input'),
@@ -1510,7 +1532,7 @@ class Task(_Task):
 
         .. note::
            The maximum reported iteration is not in the local cache. This method
-           sends a request to the **Trains Server** (backend).
+           sends a request to the **ClearML Server** (backend).
 
         :return: The last reported iteration number.
         """
@@ -1704,7 +1726,7 @@ class Task(_Task):
         # type: (str) -> ()
         """
         Set the base docker image for this experiment
-        If provided, this value will be used by trains-agent to execute this experiment
+        If provided, this value will be used by clearml-agent to execute this experiment
         inside the provided docker image.
         """
         if not self.running_locally() and self.is_main_task():
@@ -1732,12 +1754,12 @@ class Task(_Task):
     def execute_remotely(self, queue_name=None, clone=False, exit_process=True):
         # type: (Optional[str], bool, bool) -> Optional[Task]
         """
-        If task is running locally (i.e., not by ``trains-agent``), then clone the Task and enqueue it for remote
+        If task is running locally (i.e., not by ``clearml-agent``), then clone the Task and enqueue it for remote
         execution; or, stop the execution of the current Task, reset its state, and enqueue it. If ``exit==True``,
         *exit* this process.
 
         .. note::
-            If the task is running remotely (i.e., ``trains-agent`` is executing it), this call is a no-op
+            If the task is running remotely (i.e., ``clearml-agent`` is executing it), this call is a no-op
             (i.e., does nothing).
 
         :param queue_name: The queue name used for enqueueing the task. If ``None``, this call exits the process
@@ -2006,12 +2028,12 @@ class Task(_Task):
         :param session_folder_zip: Path to a folder containing the session, or zip-file of the session folder.
         :return: Newly created task ID (str)
         """
-        print('TRAINS: Importing offline session from {}'.format(session_folder_zip))
+        print('ClearML: Importing offline session from {}'.format(session_folder_zip))
 
         temp_folder = None
         if Path(session_folder_zip).is_file():
             # unzip the file:
-            temp_folder = mkdtemp(prefix='trains-offline-')
+            temp_folder = mkdtemp(prefix='clearml-offline-')
             ZipFile(session_folder_zip).extractall(path=temp_folder)
             session_folder_zip = temp_folder
 
@@ -2053,7 +2075,7 @@ class Task(_Task):
         # metrics
         Metrics.report_offline_session(task, session_folder)
         # print imported results page
-        print('TRAINS results page: {}'.format(task.get_output_log_web_page()))
+        print('ClearML results page: {}'.format(task.get_output_log_web_page()))
         task.completed()
         # close task
         task.close()
@@ -2072,10 +2094,10 @@ class Task(_Task):
     def set_credentials(cls, api_host=None, web_host=None, files_host=None, key=None, secret=None, host=None):
         # type: (Optional[str], Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]) -> ()
         """
-        Set new default **Trains Server** (backend) host and credentials.
+        Set new default **ClearML Server** (backend) host and credentials.
 
-        These credentials will be overridden by either OS environment variables, or the Trains configuration
-        file, ``trains.conf``.
+        These credentials will be overridden by either OS environment variables, or the ClearML configuration
+        file, ``clearml.conf``.
 
         .. warning::
            Credentials must be set before initializing a Task object.
@@ -2113,6 +2135,40 @@ class Task(_Task):
             Session.default_host = host
             Session.default_web = web_host or ''
             Session.default_files = files_host or ''
+
+    @classmethod
+    def _create(cls, project_name=None, task_name=None, task_type=TaskTypes.training):
+        # type: (Optional[str], Optional[str], Task.TaskTypes) -> Task
+        """
+        Create a new unpopulated Task (experiment).
+
+        :param str project_name: The name of the project in which the experiment will be created.
+            If ``project_name`` is ``None``, and the main execution Task is initialized (see :meth:`Task.init`),
+            then the main execution Task's project is used. Otherwise, if the project does
+            not exist, it is created. (Optional)
+        :param str task_name: The name of Task (experiment).
+        :param TaskTypes task_type: The task type.
+
+        :return: The newly created task created.
+        """
+        if not project_name:
+            if not cls.__main_task:
+                raise ValueError("Please provide project_name, no global task context found "
+                                 "(Task.current_task hasn't been called)")
+            project_name = cls.__main_task.get_project_name()
+
+        try:
+            task = cls(
+                private=cls.__create_protection,
+                project_name=project_name,
+                task_name=task_name,
+                task_type=task_type,
+                log_to_backend=False,
+                force_create=True,
+            )
+        except Exception:
+            raise
+        return task
 
     def _set_model_config(self, config_text=None, config_dict=None):
         # type: (Optional[str], Optional[Mapping]) -> None
@@ -2285,15 +2341,15 @@ class Task(_Task):
         # force update of base logger to this current task (this is the main logger task)
         logger = task._get_logger(auto_connect_streams=auto_connect_streams)
         if closed_old_task:
-            logger.report_text('TRAINS Task: Closing old development task id={}'.format(default_task.get('id')))
+            logger.report_text('ClearML Task: Closing old development task id={}'.format(default_task.get('id')))
         # print warning, reusing/creating a task
         if default_task_id and not continue_last_task:
-            logger.report_text('TRAINS Task: overwriting (reusing) task id=%s' % task.id)
+            logger.report_text('ClearML Task: overwriting (reusing) task id=%s' % task.id)
         elif default_task_id and continue_last_task:
-            logger.report_text('TRAINS Task: continuing previous task id=%s '
+            logger.report_text('ClearML Task: continuing previous task id=%s '
                                'Notice this run will not be reproducible!' % task.id)
         else:
-            logger.report_text('TRAINS Task: created new task id=%s' % task.id)
+            logger.report_text('ClearML Task: created new task id=%s' % task.id)
 
         # update current repository and put warning into logs
         if detect_repo:
@@ -2567,8 +2623,7 @@ class Task(_Task):
         self._kill_all_child_processes(send_kill=False)
         time.sleep(2.0)
         self._kill_all_child_processes(send_kill=True)
-        # noinspection PyProtectedMember
-        os._exit(1)
+        os._exit(1)  # noqa
 
     @staticmethod
     def _kill_all_child_processes(send_kill=False):
@@ -2800,7 +2855,7 @@ class Task(_Task):
                         if filename.is_file():
                             relative_file_name = filename.relative_to(offline_folder).as_posix()
                             zf.write(filename.as_posix(), arcname=relative_file_name)
-                print('TRAINS Task: Offline session stored in {}'.format(zip_file))
+                print('ClearML Task: Offline session stored in {}'.format(zip_file))
             except Exception:
                 pass
 
@@ -3179,8 +3234,8 @@ class Task(_Task):
                 task_data.get('type') not in (cls.TaskTypes.training, cls.TaskTypes.testing) and \
                 not Session.check_min_api_version(2.8):
             print('WARNING: Changing task type to "{}" : '
-                  'trains-server does not support task type "{}", '
-                  'please upgrade trains-server.'.format(cls.TaskTypes.training, task_data['type'].value))
+                  'clearml-server does not support task type "{}", '
+                  'please upgrade clearml-server.'.format(cls.TaskTypes.training, task_data['type'].value))
             task_data['type'] = cls.TaskTypes.training
 
         compares = (

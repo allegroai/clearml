@@ -36,7 +36,7 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
 from tensorboard.plugins.pr_curve import summary
-from trains import Task
+from clearml import Task
 
 
 task = Task.init(project_name='examples', task_name='tensorboard pr_curve')

@@ -5,7 +5,7 @@ import numpy as np
 from PIL import Image
 from torch.utils.tensorboard import SummaryWriter
 
-from trains import Task
+from clearml import Task
 task = Task.init(project_name='examples', task_name='pytorch tensorboard toy example')
 
 

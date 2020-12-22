@@ -46,7 +46,7 @@ class PatchArgumentParser:
             from ..config import running_remotely, get_remote_task_id
             if running_remotely():
                 # this will cause the current_task() to set PatchArgumentParser._current_task
-                from trains import Task
+                from clearml import Task
                 # noinspection PyBroadException
                 try:
                     current_task = Task.get_task(task_id=get_remote_task_id())

@@ -5,11 +5,11 @@ from pathlib2 import Path
 
 
 def logger(path=None):
-    name = "trains"
+    name = "clearml"
     if path:
         p = Path(path)
         module = (p.parent if p.stem.startswith('_') else p).stem
-        name = "trains.%s" % module
+        name = "clearml.%s" % module
     return logging.getLogger(name)
 
 

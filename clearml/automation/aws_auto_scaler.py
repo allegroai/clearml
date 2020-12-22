@@ -31,15 +31,15 @@ class AwsAutoScaler(AutoScaler):
 
     def spin_up_worker(self, resource, worker_id_prefix, queue_name):
         """
-        Creates a new worker for trains.
+        Creates a new worker for clearml.
         First, create an instance in the cloud and install some required packages.
-        Then, define trains-agent environment variables and run trains-agent for the specified queue.
+        Then, define clearml-agent environment variables and run clearml-agent for the specified queue.
         NOTE: - Will wait until instance is running
               - This implementation assumes the instance image already has docker installed
 
         :param str resource: resource name, as defined in BUDGET and QUEUES.
         :param str worker_id_prefix: worker name prefix
-        :param str queue_name: trains queue to listen to
+        :param str queue_name: clearml queue to listen to
         """
         resource_conf = self.resource_configurations[resource]
         # Add worker type and AWS instance type to the worker name.
@@ -50,7 +50,7 @@ class AwsAutoScaler(AutoScaler):
         )
 
         # user_data script will automatically run when the instance is started. it will install the required packages
-        # for trains-agent configure it using environment variables and run trains-agent on the required queue
+        # for clearml-agent configure it using environment variables and run clearml-agent on the required queue
         user_data = """#!/bin/bash
         sudo apt-get update
         sudo apt-get install -y python3-dev
@@ -60,22 +60,22 @@ class AwsAutoScaler(AutoScaler):
         sudo apt-get install -y build-essential
         python3 -m pip install -U pip
         python3 -m pip install virtualenv
-        python3 -m virtualenv trains_agent_venv
-        source trains_agent_venv/bin/activate
-        python -m pip install trains-agent
-        echo 'agent.git_user=\"{git_user}\"' >> /root/trains.conf
-        echo 'agent.git_pass=\"{git_pass}\"' >> /root/trains.conf
-        echo "{trains_conf}" >> /root/trains.conf
-        export TRAINS_API_HOST={api_server}
-        export TRAINS_WEB_HOST={web_server}
-        export TRAINS_FILES_HOST={files_server}
+        python3 -m virtualenv clearml_agent_venv
+        source clearml_agent_venv/bin/activate
+        python -m pip install clearml-agent
+        echo 'agent.git_user=\"{git_user}\"' >> /root/clearml.conf
+        echo 'agent.git_pass=\"{git_pass}\"' >> /root/clearml.conf
+        echo "{clearml_conf}" >> /root/clearml.conf
+        export CLEARML_API_HOST={api_server}
+        export CLEARML_WEB_HOST={web_server}
+        export CLEARML_FILES_HOST={files_server}
         export DYNAMIC_INSTANCE_ID=`curl http://169.254.169.254/latest/meta-data/instance-id`
-        export TRAINS_WORKER_ID={worker_id}:$DYNAMIC_INSTANCE_ID
-        export TRAINS_API_ACCESS_KEY='{access_key}'
-        export TRAINS_API_SECRET_KEY='{secret_key}'
+        export CLEARML_WORKER_ID={worker_id}:$DYNAMIC_INSTANCE_ID
+        export CLEARML_API_ACCESS_KEY='{access_key}'
+        export CLEARML_API_SECRET_KEY='{secret_key}'
         {bash_script}
         source ~/.bashrc
-        python -m trains_agent --config-file '/root/trains.conf' daemon --queue '{queue}' {docker}
+        python -m clearml_agent --config-file '/root/clearml.conf' daemon --queue '{queue}' {docker}
         shutdown
         """.format(
             api_server=self.api_server,
@@ -87,7 +87,7 @@ class AwsAutoScaler(AutoScaler):
             queue=queue_name,
             git_user=self.git_user or "",
             git_pass=self.git_pass or "",
-            trains_conf='\\"'.join(self.extra_trains_conf.split('"')),
+            clearml_conf='\\"'.join(self.extra_trains_conf.split('"')),
             bash_script=self.extra_vm_bash_script,
             docker="--docker '{}'".format(self.default_docker_image)
             if self.default_docker_image

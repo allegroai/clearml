@@ -1,4 +1,4 @@
-# TRAINS - Example of pytorch with tensorboardX
+# ClearML - Example of pytorch with tensorboardX
 #
 from __future__ import print_function
 
@@ -14,7 +14,7 @@ from tensorboardX import SummaryWriter
 from torch.autograd import Variable
 from torchvision import datasets, transforms
 
-from trains import Task
+from clearml import Task
 
 
 class Net(nn.Module):

@@ -187,7 +187,7 @@ class Artifact(object):
         :raise: Raises error if local copy not found.
         :return: A local path to a downloaded copy of the artifact.
         """
-        from trains.storage import StorageManager
+        from clearml.storage import StorageManager
         local_copy = StorageManager.get_local_copy(
             remote_url=self.url,
             extract_archive=extract_archive and self.type == 'archive',
@@ -308,7 +308,7 @@ class Artifacts(object):
                         delete_after_upload=False, auto_pickle=True, wait_on_upload=False):
         # type: (str, Optional[object], Optional[dict], Optional[str], bool, bool, bool) -> bool
         if not Session.check_min_api_version('2.3'):
-            LoggerRoot.get_base_logger().warning('Artifacts not supported by your TRAINS-server version, '
+            LoggerRoot.get_base_logger().warning('Artifacts not supported by your ClearML-server version, '
                                                  'please upgrade to the latest server version')
             return False
 
@@ -648,7 +648,7 @@ class Artifacts(object):
                 return
         self._last_artifacts_upload[name] = current_sha2
 
-        # If old trains-server, upload as debug image
+        # If old clearml-server, upload as debug image
         if not Session.check_min_api_version('2.3'):
             logger.report_image(title='artifacts', series=name, local_path=local_csv.as_posix(),
                                 delete_after_upload=True, iteration=self._task.get_last_iteration(),
@@ -698,7 +698,7 @@ class Artifacts(object):
         """
         Upload local file and return uri of the uploaded file (uploading in the background)
         """
-        from trains.storage import StorageManager
+        from clearml.storage import StorageManager
 
         upload_uri = self._task.output_uri or self._task.get_logger().get_default_upload_destination()
         if not isinstance(local_file, Path):
@@ -715,7 +715,7 @@ class Artifacts(object):
         # send for upload
         # noinspection PyProtectedMember
         if wait_on_upload:
-            StorageManager.upload_file(local_file.as_posix(), uri)
+            StorageManager.upload_file(local_file.as_posix(), uri, wait_for_upload=True, retries=ev.retries)
             if delete_after_upload:
                 try:
                     os.unlink(local_file.as_posix())

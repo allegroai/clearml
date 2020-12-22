@@ -27,6 +27,7 @@ from six.moves.urllib.parse import quote
 
 from ...utilities.locks import RLock as FileRLock
 from ...utilities.attrs import readonly
+from ...utilities.proxy_object import verify_basic_type
 from ...binding.artifacts import Artifacts
 from ...backend_interface.task.development.worker import DevWorker
 from ...backend_api import Session
@@ -144,9 +145,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self.__reporter = None
         self._curr_label_stats = {}
         self._raise_on_validation_errors = raise_on_validation_errors
-        self._parameters_allowed_types = (
+        self._parameters_allowed_types = tuple(set(
             six.string_types + six.integer_types + (six.text_type, float, list, tuple, dict, type(None))
-        )
+        ))
         self._app_server = None
         self._files_server = None
         self._initial_iteration_offset = 0
@@ -216,7 +217,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                         )
                     else:
                         self.get_logger().report_text(
-                            'TRAINS new version available: upgrade to v{} is recommended!'.format(
+                            'ClearML new version available: upgrade to v{} is recommended!'.format(
                                 latest_version[0]),
                         )
             except Exception:
@@ -296,8 +297,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if task_type.value not in (self.TaskTypes.training, self.TaskTypes.testing) and \
                 not Session.check_min_api_version('2.8'):
             print('WARNING: Changing task type to "{}" : '
-                  'trains-server does not support task type "{}", '
-                  'please upgrade trains-server.'.format(self.TaskTypes.training, task_type.value))
+                  'clearml-server does not support task type "{}", '
+                  'please upgrade clearml-server.'.format(self.TaskTypes.training, task_type.value))
             task_type = self.TaskTypes.training
 
         project_id = None
@@ -402,7 +403,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # type: () -> str
         """
         The Task's status. To keep the Task updated.
-        Trains reloads the Task status information only, when this value is accessed.
+        ClearML reloads the Task status information only, when this value is accessed.
 
         return str: TaskStatusEnum status
         """
@@ -445,7 +446,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def reload(self):
         # type: () -> ()
         """
-        Reload current Task's state from trains-server.
+        Reload current Task's state from clearml-server.
         Refresh all task's fields, including artifacts / models / parameters etc.
         """
         return super(Task, self).reload()
@@ -628,9 +629,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     ):
         # type: (...) -> str
         """
-        Update the Task's output model weights file. First, Trains uploads the file to the preconfigured output
+        Update the Task's output model weights file. First, ClearML uploads the file to the preconfigured output
         destination (see the Task's ``output.destination`` property or call the ``setup_upload`` method),
-        then Trains updates the model object associated with the Task an API call. The API call uses with the URI
+        then ClearML updates the model object associated with the Task an API call. The API call uses with the URI
         of the uploaded file, and other values provided by additional arguments.
 
         :param str model_file: The path to the updated model weights file.
@@ -684,19 +685,19 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Set a new input model for the Task. The model must be "ready" (status is ``Published``) to be used as the
         Task's input model.
 
-        :param model_id: The Id of the model on the **Trains Server** (backend). If ``model_name`` is not specified,
+        :param model_id: The Id of the model on the **ClearML Server** (backend). If ``model_name`` is not specified,
             then ``model_id`` must be specified.
-        :param model_name: The model name. The name is used to locate an existing model in the **Trains Server**
+        :param model_name: The model name. The name is used to locate an existing model in the **ClearML Server**
             (backend). If ``model_id`` is not specified, then ``model_name`` must be specified.
         :param update_task_design: Update the Task's design
 
-            - ``True`` - Trains copies the Task's model design from the input model.
-            - ``False`` - Trains does not copy the Task's model design from the input model.
+            - ``True`` - ClearML copies the Task's model design from the input model.
+            - ``False`` - ClearML does not copy the Task's model design from the input model.
 
         :param update_task_labels: Update the Task's label enumeration
 
-            - ``True`` - Trains copies the Task's label enumeration from the input model.
-            - ``False`` - Trains does not copy the Task's label enumeration from the input model.
+            - ``True`` - ClearML copies the Task's label enumeration from the input model.
+            - ``False`` - ClearML does not copy the Task's label enumeration from the input model.
         """
         if model_id is None and not model_name:
             raise ValueError('Expected one of [model_id, model_name]')
@@ -749,7 +750,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         i.e. {'Args/param': 'value'} is the argument "param" from section "Args"
 
         :param backwards_compatibility: If True (default) parameters without section name
-            (API version < 2.9, trains-server < 0.16) will be at dict root level.
+            (API version < 2.9, clearml-server < 0.16) will be at dict root level.
             If False, parameters without section name, will be nested under "Args/" key.
 
         :return: dict of the task parameters, all flattened to key/value.
@@ -838,14 +839,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         not_allowed = {
             k: type(v).__name__
             for k, v in new_parameters.items()
-            if not isinstance(v, self._parameters_allowed_types)
+            if not verify_basic_type(v, self._parameters_allowed_types)
         }
         if not_allowed:
-            raise ValueError(
-                "Only builtin types ({}) are allowed for values (got {})".format(
-                    ', '.join(t.__name__ for t in self._parameters_allowed_types),
-                    ', '.join('%s=>%s' % p for p in not_allowed.items())),
+            self.log.warning(
+                "Skipping parameter: {}, only builtin types are supported ({})".format(
+                    ', '.join('%s[%s]' % p for p in not_allowed.items()),
+                    ', '.join(t.__name__ for t in self._parameters_allowed_types))
             )
+            new_parameters = {k: v for k, v in new_parameters.items() if k not in not_allowed}
 
         use_hyperparams = Session.check_min_api_version('2.9')
 
@@ -958,7 +960,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :return: True if the parameter was deleted successfully
         """
         if not Session.check_min_api_version('2.9'):
-            raise ValueError("Delete hyper parameter is not supported by your trains-server, "
+            raise ValueError("Delete hyper parameter is not supported by your clearml-server, "
                              "upgrade to the latest version")
         with self._edit_lock:
             paramkey = tasks.ParamKey(section=name.split('/', 1)[0], name=name.split('/', 1)[1])
@@ -1011,7 +1013,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # type: (str) -> ()
         """
         Set the base docker image for this experiment
-        If provided, this value will be used by trains-agent to execute this experiment
+        If provided, this value will be used by clearml-agent to execute this experiment
         inside the provided docker image.
         When running remotely the call is ignored
         """
@@ -1275,7 +1277,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # type: () -> str
         """
         Return the Task results & outputs web page address.
-        For example: https://demoapp.trains.allegro.ai/projects/216431/experiments/60763e04/output/log
+        For example: https://demoapp.demo.clear.ml/projects/216431/experiments/60763e04/output/log
 
         :return: http/s URL link.
         """
@@ -1428,7 +1430,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def running_locally():
         # type: () -> bool
         """
-        Is the task running locally (i.e., ``trains-agent`` is not executing it)
+        Is the task running locally (i.e., ``clearml-agent`` is not executing it)
 
         :return: True, if the task is running locally. False, if the task is not running locally.
 
@@ -1637,7 +1639,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         mutually_exclusive(config_dict=config_dict, config_text=config_text, _check_none=True)
 
         if not Session.check_min_api_version('2.9'):
-            raise ValueError("Multiple configurations is not supported with the current 'trains-server', "
+            raise ValueError("Multiple configurations is not supported with the current 'clearml-server', "
                              "please upgrade to the latest version")
 
         if description:
@@ -1661,7 +1663,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return None if configuration name is not valid.
         """
         if not Session.check_min_api_version('2.9'):
-            raise ValueError("Multiple configurations is not supported with the current 'trains-server', "
+            raise ValueError("Multiple configurations is not supported with the current 'clearml-server', "
                              "please upgrade to the latest version")
 
         configuration = self.data.configuration or {}
@@ -1725,6 +1727,22 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
 
         session = session if session else cls._get_default_session()
+        use_clone_api = Session.check_min_api_version('2.9')
+        if use_clone_api:
+            res = cls._send(
+                session=session, log=log,
+                req=tasks.CloneRequest(
+                    task=cloned_task_id,
+                    new_task_name=name,
+                    new_task_tags=tags,
+                    new_task_comment=comment,
+                    new_task_parent=parent,
+                    new_task_project=project,
+                    execution_overrides=execution_overrides,
+                )
+            )
+            cloned_task_id = res.response.id
+            return cloned_task_id
 
         res = cls._send(session=session, log=log, req=tasks.GetByIdRequest(task=cloned_task_id))
         task = res.response.task
@@ -1858,7 +1876,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not PROC_MASTER_ID_ENV_VAR.get() or len(PROC_MASTER_ID_ENV_VAR.get().split(':')) < 2:
             self.__edit_lock = RLock()
         elif PROC_MASTER_ID_ENV_VAR.get().split(':')[1] == str(self.id):
-            filename = os.path.join(gettempdir(), 'trains_{}.lock'.format(self.id))
+            filename = os.path.join(gettempdir(), 'clearml_{}.lock'.format(self.id))
             # no need to remove previous file lock if we have a dead process, it will automatically release the lock.
             # # noinspection PyBroadException
             # try:

@@ -8,7 +8,7 @@ from ..task import Task
 from ..backend_api.services import tasks as tasks_service
 
 
-logger = getLogger('trains.automation.job')
+logger = getLogger('clearml.automation.job')
 
 
 class TrainsJob(object):

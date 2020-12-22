@@ -1,11 +1,11 @@
-# TRAINS - Example of manual graphs and  statistics reporting
+# ClearML - Example of manual graphs and  statistics reporting
 #
 import os
 
 import numpy as np
 from PIL import Image
 
-from trains import Task, Logger
+from clearml import Task, Logger
 
 
 def report_debug_images(logger, iteration=0):

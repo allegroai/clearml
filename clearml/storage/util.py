@@ -1,6 +1,6 @@
 import hashlib
 import sys
-from typing import Optional
+from typing import Optional, Union
 
 from six.moves.urllib.parse import quote, urlparse, urlunparse
 import six
@@ -70,6 +70,21 @@ def sha256sum(filename, skip_header=0, block_size=65536):
         return None, None
 
     return h.hexdigest(), file_hash.hexdigest() if skip_header else None
+
+
+def md5text(text, seed=1337):
+    # type: (str, Union[int, str]) -> str
+    """
+    Return md5 hash of a string
+    Do not use this hash for security, if needed use something stronger like SHA2
+
+    :param text: string to hash
+    :param seed: use prefix seed for hashing
+    :return: md5 string
+    """
+    h = hashlib.md5()
+    h.update((str(seed) + str(text)).encode('utf-8'))
+    return h.hexdigest()
 
 
 def is_windows():

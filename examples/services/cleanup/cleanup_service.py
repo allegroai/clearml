@@ -10,7 +10,7 @@ You can configure the run by changing the `args` dictionary:
 - force_delete (bool): Allows forcing the task deletion (for every task status). Default: False.
 
 Requirements:
-- trains_agent installed -> pip install trains-agent
+- clearml_agent installed -> pip install clearml-agent
 
 """
 import logging
@@ -20,11 +20,11 @@ from glob import glob
 from shutil import rmtree
 from time import sleep, time
 
-from trains.backend_api.session.client import APIClient
+from clearml.backend_api.session.client import APIClient
 
-from trains import Task
+from clearml import Task
 
-# Connecting TRAINS
+# Connecting ClearML
 task = Task.init(
     project_name="DevOps",
     task_name="Cleanup Service",
@@ -54,7 +54,7 @@ if args["run_as_service"] and task.running_locally():
     args["run_as_service"] = not verify or verify.startswith('y')
 
 if args["run_as_service"]:
-    # if this code is executed by `trains-agent` the function call does nothing.
+    # if this code is executed by `clearml-agent` the function call does nothing.
     # if executed locally, the local process will be terminated, and a remote copy will be executed instead
     task.execute_remotely(queue_name="services", exit_process=True)
 

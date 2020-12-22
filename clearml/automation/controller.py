@@ -17,7 +17,7 @@ class PipelineController(object):
     """
     Pipeline controller.
     Pipeline is a DAG of base tasks, each task will be cloned (arguments changed as required) executed and monitored
-    The pipeline process (task) itself can be executed manually or by the trains-agent services queue.
+    The pipeline process (task) itself can be executed manually or by the clearml-agent services queue.
     Notice: The pipeline controller lives as long as the pipeline itself is being executed.
     """
     _tag = 'pipeline'
@@ -601,7 +601,7 @@ class PipelineController(object):
                     print('Parameters:\n{}'.format(self._nodes[name].job.task_parameter_override))
                     self._running_nodes.append(name)
                 else:
-                    getLogger('trains.automation.controller').error(
+                    getLogger('clearml.automation.controller').error(
                         'ERROR: Failed launching step \'{}\': {}'.format(name, self._nodes[name]))
 
             # update current state (in configuration, so that we could later continue an aborted pipeline)

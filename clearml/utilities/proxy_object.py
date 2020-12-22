@@ -77,6 +77,19 @@ class ProxyDictPreWrite(dict):
         return self._set_callback((prefix + '.' + key_value[0], key_value[1],))
 
 
+def verify_basic_type(a_dict_list, basic_types=None):
+    basic_types = (float, int, bool, six.string_types, ) if not basic_types else \
+        tuple(b for b in basic_types if b not in (list, tuple, dict))
+
+    if isinstance(a_dict_list, basic_types):
+        return True
+    if isinstance(a_dict_list, (list, tuple)):
+        return all(verify_basic_type(v) for v in a_dict_list)
+    elif isinstance(a_dict_list, dict):
+        return all(verify_basic_type(k) for k in a_dict_list.keys()) and \
+               all(verify_basic_type(v) for v in a_dict_list.values())
+
+
 def flatten_dictionary(a_dict, prefix=''):
     flat_dict = {}
     sep = '/'
@@ -88,7 +101,11 @@ def flatten_dictionary(a_dict, prefix=''):
         elif isinstance(v, (list, tuple)) and all([isinstance(i, basic_types) for i in v]):
             flat_dict[prefix + k] = v
         elif isinstance(v, dict):
-            flat_dict.update(flatten_dictionary(v, prefix=prefix + k + sep))
+            nested_flat_dict = flatten_dictionary(v, prefix=prefix + k + sep)
+            if nested_flat_dict:
+                flat_dict.update(nested_flat_dict)
+            else:
+                flat_dict[k] = {}
         else:
             # this is a mixture of list and dict, or any other object,
             # leave it as is, we have nothing to do with it.

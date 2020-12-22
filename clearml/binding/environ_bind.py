@@ -44,7 +44,7 @@ class EnvironmentBind(object):
             match = match.strip()
             if match == '*':
                 env_param.update({k: os.environ.get(k) for k in os.environ
-                                  if not k.startswith('TRAINS_') and not k.startswith('ALG_')})
+                                  if not k.startswith('TRAINS_') and not k.startswith('CLEARML_')})
             elif match.endswith('*'):
                 match = match.strip('*')
                 env_param.update({k: os.environ.get(k) for k in os.environ if k.startswith(match)})

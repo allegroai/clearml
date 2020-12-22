@@ -36,14 +36,14 @@ if TYPE_CHECKING:
 
 class Logger(object):
     """
-    The ``Logger`` class is the Trains console log and metric statistics interface, and contains methods for explicit
+    The ``Logger`` class is the ClearML console log and metric statistics interface, and contains methods for explicit
     reporting.
 
-    Explicit reporting extends Trains automagical capturing of inputs and output. Explicit reporting
+    Explicit reporting extends ClearML automagical capturing of inputs and output. Explicit reporting
     methods include scalar plots, line plots, histograms, confusion matrices, 2D and 3D scatter
     diagrams, text logging, tables, and image uploading and reporting.
 
-    In the **Trains Web-App (UI)**, ``Logger`` output appears in the **RESULTS** tab, **LOG**, **SCALARS**,
+    In the **ClearML Web-App (UI)**, ``Logger`` output appears in the **RESULTS** tab, **LOG**, **SCALARS**,
     **PLOTS**, and **DEBUG SAMPLES** sub-tabs. When you compare experiments, ``Logger`` output appears in the
     comparisons.
 
@@ -90,7 +90,7 @@ class Logger(object):
         if self._connect_logging:
             StdStreamPatch.patch_logging_formatter(self)
         elif not self._connect_std_streams:
-            # make sure that at least the main trains logger is connect
+            # make sure that at least the main clearml logger is connect
             base_logger = LoggerRoot.get_base_logger()
             if base_logger and base_logger.handlers:
                 StdStreamPatch.patch_logging_formatter(self, base_logger.handlers[0])
@@ -126,7 +126,7 @@ class Logger(object):
 
            logger.report_text('log some text', level=logging.DEBUG, print_console=False)
 
-        You can view the reported text in the **Trains Web-App (UI)**, **RESULTS** tab, **LOG** sub-tab.
+        You can view the reported text in the **ClearML Web-App (UI)**, **RESULTS** tab, **LOG** sub-tab.
 
         :param str msg: The text to log.
         :param int level: The log level from the Python ``logging`` package. The default value is ``logging.INFO``.
@@ -151,7 +151,7 @@ class Logger(object):
            scalar_series = [random.randint(0,10) for i in range(10)]
            logger.report_scalar(title='scalar metrics','series', value=scalar_series[iteration], iteration=0)
 
-        You can view the scalar plots in the **Trains Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab.
+        You can view the scalar plots in the **ClearML Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab.
 
         :param str title: The title (metric) of the plot. Plot more than one scalar series on the same plot by using
             the same ``title`` for each call to this method.
@@ -190,7 +190,7 @@ class Logger(object):
            logger.report_vector(title='vector example', series='vector series', values=vector_series, iteration=0,
                 labels=['A','B'], xaxis='X axis label', yaxis='Y axis label')
 
-        You can view the vectors plots in the **Trains Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
+        You can view the vectors plots in the **ClearML Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
 
         :param str title: The title (metric) of the plot.
         :param str series: The series name (variant) of the reported histogram.
@@ -237,7 +237,7 @@ class Logger(object):
            logger.report_histogram(title='histogram example', series='histogram series',
                 values=vector_series, iteration=0, labels=['A','B'], xaxis='X axis label', yaxis='Y axis label')
 
-        You can view the reported histograms in the **Trains Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
+        You can view the reported histograms in the **ClearML Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
 
         :param str title: The title (metric) of the plot.
         :param str series: The series name (variant) of the reported histogram.
@@ -305,7 +305,7 @@ class Logger(object):
 
            logger.report_table(title='table example',series='pandas DataFrame',iteration=0,table_plot=df)
 
-        You can view the reported tables in the **Trains Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
+        You can view the reported tables in the **ClearML Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
 
         :param str title: The title (metric) of the table.
         :param str series: The series name (variant) of the reported table.
@@ -1022,8 +1022,8 @@ class Logger(object):
         The images are uploaded separately. A link to each image is reported.
 
         .. note::
-           Credentials for the destination storage are specified in the  Trains configuration file,
-           ``~/trains.conf``.
+           Credentials for the destination storage are specified in the  ClearML configuration file,
+           ``~/clearml.conf``.
 
         :param str uri: example: 's3://bucket/directory/' or 'file:///tmp/debug/'
 
@@ -1150,7 +1150,7 @@ class Logger(object):
             The values are:
 
             - ``True`` - Scalars without specific titles are grouped together in the "Scalars" plot, preserving
-              backward compatibility with Trains automagical behavior.
+              backward compatibility with ClearML automagical behavior.
             - ``False`` - TensorBoard scalars without titles get a title/series with the same tag. (default)
         :type group_scalars: bool
         """
@@ -1214,7 +1214,7 @@ class Logger(object):
                     try:
                         # make sure we are writing to the original stdout
                         StdStreamPatch.stderr_original_write(
-                            'trains.Logger failed sending log [level {}]: "{}"\n'.format(level, msg))
+                            'clearml.Logger failed sending log [level {}]: "{}"\n'.format(level, msg))
                     except Exception:
                         pass
             else:

@@ -1,4 +1,4 @@
-# TRAINS - example code, ArgumentParser parameter logging, absl parameter logging, and dictionary parameter logging
+# ClearML - example code, ArgumentParser parameter logging, absl parameter logging, and dictionary parameter logging
 #
 from __future__ import absolute_import
 from __future__ import division
@@ -11,7 +11,7 @@ from absl import app
 from absl import flags
 from absl import logging
 
-from trains import Task
+from clearml import Task
 
 
 FLAGS = flags.FLAGS
@@ -32,7 +32,8 @@ parameters = {
     'float': 2.2,
     'string': 'my string',
 }
-parameters = task.connect_configuration(parameters, name='test')
+from clearml import Task
+parameters = Task.current_task().connect(parameters, name='more_stuff_deep_inside_code')
 
 # adding new parameter after connect (will be logged as well)
 parameters['new_param'] = 'this is new'
@@ -40,6 +41,19 @@ parameters['new_param'] = 'this is new'
 # changing the value of a parameter (new value will be stored instead of previous one)
 parameters['float'] = '9.9'
 print(parameters)
+
+complex_nested_dict_configuration = {
+    'list_of_dicts': [{'a': 1, 'b': 2}, {'c': 3, 'd': 4}, {'e': 5, 'f': 6}],
+    'nested_dicts': {'nested': {'key': 'value', 'extra': 'value'}, 'number': 42},
+    'dict': {'simple': 'value', 'number': 2},
+    'list': [1, 2, 3],
+    'int': 3,
+    'float': 2.2,
+    'string': 'additional string',
+}
+complex_nested_dict_configuration = task.connect_configuration(
+    complex_nested_dict_configuration, name='configuration dictionary')
+print(complex_nested_dict_configuration)
 
 
 def main(_):

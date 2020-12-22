@@ -1,6 +1,6 @@
-# TRAINS - Example of Plotly integration and reporting
+# ClearML - Example of Plotly integration and reporting
 #
-from trains import Task
+from clearml import Task
 import plotly.express as px
 
 

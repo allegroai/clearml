@@ -14,7 +14,7 @@ if six.PY3:
     from functools import lru_cache
 elif six.PY2:
     # python 2 support
-    from backports.functools_lru_cache import lru_cache
+    from backports.functools_lru_cache import lru_cache  # noqa
 
 
 __disable_certificate_verification_warning = 0
@@ -139,7 +139,7 @@ def get_http_session_with_retry(
     if not session.verify and __disable_certificate_verification_warning < 2:
         # show warning
         __disable_certificate_verification_warning += 1
-        logging.getLogger('trains').warning(
+        logging.getLogger('clearml').warning(
             msg='InsecureRequestWarning: Certificate verification is disabled! Adding '
                 'certificate verification is strongly advised. See: '
                 'https://urllib3.readthedocs.io/en/latest/advanced-usage.html#ssl-warnings')

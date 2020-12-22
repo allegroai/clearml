@@ -472,9 +472,9 @@ class InputModel(Model):
         framework, and indicate whether to immediately set the model's status to ``Published``.
         The model is read-only.
 
-        The **Trains Server** (backend) may already store the model's URL. If the input model's URL is not
-        stored, meaning the model is new, then it is imported and Trains stores its metadata.
-        If the URL is already stored, the import process stops, Trains issues a warning message, and Trains
+        The **ClearML Server** (backend) may already store the model's URL. If the input model's URL is not
+        stored, meaning the model is new, then it is imported and ClearML stores its metadata.
+        If the URL is already stored, the import process stops, ClearML issues a warning message, and ClearML
         reuses the model.
 
         In your Python experiment script, after importing the model, you can connect it to the main execution
@@ -482,12 +482,12 @@ class InputModel(Model):
         network.
 
         .. note::
-           Using the **Trains Web-App** (user interface), you can reuse imported models and switch models in
+           Using the **ClearML Web-App** (user interface), you can reuse imported models and switch models in
            experiments.
 
-        :param str weights_url: A valid URL for the initial weights file. If the **Trains Web-App** (backend)
+        :param str weights_url: A valid URL for the initial weights file. If the **ClearML Web-App** (backend)
             already stores the metadata of a model with the same URL, that existing model is returned
-            and Trains ignores all other parameters.
+            and ClearML ignores all other parameters.
 
             For example:
 
@@ -715,7 +715,7 @@ class InputModel(Model):
     def __init__(self, model_id):
         # type: (str) -> None
         """
-        :param str model_id: The Trains Id (system UUID) of the input model whose metadata the **Trains Server**
+        :param str model_id: The ClearML Id (system UUID) of the input model whose metadata the **ClearML Server**
             (backend) stores.
         """
         super(InputModel, self).__init__(model_id)
@@ -731,16 +731,16 @@ class InputModel(Model):
         Connect the current model to a Task object, if the model is preexisting. Preexisting models include:
 
         - Imported models (InputModel objects created using the :meth:`Logger.import_model` method).
-        - Models whose metadata is already in the Trains platform, meaning the InputModel object is instantiated
-          from the ``InputModel`` class specifying the the model's Trains Id as an argument.
-        - Models whose origin is not Trains that are used to create an InputModel object. For example,
+        - Models whose metadata is already in the ClearML platform, meaning the InputModel object is instantiated
+          from the ``InputModel`` class specifying the the model's ClearML Id as an argument.
+        - Models whose origin is not ClearML that are used to create an InputModel object. For example,
           models created using TensorFlow models.
 
         When the experiment is executed remotely in a worker, the input model already specified in the experiment is
         used.
 
         .. note::
-           The **Trains Web-App** allows you to switch one input model for another and then enqueue the experiment
+           The **ClearML Web-App** allows you to switch one input model for another and then enqueue the experiment
            to execute in a worker.
 
         :param object task: A Task object.
@@ -789,7 +789,7 @@ class OutputModel(BaseModel):
 
     .. note::
        When executing a Task (experiment) remotely in a worker, you can modify the model configuration and / or model's
-       label enumeration using the **Trains Web-App**.
+       label enumeration using the **ClearML Web-App**.
     """
 
     @property
@@ -990,7 +990,7 @@ class OutputModel(BaseModel):
         Connect the current model to a Task object, if the model is a preexisting model. Preexisting models include:
 
         - Imported models.
-        - Models whose metadata the **Trains Server** (backend) is already storing.
+        - Models whose metadata the **ClearML Server** (backend) is already storing.
         - Models from another source, such as frameworks like TensorFlow.
 
         :param object task: A Task object.
@@ -1044,8 +1044,8 @@ class OutputModel(BaseModel):
         Using this method, files uploads are separate and then a link to each is stored in the model object.
 
         .. note::
-           For storage requiring credentials, the credentials are stored in the Trains configuration file,
-           ``~/trains.conf``.
+           For storage requiring credentials, the credentials are stored in the ClearML configuration file,
+           ``~/clearml.conf``.
 
         :param str uri: The URI of the upload storage destination.
 

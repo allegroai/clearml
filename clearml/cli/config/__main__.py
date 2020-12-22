@@ -1,4 +1,4 @@
-""" Trains configuration wizard"""
+""" ClearML configuration wizard"""
 from __future__ import print_function
 
 import argparse
@@ -8,22 +8,23 @@ from pathlib2 import Path
 from six.moves import input
 from six.moves.urllib.parse import urlparse
 
-from trains.backend_api.session import Session
-from trains.backend_api.session.defs import ENV_HOST
-from trains.backend_config.defs import LOCAL_CONFIG_FILES, LOCAL_CONFIG_FILE_OVERRIDE_VAR
-from trains.config import config_obj
-from trains.utilities.pyhocon import ConfigFactory, ConfigMissingException
+from clearml.backend_api.session import Session
+from clearml.backend_api.session.defs import ENV_HOST
+from clearml.backend_config.defs import LOCAL_CONFIG_FILES, LOCAL_CONFIG_FILE_OVERRIDE_VAR
+from clearml.config import config_obj
+from clearml.utilities.pyhocon import ConfigFactory, ConfigMissingException
 
 description = "\n" \
-    "Please create new trains credentials through the profile page in " \
-    "your trains web app (e.g. http://localhost:8080/profile)\n" \
+    "Please create new clearml credentials through the profile page in " \
+    "your clearml web app (e.g. http://localhost:8080/profile) \n"\
+    "Or with the free hosted service at https://app.community.clear.ml/profile\n" \
     "In the profile page, press \"Create new credentials\", then press \"Copy to clipboard\".\n" \
     "\n" \
     "Paste copied configuration here:\n"
 
 host_description = """
 Editing configuration file: {CONFIG_FILE}
-Enter the url of the trains-server's Web service, for example: {HOST}
+Enter the url of the clearml-server's Web service, for example: {HOST}
 """
 
 # noinspection PyBroadException
@@ -40,7 +41,12 @@ def validate_file(string):
 
 
 def main():
-    default_config_file = os.getenv(LOCAL_CONFIG_FILE_OVERRIDE_VAR) or LOCAL_CONFIG_FILES[0]
+    default_config_file = LOCAL_CONFIG_FILE_OVERRIDE_VAR.get()
+    if not default_config_file:
+        for f in LOCAL_CONFIG_FILES:
+            default_config_file = f
+            if os.path.exists(os.path.expanduser(os.path.expandvars(f))):
+                break
 
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument(
@@ -51,16 +57,20 @@ def main():
 
     args = p.parse_args()
 
-    print('TRAINS SDK setup process')
+    print('ClearML SDK setup process')
 
-    conf_file = Path(args.file).absolute()
+    conf_file = Path(os.path.expanduser(args.file)).absolute()
     if conf_file.exists() and conf_file.is_file() and conf_file.stat().st_size > 0:
         print('Configuration file already exists: {}'.format(str(conf_file)))
         print('Leaving setup, feel free to edit the configuration file.')
         return
     print(description, end='')
     sentinel = ''
-    parse_input = '\n'.join(iter(input, sentinel))
+    parse_input = ''
+    for line in iter(input, sentinel):
+        parse_input += line+'\n'
+        if line.rstrip() == '}':
+            break
     credentials = None
     api_server = None
     web_server = None
@@ -104,7 +114,7 @@ def main():
 
     files_host = input_url('File Store Host', files_host)
 
-    print('\nTRAINS Hosts configuration:\nWeb App: {}\nAPI: {}\nFile Store: {}\n'.format(
+    print('\nClearML Hosts configuration:\nWeb App: {}\nAPI: {}\nFile Store: {}\n'.format(
         web_host, api_host, files_host))
 
     retry = 1
@@ -121,7 +131,7 @@ def main():
 
     # noinspection PyBroadException
     try:
-        default_sdk_conf = Path(__file__).parent.absolute() / 'sdk.conf'
+        default_sdk_conf = Path(__file__).absolute().parents[2] / 'config/default/sdk.conf'
         with open(str(default_sdk_conf), 'rt') as f:
             default_sdk = f.read()
     except Exception:
@@ -130,14 +140,14 @@ def main():
     # noinspection PyBroadException
     try:
         with open(str(conf_file), 'wt') as f:
-            header = '# TRAINS SDK configuration file\n' \
+            header = '# ClearML SDK configuration file\n' \
                      'api {\n' \
                      '    # Notice: \'host\' is the api server (default port 8008), not the web server.\n' \
                      '    api_server: %s\n' \
                      '    web_server: %s\n' \
                      '    files_server: %s\n' \
                      '    # Credentials are generated using the webapp, %s/profile\n' \
-                     '    # Override with os environment: TRAINS_API_ACCESS_KEY / TRAINS_API_SECRET_KEY\n' \
+                     '    # Override with os environment: CLEARML_API_ACCESS_KEY / CLEARML_API_SECRET_KEY\n' \
                      '    credentials {"access_key": "%s", "secret_key": "%s"}\n' \
                      '}\n' \
                      'sdk ' % (api_host, web_host, files_host,
@@ -149,7 +159,7 @@ def main():
         return
 
     print('\nNew configuration stored in {}'.format(str(conf_file)))
-    print('TRAINS setup completed successfully.')
+    print('ClearML setup completed successfully.')
 
 
 def parse_host(parsed_host, allow_input=True):
@@ -290,7 +300,7 @@ def verify_url(parse_input):
             parsed_host = None
     except Exception:
         parsed_host = None
-        print('Could not parse url {}\nEnter your trains-server host: '.format(parse_input), end='')
+        print('Could not parse url {}\nEnter your clearml-server host: '.format(parse_input), end='')
     return parsed_host
 
 

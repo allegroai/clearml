@@ -1,7 +1,7 @@
 """
-Create a Trains Monitoring Service that posts alerts on Slack Channel groups based on some logic
+Create a ClearML Monitoring Service that posts alerts on Slack Channel groups based on some logic
 
-Creating a new Slack Bot (Allegro Trains Bot):
+Creating a new Slack Bot (Allegro ClearML Bot):
 1. Login to your Slack account
 2. Go to https://api.slack.com/apps/new
 3. Give the new App a name (For example "Allegro Train Bot") and select your workspace
@@ -18,7 +18,7 @@ Creating a new Slack Bot (Allegro Trains Bot):
 8. Now under "OAuth Tokens & Redirect URLs" press on "Install App to Workspace",
    then hit "Allow" on the confirmation dialog
 9. Under "OAuth Tokens & Redirect URLs" copy the "Bot User OAuth Access Token" by clicking on "Copy" button
-10. To use the copied API Token in the Allegro Trains Slack service,
+10. To use the copied API Token in the Allegro ClearML Slack service,
     execute the script with --slack_api "<api_token_here>"  (notice the use of double quotes around the token)
 
 We are done!
@@ -32,8 +32,8 @@ from typing import Optional
 from slack import WebClient
 from slack.errors import SlackApiError
 
-from trains import Task
-from trains.automation.monitor import Monitor
+from clearml import Task
+from clearml.automation.monitor import Monitor
 
 
 class SlackMonitor(Monitor):
@@ -141,10 +141,10 @@ class SlackMonitor(Monitor):
 
 
 def main():
-    print('TRAINS experiment monitor Slack service\n')
+    print('ClearML experiment monitor Slack service\n')
 
     # Slack Monitor arguments
-    parser = argparse.ArgumentParser(description='TRAINS monitor experiments and post Slack Alerts')
+    parser = argparse.ArgumentParser(description='ClearML monitor experiments and post Slack Alerts')
     parser.add_argument('--channel', type=str,
                         help='Set the channel to post the Slack alerts')
     parser.add_argument('--slack_api', type=str, default=os.environ.get('SLACK_API_TOKEN', None),
@@ -158,7 +158,7 @@ def main():
                              'This will help eliminate unnecessary debug sessions that crashed right after starting '
                              '(default:0 alert on all)')
     parser.add_argument('--include_manual_experiments', action="store_true", default=False,
-                        help='Include experiments running manually (i.e. not by trains-agent)')
+                        help='Include experiments running manually (i.e. not by clearml-agent)')
     parser.add_argument('--include_completed_experiments', action="store_true", default=False,
                         help='Include completed experiments (i.e. not just failed experiments)')
     parser.add_argument('--refresh_rate', type=float, default=10.,
@@ -202,7 +202,7 @@ def main():
 
     # Let everyone know we are up and running
     start_message = \
-        '{}Allegro Trains Slack monitoring service started\nMonitoring project \'{}\''.format(
+        '{}Allegro ClearML Slack monitoring service started\nMonitoring project \'{}\''.format(
             (args.message_prefix + ' ') if args.message_prefix else '',
             args.project or 'all')
     slack_monitor.post_message(start_message)

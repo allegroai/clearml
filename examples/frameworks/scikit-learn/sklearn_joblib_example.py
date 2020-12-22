@@ -10,7 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-from trains import Task
+from clearml import Task
 
 task = Task.init(project_name="examples", task_name="scikit-learn joblib example")
 

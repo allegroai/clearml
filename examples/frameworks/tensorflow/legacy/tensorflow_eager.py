@@ -1,4 +1,4 @@
-# TRAINS - Example of tensorflow eager mode, model logging and tensorboard
+# ClearML - Example of tensorflow eager mode, model logging and tensorboard
 #
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
@@ -30,7 +30,7 @@ from tempfile import gettempdir
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 
-from trains import Task
+from clearml import Task
 
 tf.compat.v1.enable_eager_execution()
 

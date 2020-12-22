@@ -1,7 +1,7 @@
 import logging
 
-from trains import Task
-from trains.automation import (
+from clearml import Task
+from clearml.automation import (
     DiscreteParameterRange, HyperParameterOptimizer, RandomSearch,
     UniformIntegerParameterRange)
 
@@ -9,14 +9,14 @@ aSearchStrategy = None
 
 if not aSearchStrategy:
     try:
-        from trains.automation.optuna import OptimizerOptuna
+        from clearml.automation.optuna import OptimizerOptuna
         aSearchStrategy = OptimizerOptuna
     except ImportError as ex:
         pass
 
 if not aSearchStrategy:
     try:
-        from trains.automation.hpbandster import OptimizerBOHB
+        from clearml.automation.hpbandster import OptimizerBOHB
         aSearchStrategy = OptimizerBOHB
     except ImportError as ex:
         pass
@@ -40,7 +40,7 @@ def job_complete_callback(
         print('WOOT WOOT we broke the record! Objective reached {}'.format(objective_value))
 
 
-# Connecting TRAINS
+# Connecting ClearML
 task = Task.init(project_name='Hyper-Parameter Optimization',
                  task_name='Automatic Hyper-Parameter Optimization',
                  task_type=Task.TaskTypes.optimizer,
@@ -73,10 +73,11 @@ an_optimizer = HyperParameterOptimizer(
         UniformIntegerParameterRange('General/layer_2', min_value=128, max_value=512, step_size=128),
         DiscreteParameterRange('General/batch_size', values=[96, 128, 160]),
         DiscreteParameterRange('General/epochs', values=[30]),
+        DiscreteParameterRange('General/optimizer', values=['adam', 'sgd']),
     ],
     # this is the objective metric we want to maximize/minimize
-    objective_metric_title='epoch_accuracy',
-    objective_metric_series='epoch_accuracy',
+    objective_metric_title='accuracy',
+    objective_metric_series='accuracy',
     # now we decide if we want to maximize it or minimize it (accuracy we maximize)
     objective_metric_sign='max',
     # let us limit the number of concurrent experiments,
@@ -109,7 +110,7 @@ an_optimizer = HyperParameterOptimizer(
 
 # if we are running as a service, just enqueue ourselves into the services queue and let it run the optimization
 if args['run_as_service']:
-    # if this code is executed by `trains-agent` the function call does nothing.
+    # if this code is executed by `clearml-agent` the function call does nothing.
     # if executed locally, the local process will be terminated, and a remote copy will be executed instead
     task.execute_remotely(queue_name='services', exit_process=True)
 

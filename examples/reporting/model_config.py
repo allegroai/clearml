@@ -1,8 +1,8 @@
-# TRAINS - Example of manual model configuration
+# ClearML - Example of manual model configuration
 #
 import os
 
-from trains import Task, OutputModel
+from clearml import Task, OutputModel
 
 
 task = Task.init(project_name='examples', task_name='Model configuration example')

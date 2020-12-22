@@ -15,12 +15,12 @@ from ignite.utils import setup_logger
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from trains import Task, StorageManager
+from clearml import Task, StorageManager
 
-# Trains Initializations
+# ClearML Initializations
 task = Task.init(project_name='Image Example', task_name='image classification CIFAR10')
 params = {'number_of_epochs': 20, 'batch_size': 64, 'dropout': 0.25, 'base_lr': 0.001, 'momentum': 0.9, 'loss_report': 100}
-params = task.connect(params)  # enabling configuration override by trains
+params = task.connect(params)  # enabling configuration override by clearml
 print(params)  # printing actual configuration (after override in remote mode)
 
 manager = StorageManager()

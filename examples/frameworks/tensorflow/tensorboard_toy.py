@@ -1,4 +1,4 @@
-# TRAINS - Example of tensorboard with tensorflow (without any actual training)
+# ClearML - Example of tensorboard with tensorflow (without any actual training)
 #
 import os
 import tensorflow as tf
@@ -6,7 +6,7 @@ import numpy as np
 from tempfile import gettempdir
 from PIL import Image
 
-from trains import Task
+from clearml import Task
 
 
 def generate_summary(k, step):

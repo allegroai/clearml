@@ -36,12 +36,12 @@ class MaxRequestSizeError(Exception):
 
 
 class Session(TokenManager):
-    """ TRAINS API Session class. """
+    """ ClearML API Session class. """
 
     _AUTHORIZATION_HEADER = "Authorization"
-    _WORKER_HEADER = "X-Trains-Worker"
-    _ASYNC_HEADER = "X-Trains-Async"
-    _CLIENT_HEADER = "X-Trains-Client"
+    _WORKER_HEADER = ("X-ClearML-Worker", "X-Trains-Worker", )
+    _ASYNC_HEADER = ("X-ClearML-Async", "X-Trains-Async", )
+    _CLIENT_HEADER = ("X-ClearML-Client", "X-Trains-Client", )
 
     _async_status_code = 202
     _session_requests = 0
@@ -57,10 +57,10 @@ class Session(TokenManager):
     _client = [(__package__.partition(".")[0], __version__)]
 
     api_version = '2.1'
-    default_demo_host = "https://demoapi.trains.allegro.ai"
+    default_demo_host = "https://demoapi.demo.clear.ml"
     default_host = default_demo_host
-    default_web = "https://demoapp.trains.allegro.ai"
-    default_files = "https://demofiles.trains.allegro.ai"
+    default_web = "https://demoapp.demo.clear.ml"
+    default_files = "https://demofiles.demo.clear.ml"
     default_key = "EGRTCO8JMSIGI6S39GTP43NFWXDQOW"
     default_secret = "x!XTov_G-#vspE*Y(h$Anm&DIc5Ou-F)jsl$PdOyj5wG1&E!Z8"
     force_max_api_version = None
@@ -177,8 +177,8 @@ class Session(TokenManager):
             if not api_version:
                 api_version = '2.2' if token_dict.get('env', '') == 'prod' else Session.api_version
             if token_dict.get('server_version'):
-                if not any(True for c in Session._client if c[0] == 'trains-server'):
-                    Session._client.append(('trains-server', token_dict.get('server_version'), ))
+                if not any(True for c in Session._client if c[0] == 'clearml-server'):
+                    Session._client.append(('clearml-server', token_dict.get('server_version'), ))
 
             Session.api_version = str(api_version)
         except (jwt.DecodeError, ValueError):
@@ -218,10 +218,13 @@ class Session(TokenManager):
         if self._offline_mode:
             return None
 
+        res = None
         host = self.host
         headers = headers.copy() if headers else {}
-        headers[self._WORKER_HEADER] = self.worker
-        headers[self._CLIENT_HEADER] = self.client
+        for h in self._WORKER_HEADER:
+            headers[h] = self.worker
+        for h in self._CLIENT_HEADER:
+            headers[h] = self.client
 
         token_refreshed_on_error = False
         url = (
@@ -308,7 +311,8 @@ class Session(TokenManager):
             headers.copy() if headers else {}
         )
         if async_enable:
-            headers[self._ASYNC_HEADER] = "1"
+            for h in self._ASYNC_HEADER:
+                headers[h] = "1"
         return self._send_request(
             service=service,
             action=action,
@@ -508,7 +512,7 @@ class Session(TokenManager):
         if parsed.port == 8008:
             return host.replace(':8008', ':8080', 1)
 
-        raise ValueError('Could not detect TRAINS web application server')
+        raise ValueError('Could not detect ClearML web application server')
 
     @classmethod
     def get_files_server_host(cls, config=None):
@@ -624,7 +628,7 @@ class Session(TokenManager):
             # check if this is a misconfigured api server (getting 200 without the data section)
             if res and res.status_code == 200:
                 raise ValueError('It seems *api_server* is misconfigured. '
-                                 'Is this the TRAINS API server {} ?'.format(self.host))
+                                 'Is this the ClearML API server {} ?'.format(self.host))
             else:
                 raise LoginError("Response data mismatch: No 'token' in 'data' value from res, receive : {}, "
                                  "exception: {}".format(res, ex))

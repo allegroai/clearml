@@ -15,6 +15,10 @@ class EnvEntry(Entry):
         super(EnvEntry, self).__init__(key, *more_keys, **kwargs)
         self._ignore_errors = kwargs.pop('ignore_errors', False)
 
+    def pop(self):
+        for k in self.keys:
+            environ.pop(k, None)
+
     def _get(self, key):
         value = getenv(key, "").strip()
         return value or NotSet

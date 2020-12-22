@@ -1,5 +1,5 @@
 """
-TRAINS - Artificial Intelligence Version Control
+ClearML - Artificial Intelligence Version Control
 https://github.com/allegroai/trains
 """
 
@@ -27,20 +27,20 @@ def read_version_string(version_file):
         raise RuntimeError("Unable to find version string.")
 
 
-version = read_version_string("trains/version.py")
+version = read_version_string("clearml/version.py")
 
 requirements = read_text(os.path.join(here, 'requirements.txt')).splitlines()
 
 setup(
-    name='trains',
+    name='clearml',
     version=version,
-    description='TRAINS - Auto-Magical Experiment Manager & Version Control for AI',
+    description='ClearML - Auto-Magical Experiment Manager, Version Control, and MLOps for AI',
     long_description=long_description,
     long_description_content_type='text/markdown',
     # The project's main homepage.
     url='https://github.com/allegroai/trains',
     author='Allegroai',
-    author_email='trains@allegro.ai',
+    author_email='clearml@allegro.ai',
     license='Apache License 2.0',
     classifiers=[
         # How mature is this project. Common values are
@@ -65,7 +65,7 @@ setup(
         'Programming Language :: Python :: 3.8',
         'License :: OSI Approved :: Apache Software License',
     ],
-    keywords='trains development machine deep learning version control machine-learning machinelearning '
+    keywords='clearml trains development machine deep learning version control machine-learning machinelearning '
              'deeplearning deep-learning experiment-manager experimentmanager',
     packages=find_packages(exclude=['contrib', 'docs', 'data', 'examples', 'tests']),
     install_requires=requirements,
@@ -81,7 +81,7 @@ setup(
         ],
     },
     package_data={
-        'trains': ['config/default/*.conf', 'backend_api/config/default/*.conf']
+        'clearml': ['config/default/*.conf', 'backend_api/config/default/*.conf']
     },
     include_package_data=True,
     # To provide executable scripts, use entry points in preference to the
@@ -89,7 +89,9 @@ setup(
     # pip to create the appropriate form of executable for the target platform.
     entry_points={
         'console_scripts': [
-          'trains-init = trains.config.default.__main__:main',
+            'clearml-init = clearml.cli.config.__main__:main',
+            'clearml-data = clearml.cli.data.__main__:main',
+            'clearml-launch = clearml.cli.task.__main__:main',
         ],
     },
 )

@@ -1,4 +1,4 @@
-# TRAINS - Example of manual graphs and  statistics reporting
+# ClearML - Example of manual graphs and  statistics reporting
 #
 from __future__ import print_function
 
@@ -7,7 +7,7 @@ import sys
 
 import six
 
-from trains import Logger, Task
+from clearml import Logger, Task
 
 
 def report_logs(logger):

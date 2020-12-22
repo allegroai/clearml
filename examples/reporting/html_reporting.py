@@ -1,4 +1,4 @@
-# TRAINS - Example of manual graphs and  statistics reporting
+# ClearML - Example of manual graphs and  statistics reporting
 #
 import math
 
@@ -10,7 +10,7 @@ from bokeh.sampledata.autompg import autompg_clean as bokeh_df
 from bokeh.sampledata.periodic_table import elements
 from bokeh.transform import dodge, factor_cmap
 
-from trains import Task, Logger
+from clearml import Task, Logger
 
 
 def report_html_url(logger, iteration=0):

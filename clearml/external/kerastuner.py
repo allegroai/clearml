@@ -14,7 +14,7 @@ try:
 except ImportError:
     pd = None
     from logging import getLogger
-    getLogger('trains.external.kerastuner').warning(
+    getLogger('clearml.external.kerastuner').warning(
         'Pandas is not installed, summary table reporting will be skipped.')
 
 
@@ -26,7 +26,7 @@ class TrainsTunerLogger(Logger):
         super(TrainsTunerLogger, self).__init__()
         self.task = task or Task.current_task()
         if not self.task:
-            raise ValueError("Trains Task could not be found, pass in TrainsTunerLogger or "
+            raise ValueError("ClearML Task could not be found, pass in TrainsTunerLogger or "
                              "call Task.init before initializing TrainsTunerLogger")
         self._summary = pd.DataFrame() if pd else None
 

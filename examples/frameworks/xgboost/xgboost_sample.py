@@ -5,7 +5,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from xgboost import plot_tree
 
-from trains import Task
+from clearml import Task
 
 task = Task.init(project_name='examples', task_name='XGBoost simple example')
 iris = datasets.load_iris()

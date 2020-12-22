@@ -22,7 +22,7 @@ ClearML is a ML/DL development and production suite, it contains three main modu
 
 - [Experiment Manager](#clearml-experiment-manager) - Automagical experiment tracking, environments and results
 - [ML-Ops](https://github.com/allegroai/clearml-agent) - Automation, Pipelines & Orchestration solution for ML/DL jobs (K8s / Cloud / bare-metal)  
-- [Data-Management](https://github.com/allegroai/clearml/blob/master/docs/clearml-task.md) - Fully differentiable data management & version control solution on top of object-storage 
+- [Data-Management](https://github.com/allegroai/clearml/blob/master/docs/datasets.md) - Fully differentiable data management & version control solution on top of object-storage 
   (S3/GS/Azure/NAS)  
   
 

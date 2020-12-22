@@ -2,6 +2,8 @@
 
 ## Decoupling Data from Code - The Dataset Paradigm
 
+<a href="https://app.community.clear.ml"><img src="https://github.com/allegroai/clearml/blob/master/docs/dataset_screenshots.gif?raw=true" width="80%"></a>
+
 ### The ultimate goal of `clearml-data` is to transform datasets into configuration parameters
 Just like any other argument, the dataset argument should retrieve a full local copy of the
 dataset to be used by the experiment. 
@@ -136,4 +138,3 @@ in the differential snapshot (location / size / hash), is available in the Artif
 This allows you to quickly compare two dataset contents and visually see the difference.
 - The dataset genealogy DAG and change-set summary table is visualized in Results / Plots
 
-<a href="https://app.community.clear.ml"><img src="https://github.com/allegroai/clearml/blob/master/docs/dataset_screenshots.gif?raw=true" width="80%"></a>

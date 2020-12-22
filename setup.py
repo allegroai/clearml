@@ -1,6 +1,6 @@
 """
 ClearML - Artificial Intelligence Version Control
-https://github.com/allegroai/trains
+https://github.com/allegroai/clearml
 """
 
 import os.path
@@ -38,7 +38,7 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     # The project's main homepage.
-    url='https://github.com/allegroai/trains',
+    url='https://github.com/allegroai/clearml',
     author='Allegroai',
     author_email='clearml@allegro.ai',
     license='Apache License 2.0',

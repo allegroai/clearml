@@ -9,7 +9,6 @@
 [![GitHub license](https://img.shields.io/github/license/allegroai/clearml.svg)](https://img.shields.io/github/license/allegroai/clearml.svg)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/clearml.svg)](https://img.shields.io/pypi/pyversions/clearml.svg)
 [![PyPI version shields.io](https://img.shields.io/pypi/v/clearml.svg)](https://img.shields.io/pypi/v/clearml.svg)
-[![PyPI status](https://img.shields.io/pypi/status/clearml.svg)](https://pypi.python.org/pypi/clearml/)
 [![Optuna](https://img.shields.io/badge/Optuna-integrated-blue)](https://optuna.org)
 [![Slack Channel](https://img.shields.io/badge/slack-%23clearml--community-blueviolet?logo=slack)](https://join.slack.com/t/allegroai-trains/shared_invite/zt-c0t13pty-aVUZZW1TSSSg2vyIGVPBhg)
 
@@ -136,7 +135,7 @@ Apache License, Version 2.0 (see the [LICENSE](https://www.apache.org/licenses/L
 
 ## Documentation, Community & Support
 
-More information in the [official documentation](https://allegro.ai//clearml/docs) and [on YouTube](https://www.youtube.com/c/AllegroAI).
+More information in the [official documentation](https://allegro.ai/clearml/docs) and [on YouTube](https://www.youtube.com/c/AllegroAI).
 
 For examples and use cases, check the [examples folder](https://github.com/allegroai/clearml/tree/master/examples) and [corresponding documentation](https://allegro.ai/clearml/docs/examples/examples_overview/).
 

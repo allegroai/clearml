@@ -34,7 +34,7 @@ clearml-data create --project <my_project> --name <my_dataset_name>
 ``` bashtrue
 clearml-data add --id <dataset_id_from_previous_command> --files ~/datasets/best_dataset/
 ```
-- Upload files (Optional: specify storage `--storage` `s3://bucket` or `gs://` or `azure://` or `/mnt/shared/`)
+- Upload files (Optional: specify storage `--storage` `s3://bucket`, `gs://`, `azure://` or `/mnt/shared/`)
 ``` bash
 clearml-data upload --id <dataset_id>
 ```
@@ -82,7 +82,7 @@ vim ~/datasets/working_dataset/everything.csv
 ``` bash
 clearml-data sync --id <created_dataset_id> --folder ~/datasets/working_dataset
 ```
-- Upload files (Optional: specify storage `--storage` `s3://bucket` or `gs://` or `azure://` or `/mnt/shared/`)
+- Upload files (Optional: specify storage `--storage` `s3://bucket`, `gs://`, `azure://`, `/mnt/shared/`)
 ``` bash
 clearml-data upload --id <created_dataset_id>
 ```

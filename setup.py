@@ -91,7 +91,7 @@ setup(
         'console_scripts': [
             'clearml-init = clearml.cli.config.__main__:main',
             'clearml-data = clearml.cli.data.__main__:main',
-            'clearml-launch = clearml.cli.task.__main__:main',
+            'clearml-task = clearml.cli.task.__main__:main',
         ],
     },
 )

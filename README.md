@@ -73,7 +73,7 @@ pip install clearml
 Add two lines to your code:
 ```python
 from clearml import Task
-task = Task(project_name='examples', task_name='hello world')
+task = Task.init(project_name='examples', task_name='hello world')
 ```
 
 You are done, everything your process outputs is now automagically logged into ClearML.

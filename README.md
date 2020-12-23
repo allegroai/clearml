@@ -25,7 +25,7 @@ ClearML is a ML/DL development and production suite, it contains three main modu
   (S3/GS/Azure/NAS)  
   
 
-Instrumenting these components is the **ClearML-server**, see [Self-Hosting]() & [Free tier Hosting]()  
+Instrumenting these components is the **ClearML-server**, see [Self-Hosting](https://allegro.ai/clearml/docs/deploying_clearml/clearml_server_deploy/) & [Free tier Hosting](https://allegro.ai/clearml/docs/getting_started/getting_started_clearml_hosted_service/)  
 
 
 ---

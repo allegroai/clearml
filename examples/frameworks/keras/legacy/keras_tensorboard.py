@@ -88,7 +88,8 @@ model.compile(loss='categorical_crossentropy',
               optimizer=RMSprop(),
               metrics=['accuracy'])
 
-# Connecting ClearML
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name='examples', task_name='Keras with TensorBoard example')
 task.connect_configuration({'test': 1337, 'nested': {'key': 'value', 'number': 1}})
 

@@ -6,8 +6,11 @@ from PIL import Image
 from torch.utils.tensorboard import SummaryWriter
 
 from clearml import Task
-task = Task.init(project_name='examples', task_name='pytorch tensorboard toy example')
 
+
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
+task = Task.init(project_name='examples', task_name='pytorch tensorboard toy example')
 
 writer = SummaryWriter(log_dir=os.path.join(gettempdir(), 'tensorboard_logs'))
 

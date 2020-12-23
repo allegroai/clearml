@@ -40,7 +40,8 @@ def job_complete_callback(
         print('WOOT WOOT we broke the record! Objective reached {}'.format(objective_value))
 
 
-# Connecting ClearML
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name='Hyper-Parameter Optimization',
                  task_name='Automatic Hyper-Parameter Optimization',
                  task_type=Task.TaskTypes.optimizer,
@@ -73,11 +74,10 @@ an_optimizer = HyperParameterOptimizer(
         UniformIntegerParameterRange('General/layer_2', min_value=128, max_value=512, step_size=128),
         DiscreteParameterRange('General/batch_size', values=[96, 128, 160]),
         DiscreteParameterRange('General/epochs', values=[30]),
-        DiscreteParameterRange('General/optimizer', values=['adam', 'sgd']),
     ],
     # this is the objective metric we want to maximize/minimize
-    objective_metric_title='accuracy',
-    objective_metric_series='accuracy',
+    objective_metric_title='epoch_accuracy',
+    objective_metric_series='epoch_accuracy',
     # now we decide if we want to maximize it or minimize it (accuracy we maximize)
     objective_metric_sign='max',
     # let us limit the number of concurrent experiments,

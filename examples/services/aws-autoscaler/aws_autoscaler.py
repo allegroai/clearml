@@ -76,6 +76,8 @@ def main():
                 )
                 return
 
+    # Connecting ClearML with the current process,
+    # from here on everything is logged automatically
     task = Task.init(project_name="DevOps", task_name="AWS Auto-Scaler", task_type=Task.TaskTypes.service)
     task.connect(hyper_params)
     task.connect_configuration(configurations)

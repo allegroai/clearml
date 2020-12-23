@@ -5,6 +5,8 @@ import os
 from clearml import Task, OutputModel
 
 
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name='examples', task_name='Model configuration example')
 
 # Connect a local configuration file

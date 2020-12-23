@@ -6,7 +6,8 @@ from tempfile import gettempdir
 import torch
 from clearml import Task
 
-
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name='examples', task_name='Model configuration and upload')
 
 # create a model

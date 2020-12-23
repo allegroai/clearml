@@ -2,6 +2,8 @@ from clearml import Task
 from clearml.automation.controller import PipelineController
 
 
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name='examples', task_name='pipeline demo',
                  task_type=Task.TaskTypes.controller, reuse_last_task_id=False)
 

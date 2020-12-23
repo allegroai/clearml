@@ -43,7 +43,8 @@ def report_debug_images(logger, iteration=0):
 
 
 def main():
-    # Create the experiment Task
+    # Connecting ClearML with the current process,
+    # from here on everything is logged automatically
     task = Task.init(project_name="examples", task_name="image reporting")
 
     print('reporting a few debug images')

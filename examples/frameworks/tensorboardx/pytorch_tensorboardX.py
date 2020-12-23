@@ -100,7 +100,10 @@ def main():
     args = parser.parse_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()
 
-    task = Task.init(project_name='examples', task_name='pytorch with tensorboardX')  # noqa: F841
+    # Connecting ClearML with the current process,
+    # from here on everything is logged automatically
+    task = Task.init(project_name='examples', task_name='pytorch with tensorboardX')
+
     writer = SummaryWriter('runs')
     writer.add_text('TEXT', 'This is some text', 0)
 

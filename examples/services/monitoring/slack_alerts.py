@@ -192,6 +192,8 @@ def main():
         slack_monitor.status_alerts += ["completed"]
 
     # start the monitoring Task
+    # Connecting ClearML with the current process,
+    # from here on everything is logged automatically
     task = Task.init(project_name='Monitoring', task_name='Slack Alerts', task_type=Task.TaskTypes.monitor)
     if not args.local:
         task.execute_remotely(queue_name=args.service_queue)

@@ -12,9 +12,13 @@ import jupyter  # noqa
 from clearml import Task
 
 
-# initialize ClearML
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(
-    project_name="DevOps", task_name="Allocate Jupyter Notebook Instance", task_type=Task.TaskTypes.service)
+    project_name="DevOps",
+    task_name="Allocate Jupyter Notebook Instance",
+    task_type=Task.TaskTypes.service
+)
 
 # get rid of all the runtime ClearML
 preserve = (

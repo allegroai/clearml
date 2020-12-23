@@ -124,6 +124,8 @@ def plot_learning_curve(estimator, title, X, y, axes=None, ylim=None, cv=None, n
     return plt
 
 
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 Task.init('examples', 'scikit-learn matplotlib example')
 
 fig, fig_axes = plt.subplots(1, 3, figsize=(30, 10))

@@ -8,8 +8,11 @@ import numpy as np
 from PIL import Image
 
 from clearml import Task
-task = Task.init(project_name='examples', task_name='tensorboard toy example')
 
+
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
+task = Task.init(project_name='examples', task_name='tensorboard toy example')
 
 k = tf.placeholder(tf.float32)
 

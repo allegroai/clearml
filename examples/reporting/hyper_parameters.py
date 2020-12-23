@@ -19,6 +19,8 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string('echo', None, 'Text to echo.')
 flags.DEFINE_string('another_str', 'My string', 'A string', module_name='test')
 
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name='examples', task_name='hyper-parameters example')
 
 flags.DEFINE_integer('echo3', 3, 'Text to echo.')
@@ -32,8 +34,7 @@ parameters = {
     'float': 2.2,
     'string': 'my string',
 }
-from clearml import Task
-parameters = Task.current_task().connect(parameters, name='more_stuff_deep_inside_code')
+parameters = task.connect(parameters)
 
 # adding new parameter after connect (will be logged as well)
 parameters['new_param'] = 'this is new'

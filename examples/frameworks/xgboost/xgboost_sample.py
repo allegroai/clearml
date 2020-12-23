@@ -7,7 +7,11 @@ from xgboost import plot_tree
 
 from clearml import Task
 
+
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name='examples', task_name='XGBoost simple example')
+
 iris = datasets.load_iris()
 X = iris.data
 y = iris.target
@@ -56,5 +60,6 @@ labels = dtest.get_label()
 
 # plot results
 xgb.plot_importance(model)
+plt.show()
 plot_tree(model)
 plt.show()

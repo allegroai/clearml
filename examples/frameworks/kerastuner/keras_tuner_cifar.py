@@ -43,6 +43,8 @@ def build_model(hp):
     return model
 
 
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init('examples', 'kerastuner cifar10 tuning')
 
 tuner = kt.Hyperband(

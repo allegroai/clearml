@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from clearml import Task
 
-
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name='examples', task_name='Matplotlib example')
 
 # Create a plot

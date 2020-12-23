@@ -99,7 +99,11 @@ def main():
     parser.add_argument('--log-interval', type=int, default=10, metavar='N',
                         help='how many batches to wait before logging training status')
     args = parser.parse_args()
-    Task.init(project_name='examples', task_name='pytorch with tensorboard')
+
+    # Connecting ClearML with the current process,
+    # from here on everything is logged automatically
+    task = Task.init(project_name='examples', task_name='pytorch with tensorboard')  # noqa: F841
+
     writer = SummaryWriter('runs')
     writer.add_text('TEXT', 'This is some text', 0)
     args.cuda = not args.no_cuda and torch.cuda.is_available()

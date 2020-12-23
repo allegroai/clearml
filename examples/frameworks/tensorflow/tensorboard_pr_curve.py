@@ -39,6 +39,8 @@ from tensorboard.plugins.pr_curve import summary
 from clearml import Task
 
 
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name='examples', task_name='tensorboard pr_curve')
 
 tf.compat.v1.disable_v2_behavior()

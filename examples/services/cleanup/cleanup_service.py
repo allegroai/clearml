@@ -24,7 +24,8 @@ from clearml.backend_api.session.client import APIClient
 
 from clearml import Task
 
-# Connecting ClearML
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(
     project_name="DevOps",
     task_name="Cleanup Service",

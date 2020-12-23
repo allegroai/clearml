@@ -4,6 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from clearml import Task
 
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 # Create a new task, disable automatic matplotlib connect
 task = Task.init(
     project_name='examples',

@@ -11,8 +11,9 @@ from tensorflow.keras import Model
 from clearml import Task
 
 
-task = Task.init(project_name='examples',
-                 task_name='Tensorflow v2 mnist with summaries')
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
+task = Task.init(project_name='examples', task_name='Tensorflow v2 mnist with summaries')
 
 
 # Load and prepare the MNIST dataset.

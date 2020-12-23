@@ -109,7 +109,8 @@ def report_plots(logger, iteration=0):
 
 
 def main():
-    # Create the experiment Task
+    # Connecting ClearML with the current process,
+    # from here on everything is logged automatically
     task = Task.init(project_name="examples", task_name="2D plots reporting")
 
     print('reporting some graphs')
@@ -117,7 +118,6 @@ def main():
     # Get the task logger,
     # You can also call Task.current_task().get_logger() from anywhere in your code.
     logger = task.get_logger()
-    #logger.report_scatter2d()
 
     # report graphs
     report_plots(logger)

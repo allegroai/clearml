@@ -21,7 +21,8 @@ def report_scalars(logger):
 
 
 def main():
-    # Create the experiment Task
+    # Connecting ClearML with the current process,
+    # from here on everything is logged automatically
     task = Task.init(project_name="examples", task_name="scalar reporting")
 
     print('reporting scalar graphs')

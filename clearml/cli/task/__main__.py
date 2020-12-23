@@ -51,6 +51,10 @@ def setup_parser(parser):
                              'Example: --packages "tqdm>=2.1" "scikit-learn"')
     parser.add_argument('--docker', type=str, default=None,
                         help='Select the docker image to use in the remote session')
+    parser.add_argument('--task-type', type=str, default=None,
+                        help='Set the Task type, optional values: '
+                             'training, testing, inference, data_processing, application, monitor, '
+                             'controller, optimizer, service, qc, custom')
     parser.add_argument('--skip-task-init', action='store_true', default=None,
                         help='If set, Task.init() call is not added to the entry point, and is assumed '
                              'to be called in within the script. Default: add Task.init() call entry point script')
@@ -76,6 +80,7 @@ def cli():
     create_populate = CreateAndPopulate(
         project_name=args.project,
         task_name=args.name,
+        task_type=args.task_type,
         repo=args.repo or args.folder,
         branch=args.branch,
         commit=args.commit,
@@ -86,6 +91,7 @@ def cli():
         base_task_id=args.base_task_id,
         add_task_init_call=not args.skip_task_init,
         raise_on_missing_entries=True,
+        verbose=True,
     )
     # verify args
     create_populate.update_task_args(args.args)

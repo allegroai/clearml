@@ -29,6 +29,7 @@ class CreateAndPopulate(object):
             base_task_id=None,  # Optional[str]
             add_task_init_call=True,  # bool
             raise_on_missing_entries=False,  # bool
+            verbose=False,  # bool
     ):
         # type: (...) -> None
         """
@@ -59,6 +60,7 @@ class CreateAndPopulate(object):
             Essentially clones an existing task and overrides arguments/requirements.
         :param add_task_init_call: If True, a 'Task.init()' call is added to the script entry point in remote execution.
         :param raise_on_missing_entries: If True raise ValueError on missing entries when populating
+        :param verbose: If True print verbose logging
         """
         if len(urlparse(repo).scheme) <= 1:
             folder = repo
@@ -97,6 +99,7 @@ class CreateAndPopulate(object):
         self.task_type = task_type
         self.task = None
         self.raise_on_missing_entries = raise_on_missing_entries
+        self.verbose = verbose
 
     def create_task(self):
         # type: () -> Task
@@ -126,16 +129,21 @@ class CreateAndPopulate(object):
                 create_requirements=False, uncommitted_from_remote=True)
 
         # check if we have no repository and no requirements raise error
-        if self.raise_on_missing_entries and not self.requirements_file and not self.repo and (
+        if self.raise_on_missing_entries and (not self.requirements_file and not self.packages) \
+                and not self.repo and (
                 not repo_info or not repo_info.script or not repo_info.script.get('repository')):
             raise ValueError("Standalone script detected \'{}\', but no requirements provided".format(self.script))
 
         if self.base_task_id:
-            print('Cloning task {}'.format(self.base_task_id))
+            if self.verbose:
+                print('Cloning task {}'.format(self.base_task_id))
             task = Task.clone(source_task=self.base_task_id, project=Task.get_project_id(self.project_name))
         else:
             # noinspection PyProtectedMember
-            task = Task._create(task_name=self.task_name, project_name=self.project_name, task_type=self.task_type)
+            task = Task._create(
+                task_name=self.task_name, project_name=self.project_name,
+                task_type=self.task_type or Task.TaskTypes.training)
+
             # if there is nothing to populate, return
             if not any([
                 self.folder, self.commit, self.branch, self.repo, self.script, self.cwd,
@@ -230,24 +238,31 @@ class CreateAndPopulate(object):
                     idx_a = future_found + 1
 
             task_init_patch = ''
-            # if we do not have requirements, add clearml to the requirements.txt
-            if not reqs:
-                task_init_patch += \
-                    "diff --git a/requirements.txt b/requirements.txt\n" \
-                    "--- a/requirements.txt\n" \
-                    "+++ b/requirements.txt\n" \
-                    "@@ -0,0 +1,1 @@\n" \
-                    "+clearml\n"
+            if self.repo:
+                # if we do not have requirements, add clearml to the requirements.txt
+                if not reqs:
+                    task_init_patch += \
+                        "diff --git a/requirements.txt b/requirements.txt\n" \
+                        "--- a/requirements.txt\n" \
+                        "+++ b/requirements.txt\n" \
+                        "@@ -0,0 +1,1 @@\n" \
+                        "+clearml\n"
 
-            task_init_patch += \
-                "diff --git a{script_entry} b{script_entry}\n" \
-                "--- a{script_entry}\n" \
-                "+++ b{script_entry}\n" \
-                "@@ -{idx_a},0 +{idx_b},3 @@\n" \
-                "+from clearml import Task\n" \
-                "+Task.init()\n" \
-                "+\n".format(
-                    script_entry=script_entry, idx_a=idx_a, idx_b=idx_a + 1)
+                # Add Task.init call
+                task_init_patch += \
+                    "diff --git a{script_entry} b{script_entry}\n" \
+                    "--- a{script_entry}\n" \
+                    "+++ b{script_entry}\n" \
+                    "@@ -{idx_a},0 +{idx_b},3 @@\n" \
+                    "+from clearml import Task\n" \
+                    "+Task.init()\n" \
+                    "+\n".format(
+                        script_entry=script_entry, idx_a=idx_a, idx_b=idx_a + 1)
+            else:
+                # Add Task.init call
+                task_init_patch += \
+                    "from clearml import Task\n" \
+                    "Task.init()\n\n"
 
             task_state['script']['diff'] = task_init_patch + task_state['script']['diff']
 
@@ -255,19 +270,24 @@ class CreateAndPopulate(object):
         if self.docker:
             task.set_base_docker(self.docker)
 
-        if task_state['script']['repository']:
-            repo_details = {k: v for k, v in task_state['script'].items()
-                            if v and k not in ('diff', 'requirements', 'binary')}
-            print('Repository Detected\n{}'.format(json.dumps(repo_details, indent=2)))
-        else:
-            print('Standalone script detected\n  Script: {}\n:  Requirements: {}'.format(
-                self.script, task_state['script']['requirements'].get('pip', [])))
+        if self.verbose:
+            if task_state['script']['repository']:
+                repo_details = {k: v for k, v in task_state['script'].items()
+                                if v and k not in ('diff', 'requirements', 'binary')}
+                print('Repository Detected\n{}'.format(json.dumps(repo_details, indent=2)))
+            else:
+                print('Standalone script detected\n  Script: {}'.format(self.script))
 
-        if task_state['script'].get('requirements') and task_state['script']['requirements'].get('pip'):
-            print('Requirements:\n  requirements.txt: {}\n  Additional Packages:{}'.format(
-                self.requirements_file.as_posix().name if self.requirements_file else '', self.packages))
-        if self.docker:
-            print('Base docker image: {}'.format(self.docker))
+            if task_state['script'].get('requirements') and \
+                    task_state['script']['requirements'].get('pip'):
+                print('Requirements:{}{}'.format(
+                    '\n  Using requirements.txt: {}'.format(
+                        self.requirements_file.as_posix()) if self.requirements_file else '',
+                    '\n  {}Packages: {}'.format('Additional ' if self.requirements_file else '', self.packages)
+                    if self.packages else ''
+                ))
+            if self.docker:
+                print('Base docker image: {}'.format(self.docker))
 
         # update the Task
         task.update_task(task_state)

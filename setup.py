@@ -43,11 +43,7 @@ setup(
     author_email='clearml@allegro.ai',
     license='Apache License 2.0',
     classifiers=[
-        # How mature is this project. Common values are
-        #   3 - Alpha
-        #   4 - Beta
-        #   5 - Production/Stable
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'Intended Audience :: Science/Research',
         'Operating System :: POSIX :: Linux',

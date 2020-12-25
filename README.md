@@ -31,7 +31,7 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
 ---
 <div align="center">
 
-**[Signup](https://app.community.clear.ml)  &  [Start using](https://allegro.ai/clearml/docs/getting_started/getting_started/) in under 2 minutes**  
+**[Signup](https://app.community.clear.ml)  &  [Start using](https://allegro.ai/clearml/docs/rst/getting_started/index.html) in under 2 minutes**  
 
 </div>
 

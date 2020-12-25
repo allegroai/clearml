@@ -94,10 +94,10 @@ The ClearML run-time components:
 - [clearml-session](https://github.com/allegroai/clearml-session) - **Launch remote JupyterLab / VSCode-server inside any docker, on Cloud/On-Prem machines**
 - [clearml-task](https://github.com/allegroai/clearml/blob/master/docs/clearml-task.md) - Run any codebase on remote machines with full remote logging of Tensorboard, Matplotlib & Console outputs 
 - [clearml-data](https://github.com/allegroai/clearml/blob/master/docs/datasets.md) - **CLI for managing and versioning your datasets, including creating / uploading / downloading of data from S3/GS/Azure/NAS** 
-- [AWS Auto-Scaler](examples/services/aws-autoscaler/aws_autoscaler.py) - Automatically spin EC2 instances based on your workloads with preconfigured budget! No need for K8s!
-- [Hyper-Parameter Optimization](examples/services/hyper-parameter-optimization/hyper_parameter_optimizer.py) - Optimize any code with black-box approach and state of the art Bayesian optimization algorithms 
-- [Automation Pipeline](examples/pipeline/pipeline_controller.py) - Build pipelines based on existing experiments / jobs, supports building pipelines of pipelines!  
-- [Slack Integration](examples/services/monitoring/slack_alerts.py) - Report experiments progress / failure directly to Slack (fully customizable!)  
+- [AWS Auto-Scaler](https://allegro.ai/clearml/docs/docs/examples/services/aws_autoscaler/aws_autoscaler.html) - Automatically spin EC2 instances based on your workloads with preconfigured budget! No need for K8s!
+- [Hyper-Parameter Optimization](https://allegro.ai/clearml/docs/docs/examples/frameworks/pytorch/notebooks/image/hyperparameter_search.html) - Optimize any code with black-box approach and state of the art Bayesian optimization algorithms 
+- [Automation Pipeline](https://allegro.ai/clearml/docs/docs/examples/frameworks/pytorch/notebooks/table/tabular_training_pipeline.html) - Build pipelines based on existing experiments / jobs, supports building pipelines of pipelines!  
+- [Slack Integration](https://allegro.ai/clearml/docs/docs/examples/services/monitoring/slack_alerts.html) - Report experiments progress / failure directly to Slack (fully customizable!)  
 
 ## Why ClearML?
 

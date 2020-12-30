@@ -594,6 +594,7 @@ class Task(_Task):
         packages=None,  # Optional[Sequence[str]]
         requirements_file=None,  # Optional[Union[str, Path]]
         docker=None,  # Optional[str]
+        argparse_args=None,  # Optional[Sequence[Tuple[str, str]]]
         base_task_id=None,  # Optional[str]
         add_task_init_call=True,  # bool
     ):
@@ -627,6 +628,8 @@ class Task(_Task):
         :param requirements_file: Specify requirements.txt file to install when setting the session.
             If not provided, the requirements.txt from the repository will be used.
         :param docker: Select the docker image to be executed in by the remote session
+        :param argparse_args: Arguments to pass to the remote execution, list of string pairs (argument, value)
+            Notice, only supported if the codebase itself uses argparse.ArgumentParser
         :param base_task_id: Use a pre-existing task in the system, instead of a local repo/script.
             Essentially clones an existing task and overrides arguments/requirements.
         :param add_task_init_call: If True, a 'Task.init()' call is added to the script entry point in remote execution.
@@ -650,6 +653,9 @@ class Task(_Task):
             raise_on_missing_entries=False,
         )
         task = manual_populate.create_task()
+        if task and argparse_args:
+            manual_populate.update_task_args(argparse_args)
+            task.reload()
 
         return task
 

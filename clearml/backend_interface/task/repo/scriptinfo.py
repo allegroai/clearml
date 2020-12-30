@@ -482,9 +482,28 @@ class ScriptInfo(object):
                         server_info = None
                     if server_info:
                         break
+
+            cookies = None
+            password = None
+            if server_info and server_info.get('password'):
+                # we need to get the password
+                from ....config import config
+                password = config.get('development.jupyter_server_password', '')
+                if not password:
+                    _logger.warning(
+                        'Password protected Jupyter Notebook server was found! '
+                        'Add `sdk.development.jupyter_server_password=<jupyter_password>` to ~/clearml.conf')
+                    return os.path.join(os.getcwd(), 'error_notebook_not_found.py')
+
+                r = requests.get(url=server_info['url'] + 'login')
+                cookies = {'_xsrf': r.cookies.get('_xsrf', '')}
+                r = requests.post(server_info['url'] + 'login?next', cookies=cookies,
+                                  data={'_xsrf': cookies['_xsrf'], 'password': password})
+                cookies.update(r.cookies)
+
             try:
                 r = requests.get(
-                    url=server_info['url'] + 'api/sessions',
+                    url=server_info['url'] + 'api/sessions', cookies=cookies,
                     headers={'Authorization': 'token {}'.format(server_info.get('token', '')), })
             except requests.exceptions.SSLError:
                 # disable SSL check warning
@@ -493,7 +512,7 @@ class ScriptInfo(object):
                 requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
                 # fire request
                 r = requests.get(
-                    url=server_info['url'] + 'api/sessions',
+                    url=server_info['url'] + 'api/sessions', cookies=cookies,
                     headers={'Authorization': 'token {}'.format(server_info.get('token', '')), }, verify=False)
                 # enable SSL check warning
                 import warnings
@@ -503,10 +522,8 @@ class ScriptInfo(object):
             try:
                 r.raise_for_status()
             except Exception as ex:
-                _logger.warning('Failed accessing the jupyter server: {}'.format(ex))
-                if server_info.get('password'):
-                    _logger.warning('Password protected Jupyter Notebook is not supported, '
-                                    'please use token based access')
+                _logger.warning('Failed accessing the jupyter server{}: {}'.format(
+                    ' [password={}]'.format(password) if server_info.get('password') else '', ex))
                 return os.path.join(os.getcwd(), 'error_notebook_not_found.py')
 
             notebooks = r.json()

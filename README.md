@@ -77,7 +77,7 @@ task = Task.init(project_name='examples', task_name='hello world')
 ```
 
 You are done, everything your process outputs is now automagically logged into ClearML.
-<br>Next step automation! **Learn more on ClearML two clicks automation [here]()** 
+<br>Next step automation! **Learn more on ClearML two clicks automation [here](https://allegro.ai/clearml/docs/rst/clearml_agent/index.html)** 
 
 ## ClearML Architecture
 
@@ -139,7 +139,7 @@ More information in the [official documentation](https://allegro.ai/clearml/docs
 
 For examples and use cases, check the [examples folder](https://github.com/allegroai/clearml/tree/master/examples) and [corresponding documentation](https://allegro.ai/clearml/docs/rst/examples/index.html).
 
-If you have any questions: post on our [Slack Channel](https://join.slack.com/t/allegroai-trains/shared_invite/enQtOTQyMTI1MzQxMzE4LTY5NTUxOTY1NmQ1MzQ5MjRhMGRhZmM4ODE5NTNjMTg2NTBlZGQzZGVkMWU3ZDg1MGE1MjQxNDEzMWU2NmVjZmY), or tag your questions on [stackoverflow](https://stackoverflow.com/questions/tagged/trains) with '**trains**' tag.
+If you have any questions: post on our [Slack Channel](https://join.slack.com/t/allegroai-trains/shared_invite/enQtOTQyMTI1MzQxMzE4LTY5NTUxOTY1NmQ1MzQ5MjRhMGRhZmM4ODE5NTNjMTg2NTBlZGQzZGVkMWU3ZDg1MGE1MjQxNDEzMWU2NmVjZmY), or tag your questions on [stackoverflow](https://stackoverflow.com/questions/tagged/clearml) with '**clearml**' tag (*previously 'trains' tag*).
 
 For feature requests or bug reports, please use [GitHub issues](https://github.com/allegroai/clearml/issues).
 

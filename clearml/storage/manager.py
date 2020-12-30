@@ -38,11 +38,13 @@ class StorageManager(object):
         :param force_download: download file from remote even if exists in local cache
         :return: Full path to local copy of the requested url. Return None on Error.
         """
-        cached_file = CacheManager.get_cache_manager(
-            cache_context=cache_context
-        ).get_local_copy(remote_url=remote_url, force_download=force_download)
+        cache = CacheManager.get_cache_manager(cache_context=cache_context)
+        cached_file = cache.get_local_copy(remote_url=remote_url, force_download=force_download)
         if extract_archive and cached_file:
-            return cls._extract_to_cache(cached_file, name, cache_context)
+            # this will get us the actual cache (even with direct access)
+            cache_path_encoding = Path(cache.get_cache_folder()) / cache.get_hashed_url_file(remote_url)
+            return cls._extract_to_cache(
+                cached_file, name, cache_context, cache_path_encoding=cache_path_encoding.as_posix())
 
         return cached_file
 
@@ -91,20 +93,24 @@ class StorageManager(object):
         ).set_cache_limit(cache_file_limit)
 
     @classmethod
-    def _extract_to_cache(cls, cached_file, name, cache_context=None, target_folder=None):
-        # type: (str, str, Optional[str], Optional[str]) -> str
+    def _extract_to_cache(cls, cached_file, name, cache_context=None, target_folder=None, cache_path_encoding=None):
+        # type: (str, str, Optional[str], Optional[str], Optional[str]) -> str
         """
         Extract cached file to cache folder
         :param str cached_file: local copy of archive file
         :param str name: name of the target file
         :param str cache_context: cache context id
         :param str target_folder: specify target path to use for archive extraction
+        :param str cache_path_encoding: specify representation of the local path of the cached files,
+            this will always point to local cache folder, even if we have direct access file.
+            Used for extracting the cached archived based on cache_path_encoding
         :return: cached folder containing the extracted archive content
         """
         if not cached_file:
             return cached_file
 
         cached_file = Path(cached_file)
+        cache_path_encoding = Path(cache_path_encoding) if cache_path_encoding else None
 
         # we support zip and tar.gz files auto-extraction
         suffix = cached_file.suffix.lower()
@@ -114,13 +120,16 @@ class StorageManager(object):
         if suffix not in (".zip", ".tgz", ".tar.gz"):
             return str(cached_file)
 
-        cached_folder = Path(cached_file).parent
-        archive_suffix = cached_file.name[:-len(suffix)]
+        cache_folder = Path(cache_path_encoding or cached_file).parent
+        archive_suffix = (cache_path_encoding or cached_file).name[:-len(suffix)]
         name = encode_string_to_filename(name)
-        target_folder = Path(
-            target_folder or CacheManager.get_context_folder_lookup(cache_context).format(archive_suffix, name))
+        if target_folder:
+            target_folder = Path(target_folder)
+        else:
+            target_folder = cache_folder / CacheManager.get_context_folder_lookup(
+                cache_context).format(archive_suffix, name)
 
-        if target_folder.exists():
+        if target_folder.is_dir():
             # noinspection PyBroadException
             try:
                 target_folder.touch(exist_ok=True)
@@ -130,7 +139,7 @@ class StorageManager(object):
 
         base_logger = LoggerRoot.get_base_logger()
         try:
-            temp_target_folder = cached_folder / "{0}_{1}_{2}".format(
+            temp_target_folder = cache_folder / "{0}_{1}_{2}".format(
                 target_folder.name, time() * 1000, str(random()).replace('.', ''))
             temp_target_folder.mkdir(parents=True, exist_ok=True)
             if suffix == ".zip":

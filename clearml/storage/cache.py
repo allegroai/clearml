@@ -67,7 +67,7 @@ class CacheManager(object):
             return result
 
         @classmethod
-        def _get_hashed_url_file(cls, url):
+        def get_hashed_url_file(cls, url):
             str_hash = hashlib.md5(url.encode()).hexdigest()
             filename = url.split("/")[-1]
             return "{}.{}".format(str_hash, quote_url(filename))
@@ -113,7 +113,7 @@ class CacheManager(object):
                 get_cache_dir() / CacheManager._storage_manager_folder / self._context
             )
             folder.mkdir(parents=True, exist_ok=True)
-            local_filename = local_filename or self._get_hashed_url_file(remote_url)
+            local_filename = local_filename or self.get_hashed_url_file(remote_url)
             new_file = folder / local_filename
             new_file_exists = new_file.exists()
             if new_file_exists:

@@ -499,7 +499,16 @@ class ScriptInfo(object):
                 import warnings
                 warnings.simplefilter('default', InsecureRequestWarning)
 
-            r.raise_for_status()
+            # send request to the jupyter server
+            try:
+                r.raise_for_status()
+            except Exception as ex:
+                _logger.warning('Failed accessing the jupyter server: {}'.format(ex))
+                if server_info.get('password'):
+                    _logger.warning('Password protected Jupyter Notebook is not supported, '
+                                    'please use token based access')
+                return os.path.join(os.getcwd(), 'error_notebook_not_found.py')
+
             notebooks = r.json()
 
             cur_notebook = None

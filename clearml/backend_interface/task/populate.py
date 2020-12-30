@@ -189,6 +189,10 @@ class CreateAndPopulate(object):
             task_state['script']['diff'] = ''
             task_state['script']['working_dir'] = cwd or '.'
             task_state['script']['entry_point'] = entry_point
+        else:
+            # standalone task
+            task_state['script']['entry_point'] = self.script
+            task_state['script']['working_dir'] = '.'
 
         # update requirements
         reqs = []
@@ -219,7 +223,7 @@ class CreateAndPopulate(object):
                     "Use --requirements or --packages".format(reqs_txt_file.as_posix()))
 
         if self.add_task_init_call:
-            script_entry = os.path.abspath('/' + task_state['script']['working_dir'] +
+            script_entry = os.path.abspath('/' + task_state['script'].get('working_dir', '.') +
                                            '/' + task_state['script']['entry_point'])
             idx_a = 0
             # find the right entry for the patch if we have a local file (basically after __future__
@@ -264,7 +268,7 @@ class CreateAndPopulate(object):
                     "from clearml import Task\n" \
                     "Task.init()\n\n"
 
-            task_state['script']['diff'] = task_init_patch + task_state['script']['diff']
+            task_state['script']['diff'] = task_init_patch + task_state['script'].get('diff', '')
 
         # set base docker image if provided
         if self.docker:

@@ -28,7 +28,7 @@ except ImportError:
 
 
 @attrs
-class FileEntry:
+class FileEntry(object):
     relative_path = attrib(default=None, type=str)
     hash = attrib(default=None, type=str)
     parent_dataset_id = attrib(default=None, type=str)

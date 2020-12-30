@@ -2,7 +2,7 @@ import json
 import os
 from functools import reduce
 from logging import getLogger
-from typing import Optional, Sequence
+from typing import Optional, Sequence, Union, Tuple
 
 from six.moves.urllib.parse import urlparse
 
@@ -295,7 +295,7 @@ class CreateAndPopulate(object):
         return task
 
     def update_task_args(self, args=None):
-        # type: (Optional[Sequence[str]]) -> ()
+        # type: (Optional[Union[Sequence[str], Sequence[Tuple[str, str]]]]) -> ()
         """
         Update the newly created Task argparse Arguments
         If called before Task created, used for argument verification

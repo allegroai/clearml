@@ -12,6 +12,6 @@ dist/
 *.egg-info
 
 # example data
-data/
 examples/runs/
 examples/*_data
+examples/frameworks/data

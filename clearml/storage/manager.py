@@ -122,7 +122,7 @@ class StorageManager(object):
 
         cache_folder = Path(cache_path_encoding or cached_file).parent
         archive_suffix = (cache_path_encoding or cached_file).name[:-len(suffix)]
-        name = encode_string_to_filename(name)
+        name = encode_string_to_filename(name) if name else name
         if target_folder:
             target_folder = Path(target_folder)
         else:

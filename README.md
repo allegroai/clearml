@@ -31,7 +31,7 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
 ---
 <div align="center">
 
-**[Signup](https://app.community.clear.ml)  &  [Start using](https://allegro.ai/clearml/docs/rst/getting_started/index.html) in under 2 minutes**  
+**[Sign up](https://app.community.clear.ml)  &  [Start using](https://allegro.ai/clearml/docs/rst/getting_started/index.html) in under 2 minutes**  
 
 </div>
 
@@ -147,7 +147,7 @@ Additionally, you can always find us at *clearml@allegro.ai*
 
 ## Contributing
 
-See the ClearML [Guidelines for Contributing](https://github.com/allegroai/clearml/blob/master/docs/contributing.md).
+**PRs are always welcomed** :heart: See more detials in the ClearML [Guidelines for Contributing](https://github.com/allegroai/clearml/blob/master/docs/contributing.md).
 
 
 _May the force (and the goddess of learning rates) be with you!_

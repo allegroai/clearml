@@ -1691,7 +1691,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
             container.name,
             object.blob_name,
         )
-        return object.container.blob_service.exists(container.name, object.blob_name)
+        return not object.container.blob_service.exists(container.name, object.blob_name)
 
     def get_object(self, container_name, object_name, *args, **kwargs):
         container = self._containers.get(container_name)

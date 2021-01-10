@@ -8,6 +8,10 @@ import math
 
 import warnings
 import matplotlib.dates
+try:
+    from matplotlib.patches import FancyBboxPatch
+except ImportError:
+    FancyBboxPatch = None
 
 
 def check_bar_match(old_bar, new_bar):
@@ -387,6 +391,11 @@ def is_bar(bar_containers, **props):
         if props["mplobj"] in container:
             return True
     return False
+
+
+def is_fancy_bbox(**props):
+    """A test to decide whether a path is a simple FancyBboxPatch."""
+    return FancyBboxPatch and isinstance(props.get("mplobj"), FancyBboxPatch)
 
 
 def make_bar(**props):

@@ -509,6 +509,8 @@ class PlotlyRenderer(Renderer):
         is_bar = mpltools.is_bar(self.current_mpl_ax.containers, **props)
         if is_bar:
             self.current_bars += [props]
+        elif mpltools.is_fancy_bbox(**props):
+            self.current_bars += [props]
         else:
             self.msg += "    This path isn't a bar, not drawing\n"
             warnings.warn(
@@ -588,8 +590,8 @@ class PlotlyRenderer(Renderer):
                 self.msg += "        Text object is linked to 'data' " "coordinates\n"
                 x, y = props["position"]
                 axis_ct = self.axis_ct
-                xaxis = self.plotly_fig["layout"]["xaxis{0}".format(axis_ct)]
-                yaxis = self.plotly_fig["layout"]["yaxis{0}".format(axis_ct)]
+                xaxis = self.plotly_fig["layout"]["xaxis{0}".format(axis_ct or '')]
+                yaxis = self.plotly_fig["layout"]["yaxis{0}".format(axis_ct or '')]
                 if (
                     xaxis["range"][0] < x < xaxis["range"][1]
                     and yaxis["range"][0] < y < yaxis["range"][1]
@@ -714,7 +716,10 @@ class PlotlyRenderer(Renderer):
 
         """
         self.msg += "        Adding xlabel\n"
-        axis_key = "xaxis{0}".format(self.axis_ct)
+        axis_key = "xaxis{0}".format(self.axis_ct or '')
+        # bugfix: add on last axis, self.axis_ct-1
+        if axis_key not in self.plotly_fig["layout"]:
+            axis_key = "xaxis{0}".format(max(0, self.axis_ct - 1) or '')
         self.plotly_fig["layout"][axis_key]["title"] = str(props["text"])
         titlefont = dict(size=props["style"]["fontsize"], color=props["style"]["color"])
         self.plotly_fig["layout"][axis_key]["titlefont"] = titlefont
@@ -743,7 +748,10 @@ class PlotlyRenderer(Renderer):
 
         """
         self.msg += "        Adding ylabel\n"
-        axis_key = "yaxis{0}".format(self.axis_ct)
+        axis_key = "yaxis{0}".format(self.axis_ct or '')
+        # bugfix: add on last axis, self.axis_ct-1
+        if axis_key not in self.plotly_fig["layout"]:
+            axis_key = "yaxis{0}".format(max(0, self.axis_ct - 1) or '')
         self.plotly_fig["layout"][axis_key]["title"] = props["text"]
         titlefont = dict(size=props["style"]["fontsize"], color=props["style"]["color"])
         self.plotly_fig["layout"][axis_key]["titlefont"] = titlefont

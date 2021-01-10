@@ -31,8 +31,10 @@ class Exporter(object):
     def __init__(self, renderer, close_mpl=True):
         self.close_mpl = close_mpl
         self.renderer = renderer
+        self.has_legend = False
+        self.legend_as_annotation = True
 
-    def run(self, fig):
+    def run(self, fig, show_legend=True):
         """
         Run the exporter on the given figure
 
@@ -40,9 +42,12 @@ class Exporter(object):
         ---------
         fig : matplotlib.Figure instance
             The figure to export
+
+        show_legend: If True, plotly show legend if plt has one, If False add legend as annotations on plot.
         """
         # Calling savefig executes the draw() command, putting elements
         # in the correct place.
+        self.legend_as_annotation = not show_legend
         if fig.canvas is None:
             canvas = FigureCanvasAgg(fig)  # noqa: F841
         fig.savefig(io.BytesIO(), format='png', dpi=fig.dpi)
@@ -50,6 +55,8 @@ class Exporter(object):
             import matplotlib.pyplot as plt
             plt.close(fig)
         self.crawl_fig(fig)
+        if show_legend and self.has_legend:
+            self.renderer.plotly_fig['layout']['showlegend'] = True
 
     @staticmethod
     def process_transform(transform, ax=None, data=None, return_trans=False,
@@ -144,10 +151,12 @@ class Exporter(object):
 
             legend = ax.get_legend()
             if legend is not None:
-                props = utils.get_legend_properties(ax, legend)
-                with self.renderer.draw_legend(legend=legend, props=props):
-                    if props['visible']:
-                        self.crawl_legend(ax, legend)
+                self.has_legend = True
+                if self.legend_as_annotation:
+                    props = utils.get_legend_properties(ax, legend)
+                    with self.renderer.draw_legend(legend=legend, props=props):
+                        if props['visible']:
+                            self.crawl_legend(ax, legend)
 
     def crawl_legend(self, ax, legend):
         """

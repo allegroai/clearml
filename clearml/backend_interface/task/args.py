@@ -1,9 +1,9 @@
 import yaml
 
+from inspect import isfunction
 from six import PY2
 from argparse import _StoreAction, ArgumentError, _StoreConstAction, _SubParsersAction, SUPPRESS  # noqa
 from copy import copy
-import types
 
 from ...backend_api import Session
 from ...utilities.args import call_original_argparser
@@ -95,9 +95,7 @@ class _Arguments(object):
                 else:
                     args_dict = call_original_argparser(a_parser, args=a_args, namespace=a_namespace).__dict__
             defaults_ = {
-                a.dest: args_dict.get(a.dest) if (
-                        args_dict.get(a.dest) is not None and not callable(args_dict.get(a.dest))
-                ) else '' for a in actions
+                a.dest: cls.__cast_arg(args_dict.get(a.dest)) for a in actions
             }
         except Exception:
             # don't crash us if we failed parsing the inputs
@@ -294,6 +292,11 @@ class _Arguments(object):
                     elif var_type == type(None):  # noqa: E721 - do not change!
                         # because isinstance(var_type, type(None)) === False
                         var_type = str
+                    elif var_type not in (bool, int, float, str, dict, list, tuple) and \
+                            str(self.__cast_arg(current_action.default)) == str(v):
+                        # there is nothing we can Do, just leave with the default
+                        continue
+
                     # now we should try and cast the value if we can
                     # noinspection PyBroadException
                     try:
@@ -327,7 +330,7 @@ class _Arguments(object):
                         arg_parser_arguments[k] = v
                 elif current_action and current_action.type:
                     # if we have an action type and value (v) is None, and cannot be casted, leave as is
-                    if isinstance(current_action.type, types.FunctionType) and not v:  # noqa
+                    if isfunction(current_action.type) and not v:  # noqa
                         # noinspection PyBroadException
                         try:
                             v = current_action.type(v)
@@ -349,7 +352,10 @@ class _Arguments(object):
                     try:
                         if current_action.default is None and current_action.type != str and not v:
                             arg_parser_arguments[k] = v = None
-                        elif current_action.default == current_action.type(v):
+                        elif (not isfunction(current_action.type)
+                              and current_action.default == current_action.type(v)) \
+                                or (isfunction(current_action.type) and
+                                    str(self.__cast_arg(current_action.default)) == str(v)):
                             # this will make sure that if we have type float and default value int,
                             # we will keep the type as int, just like the original argparser
                             arg_parser_arguments[k] = v = current_action.default
@@ -523,3 +529,12 @@ class _Arguments(object):
         if not isinstance(dictionary, self._ProxyDictReadOnly):
             return self._ProxyDictReadOnly(self, prefix, **dictionary)
         return dictionary
+
+    @classmethod
+    def __cast_arg(cls, arg):
+        if arg is None or callable(arg):
+            return ''
+        # If this an instance, just store the type
+        if str(hex(id(arg))) in str(arg):
+            return str(type(arg))
+        return arg

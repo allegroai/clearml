@@ -30,10 +30,10 @@ class DevWorker(object):
             return False
         return True
 
-    def register(self, task):
+    def register(self, task, stop_signal_support=None):
         if self._thread:
             return True
-        if TaskStopSignal.enabled:
+        if (stop_signal_support is None and TaskStopSignal.enabled) or stop_signal_support is True:
             self._dev_stop_signal = TaskStopSignal(task=task)
         self._support_ping = hasattr(tasks, 'PingRequest')
         # if there is nothing to monitor, leave

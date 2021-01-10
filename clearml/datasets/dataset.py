@@ -15,6 +15,7 @@ from pathlib2 import Path
 
 from .. import Task, StorageManager
 from ..backend_api.session.client import APIClient
+from ..backend_interface.task.development.worker import DevWorker
 from ..backend_interface.util import mutually_exclusive, exact_match_regex
 from ..debugging.log import LoggerRoot
 from ..storage.helper import StorageHelper
@@ -82,6 +83,13 @@ class Dataset(object):
             task.data.script.requirements = {'pip': 'clearml == {}\n'.format(__version__)}
             # noinspection PyProtectedMember
             task._edit(script=task.data.script)
+
+        # if the task is running make sure we ping to the server so it will not be aborted by a watchdog
+        if task.status in ('created', 'in_progress'):
+            self._task_pinger = DevWorker()
+            self._task_pinger.register(task, stop_signal_support=False)
+        else:
+            self._task_pinger = None
 
         # store current dataset Task
         self._task = task
@@ -389,6 +397,11 @@ class Dataset(object):
         self._task.comment = 'Dependencies: {}\n'.format(hashed_nodes)
         self._task.close()
         self._task.completed()
+
+        if self._task_pinger:
+            self._task_pinger.unregister()
+            self._task_pinger = None
+
         return True
 
     def is_final(self):

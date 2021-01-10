@@ -377,13 +377,16 @@ def _search_path(path):
                 try:
                     with open(git_direct_json, 'r') as f:
                         vcs_info = json.load(f)
-                    git_url = '{vcs}+{url}@{commit}#egg={package}'.format(
-                        vcs=vcs_info['vcs_info']['vcs'], url=vcs_info['url'],
-                        commit=vcs_info['vcs_info']['commit_id'], package=pkg_name)
 
-                    # Bugfix: package name should be the URL link, because we need it unique
-                    # mapping[pkg_name] = ('-e', git_url)
-                    pkg_name, version = '-e {}'.format(git_url), ''
+                    if 'vcs_info' in vcs_info:
+                        git_url = '{vcs}+{url}@{commit}#egg={package}'.format(
+                            vcs=vcs_info['vcs_info']['vcs'], url=vcs_info['url'],
+                            commit=vcs_info['vcs_info']['commit_id'], package=pkg_name)
+                        # Bugfix: package name should be the URL link, because we need it unique
+                        # mapping[pkg_name] = ('-e', git_url)
+                        pkg_name, version = '-e {}'.format(git_url), ''
+                    elif 'url' in vcs_info:
+                        pkg_name, version = vcs_info['url'], ''
 
                 except Exception:
                     pass

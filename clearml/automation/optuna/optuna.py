@@ -53,7 +53,8 @@ class OptunaObjective(object):
                 # noinspection PyProtectedMember
                 iteration_value = self.optimizer._objective_metric.get_current_raw_objective(current_job)
 
-                if iteration_value:
+                # make sure we skip None objective values
+                if iteration_value and iteration_value[1] is not None:
                     # update budget
                     trial.report(value=iteration_value[1], step=iteration_value[0])
 
@@ -68,6 +69,7 @@ class OptunaObjective(object):
                     if self.max_iteration_per_job and iteration_value[0] >= self.max_iteration_per_job:
                         current_job.abort()
                         break
+
             if not self.optimizer.monitor_job(current_job):
                 break
             sleep(self.sleep_interval)

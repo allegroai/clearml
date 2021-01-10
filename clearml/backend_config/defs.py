@@ -1,4 +1,4 @@
-from os.path import expanduser
+from os.path import expanduser, expandvars, exists
 from pathlib2 import Path
 
 from .environment import EnvEntry
@@ -55,3 +55,19 @@ CONFIG_FILE_EXTENSION = '.conf'
 
 def is_config_file(path):
     return Path(path).suffix == CONFIG_FILE_EXTENSION
+
+
+def get_active_config_file():
+    f = LOCAL_CONFIG_FILE_OVERRIDE_VAR.get()
+    if exists(expanduser(expandvars(f))):
+        return f
+    for f in LOCAL_CONFIG_FILES:
+        if exists(expanduser(expandvars(f))):
+            return f
+    return None
+
+
+def get_config_file():
+    f = LOCAL_CONFIG_FILE_OVERRIDE_VAR.get()
+    f = f if f else LOCAL_CONFIG_FILES[0]
+    return expanduser(expandvars(f)) if f else None

@@ -7,6 +7,7 @@ import sys
 import threading
 import time
 from argparse import ArgumentParser
+from logging import getLogger
 from operator import attrgetter
 from tempfile import mkstemp, mkdtemp
 from zipfile import ZipFile, ZIP_DEFLATED
@@ -23,6 +24,7 @@ import psutil
 import six
 from pathlib2 import Path
 
+from .backend_config.defs import get_active_config_file, get_config_file
 from .backend_api.services import tasks, projects, queues
 from .backend_api.session.session import Session, ENV_ACCESS_KEY, ENV_SECRET_KEY
 from .backend_interface.metrics import Metrics
@@ -2131,8 +2133,16 @@ class Task(_Task):
         return task.id
 
     @classmethod
-    def set_credentials(cls, api_host=None, web_host=None, files_host=None, key=None, secret=None, host=None):
-        # type: (Optional[str], Optional[str], Optional[str], Optional[str], Optional[str], Optional[str]) -> ()
+    def set_credentials(
+            cls,
+            api_host=None,
+            web_host=None,
+            files_host=None,
+            key=None,
+            secret=None,
+            store_conf_file=False
+    ):
+        # type: (Optional[str], Optional[str], Optional[str], Optional[str], Optional[str], bool) -> ()
         """
         Set new default **ClearML Server** (backend) host and credentials.
 
@@ -2155,7 +2165,9 @@ class Task(_Task):
         :param str files_host: The file server url. For example, ``host='http://localhost:8081'``
         :param str key: The user key (in the key/secret pair). For example, ``key='thisisakey123'``
         :param str secret: The user secret (in the key/secret pair). For example, ``secret='thisisseceret123'``
-        :param str host: The host URL (overrides api_host). For example, ``host='http://localhost:8008'``
+        :param bool store_conf_file: If True store the current configuration into the ~/clearml.conf file.
+            If the configuration file exists, no change will be made (outputs a warning).
+            Not applicable when running remotely (i.e. clearml-agent).
         """
         if api_host:
             Session.default_host = api_host
@@ -2171,10 +2183,22 @@ class Task(_Task):
             Session.default_secret = secret
             if not running_remotely():
                 ENV_SECRET_KEY.set(secret)
-        if host:
-            Session.default_host = host
-            Session.default_web = web_host or ''
-            Session.default_files = files_host or ''
+
+        if store_conf_file and not running_remotely():
+            active_conf_file = get_active_config_file()
+            if active_conf_file:
+                getLogger().warning(
+                    'Could not store credentials in configuration file, '
+                    '\'{}\' already exists'.format(active_conf_file))
+            else:
+                conf = {'api': dict(
+                    api_server=Session.default_host,
+                    web_server=Session.default_web,
+                    files_server=Session.default_files,
+                    credentials=dict(access_key=Session.default_key, secret_key=Session.default_secret))}
+                with open(get_config_file(), 'wt') as f:
+                    lines = json.dumps(conf, indent=4).split('\n')
+                    f.write('\n'.join(lines[1:-1]))
 
     @classmethod
     def debug_simulate_remote_task(cls, task_id, reset_task=False):

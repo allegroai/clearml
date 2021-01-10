@@ -56,7 +56,7 @@ def get_or_create_project(session, project_name, description=None):
         return None
     if res.response.projects:
         return res.response.projects[0].id
-    res = session.send(projects.CreateRequest(name=project_name, description=description))
+    res = session.send(projects.CreateRequest(name=project_name, description=description or ''))
     return res.response.id
 
 

@@ -2133,3 +2133,19 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :return: boolean offline-mode state
         """
         return cls._offline_mode
+
+    @classmethod
+    def _get_task_status(cls, task_id):
+        # type: (str) -> (Optional[str], Optional[str])
+        if cls._offline_mode:
+            return tasks.TaskStatusEnum.created, 'offline'
+
+        # noinspection PyBroadException
+        try:
+            all_tasks = cls._get_default_session().send(
+                tasks.GetAllRequest(id=[task_id], only_fields=['status', 'status_message']),
+            ).response.tasks
+            return all_tasks[0].status, all_tasks[0].status_message
+        except Exception:
+            return None, None
+

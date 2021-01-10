@@ -1092,7 +1092,8 @@ class Dataset(object):
         # noinspection DuplicatedCode
         while roots:
             r = roots.pop(0)
-            dependencies.append(r)
+            if r not in dependencies:
+                dependencies.append(r)
             # add the parents of the current node, only if the parents are in the general graph node list
             if include_unused and r not in self._dependency_graph:
                 roots.extend(list(reversed(
@@ -1109,7 +1110,8 @@ class Dataset(object):
             # noinspection DuplicatedCode
             while roots:
                 r = roots.pop(0)
-                dependencies.append(r)
+                if r not in dependencies:
+                    dependencies.append(r)
                 # add the parents of the current node, only if the parents are in the general graph node list
                 if include_unused and r not in self._dependency_graph:
                     roots.extend(list(reversed(
@@ -1222,18 +1224,21 @@ class Dataset(object):
 
         # create DAG
         visited = []
+        # add nodes
         for idx, node in enumerate(nodes):
             visited.append(node)
-            if node in self._dependency_graph:
-                parents = [visited.index(p) for p in self._dependency_graph[node] or [] if p in visited]
-            else:
-                parents = [visited.index(p) for p in self.get(dataset_id=node)._get_parents() or [] if p in visited]
-
             sankey_node['color'].append("mediumpurple" if node == self.id else "lightblue")
             sankey_node['label'].append('{}'.format(node))
             sankey_node['customdata'].append(
                 "name {}<br />removed {}<br />modified {}<br />added {}<br />size {}".format(
                     node_names.get(node, ''), *node_details[node]))
+
+        # add edges
+        for idx, node in enumerate(nodes):
+            if node in self._dependency_graph:
+                parents = [visited.index(p) for p in self._dependency_graph[node] or [] if p in visited]
+            else:
+                parents = [visited.index(p) for p in self.get(dataset_id=node)._get_parents() or [] if p in visited]
 
             for p in parents:
                 sankey_link['source'].append(p)

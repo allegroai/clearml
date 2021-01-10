@@ -15,3 +15,6 @@ def override_current_task_id(task_id):
 
     global running_remotely_task_id
     running_remotely_task_id = task_id
+    # make sure we change the cached value as well.
+    import clearml
+    clearml.config._running_remotely_task_id = task_id

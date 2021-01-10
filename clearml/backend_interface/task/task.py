@@ -46,7 +46,7 @@ from ..util import (
     exact_match_regex, mutually_exclusive, )
 from ...config import (
     get_config_for_bucket, get_remote_task_id, TASK_ID_ENV_VAR,
-    running_remotely, get_cache_dir, DOCKER_IMAGE_ENV_VAR, get_offline_dir)
+    running_remotely, get_cache_dir, DOCKER_IMAGE_ENV_VAR, get_offline_dir, get_log_to_backend, )
 from ...debugging import get_logger
 from ...storage.helper import StorageHelper, StorageError
 from .access import AccessMixin
@@ -174,7 +174,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         if running_remotely() or DevWorker.report_stdout:
             log_to_backend = False
-        self._log_to_backend = log_to_backend
+        self._log_to_backend = get_log_to_backend(default=log_to_backend)
         self._artifacts_manager = Artifacts(self)
         self._hyper_params_manager = HyperParams(self)
 

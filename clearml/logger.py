@@ -20,7 +20,7 @@ from .backend_interface.task import Task as _Task
 from .backend_interface.task.development.worker import DevWorker
 from .backend_interface.task.log import TaskHandler
 from .backend_interface.util import mutually_exclusive
-from .config import running_remotely, get_cache_dir, config
+from .config import running_remotely, get_cache_dir, config, DEBUG_SIMULATE_REMOTE_TASK
 from .errors import UsageError
 from .storage.helper import StorageHelper
 from .utilities.plotly_reporter import SeriesInfo
@@ -1085,7 +1085,7 @@ class Logger(object):
             specify ``None`` or ``0``.
         """
         if self._task.is_main_task() and self._task_handler and DevWorker.report_period and \
-                not running_remotely() and period is not None:
+                not self._skip_console_log() and period is not None:
             period = min(period or DevWorker.report_period, DevWorker.report_period)
 
         if not period:
@@ -1199,7 +1199,7 @@ class Logger(object):
             level = logging.INFO
 
         # noinspection PyProtectedMember
-        if not running_remotely() or not self._task._is_remote_main_task():
+        if not self._skip_console_log() or not self._task._is_remote_main_task():
             if self._task_handler:
                 # noinspection PyBroadException
                 try:
@@ -1223,7 +1223,7 @@ class Logger(object):
 
         if not omit_console:
             # if we are here and we grabbed the stdout, we need to print the real thing
-            if self._connect_std_streams and not running_remotely():
+            if self._connect_std_streams and not self._skip_console_log():
                 # noinspection PyBroadException
                 try:
                     # make sure we are writing to the original stdout
@@ -1404,3 +1404,7 @@ class Logger(object):
             default is False: Tensorboard scalar series will be grouped according to their title
         """
         return cls._tensorboard_single_series_per_graph
+
+    @classmethod
+    def _skip_console_log(cls):
+        return bool(running_remotely() and not DEBUG_SIMULATE_REMOTE_TASK.get())

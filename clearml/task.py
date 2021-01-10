@@ -43,7 +43,7 @@ from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
 from .binding.joblib_bind import PatchedJoblib
 from .binding.matplotlib_bind import PatchedMatplotlib
 from .binding.hydra_bind import PatchHydra
-from .config import config, DEV_TASK_NO_REUSE, get_is_master_node
+from .config import config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK
 from .config import running_remotely, get_remote_task_id
 from .config.cache import SessionCache
 from .debugging.log import LoggerRoot
@@ -1219,7 +1219,7 @@ class Task(_Task):
 
         :return: The Logger for the Task (experiment).
         """
-        return self._get_logger()
+        return self._get_logger(auto_connect_streams=self._log_to_backend)
 
     def mark_started(self, force=False):
         # type: (bool) -> ()
@@ -2167,6 +2167,39 @@ class Task(_Task):
             Session.default_files = files_host or ''
 
     @classmethod
+    def debug_simulate_remote_task(cls, task_id, reset_task=False):
+        # type: (str, bool) -> ()
+        """
+        Simulate remote execution of a specified Task.
+        This call will simulate the behaviour of your Task as if executed by the ClearML-Agent
+        This means configurations will be coming from the backend server into the code
+        (the opposite from manual execution, where the backend logs the code arguments)
+        Use with care.
+
+        :param task_id: Task ID to simulate, notice that all configuration will be taken from the specified
+            Task, regardless of the code initial values, just like it as if executed by ClearML agent
+        :param reset_task: If True target Task, is automatically cleared / reset.
+        """
+
+        # if we are already running remotely, do nothing
+        if running_remotely():
+            return
+
+        # verify Task ID exists
+        task = Task.get_task(task_id=task_id)
+        if not task:
+            raise ValueError("Task ID '{}' could not be found".format(task_id))
+
+        if reset_task:
+            task.reset(set_started_on_success=False, force=True)
+
+        from .config.remote import override_current_task_id
+        from .config.defs import LOG_TO_BACKEND_ENV_VAR
+        override_current_task_id(task_id)
+        LOG_TO_BACKEND_ENV_VAR.set(True)
+        DEBUG_SIMULATE_REMOTE_TASK.set(True)
+
+    @classmethod
     def _create(cls, project_name=None, task_name=None, task_type=TaskTypes.training):
         # type: (Optional[str], Optional[str], Task.TaskTypes) -> Task
         """
@@ -2771,7 +2804,8 @@ class Task(_Task):
             # if we are running remotely, the daemon will take care of it
             task_status = None
             wait_for_std_log = True
-            if not running_remotely() and self.is_main_task() and not is_sub_process:
+            if (not running_remotely() or DEBUG_SIMULATE_REMOTE_TASK.get()) \
+                    and self.is_main_task() and not is_sub_process:
                 # check if we crashed, ot the signal is not interrupt (manual break)
                 task_status = ('stopped', )
                 if self.__exit_hook:

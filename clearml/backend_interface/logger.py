@@ -4,7 +4,7 @@ import threading
 from time import time
 
 from ..binding.frameworks import _patched_call  # noqa
-from ..config import running_remotely, config
+from ..config import running_remotely, config, DEBUG_SIMULATE_REMOTE_TASK
 
 
 class StdStreamPatch(object):
@@ -15,7 +15,8 @@ class StdStreamPatch(object):
 
     @staticmethod
     def patch_std_streams(a_logger, connect_stdout=True, connect_stderr=True):
-        if (connect_stdout or connect_stderr) and not PrintPatchLogger.patched and not running_remotely():
+        if (connect_stdout or connect_stderr) and not PrintPatchLogger.patched and \
+                (not running_remotely() or DEBUG_SIMULATE_REMOTE_TASK.get()):
             StdStreamPatch._stdout_proxy = PrintPatchLogger(sys.stdout, a_logger, level=logging.INFO) \
                 if connect_stdout else None
             StdStreamPatch._stderr_proxy = PrintPatchLogger(sys.stderr, a_logger, level=logging.ERROR) \

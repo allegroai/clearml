@@ -538,8 +538,8 @@ class InputModel(Model):
         # convert local to file to remote one
         weights_url = CacheManager.get_remote_url(weights_url)
 
-        extra = {'system_tags': ["-" + cls.archived_tag]} \
-            if Session.check_min_api_version('2.3') else {'tags': ["-" + cls.archived_tag]}
+        extra = {'system_tags': ["-" + cls._archived_tag]} \
+            if Session.check_min_api_version('2.3') else {'tags': ["-" + cls._archived_tag]}
         # noinspection PyProtectedMember
         result = _Model._get_default_session().send(models.GetAllRequest(
             uri=[weights_url],
@@ -1437,6 +1437,8 @@ class OutputModel(BaseModel):
         return True
 
     def _get_last_uploaded_filename(self):
+        if not self._last_uploaded_url and not self.url:
+            return None
         return Path(self._last_uploaded_url or self.url).name
 
 

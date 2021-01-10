@@ -8,6 +8,7 @@ from time import time
 from attr import attrib, attrs
 from typing import Sequence, Optional, Mapping, Callable, Any, Union
 
+from ..debugging.log import LoggerRoot
 from ..task import Task
 from ..automation import TrainsJob
 from ..model import BaseModel
@@ -148,12 +149,17 @@ class PipelineController(object):
             if not base_task:
                 raise ValueError('Could not find base_task_project={} base_task_name={}'.format(
                     base_task_project, base_task_name))
+            if Task.archived_tag in base_task.get_system_tags():
+                LoggerRoot.get_base_logger().warning(
+                    'Found base_task_project={} base_task_name={} but it is archived'.format(
+                        base_task_project, base_task_name))
             base_task_id = base_task.id
 
         self._nodes[name] = self.Node(
             name=name, base_task_id=base_task_id, parents=parents or [],
             queue=execution_queue, timeout=time_limit,
             parameters=parameter_override or {})
+
         return True
 
     def start(self, run_remotely=False, step_task_created_callback=None):

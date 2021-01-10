@@ -3081,6 +3081,7 @@ class Task(_Task):
         if len(res_tasks) > 1:
             filtered_tasks = [t for t in res_tasks if not getattr(t, system_tags, None) or
                               cls.archived_tag not in getattr(t, system_tags, None)]
+            # if we did not filter everything (otherwise we have only archived tasks, so we return them)
             if filtered_tasks:
                 res_tasks = filtered_tasks
 

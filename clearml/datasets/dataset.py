@@ -589,21 +589,29 @@ class Dataset(object):
         return [f.relative_path for f in matching_errors if f is not None]
 
     @classmethod
-    def create(cls, dataset_project, dataset_name, parent_datasets=None):
-        # type: (str, str, Optional[Sequence[Union[str, Dataset]]]) -> Dataset
+    def create(cls, dataset_name, dataset_project=None, parent_datasets=None):
+        # type: (str, Optional[str], Optional[Sequence[Union[str, Dataset]]]) -> Dataset
         """
         Create a new dataset. Multiple dataset parents are supported.
         Merging of parent datasets is done based on the order,
         where each one can override overlapping files in the previous parent
 
-        :param dataset_project: Project containing the dataset
         :param dataset_name: Naming the new dataset
+        :param dataset_project: Project containing the dataset.
+        If not specified, infer project name form parent datasets
         :param parent_datasets: Expand a parent dataset by adding/removing files
         :return: Newly created Dataset object
         """
         parent_datasets = [cls.get(dataset_id=p) if isinstance(p, str) else p for p in (parent_datasets or [])]
         if any(not p.is_final() for p in parent_datasets):
             raise ValueError("Cannot inherit from a parent that was not finalized/closed")
+
+        # get project name
+        if not dataset_project:
+            if not parent_datasets:
+                raise ValueError("Missing dataset project name. Could not infer project name from parent dataset.")
+            # get project name from parent dataset
+            dataset_project = parent_datasets[-1]._task.get_project_name()
 
         # merge datasets according to order
         dataset_file_entries = {}
@@ -847,7 +855,7 @@ class Dataset(object):
         if path.is_file():
             file_entry = self._calc_file_hash(
                 FileEntry(local_path=path.absolute().as_posix(),
-                          relative_path=Path(dataset_path or '.') / path.relative_to(local_base_folder),
+                          relative_path=(Path(dataset_path or '.') / path.relative_to(local_base_folder)).as_posix(),
                           parent_dataset_id=self._id))
             file_entries = [file_entry]
         else:
@@ -1242,3 +1250,12 @@ class Dataset(object):
             config_type='read-only',
             config_text=dataset_details
         )
+
+    def is_dirty(self):
+        # type: () -> bool
+        """
+        Return True if the dataset has pending uploads (i.e. we cannot finalize it)
+
+        :return: Return True means dataset has pending uploads, call 'upload' to start an upload process.
+        """
+        return self._dirty

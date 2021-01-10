@@ -1340,7 +1340,10 @@ class HyperParameterOptimizer(object):
             self._report_completed_tasks_best_results(set(completed_jobs.keys()), task_logger, title, counter)
 
     def _report_completed_status(self, completed_jobs, cur_completed_jobs, task_logger, title, force=False):
-        best_experiment = float('-inf'), None
+        top_experiments = self.get_top_experiments(top_k=1)
+        best_experiment = \
+            (self.objective_metric.get_normalized_objective(top_experiments[0].id), top_experiments[0].id) \
+            if top_experiments else (float('-inf'), None)
         if force or cur_completed_jobs != set(completed_jobs.keys()):
             pairs = []
             labels = []

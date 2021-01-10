@@ -358,7 +358,8 @@ class Dataset(object):
         # start upload
         zip_file_size = humanfriendly.format_size(Path(zip_file).stat().st_size)
         self._task.get_logger().report_text(
-            'Uploading compressed dataset changes ({} files, total {})'.format(count, zip_file_size))
+            'Uploading compressed dataset changes ({} files, total {}) to {}'.format(
+                count, zip_file_size, self.get_default_storage()))
         self._task.upload_artifact(
             name=self.__data_entry_name, artifact_object=Path(zip_file), preview=archive_preview,
             delete_after_upload=True, wait_on_upload=True)
@@ -600,6 +601,17 @@ class Dataset(object):
         matching_errors = pool.map(compare, self._dataset_file_entries.values())
         pool.close()
         return [f.relative_path for f in matching_errors if f is not None]
+
+    def get_default_storage(self):
+        # type: () -> Optional[str]
+        """
+        Return the default storage location of the dataset
+
+        :return: URL for the default storage location
+        """
+        if not self._task:
+            return None
+        return self._task.output_uri or self._task.get_logger().get_default_upload_destination()
 
     @classmethod
     def create(cls, dataset_name, dataset_project=None, parent_datasets=None):

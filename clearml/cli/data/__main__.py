@@ -116,7 +116,7 @@ def cli():
     upload.add_argument('--id', type=str, required=False,
                         help='Previously created dataset id. Default: previously created/accessed dataset')
     upload.add_argument('--storage', type=str, default=None,
-                        help='Remote storage to use for the dataset (default: files server). '
+                        help='Remote storage to use for the dataset files (default: files_server). '
                              'Examples: \'s3://bucket/data\', \'gs://bucket/data\', \'azure://bucket/data\', '
                              '\'/mnt/shared/folder/data\'')
     upload.add_argument('--verbose', default=False, action='store_true', help='Verbose reporting')
@@ -125,6 +125,12 @@ def cli():
     finalize = subparsers.add_parser('close', help='Finalize and close the dataset (implies auto upload)')
     finalize.add_argument('--id', type=str, required=False,
                           help='Previously created dataset id. Default: previously created/accessed dataset')
+    finalize.add_argument('--storage', type=str, default=None,
+                          help='Remote storage to use for the dataset files (default: files_server). '
+                               'Examples: \'s3://bucket/data\', \'gs://bucket/data\', \'azure://bucket/data\', '
+                               '\'/mnt/shared/folder/data\'')
+    finalize.add_argument('--disable-upload', action='store_true', default=False,
+                          help='Disable automatic upload when closing the dataset')
     finalize.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
     finalize.set_defaults(func=ds_close)
 
@@ -197,11 +203,7 @@ def cli():
     args = restore_state(args)
 
     if args.command:
-        try:
-            args.func(args)
-        except Exception as ex:
-            print('Error: {}'.format(ex))
-            return 1
+        args.func(args)
     else:
         parser.print_help()
     return 0
@@ -344,7 +346,12 @@ def ds_close(args):
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
     if ds.is_dirty():
-        raise ValueError("Pending uploads, cannot finalize dataset. run `clearml-data upload`")
+        if args.disable_upload:
+            raise ValueError("Pending uploads, cannot finalize dataset. run `clearml-data upload`")
+        # upload the files
+        print("Pending uploads, starting dataset upload to {}".format(args.storage or ds.get_default_storage()))
+        ds.upload(show_progress=True, verbose=args.verbose, output_url=args.storage or None)
+
     ds.finalize()
     print('Dataset closed and finalized')
     clear_state()
@@ -397,7 +404,7 @@ def ds_add(args):
         num_files += ds.add_files(
             path=file, recursive=not args.non_recursive,
             verbose=args.verbose, dataset_path=args.dataset_folder or None)
-    print('{} files added'.format(num_files))
+    print('{} file{} added'.format(num_files, 's' if num_files > 1 else ''))
     return 0
 
 

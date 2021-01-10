@@ -186,7 +186,7 @@ class Task(_Task):
         task_type=TaskTypes.training,  # type: Task.TaskTypes
         reuse_last_task_id=True,  # type: Union[bool, str]
         continue_last_task=False,  # type: Union[bool, str]
-        output_uri=None,  # type: Optional[str]
+        output_uri=None,  # type: Optional[Union[str, bool]]
         auto_connect_arg_parser=True,  # type: Union[bool, Mapping[str, bool]]
         auto_connect_frameworks=True,  # type: Union[bool, Mapping[str, bool]]
         auto_resource_monitoring=True,  # type: bool
@@ -284,8 +284,10 @@ class Task(_Task):
             - A string - You can also specify a Task ID (string) to be continued.
                 This is equivalent to `continue_last_task=True` and `reuse_last_task_id=a_task_id_string`.
 
-        :param str output_uri: The default location for output models and other artifacts. In the default location,
-            ClearML creates a subfolder for the output. The subfolder structure is the following:
+        :param str output_uri: The default location for output models and other artifacts.
+            If True is passed, the default files_server will be used for model storage.
+            In the default location, ClearML creates a subfolder for the output.
+            The subfolder structure is the following:
 
                 <output destination name> / <project name> / <task name>.< Task ID>
 
@@ -295,6 +297,7 @@ class Task(_Task):
             - S3: ``s3://bucket/folder``
             - Google Cloud Storage: ``gs://bucket-name/folder``
             - Azure Storage: ``azure://company.blob.core.windows.net/folder/``
+            - Default file server: True
 
             .. important::
                For cloud storage, you must install the **ClearML** package for your cloud storage type,
@@ -742,7 +745,14 @@ class Task(_Task):
 
     @output_uri.setter
     def output_uri(self, value):
-        # type: (str) -> None
+        # type: (Union[str, bool]) -> None
+
+        # check if this is boolean
+        if value is False:
+            value = None
+        elif value is True:
+            value = self.__default_output_uri or self._get_default_report_storage_uri()
+
         # check if we have the correct packages / configuration
         if value and value != self.storage_uri:
             from .storage.helper import StorageHelper

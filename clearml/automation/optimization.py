@@ -165,6 +165,35 @@ class Objective(object):
         # normalize value so we always look for the highest objective value
         return self.sign * objective
 
+    def get_top_tasks(self, top_k, optimizer_task_id=None):
+        # type: (int, Optional[str]) -> Sequence[Task]
+        """
+        Return a list of Tasks of the top performing experiments, based on the title/series objective.
+
+        :param int top_k: The number of Tasks (experiments) to return.
+        :param str optimizer_task_id: Parent optimizer Task ID
+
+        :return: A list of Task objects, ordered by performance, where index 0 is the best performing Task.
+        """
+
+        task_filter = {'page_size': int(top_k), 'page': 0}
+        if optimizer_task_id:
+            task_filter['parent'] = optimizer_task_id
+        order_by = self._get_last_metrics_encode_field()
+        if order_by and (order_by.startswith('last_metrics') or order_by.startswith('-last_metrics')):
+            parts = order_by.split('.')
+            if parts[-1] in ('min', 'max', 'last'):
+                title = hashlib.md5(str(parts[1]).encode('utf-8')).hexdigest()
+                series = hashlib.md5(str(parts[2]).encode('utf-8')).hexdigest()
+                minmax = 'min_value' if 'min' in parts[3] else ('max_value' if 'max' in parts[3] else 'value')
+                order_by = '{}last_metrics.'.join(
+                    ('-' if order_by and order_by[0] == '-' else '', title, series, minmax))
+
+        if order_by:
+            task_filter['order_by'] = [order_by]
+
+        return Task.get_tasks(task_filter=task_filter)
+
     def _get_last_metrics_encode_field(self):
         # type: () -> str
         """
@@ -1216,6 +1245,39 @@ class HyperParameterOptimizer(object):
         :param float report_period_minutes: The reporting period (minutes). The default is once every 10 minutes.
         """
         self._report_period_min = float(report_period_minutes)
+
+    @classmethod
+    def get_optimizer_top_experiments(
+            cls,
+            objective_metric_title,  # type: str
+            objective_metric_series,  # type: str
+            objective_metric_sign,  # type: str
+            optimizer_task_id,  # type: str
+            top_k,  # type: int
+    ):
+        # type: (...) -> Sequence[Task]
+        """
+        Return a list of Tasks of the top performing experiments
+        for a specific HyperParameter Optimization session (i.e. Task ID), based on the title/series objective.
+
+        :param str objective_metric_title: The Objective metric title to maximize / minimize (for example,
+            ``validation``).
+        :param str objective_metric_series: The Objective metric series to maximize / minimize (for example, ``loss``).
+        :param str objective_metric_sign: The objective to maximize / minimize.
+
+            The values are:
+
+            - ``min`` - Minimize the last reported value for the specified title/series scalar.
+            - ``max`` - Maximize the last reported value for the specified title/series scalar.
+            - ``min_global`` - Minimize the min value of *all* reported values for the specific title/series scalar.
+            - ``max_global`` - Maximize the max value of *all* reported values for the specific title/series scalar.
+        :param str optimizer_task_id: Parent optimizer Task ID
+        :param top_k: The number of Tasks (experiments) to return.
+        :return: A list of Task objects, ordered by performance, where index 0 is the best performing Task.
+        """
+        objective = Objective(
+            title=objective_metric_title, series=objective_metric_series, order=objective_metric_sign)
+        return objective.get_top_tasks(top_k=top_k, optimizer_task_id=optimizer_task_id)
 
     def _connect_args(self, optimizer_class=None, hyper_param_configuration=None, **kwargs):
         # type: (SearchStrategy, dict, Any) -> (SearchStrategy, list, dict)

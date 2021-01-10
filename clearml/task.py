@@ -1314,6 +1314,30 @@ class Task(_Task):
         if is_main:
             self.__register_at_exit(None)
 
+    def delete(self, delete_artifacts_and_models=True, skip_models_used_by_other_tasks=True, raise_on_error=False):
+        # type: (bool, bool, bool) -> bool
+        """
+        Delete the task as well as it's output models and artifacts.
+        Models and artifacts are deleted from their storage locations, each using its URI.
+
+        Note: in order to delete models and artifacts using their URI, make sure the proper storage credentials are
+        configured in your configuration file (e.g. if an artifact is stored in S3, make sure sdk.aws.s3.credentials
+        are properly configured and that you have delete permission in the related buckets).
+
+        :param delete_artifacts_and_models: If True, artifacts and models would also be deleted (default True)
+        :param skip_models_used_by_other_tasks: If True, models used by other tasks would not be deleted (default True)
+        :param raise_on_error: If True an exception will be raised when encountering an error.
+                               If False an error would be printed and no exception will be raised.
+        :return: True if the task was deleted successfully.
+        """
+        if not running_remotely() or not self.is_main_task():
+            return super(Task, self)._delete(
+                delete_artifacts_and_models=delete_artifacts_and_models,
+                skip_models_used_by_other_tasks=skip_models_used_by_other_tasks,
+                raise_on_error=raise_on_error,
+            )
+        return False
+
     def register_artifact(self, name, artifact, metadata=None, uniqueness_columns=True):
         # type: (str, pandas.DataFrame, Dict, Union[bool, Sequence[str]]) -> None
         """

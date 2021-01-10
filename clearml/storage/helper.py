@@ -1067,7 +1067,7 @@ class _HttpDriver(_Driver):
         res = container.session.delete(obj.url, headers=container.get_headers(obj.url))
         if res.status_code != requests.codes.ok:
             raise ValueError('Failed deleting object %s (%d): %s' % (obj.object_name, res.status_code, res.text))
-        return res
+        return True
 
     def get_object(self, container_name, object_name, *args, **kwargs):
         is_stream = kwargs.get('stream', True)
@@ -1325,7 +1325,14 @@ class _Boto3Driver(_Driver):
             yield self.ListResult(name=res.key)
 
     def delete_object(self, object, **kwargs):
+        from botocore.exceptions import ClientError
         object.delete()
+        try:
+            # Try loading the file to verify deletion
+            object.load()
+            return False
+        except ClientError as e:
+            return int(e.response['Error']['Code']) == 404
 
     def get_object(self, container_name, object_name, *args, **kwargs):
         full_container_name = 's3://' + container_name
@@ -1536,6 +1543,7 @@ class _GoogleCloudStorageDriver(_Driver):
 
     def delete_object(self, object, **kwargs):
         object.delete()
+        return not object.exists()
 
     def get_object(self, container_name, object_name, *args, **kwargs):
         full_container_name = str(furl(scheme=self.scheme, netloc=container_name))
@@ -1683,6 +1691,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
             container.name,
             object.blob_name,
         )
+        return object.container.blob_service.exists(container.name, object.blob_name)
 
     def get_object(self, container_name, object_name, *args, **kwargs):
         container = self._containers.get(container_name)

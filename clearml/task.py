@@ -3076,7 +3076,8 @@ class Task(_Task):
             )
         )
         res_tasks = res.response.tasks
-        # if we have more than one result, first filter 'archived' results:
+        # if we have more than one result, filter out the 'archived' results
+        # notice that if we only have one result we do get the archived one as well.
         if len(res_tasks) > 1:
             filtered_tasks = [t for t in res_tasks if not getattr(t, system_tags, None) or
                               cls.archived_tag not in getattr(t, system_tags, None)]

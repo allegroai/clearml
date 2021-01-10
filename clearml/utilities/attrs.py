@@ -16,7 +16,3 @@ class attrs(object):
 
     def __call__(self, f):
         return attr.attrs(*self.args, **self.kwargs)(f)
-
-
-def readonly(value):
-    return property(lambda self: value)

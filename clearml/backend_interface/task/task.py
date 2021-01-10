@@ -27,7 +27,6 @@ from collections import OrderedDict
 from six.moves.urllib.parse import quote
 
 from ...utilities.locks import RLock as FileRLock
-from ...utilities.attrs import readonly
 from ...utilities.proxy_object import verify_basic_type
 from ...binding.artifacts import Artifacts
 from ...backend_interface.task.development.worker import DevWorker
@@ -63,7 +62,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     _anonymous_dataview_id = '__anonymous__'
     _development_tag = 'development'
-    archived_tag = readonly('archived')
+    archived_tag = 'archived'
     _default_configuration_section_name = 'General'
     _legacy_parameters_section_name = 'Args'
     _force_requirements = {}

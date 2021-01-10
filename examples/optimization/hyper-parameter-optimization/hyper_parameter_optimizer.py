@@ -86,6 +86,10 @@ an_optimizer = HyperParameterOptimizer(
     optimizer_class=aSearchStrategy,
     # Select an execution queue to schedule the experiments for execution
     execution_queue=execution_queue,
+    # If specified all Tasks created by the HPO process will be under the `spawned_tasks_project` project
+    spawn_task_project=None,  # 'HPO spawn project',
+    # If specified only the top K performing Tasks will be kept, the others will be automatically archived
+    save_top_k_tasks_only=None,  # 5,
     # Optional: Limit the execution time of a single experiment, in minutes.
     # (this is optional, and if using  OptimizerBOHB, it is ignored)
     time_limit_per_job=10.,

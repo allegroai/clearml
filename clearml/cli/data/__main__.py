@@ -1,3 +1,4 @@
+import json
 import os
 import shutil
 from argparse import ArgumentParser, HelpFormatter
@@ -9,6 +10,11 @@ from pathlib2 import Path
 from clearml.datasets import Dataset
 
 
+def check_null_id(args):
+    if not getattr(args, 'id', None):
+        raise ValueError("Dataset ID not specified, add --id <dataset_id>")
+
+
 def print_args(args, exclude=('command', 'func', 'verbose')):
     # type: (object, Sequence[str]) -> ()
     if not getattr(args, 'verbose', None):
@@ -17,6 +23,39 @@ def print_args(args, exclude=('command', 'func', 'verbose')):
         if arg in exclude or args.__dict__.get(arg) is None:
             continue
         print('{}={}'.format(arg, args.__dict__[arg]))
+
+
+def restore_state(args):
+    session_state_file = os.path.expanduser('~/.clearml_data.json')
+    # noinspection PyBroadException
+    try:
+        with open(session_state_file, 'rt') as f:
+            state = json.load(f)
+    except Exception:
+        state = {}
+
+    args.id = getattr(args, 'id', None) or state.get('id')
+
+    state = {str(k): str(v) if v is not None else None
+             for k, v in args.__dict__.items() if not str(k).startswith('_')}
+    # noinspection PyBroadException
+    try:
+        with open(session_state_file, 'wt') as f:
+            json.dump(state, f, sort_keys=True)
+    except Exception:
+        pass
+
+    return args
+
+
+def clear_state(state=None):
+    session_state_file = os.path.expanduser('~/.clearml_data.json')
+    # noinspection PyBroadException
+    try:
+        with open(session_state_file, 'wt') as f:
+            json.dump(state or dict(), f, sort_keys=True)
+    except Exception:
+        pass
 
 
 def cli():
@@ -32,13 +71,14 @@ def cli():
 
     create = subparsers.add_parser('create', help='Create a new dataset')
     create.add_argument('--parents', type=str, nargs='*', help='Specify dataset parents IDs (i.e. merge all parents)')
-    create.add_argument('--project', type=str, required=True, default=None, help='Dataset project name')
+    create.add_argument('--project', type=str, required=False, default=None, help='Dataset project name')
     create.add_argument('--name', type=str, required=True, default=None, help='Dataset name')
     create.add_argument('--tags', type=str, nargs='*', help='Dataset user Tags')
     create.set_defaults(func=ds_create)
 
     add = subparsers.add_parser('add', help='Add files to the dataset')
-    add.add_argument('--id', type=str, required=True, help='Previously created dataset id')
+    add.add_argument('--id', type=str, required=False,
+                     help='Previously created dataset id. Default: previously created/accessed dataset')
     add.add_argument('--dataset-folder', type=str, default=None,
                      help='Dataset base folder top add the files to (default: Dataset root)')
     add.add_argument('--files', type=str, nargs='*',
@@ -50,7 +90,8 @@ def cli():
     add.set_defaults(func=ds_add)
 
     sync = subparsers.add_parser('sync', help='Sync a local folder with the dataset')
-    sync.add_argument('--id', type=str, required=True, help='Previously created dataset id')
+    sync.add_argument('--id', type=str, required=False,
+                      help='Previously created dataset id. Default: previously created/accessed dataset')
     sync.add_argument('--dataset-folder', type=str, default=None,
                       help='Dataset base folder top add the files to (default: Dataset root)')
     sync.add_argument('--folder', type=str, required=True,
@@ -60,7 +101,8 @@ def cli():
     sync.set_defaults(func=ds_sync)
 
     remove = subparsers.add_parser('remove', help='Remove files from the dataset')
-    remove.add_argument('--id', type=str, required=True, help='Previously created dataset id')
+    remove.add_argument('--id', type=str, required=False,
+                        help='Previously created dataset id. Default: previously created/accessed dataset')
     remove.add_argument('--files', type=str, nargs='*',
                         help='Files / folders to remove (support for wildcard selection). '
                              'Notice: File path is the dataset path not the local path. '
@@ -71,7 +113,8 @@ def cli():
     remove.set_defaults(func=ds_remove_files)
 
     upload = subparsers.add_parser('upload', help='Upload the local dataset changes to the server')
-    upload.add_argument('--id', type=str, required=True, help='Previously created dataset id')
+    upload.add_argument('--id', type=str, required=False,
+                        help='Previously created dataset id. Default: previously created/accessed dataset')
     upload.add_argument('--storage', type=str, default=None,
                         help='Remote storage to use for the dataset (default: files server). '
                              'Examples: \'s3://bucket/data\', \'gs://bucket/data\', \'azure://bucket/data\', '
@@ -80,12 +123,14 @@ def cli():
     upload.set_defaults(func=ds_upload)
 
     finalize = subparsers.add_parser('close', help='Finalize and close the dataset (implies auto upload)')
-    finalize.add_argument('--id', type=str, required=True, help='Previously created dataset id')
+    finalize.add_argument('--id', type=str, required=False,
+                          help='Previously created dataset id. Default: previously created/accessed dataset')
     finalize.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
     finalize.set_defaults(func=ds_close)
 
     delete = subparsers.add_parser('delete', help='Delete a dataset')
-    delete.add_argument('--id', type=str, required=True, help='Previously created dataset id')
+    delete.add_argument('--id', type=str, required=False,
+                        help='Previously created dataset id. Default: previously created/accessed dataset')
     delete.add_argument('--force', action='store_true', default=False,
                         help='Force dataset deletion even if other dataset versions depend on it')
     delete.set_defaults(func=ds_delete)
@@ -115,7 +160,8 @@ def cli():
     search.set_defaults(func=ds_search)
 
     verify = subparsers.add_parser('verify', help='Verify local dataset content')
-    verify.add_argument('--id', type=str, required=True, help='Specify dataset id')
+    verify.add_argument('--id', type=str, required=False,
+                        help='Specify dataset id. Default: previously created/accessed dataset')
     verify.add_argument('--folder', type=str,
                         help='Specify dataset local copy (if not provided the local cache folder will be verified)')
     verify.add_argument('--filesize', action='store_true', default=False,
@@ -124,7 +170,8 @@ def cli():
     verify.set_defaults(func=ds_verify)
 
     ls = subparsers.add_parser('list', help='List dataset content')
-    ls.add_argument('--id', type=str, required=True, help='Specify dataset id (or use project/name instead)')
+    ls.add_argument('--id', type=str, required=False,
+                    help='Specify dataset id (or use project/name instead). Default: previously accessed dataset.')
     ls.add_argument('--project', type=str, help='Specify dataset project name')
     ls.add_argument('--name', type=str, help='Specify dataset name')
     ls.add_argument('--filter', type=str, nargs='*',
@@ -135,7 +182,8 @@ def cli():
     ls.set_defaults(func=ds_list)
 
     get = subparsers.add_parser('get', help='Get a local copy of a dataset (default: read only cached folder)')
-    get.add_argument('--id', type=str, required=True, help='Previously created dataset id')
+    get.add_argument('--id', type=str, required=False,
+                     help='Previously created dataset id. Default: previously created/accessed dataset')
     get.add_argument('--copy', type=str, default=None,
                      help='Get a writable copy of the dataset to a specific output folder')
     get.add_argument('--link', type=str, default=None,
@@ -146,6 +194,8 @@ def cli():
     get.set_defaults(func=ds_get)
 
     args = parser.parse_args()
+    args = restore_state(args)
+
     if args.command:
         try:
             args.func(args)
@@ -159,14 +209,17 @@ def cli():
 
 def ds_delete(args):
     print('Deleting dataset id={}'.format(args.id))
+    check_null_id(args)
     print_args(args)
     Dataset.delete(dataset_id=args.id)
     print('Dataset {} deleted'.format(args.id))
+    clear_state()
     return 0
 
 
 def ds_verify(args):
     print('Verify dataset id={}'.format(args.id))
+    check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
     files_error = ds.verify_dataset_hash(
@@ -179,6 +232,7 @@ def ds_verify(args):
 
 def ds_get(args):
     print('Download dataset id={}'.format(args.id))
+    check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
     if args.overwrite:
@@ -286,15 +340,20 @@ def ds_compare(args):
 
 def ds_close(args):
     print('Finalizing dataset id={}'.format(args.id))
+    check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
+    if ds.is_dirty():
+        raise ValueError("Pending uploads, cannot finalize dataset. run `clearml-data upload`")
     ds.finalize()
     print('Dataset closed and finalized')
+    clear_state()
     return 0
 
 
 def ds_upload(args):
     print('uploading local files to dataset id={}'.format(args.id))
+    check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
     ds.upload(verbose=args.verbose, output_url=args.storage or None)
@@ -304,6 +363,7 @@ def ds_upload(args):
 
 def ds_remove_files(args):
     print('Removing files/folder from dataset id={}'.format(args.id))
+    check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
     num_files = 0
@@ -317,6 +377,7 @@ def ds_remove_files(args):
 
 def ds_sync(args):
     print('Syncing dataset id={} to local folder {}'.format(args.id, args.folder))
+    check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
     removed, added = ds.sync_folder(
@@ -328,6 +389,7 @@ def ds_sync(args):
 
 def ds_add(args):
     print('Adding files/folder to dataset id={}'.format(args.id))
+    check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
     num_files = 0
@@ -346,6 +408,7 @@ def ds_create(args):
     if args.tags:
         ds.tags = ds.tags + args.tags
     print('New dataset created id={}'.format(ds.id))
+    clear_state({'id': ds.id})
     return 0
 
 

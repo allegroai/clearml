@@ -1367,6 +1367,27 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._set_task_property("task_type", str(task_type))
         self._edit(type=task_type)
 
+    def set_archived(self, archive):
+        # type: (bool) -> ()
+        """
+        Archive the Task or remove it from the archived folder.
+
+        :param archive: If True archive the Task, If False make sure it is removed from the archived folder
+        """
+        with self._edit_lock:
+            system_tags = list(set(self.get_system_tags()) | {self.archived_tag}) \
+                if archive else list(set(self.get_system_tags()) - {self.archived_tag})
+            self.set_system_tags(system_tags)
+
+    def get_archived(self):
+        # type: () -> bool
+        """
+        Return the Archive state of the Task
+
+        :return: If True the Task is archived, otherwise it is not.
+        """
+        return self.archived_tag in self.get_system_tags()
+
     def set_initial_iteration(self, offset=0):
         # type: (int) -> int
         """
@@ -1734,7 +1755,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             status = self._data.status if self._data and self._reload_skip_flag else self.data.status
             if status not in (tasks.TaskStatusEnum.created, tasks.TaskStatusEnum.in_progress):
                 # the exception being name/comment that we can always change.
-                if kwargs and all(k in ('name', 'comment', 'tags') for k in kwargs.keys()):
+                if kwargs and all(k in ('name', 'comment', 'tags', 'system_tags') for k in kwargs.keys()):
                     pass
                 else:
                     raise ValueError('Task object can only be updated if created or in_progress')

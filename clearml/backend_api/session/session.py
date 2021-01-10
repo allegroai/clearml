@@ -52,7 +52,7 @@ class Session(TokenManager):
     _sessions_created = 0
     _ssl_error_count_verbosity = 2
     _offline_mode = ENV_OFFLINE_MODE.get()
-    _offline_default_version = '2.5'
+    _offline_default_version = '2.9'
 
     _client = [(__package__.partition(".")[0], __version__)]
 

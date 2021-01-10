@@ -135,7 +135,7 @@ class PipelineController(object):
         :return: True if successful
         """
         # when running remotely do nothing, we will deserialize ourselves when we start
-        if self._task and not self._task.running_locally() and self._task.is_main_task():
+        if self._has_stored_configuration():
             return True
 
         if name in self._nodes:
@@ -339,6 +339,16 @@ class PipelineController(object):
         :return:
         """
         self._nodes = {k: self.Node(name=k, **v) for k, v in dag_dict.items()}
+
+    def _has_stored_configuration(self):
+        """
+        Return True if we are running remotely and we have stored configuration on the Task
+        """
+        if self._task and not self._task.running_locally() and self._task.is_main_task():
+            stored_config = self._task.get_configuration_object(self._config_section)
+            return bool(stored_config)
+
+        return False
 
     def _verify(self):
         # type: () -> bool

@@ -5,27 +5,19 @@ from clearml.automation import (
     DiscreteParameterRange, HyperParameterOptimizer, RandomSearch,
     UniformIntegerParameterRange)
 
-aSearchStrategy = None
-
-if not aSearchStrategy:
+# trying to load Bayesian optimizer package
+try:
+    from clearml.automation.optuna import OptimizerOptuna  # noqa
+    aSearchStrategy = OptimizerOptuna
+except ImportError as ex:
     try:
-        from clearml.automation.optuna import OptimizerOptuna
-        aSearchStrategy = OptimizerOptuna
-    except ImportError as ex:
-        pass
-
-if not aSearchStrategy:
-    try:
-        from clearml.automation.hpbandster import OptimizerBOHB
+        from clearml.automation.hpbandster import OptimizerBOHB  # noqa
         aSearchStrategy = OptimizerBOHB
     except ImportError as ex:
-        pass
-
-if not aSearchStrategy:
-    logging.getLogger().warning(
-        'Apologies, it seems you do not have \'optuna\' or \'hpbandster\' installed, '
-        'we will be using RandomSearch strategy instead')
-    aSearchStrategy = RandomSearch
+        logging.getLogger().warning(
+            'Apologies, it seems you do not have \'optuna\' or \'hpbandster\' installed, '
+            'we will be using RandomSearch strategy instead')
+        aSearchStrategy = RandomSearch
 
 
 def job_complete_callback(
@@ -59,6 +51,10 @@ if not args['template_task_id']:
     args['template_task_id'] = Task.get_task(
         project_name='examples', task_name='Keras HP optimization base').id
 
+# Set default queue name for the Training tasks themselves.
+# later can be overridden in the UI
+execution_queue = '1xGPU'
+
 # Example use case:
 an_optimizer = HyperParameterOptimizer(
     # This is the experiment we want to optimize
@@ -89,7 +85,7 @@ an_optimizer = HyperParameterOptimizer(
     # more are coming soon...
     optimizer_class=aSearchStrategy,
     # Select an execution queue to schedule the experiments for execution
-    execution_queue='1xGPU',
+    execution_queue=execution_queue,
     # Optional: Limit the execution time of a single experiment, in minutes.
     # (this is optional, and if using  OptimizerBOHB, it is ignored)
     time_limit_per_job=10.,

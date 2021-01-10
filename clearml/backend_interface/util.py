@@ -72,12 +72,12 @@ def get_single_result(entity, query, results, log=None, show_results=10, raise_o
 
         raise ValueError('No {entity}s found when searching for `{query}`'.format(**locals()))
 
-    if not log:
-        log = get_logger()
-
     if len(results) > 1:
-        log.warning('More than one {entity} found when searching for `{query}`'
-                    ' (showing first {show_results} {entity}s follow)'.format(**locals()))
+        if show_results:
+            if not log:
+                log = get_logger()
+            log.warning('More than one {entity} found when searching for `{query}`'
+                        ' (showing first {show_results} {entity}s follow)'.format(**locals()))
         if sort_by_date:
             relative_time = get_epoch_beginning_of_time()
             # sort results based on timestamp and return the newest one
@@ -88,9 +88,10 @@ def get_single_result(entity, query, results, log=None, show_results=10, raise_o
                 results = sorted(results, key=lambda x: int((x.created - relative_time).total_seconds()
                                                             if x.created else 0), reverse=True)
 
-        for i, obj in enumerate(o if isinstance(o, dict) else o.to_dict() for o in results[:show_results]):
-            selected = 'Selected' if i == 0 else 'Additionally found'
-            log.warning('{selected} {entity} `{obj[name]}` (id={obj[id]})'.format(**locals()))
+        if show_results and log:
+            for i, obj in enumerate(o if isinstance(o, dict) else o.to_dict() for o in results[:show_results]):
+                selected = 'Selected' if i == 0 else 'Additionally found'
+                log.warning('{selected} {entity} `{obj[name]}` (id={obj[id]})'.format(**locals()))
 
         if raise_on_error:
             raise ValueError('More than one {entity}s found when searching for ``{query}`'.format(**locals()))

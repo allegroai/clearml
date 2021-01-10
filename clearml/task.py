@@ -3245,20 +3245,28 @@ class Task(_Task):
         if not task_id:
             return False
 
-        task = cls.__get_task_api_obj(task_id, ('id', 'name', 'project', 'type'))
+        # noinspection PyBroadException
+        try:
+            task = cls.__get_task_api_obj(task_id, ('id', 'name', 'project', 'type'))
+        except Exception:
+            task = None
 
         if task is None:
             return False
 
         project_name = None
         if task.project:
-            project = cls._send(
-                cls._get_default_session(),
-                projects.GetByIdRequest(project=task.project)
-            ).response.project
+            # noinspection PyBroadException
+            try:
+                project = cls._send(
+                    cls._get_default_session(),
+                    projects.GetByIdRequest(project=task.project)
+                ).response.project
 
-            if project:
-                project_name = project.name
+                if project:
+                    project_name = project.name
+            except Exception:
+                pass
 
         if task_data.get('type') and \
                 task_data.get('type') not in (cls.TaskTypes.training, cls.TaskTypes.testing) and \

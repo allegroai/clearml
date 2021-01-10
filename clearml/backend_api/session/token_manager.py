@@ -3,6 +3,7 @@ from abc import ABCMeta, abstractmethod
 from time import time
 
 import jwt
+from jwt.algorithms import get_default_algorithms
 import six
 
 
@@ -69,7 +70,10 @@ class TokenManager(object):
     @classmethod
     def _get_token_exp(cls, token):
         """ Get token expiration time. If not present, assume forever """
-        return jwt.decode(token, verify=False).get('exp', sys.maxsize)
+        return jwt.decode(
+            token, verify=False,
+            options=dict(verify_signature=False),
+            algorithms=get_default_algorithms()).get('exp', sys.maxsize)
 
     def _set_token(self, token):
         if token:

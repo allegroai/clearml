@@ -853,6 +853,8 @@ class Dataset(object):
         wildcard = wildcard or '*'
         # single file, no need for threading
         if path.is_file():
+            if not local_base_folder.is_dir():
+                local_base_folder = local_base_folder.parent
             file_entry = self._calc_file_hash(
                 FileEntry(local_path=path.absolute().as_posix(),
                           relative_path=(Path(dataset_path or '.') / path.relative_to(local_base_folder)).as_posix(),

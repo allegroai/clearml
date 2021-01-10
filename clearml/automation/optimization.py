@@ -18,14 +18,6 @@ from ..task import Task
 logger = getLogger('clearml.automation.optimization')
 
 
-try:
-    import pandas as pd
-    Task.add_requirements('pandas')
-except ImportError:
-    pd = None
-    logger.warning('Pandas is not installed, summary table reporting will be skipped.')
-
-
 class Objective(object):
     """
     Optimization ``Objective`` class to maximize / minimize over all experiments. This class will sample a specific
@@ -586,7 +578,7 @@ class SearchStrategy(object):
         Set the optimizer task object to be used to store/generate reports on the optimization process.
         Usually this is the current task of this process.
 
-        :param Task task: The optimizer's current Task.
+        :param Task task: The optimizer`s current Task.
         """
         self._optimizer_task = task
 
@@ -656,9 +648,12 @@ class SearchStrategy(object):
         :param dict additional_filters: The additional task filters.
         :return: A list of Task objects
         """
-        task_filter = {'parent': parent_task_id,
-                       # 'tags': [cls._tag],
-                       'system_tags': ['-archived']}
+        task_filter = {
+            'parent': parent_task_id,
+            # 'tags': [cls._tag],
+            # since we have auto archive we do not want to filter out archived tasks
+            # 'system_tags': ['-archived'],
+        }
         task_filter.update(additional_filters or {})
 
         if status:
@@ -1453,20 +1448,23 @@ class HyperParameterOptimizer(object):
                     mode='markers', xaxis='job #', yaxis='objective')
 
                 # update summary table
-                if pd:
-                    index = list(completed_jobs.keys())
-                    table = {'objective': [completed_jobs[i][0] for i in index],
-                             'iteration': [completed_jobs[i][1] for i in index]}
-                    columns = set([c for k, v in completed_jobs.items() for c in v[2].keys()])
-                    for c in sorted(columns):
-                        table.update({c: [completed_jobs[i][2].get(c, '') for i in index]})
+                job_ids = list(completed_jobs.keys())
+                job_ids_sorted_by_objective = sorted(
+                    job_ids, key=lambda x: completed_jobs[x][0], reverse=bool(self.objective_metric.sign >= 0))
+                # sort the columns except for 'objective', 'iteration'
+                columns = list(sorted(set([c for k, v in completed_jobs.items() for c in v[2].keys()])))
+                # add the index column (task id) and the first two columns 'objective', 'iteration' then the rest
+                table_values = [['task id', 'objective', 'iteration'] + columns]
 
-                    df = pd.DataFrame(table, index=index)
-                    df.sort_values(by='objective', ascending=bool(self.objective_metric.sign < 0), inplace=True)
-                    df.index.name = 'task id'
-                    task_logger.report_table(
-                        "summary", "job", 0, table_plot=df,
-                        extra_layout={"title": "objective: {}".format(title)})
+                table_values += \
+                    [([job, completed_jobs[job][0], completed_jobs[job][1]] +
+                      [completed_jobs[job][2].get(c, '') for c in columns]) for job in job_ids_sorted_by_objective]
+                task_logger.report_table(
+                    "summary", "job", 0, table_plot=table_values,
+                    extra_layout={"title": "objective: {}".format(title)})
+                # upload summary as artifact
+                if force:
+                    self._task.upload_artifact(name='summary', artifact_object={'table': table_values})
 
     def _report_remaining_budget(self, task_logger, counter):
         # noinspection PyBroadException

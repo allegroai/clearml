@@ -985,6 +985,14 @@ class Dataset(object):
         """
         if not self._task:
             self._task = Task.get_task(task_id=self._id)
+        # check if we have a dataset with empty change set
+        if not self._task.artifacts.get(self.__data_entry_name):
+            cache = CacheManager.get_cache_manager(cache_context=self.__cache_context)
+            local_folder = Path(cache.get_cache_folder()) / self._get_cache_folder_name()
+            local_folder.mkdir(parents=True, exist_ok=True)
+            return local_folder.as_posix()
+
+        # download the dataset zip
         local_zip = StorageManager.get_local_copy(
             remote_url=self._task.artifacts[self.__data_entry_name].url, cache_context=self.__cache_context,
             extract_archive=False, name=self._id)

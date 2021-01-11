@@ -210,7 +210,7 @@ def cli():
 
 
 def ds_delete(args):
-    print('Deleting dataset id={}'.format(args.id))
+    print('Deleting dataset id {}'.format(args.id))
     check_null_id(args)
     print_args(args)
     Dataset.delete(dataset_id=args.id)
@@ -220,7 +220,7 @@ def ds_delete(args):
 
 
 def ds_verify(args):
-    print('Verify dataset id={}'.format(args.id))
+    print('Verify dataset id {}'.format(args.id))
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
@@ -233,7 +233,7 @@ def ds_verify(args):
 
 
 def ds_get(args):
-    print('Download dataset id={}'.format(args.id))
+    print('Download dataset id {}'.format(args.id))
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
@@ -321,7 +321,7 @@ def ds_search(args):
 
 
 def ds_compare(args):
-    print('Comparing target dataset id={} with source dataset id={}'.format(args.target, args.source))
+    print('Comparing target dataset id {} with source dataset id {}'.format(args.target, args.source))
     print_args(args)
     ds = Dataset.get(dataset_id=args.target)
     removed_files = ds.list_removed_files(dataset_id=args.source)
@@ -341,7 +341,7 @@ def ds_compare(args):
 
 
 def ds_close(args):
-    print('Finalizing dataset id={}'.format(args.id))
+    print('Finalizing dataset id {}'.format(args.id))
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
@@ -359,7 +359,7 @@ def ds_close(args):
 
 
 def ds_upload(args):
-    print('uploading local files to dataset id={}'.format(args.id))
+    print('uploading local files to dataset id {}'.format(args.id))
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
@@ -369,7 +369,7 @@ def ds_upload(args):
 
 
 def ds_remove_files(args):
-    print('Removing files/folder from dataset id={}'.format(args.id))
+    print('Removing files/folder from dataset id {}'.format(args.id))
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
@@ -383,7 +383,7 @@ def ds_remove_files(args):
 
 
 def ds_sync(args):
-    print('Syncing dataset id={} to local folder {}'.format(args.id, args.folder))
+    print('Syncing dataset id {} to local folder {}'.format(args.id, args.folder))
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
@@ -395,7 +395,7 @@ def ds_sync(args):
 
 
 def ds_add(args):
-    print('Adding files/folder to dataset id={}'.format(args.id))
+    print('Adding files/folder to dataset id {}'.format(args.id))
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)

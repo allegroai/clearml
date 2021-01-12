@@ -913,7 +913,7 @@ class HyperParameterOptimizer(object):
             compute_time_limit=None,  # type: Optional[float]
             auto_connect_task=True,  # type: Union[bool, Task]
             always_create_task=False,  # type: bool
-            spawn_task_project=None,  # type: Optional[str]
+            spawn_project=None,  # type: Optional[str]
             save_top_k_tasks_only=None,  # type: Optional[int]
             **optimizer_kwargs  # type: Any
     ):
@@ -962,8 +962,8 @@ class HyperParameterOptimizer(object):
 
             - ``False`` - Use the :py:meth:`task.Task.current_task` (if exists) to report statistics.
 
-        :param str spawn_task_project: If project name is specified, create all optimization Jobs (Tasks) in the
-            specified project, instead of the original base_task_id project.
+        :param str spawn_project: If project name is specified, create all optimization Jobs (Tasks) in the
+            specified project instead of the original base_task_id project.
 
         :param int save_top_k_tasks_only: If specified and above 0, keep only the top_k performing Tasks,
             and archive the rest of the created Tasks. Default: -1 keep everything, nothing will be archived.
@@ -1063,7 +1063,7 @@ class HyperParameterOptimizer(object):
         self._experiment_completed_cb = None
         self._save_top_k_tasks_only = max(0, save_top_k_tasks_only or 0)
         self.optimizer.set_job_default_parent(
-            self._task.id if self._task else None, project_name=spawn_task_project or None)
+            self._task.id if self._task else None, project_name=spawn_project or None)
         self.set_time_limit(in_minutes=opts['optimization_time_limit'])
 
     def get_num_active_experiments(self):
@@ -1538,30 +1538,62 @@ class HyperParameterOptimizer(object):
 
                 # update scatter plot
                 task_logger.report_scatter2d(
-                    title='optimization', series=title,
+                    title='Optimization Objective', series=title,
                     scatter=pairs, iteration=0, labels=labels,
                     mode='markers', xaxis='job #', yaxis='objective')
 
-                # update summary table
-                job_ids = list(completed_jobs.keys())
-                job_ids_sorted_by_objective = sorted(
-                    job_ids, key=lambda x: completed_jobs[x][0], reverse=bool(self.objective_metric.sign >= 0))
-                # sort the columns except for 'objective', 'iteration'
-                columns = list(sorted(set([c for k, v in completed_jobs.items() for c in v[2].keys()])))
-                # add the index column (task id) and the first two columns 'objective', 'iteration' then the rest
-                table_values = [['task id', 'objective', 'iteration'] + columns]
+            # update summary table
+            job_ids = list(completed_jobs.keys())
+            job_ids_sorted_by_objective = sorted(
+                job_ids, key=lambda x: completed_jobs[x][0], reverse=bool(self.objective_metric.sign >= 0))
+            # sort the columns except for 'objective', 'iteration'
+            columns = list(sorted(set([c for k, v in completed_jobs.items() for c in v[2].keys()])))
+            # add the index column (task id) and the first two columns 'objective', 'iteration' then the rest
+            table_values = [['task id', 'objective', 'iteration'] + columns]
 
-                table_values += \
-                    [([job, completed_jobs[job][0], completed_jobs[job][1]] +
-                      [completed_jobs[job][2].get(c, '') for c in columns]) for job in job_ids_sorted_by_objective]
-                task_logger.report_table(
-                    "summary", "job", 0, table_plot=table_values,
-                    extra_layout={"title": "objective: {}".format(title)})
-                # upload summary as artifact
-                if force:
-                    task = self._task or Task.current_task()
-                    if task:
-                        task.upload_artifact(name='summary', artifact_object={'table': table_values})
+            table_values += \
+                [([job, completed_jobs[job][0], completed_jobs[job][1]] +
+                  [completed_jobs[job][2].get(c, '') for c in columns]) for job in job_ids_sorted_by_objective]
+            task_logger.report_table(
+                "summary", "job", 0, table_plot=table_values,
+                extra_layout={"title": "objective: {}".format(title)})
+
+            # Build parallel Coordinates: convert to columns, and reorder accordingly
+            if len(table_values) > 1:
+                table_values_columns = [[row[i] for row in table_values] for i in range(len(table_values[0]))]
+                table_values_columns = \
+                    [[table_values_columns[0][0]] + [c[:6]+'...' for c in table_values_columns[0][1:]]] + \
+                    table_values_columns[2:-1] + [[title]+table_values_columns[1][1:]]
+                pcc_dims = []
+                for col in table_values_columns:
+                    # test if all values are numbers:
+                    try:
+                        # try to cast all values to float
+                        values = [float(v) for v in col[1:]]
+                        d = dict(label=col[0], values=values)
+                    except (ValueError, TypeError):
+                        values = list(range(len(col[1:])))
+                        ticks = col[1:]
+                        d = dict(label=col[0], values=values, tickvals=values, ticktext=ticks)
+                    pcc_dims.append(d)
+                # report parallel coordinates
+                plotly_pcc = dict(
+                    data=[dict(
+                        type='parcoords',
+                        line=dict(colorscale='Viridis',
+                                  reversescale=bool(self.objective_metric.sign < 0),
+                                  color=table_values_columns[-1][1:]),
+                        dimensions=pcc_dims)],
+                    layout={})
+                task_logger.report_plotly(
+                    title='Parallel Coordinates', series='',
+                    iteration=0, figure=plotly_pcc)
+
+            # upload summary as artifact
+            if force:
+                task = self._task or Task.current_task()
+                if task:
+                    task.upload_artifact(name='summary', artifact_object={'table': table_values})
 
     def _report_remaining_budget(self, task_logger, counter):
         # noinspection PyBroadException

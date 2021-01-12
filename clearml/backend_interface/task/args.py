@@ -2,7 +2,7 @@ import yaml
 
 from inspect import isfunction
 from six import PY2
-from argparse import _StoreAction, ArgumentError, _StoreConstAction, _SubParsersAction, SUPPRESS  # noqa
+from argparse import _StoreAction, ArgumentError, _StoreConstAction, _SubParsersAction, _AppendAction, SUPPRESS  # noqa
 from copy import copy
 
 from ...backend_api import Session
@@ -266,7 +266,9 @@ class _Arguments(object):
                         pass
                     if current_action.default is not None or const_value not in (None, ''):
                         arg_parser_arguments[k] = const_value
-                elif current_action and (current_action.nargs in ('+', '*') or isinstance(current_action.nargs, int)):
+                elif current_action and (
+                        current_action.nargs in ('+', '*') or isinstance(current_action.nargs, int) or
+                        isinstance(current_action, _AppendAction)):
                     # noinspection PyBroadException
                     try:
                         v = yaml.load(v.strip(), Loader=yaml.SafeLoader)

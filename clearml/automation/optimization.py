@@ -1581,7 +1581,7 @@ class HyperParameterOptimizer(object):
                     data=[dict(
                         type='parcoords',
                         line=dict(colorscale='Viridis',
-                                  reversescale=bool(self.objective_metric.sign < 0),
+                                  reversescale=bool(self.objective_metric.sign >= 0),
                                   color=table_values_columns[-1][1:]),
                         dimensions=pcc_dims)],
                     layout={})

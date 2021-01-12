@@ -271,18 +271,24 @@ class _Arguments(object):
                     try:
                         v = yaml.load(v.strip(), Loader=yaml.SafeLoader)
                         if not isinstance(v, (list, tuple)):
-                            # do nothing, we have no idea what happened
-                            pass
-                        elif current_action.type:
-                            v = [current_action.type(a) for a in v]
-                        elif current_action.default:
-                            v_type = type(current_action.default[0])
-                            v = [v_type(a) for a in v]
+                            # we have no idea what happened, just put into a list.
+                            v = [v] if v else None
+                        # casting
+                        if v:
+                            if current_action.type:
+                                v = [current_action.type(a) for a in v]
+                            elif current_action.default:
+                                v_type = type(current_action.default[0])
+                                v = [v_type(a) for a in v]
 
                         if current_action.default is not None or v not in (None, ''):
                             arg_parser_arguments[k] = v
                     except Exception:
-                        pass
+                        if self._task and self._task.log:
+                            self._task.log.warning(
+                                'Failed parsing task parameter {}="{}" keeping default {}={}'.format(
+                                    k, v, k, current_action.default))
+
                 elif current_action and not current_action.type:
                     # cast manually if there is no type
                     var_type = type(current_action.default)

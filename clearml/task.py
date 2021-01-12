@@ -186,6 +186,7 @@ class Task(_Task):
         project_name=None,  # type: Optional[str]
         task_name=None,  # type: Optional[str]
         task_type=TaskTypes.training,  # type: Task.TaskTypes
+        tags=None,  # type: Optional[Sequence[str]]
         reuse_last_task_id=True,  # type: Union[bool, str]
         continue_last_task=False,  # type: Union[bool, str]
         output_uri=None,  # type: Optional[Union[str, bool]]
@@ -254,6 +255,7 @@ class Task(_Task):
             - ``TaskTypes.qc``
             - ``TaskTypes.custom``
 
+        :param tags: Add a list of tags (str) to the created Task. For example: tags=['512x512', 'yolov3']
         :param bool reuse_last_task_id: Force a new Task (experiment) with a previously used Task ID,
             and the same project and Task name.
 
@@ -474,6 +476,7 @@ class Task(_Task):
                         default_project_name=project_name,
                         default_task_name=task_name,
                         default_task_type=task_type,
+                        tags=tags,
                         reuse_last_task_id=reuse_last_task_id,
                         continue_last_task=continue_last_task,
                         detect_repo=False if (
@@ -2315,7 +2318,7 @@ class Task(_Task):
 
     @classmethod
     def _create_dev_task(
-        cls, default_project_name, default_task_name, default_task_type,
+        cls, default_project_name, default_task_name, default_task_type, tags,
             reuse_last_task_id, continue_last_task=False, detect_repo=True,  auto_connect_streams=True
     ):
         if not default_project_name or not default_task_name:
@@ -2434,6 +2437,10 @@ class Task(_Task):
         # reload, making sure we are synced
         task._reload_skip_flag = False
         task.reload()
+
+        # add Task tags
+        if tags:
+            task.add_tags([tags] if isinstance(tags, str) else tags)
 
         # force update of base logger to this current task (this is the main logger task)
         logger = task._get_logger(auto_connect_streams=auto_connect_streams)

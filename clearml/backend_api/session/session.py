@@ -172,7 +172,7 @@ class Session(TokenManager):
 
         # update api version from server response
         try:
-            token_dict = jwt.decode(self.token, verify=False)
+            token_dict = TokenManager.get_decoded_token(self.token)
             api_version = token_dict.get('api_version')
             if not api_version:
                 api_version = '2.2' if token_dict.get('env', '') == 'prod' else Session.api_version
@@ -182,7 +182,8 @@ class Session(TokenManager):
 
             Session.api_version = str(api_version)
         except (jwt.DecodeError, ValueError):
-            pass
+            (self._logger or get_logger()).warning(
+                "Failed parsing server API level, defaulting to {}".format(Session.api_version))
 
         # now setup the session reporting, so one consecutive retries will show warning
         # we do that here, so if we have problems authenticating, we see them immediately

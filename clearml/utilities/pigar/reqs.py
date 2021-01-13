@@ -386,7 +386,9 @@ def _search_path(path):
                         # mapping[pkg_name] = ('-e', git_url)
                         pkg_name, version = '-e {}'.format(git_url), ''
                     elif 'url' in vcs_info:
-                        pkg_name, version = vcs_info['url'], ''
+                        url_link = vcs_info.get('url', '').strip().lower()
+                        if url_link and not url_link.startswith('file://'):
+                            pkg_name, version = vcs_info['url'], ''
 
                 except Exception:
                     pass

@@ -6,9 +6,7 @@ future>=0.16.0
 futures>=3.0.5 ; python_version < '3'
 humanfriendly>=2.1
 jsonschema>=2.6.0
-numpy>=1.10,<=1.15 ; python_version < '3.7'
-numpy>=1.15,<=1.19 ; python_version >= '3.7' and python_version < '3.8'
-numpy>=1.19,<=1.20 ; python_version >= '3.8'
+numpy>=1.10
 pathlib2>=2.3.0
 Pillow>=4.1.1
 psutil>=3.4.2

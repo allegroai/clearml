@@ -674,10 +674,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 if should_delete and not self._delete_uri(m.uri):
                     failures.append(m.uri)
 
+        event_uris = list(filter(None, event_uris))
         for uri in event_uris:
             if not self._delete_uri(uri):
                 failures.append(uri)
 
+        failures = list(filter(None, failures))
         if len(failures):
             error = "Failed deleting the following URIs:\n{}".format(
                 "\n".join(failures)

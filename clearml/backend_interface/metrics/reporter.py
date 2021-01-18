@@ -203,15 +203,20 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param round_digits: number of digits after the dot to leave
         :type round_digits: int
         """
-        def floatstr(o):
-            inf_value = math.inf if six.PY3 else float("inf")
-            if o != o:
-                return 'nan'
-            elif o == inf_value:
-                return 'inf'
-            elif o == -inf_value:
-                return '-inf'
-            return round(o, ndigits=round_digits) if round_digits is not None else o
+        inf_value = math.inf if six.PY3 else float("inf")
+
+        def to_base_type(o):
+            if isinstance(o, float):
+                if o != o:
+                    return 'nan'
+                elif o == inf_value:
+                    return 'inf'
+                elif o == -inf_value:
+                    return '-inf'
+                return round(o, ndigits=round_digits) if round_digits is not None else o
+            elif isinstance(o, (datetime.date, datetime.datetime)):
+                return o.isoformat()
+            return o
 
         # noinspection PyBroadException
         try:
@@ -222,12 +227,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
                 elif isinstance(obj, np.floating):
                     return float(round(obj, ndigits=round_digits) if round_digits is not None else obj)
                 elif isinstance(obj, np.ndarray):
-                    if obj.dtype in (datetime.date, datetime.datetime):
-                        return [dt.isoformat() for dt in obj]
-                    else:
-                        return [floatstr(a) for a in obj.tolist()]
-                elif isinstance(obj, (datetime.date, datetime.datetime)):
-                    return obj.isoformat()
+                    return [to_base_type(a) for a in obj.tolist()]
+                return to_base_type(obj)
 
         except Exception:
             default = None
@@ -245,14 +246,15 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
                         continue
                     for k, v in d.items():
                         if isinstance(v, list):
-                            d[k] = list(floatstr(s) if isinstance(s, float) else s for s in v)
+                            d[k] = list(to_base_type(s) for s in v)
                         elif isinstance(v, tuple):
-                            d[k] = tuple(floatstr(s) if isinstance(s, float) else s for s in v)
-                        elif isinstance(v, float):
-                            d[k] = floatstr(v)
+                            d[k] = tuple(to_base_type(s) for s in v)
+                        else:
+                            d[k] = to_base_type(v)
             plot = json.dumps(plot, default=default)
         elif not isinstance(plot, six.string_types):
             raise ValueError('Plot should be a string or a dict')
+        
         ev = PlotEvent(metric=self._normalize_name(title), variant=self._normalize_name(series),
                        plot_str=plot, iter=iter)
         self._report(ev)

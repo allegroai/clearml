@@ -5,19 +5,14 @@ from __future__ import print_function, division, absolute_import
 import json
 import os
 import sys
+import six
 import fnmatch
 import importlib
-import imp
 import ast
 import doctest
 import collections
 import functools
 from pathlib2 import Path
-try:
-    from types import FileType  # py2
-except ImportError:
-    from io import IOBase as FileType  # py3
-
 from .utils import parse_git_config
 from .modules import ImportedModules
 
@@ -290,21 +285,32 @@ def is_std_or_local_lib(name):
     str if local library
     """
     exist = True
-    module_info = ('', '', '')
-    try:
-        module_info = imp.find_module(name)
-    except ImportError:
+    if six.PY2:
+        import imp  # noqa
+        from types import FileType  # noqa
+        module_info = ('', '', '')
         try:
-            # __import__(name)
-            importlib.import_module(name)
             module_info = imp.find_module(name)
-            sys.modules.pop(name)
+        except ImportError:
+            try:
+                # __import__(name)
+                importlib.import_module(name)
+                module_info = imp.find_module(name)
+                sys.modules.pop(name)
+            except ImportError:
+                exist = False
+        # Testcase: ResourceWarning
+        if isinstance(module_info[0], FileType):
+            module_info[0].close()  # noqa
+        mpath = module_info[1]  # noqa
+    else:
+        module_info = None
+        try:
+            module_info = importlib.util.find_spec(name) # noqa
         except ImportError:
             exist = False
-    # Testcase: ResourceWarning
-    if isinstance(module_info[0], FileType):
-        module_info[0].close()
-    mpath = module_info[1]
+        mpath = module_info.origin if module_info else None
+
     if exist and mpath is not None:
         if ('site-packages' in mpath or
                 'dist-packages' in mpath or

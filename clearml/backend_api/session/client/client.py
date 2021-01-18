@@ -1,7 +1,6 @@
 from __future__ import unicode_literals
 
 import abc
-import os
 import types
 from argparse import Namespace
 from collections import OrderedDict

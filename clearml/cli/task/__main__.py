@@ -1,9 +1,7 @@
 from argparse import ArgumentParser
 
-from pathlib2 import Path
-
-from clearml.backend_interface.task.populate import CreateAndPopulate
 from clearml import Task
+from clearml.backend_interface.task.populate import CreateAndPopulate
 
 
 def setup_parser(parser):

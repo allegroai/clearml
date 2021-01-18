@@ -908,7 +908,7 @@ class PatchSummaryToEventTransformer(object):
             except Exception:
                 logdir = None
             self.clearml = EventTrainsWriter(PatchSummaryToEventTransformer.__main_task.get_logger(),
-                                            logdir=logdir, **PatchSummaryToEventTransformer.defaults_dict)
+                                             logdir=logdir, **PatchSummaryToEventTransformer.defaults_dict)
         # noinspection PyBroadException
         try:
             self.clearml.add_event(*args, **kwargs)
@@ -927,7 +927,7 @@ class PatchSummaryToEventTransformer(object):
             except Exception:
                 logdir = None
             self.clearml = EventTrainsWriter(PatchSummaryToEventTransformer.__main_task.get_logger(),
-                                            logdir=logdir, **PatchSummaryToEventTransformer.defaults_dict)
+                                             logdir=logdir, **PatchSummaryToEventTransformer.defaults_dict)
         # noinspection PyBroadException
         try:
             self.clearml.add_event(*args, **kwargs)

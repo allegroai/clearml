@@ -668,7 +668,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     else:
                         failures.append("model id: {}".format(m.id))
                         continue
-                except Exception as ex:
+                except Exception:
                     failures.append("model id: {}".format(m.id))
                     continue
                 if should_delete and not self._delete_uri(m.uri):
@@ -2150,4 +2150,3 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return all_tasks[0].status, all_tasks[0].status_message
         except Exception:
             return None, None
-

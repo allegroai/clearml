@@ -72,7 +72,7 @@ class CreateAndPopulate(object):
             if not script:
                 raise ValueError("Entry point script not provided")
             if not repo and not folder and not Path(script).is_file():
-                raise ValueError("Repository or script must be provided")
+                raise ValueError("Script file \'{}\' could not be found".format(script))
         if raise_on_missing_entries and commit and branch:
             raise ValueError(
                 "Specify either a branch/tag or specific commit id, not both (either --commit or --branch)")

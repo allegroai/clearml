@@ -521,7 +521,7 @@ class EventTrainsWriter(object):
                            'labels': [''.join(data_points) + '<br> ' +
                                       '  '.join(['%-3.2f' % v for v in plot_values[:, j]]) for j in
                                       range(plot_values.shape[1])]}]
-                reverse_xaxis = True
+                reverse_xaxis = False
             else:
                 reverse_xaxis = False
                 series = [{'name': series, 'data': plot_values}]

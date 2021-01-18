@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import math
@@ -221,7 +222,12 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
                 elif isinstance(obj, np.floating):
                     return float(round(obj, ndigits=round_digits) if round_digits is not None else obj)
                 elif isinstance(obj, np.ndarray):
-                    return obj.round(round_digits).tolist() if round_digits is not None else obj.tolist()
+                    if obj.dtype in (datetime.date, datetime.datetime):
+                        return [dt.isoformat() for dt in obj]
+                    else:
+                        return [floatstr(a) for a in obj.tolist()]
+                elif isinstance(obj, (datetime.date, datetime.datetime)):
+                    return obj.isoformat()
 
         except Exception:
             default = None

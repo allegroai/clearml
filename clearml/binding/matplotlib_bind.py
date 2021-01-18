@@ -434,7 +434,7 @@ class PatchedMatplotlib:
                 os.close(fd)
 
             # check if we need to restore the active object
-            if set_active and not _pylab_helpers.Gcf.get_active():
+            if set_active and not _pylab_helpers.Gcf.get_active() and stored_figure:
                 _pylab_helpers.Gcf.set_active(stored_figure)
 
             last_iteration = iter if iter is not None else PatchedMatplotlib._get_last_iteration()

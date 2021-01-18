@@ -1139,6 +1139,15 @@ class OutputModel(BaseModel):
             raise Exception('Missing a task for this model')
 
         if weights_filename is not None:
+            # Check if weights_filename is a folder, is package upload
+            if Path(weights_filename).is_dir():
+                return self.update_weights_package(
+                    weights_path=weights_filename,
+                    upload_uri=upload_uri,
+                    target_filename=target_filename or Path(weights_filename).name,
+                    auto_delete_file=auto_delete_file,
+                    iteration=iteration)
+
             # make sure we delete the previous file, if it exists
             if self._model_local_filename != weights_filename:
                 delete_previous_weights_file(self._model_local_filename)

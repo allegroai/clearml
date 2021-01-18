@@ -1,4 +1,3 @@
-absl-py>=0.7.1
 bokeh>=1.4.0
 matplotlib >= 3.1.1 ; python_version >= '3.6'
 matplotlib >= 2.2.4 ; python_version < '3.6'

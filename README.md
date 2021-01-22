@@ -147,7 +147,7 @@ Additionally, you can always find us at *clearml@allegro.ai*
 
 ## Contributing
 
-**PRs are always welcomed** :heart: See more detials in the ClearML [Guidelines for Contributing](https://github.com/allegroai/clearml/blob/master/docs/contributing.md).
+**PRs are always welcomed** :heart: See more details in the ClearML [Guidelines for Contributing](https://github.com/allegroai/clearml/blob/master/docs/contributing.md).
 
 
 _May the force (and the goddess of learning rates) be with you!_

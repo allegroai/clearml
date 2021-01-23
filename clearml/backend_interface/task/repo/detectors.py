@@ -139,7 +139,7 @@ class Detector(object):
                 **{
                     name[:-len(self._remote)]: self._get_command_output(
                         path, name[:-len(self._remote)], command + [info.branch],
-                        commands=commands, strip=name.startswith('diff'))
+                        commands=commands, strip=not name.startswith('diff'))
                     for name, command in attr.asdict(commands).items()
                     if command and (
                             name.endswith(self._remote) and

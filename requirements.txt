@@ -14,7 +14,6 @@ pyparsing>=2.0.3
 python-dateutil>=2.6.1
 pyjwt>=1.6.4,<3.0.0
 PyYAML>=3.12
-requests-file>=1.4.2
 requests>=2.20.0
 six>=1.11.0
 typing>=3.6.4 ; python_version < '3.5'

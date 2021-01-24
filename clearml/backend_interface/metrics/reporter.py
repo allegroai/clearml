@@ -177,6 +177,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         return self._max_iteration
 
     def _report(self, ev):
+        if not self._report_service:
+            return
         ev_iteration = ev.get_iteration()
         if ev_iteration is not None:
             # we have to manually add get_iteration_offset() because event hasn't reached the Metric manager

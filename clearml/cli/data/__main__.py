@@ -97,6 +97,20 @@ def cli():
     sync.add_argument('--folder', type=str, required=True,
                       help='Local folder to sync (support for wildcard selection). '
                            'Example: ~/data/*.jpg')
+    sync.add_argument('--parents', type=str, nargs='*',
+                      help='[Optional - Create new dataset] Specify dataset parents IDs (i.e. merge all parents)')
+    sync.add_argument('--project', type=str, required=False, default=None,
+                      help='[Optional - Create new dataset] Dataset project name')
+    sync.add_argument('--name', type=str, required=True, default=None,
+                      help='[Optional - Create new dataset] Dataset project name')
+    sync.add_argument('--tags', type=str, nargs='*',
+                      help='[Optional - Create new dataset] Dataset user Tags')
+    sync.add_argument('--storage', type=str, default=None,
+                      help='Remote storage to use for the dataset files (default: files_server). '
+                           'Examples: \'s3://bucket/data\', \'gs://bucket/data\', \'azure://bucket/data\', '
+                           '\'/mnt/shared/folder/data\'')
+    sync.add_argument('--skip-close', action='store_true', default=False,
+                      help='Do not auto close dataset after syncing folders')
     sync.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
     sync.set_defaults(func=ds_sync)
 
@@ -383,6 +397,11 @@ def ds_remove_files(args):
 
 
 def ds_sync(args):
+    dataset_created = False
+    if args.parents or (args.project and args.name):
+        args.id = ds_create(args)
+        dataset_created = True
+
     print('Syncing dataset id {} to local folder {}'.format(args.id, args.folder))
     check_null_id(args)
     print_args(args)
@@ -391,6 +410,23 @@ def ds_sync(args):
         local_path=args.folder, dataset_path=args.dataset_folder or None, verbose=args.verbose)
 
     print('Sync completed: {} files removed, {} added / modified'.format(removed, added))
+
+    if not args.skip_close:
+        if dataset_created and not removed and not added:
+            print('Zero modifications on local copy, reverting dataset creation.')
+            Dataset.delete(ds.id, force=True)
+            return 0
+
+        print("Finalizing dataset")
+        if ds.is_dirty():
+            # upload the files
+            print("Pending uploads, starting dataset upload to {}".format(args.storage or ds.get_default_storage()))
+            ds.upload(show_progress=True, verbose=args.verbose, output_url=args.storage or None)
+
+        ds.finalize()
+        print('Dataset closed and finalized')
+        clear_state()
+
     return 0
 
 
@@ -416,7 +452,7 @@ def ds_create(args):
         ds.tags = ds.tags + args.tags
     print('New dataset created id={}'.format(ds.id))
     clear_state({'id': ds.id})
-    return 0
+    return ds.id
 
 
 def main():

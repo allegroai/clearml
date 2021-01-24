@@ -12,7 +12,6 @@ from threading import Thread
 from time import time
 from zipfile import ZipFile, ZIP_DEFLATED
 
-import humanfriendly
 import six
 from PIL import Image
 from pathlib2 import Path
@@ -24,7 +23,7 @@ from ..backend_api.services import tasks
 from ..backend_interface.metrics.events import UploadEvent
 from ..debugging.log import LoggerRoot
 from ..storage.helper import remote_driver_schemes
-from ..storage.util import sha256sum
+from ..storage.util import sha256sum, format_size
 
 try:
     import pandas as pd
@@ -428,7 +427,7 @@ class Artifacts(object):
                             if filename.is_file():
                                 relative_file_name = filename.relative_to(folder).as_posix()
                                 archive_preview += '{} - {}\n'.format(
-                                    relative_file_name, humanfriendly.format_size(filename.stat().st_size))
+                                    relative_file_name, format_size(filename.stat().st_size))
                                 zf.write(filename.as_posix(), arcname=relative_file_name)
                 except Exception as e:
                     # failed uploading folder:
@@ -449,7 +448,7 @@ class Artifacts(object):
 
                 override_filename_in_uri = artifact_object.parts[-1]
                 artifact_type_data.preview = preview or '{} - {}\n'.format(
-                    artifact_object, humanfriendly.format_size(artifact_object.stat().st_size))
+                    artifact_object, format_size(artifact_object.stat().st_size))
                 artifact_object = artifact_object.as_posix()
                 artifact_type = 'custom'
                 artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]

@@ -9,7 +9,6 @@ from tempfile import mkstemp, mkdtemp
 from typing import Union, Optional, Sequence, List, Dict, Any, Mapping
 from zipfile import ZipFile, ZIP_DEFLATED
 
-import humanfriendly
 from attr import attrs, attrib
 from pathlib2 import Path
 
@@ -20,7 +19,7 @@ from ..backend_interface.util import mutually_exclusive, exact_match_regex
 from ..debugging.log import LoggerRoot
 from ..storage.helper import StorageHelper
 from ..storage.cache import CacheManager
-from ..storage.util import sha256sum, is_windows, md5text
+from ..storage.util import sha256sum, is_windows, md5text, format_size
 
 try:
     from pathlib import Path as _Path  # noqa
@@ -324,7 +323,7 @@ class Dataset(object):
                     relative_file_name = file_entry.relative_path
                     zf.write(filename.as_posix(), arcname=relative_file_name)
                     archive_preview += '{} - {}\n'.format(
-                        relative_file_name, humanfriendly.format_size(filename.stat().st_size))
+                        relative_file_name, format_size(filename.stat().st_size))
                     file_entry.local_path = None
                     count += 1
         except Exception as e:
@@ -358,7 +357,7 @@ class Dataset(object):
         self._dataset_file_entries = {k: v for k, v in self._dataset_file_entries.items()
                                       if v.relative_path is not None}
         # start upload
-        zip_file_size = humanfriendly.format_size(Path(zip_file).stat().st_size)
+        zip_file_size = format_size(Path(zip_file).stat().st_size)
         self._task.get_logger().report_text(
             'Uploading compressed dataset changes ({} files, total {}) to {}'.format(
                 count, zip_file_size, self.get_default_storage()))
@@ -966,7 +965,7 @@ class Dataset(object):
             'Dataset state\n' \
             'Files added/modified: {0} - total size {1}\n' \
             'Current dependency graph: {2}\n'.format(
-                len(modified_files), humanfriendly.format_size(sum(modified_files)),
+                len(modified_files), format_size(sum(modified_files)),
                 json.dumps(self._dependency_graph, indent=2, sort_keys=True))
         # store as artifact of the Task.
         self._task.upload_artifact(
@@ -1230,8 +1229,8 @@ class Dataset(object):
             removed = len(self.list_removed_files(node))
             modified = len(self.list_modified_files(node))
             table_values += [[node, node_names.get(node, ''),
-                              removed, modified, count-modified, humanfriendly.format_size(size)]]
-            node_details[node] = [removed, modified, count-modified, humanfriendly.format_size(size)]
+                              removed, modified, count-modified, format_size(size)]]
+            node_details[node] = [removed, modified, count-modified, format_size(size)]
 
         # create DAG
         visited = []

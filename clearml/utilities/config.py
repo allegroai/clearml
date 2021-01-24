@@ -3,14 +3,14 @@ from __future__ import division
 import json
 
 import six
-import humanfriendly
 import pyparsing
 from .pyhocon import ConfigFactory, HOCONConverter
+from ..storage.util import parse_size
 
 
 def parse_human_size(value):
     if isinstance(value, six.string_types):
-        return humanfriendly.parse_size(value)
+        return parse_size(value)
     return value
 
 

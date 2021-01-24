@@ -3,10 +3,8 @@ import os
 from functools import partial
 from logging import warning
 from multiprocessing.pool import ThreadPool
-from multiprocessing import Lock
 from time import time
 
-from humanfriendly import format_timespan
 from pathlib2 import Path
 
 from ...backend_api.services import events as api_events
@@ -198,8 +196,8 @@ class Metrics(InterfaceBase):
         t_f, t_u, t_ref = \
             (self._file_related_event_time, self._file_upload_time, self._file_upload_starvation_warning_sec)
         if t_f and t_u and t_ref and (t_f - t_u) > t_ref:
-            log.warning('Possible metrics file upload starvation: files were not uploaded for %s' %
-                        format_timespan(t_ref))
+            log.warning('Possible metrics file upload starvation: '
+                        'files were not uploaded for {} seconds'.format(t_ref))
 
         # send the events in a batched request
         good_events = [ev for ev in events if ev.upload_exception is None]

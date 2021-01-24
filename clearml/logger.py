@@ -485,7 +485,7 @@ class Logger(object):
         return self._task._reporter.report_2d_scatter(
             title=title,
             series=series,
-            data=scatter.astype(np.float32),
+            data=scatter,
             iter=iteration,
             mode=mode,
             xtitle=xaxis,

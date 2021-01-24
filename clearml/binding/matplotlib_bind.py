@@ -372,10 +372,13 @@ class PatchedMatplotlib:
                             except Exception:
                                 # noinspection PyBroadException
                                 try:
-                                    plotly_renderer.plotly_fig['layout']['xaxis1'].update({
+                                    _xaxis = next(x for x in ('xaxis', 'xaxis0', 'xaxis1')
+                                                  if x in plotly_renderer.plotly_fig['layout'])
+                                    plotly_renderer.plotly_fig['layout'][_xaxis].update({
                                         'ticktext': [t.get_text() for t in x_ticks],
                                         'tickvals': [t.get_position()[0] for t in x_ticks],
                                     })
+                                    plotly_renderer.plotly_fig['layout'][_xaxis].pop('type', None)
                                 except Exception:
                                     pass
                         y_ticks = list(plotly_renderer.current_mpl_ax.get_yticklabels())
@@ -387,10 +390,13 @@ class PatchedMatplotlib:
                             except Exception:
                                 # noinspection PyBroadException
                                 try:
-                                    plotly_renderer.plotly_fig['layout']['yaxis1'].update({
+                                    _yaxis = next(x for x in ('yaxis', 'yaxis0', 'yaxis1')
+                                                  if x in plotly_renderer.plotly_fig['layout'])
+                                    plotly_renderer.plotly_fig['layout']['_yaxis'].update({
                                         'ticktext': [t.get_text() for t in y_ticks],
                                         'tickvals': [t.get_position()[1] for t in y_ticks],
                                     })
+                                    plotly_renderer.plotly_fig['layout'][_yaxis].pop('type', None)
                                 except Exception:
                                     pass
                         return deepcopy(plotly_renderer.plotly_fig)

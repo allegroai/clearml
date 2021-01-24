@@ -31,12 +31,12 @@ except ImportError:
 
 
 class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
-    def __init__(self, use_subprocess, async_enable, metrics, flush_frequency, flush_threshold):
-        super(BackgroundReportService, self).__init__(wait_period=flush_frequency)
-        self._subprocess = use_subprocess
+    def __init__(self, task, async_enable, metrics, flush_frequency, flush_threshold):
+        super(BackgroundReportService, self).__init__(
+            task=task, wait_period=flush_frequency)
         self._flush_threshold = flush_threshold
-        self._exit_event = SafeEvent() if self._subprocess else TrEvent()
-        self._queue = PrQueue() if self._subprocess else TrQueue()
+        self._exit_event = TrEvent()
+        self._queue = TrQueue()
         self._queue_size = 0
         self._res_waiting = Semaphore()
         self._metrics = metrics
@@ -50,6 +50,8 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
         if isinstance(self._queue, TrQueue):
             self._write()
             self._queue = PrQueue()
+        if isinstance(self._exit_event, TrEvent):
+            self._exit_event = SafeEvent()
         super(BackgroundReportService, self).set_subprocess_mode()
 
     def stop(self):
@@ -114,9 +116,6 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
             return False
         return not self._res_waiting.get_value()
 
-    def post_execution(self):
-        super(BackgroundReportService, self).post_execution()
-
 
 class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncManagerMixin):
     """
@@ -133,11 +132,12 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         reporter.flush()
     """
 
-    def __init__(self, metrics, flush_threshold=10, async_enable=False, use_subprocess=False):
+    def __init__(self, metrics, task, flush_threshold=10, async_enable=False, use_subprocess=False):
         """
         Create a reporter
         :param metrics: A Metrics manager instance that handles actual reporting, uploads etc.
         :type metrics: .backend_interface.metrics.Metrics
+        :param task: Task object
         :param flush_threshold: Events flush threshold. This determines the threshold over which cached reported events
             are flushed and sent to the backend.
         :type flush_threshold: int
@@ -152,7 +152,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._flush_frequency = 30.0
         self._max_iteration = 0
         self._report_service = BackgroundReportService(
-            use_subprocess=use_subprocess, async_enable=async_enable, metrics=metrics,
+            task=task, async_enable=async_enable, metrics=metrics,
             flush_frequency=self._flush_frequency, flush_threshold=flush_threshold)
         self._report_service.start()
 

@@ -5,7 +5,7 @@ from multiprocessing import Process, Lock, Event as ProcessEvent
 from multiprocessing.pool import ThreadPool
 from threading import Thread, Event as TrEvent
 from time import sleep
-from typing import List
+from typing import List, Dict
 
 from ..py3_interop import AbstractContextManager
 
@@ -55,7 +55,7 @@ class SafeEvent(object):
         return self._event.is_set()
 
     def set(self):
-        if not BackgroundMonitor.is_subprocess() or BackgroundMonitor.is_subprocess_alive():
+        if not BackgroundMonitor.is_subprocess_enabled() or BackgroundMonitor.is_subprocess_alive():
             self._event.set()
         # SafeEvent.__thread_pool.get().apply_async(func=self._event.set, args=())
 
@@ -109,25 +109,30 @@ class BackgroundMonitor(object):
     _main_process = None
     _parent_pid = None
     _sub_process_started = None
-    _instances = []  # type: List[BackgroundMonitor]
+    _instances = {}  # type: Dict[int, List[BackgroundMonitor]]
 
-    def __init__(self, wait_period):
+    def __init__(self, task, wait_period):
         self._event = TrEvent()
         self._done_ev = TrEvent()
         self._start_ev = TrEvent()
         self._task_pid = os.getpid()
         self._thread = None
         self._wait_timeout = wait_period
-        self._subprocess = None
+        self._subprocess = None if task.is_main_task() else False
+        self._task_obj_id = id(task)
 
     def start(self):
         if not self._thread:
             self._thread = True
         self._event.clear()
         self._done_ev.clear()
-        # append to instances
-        if self not in BackgroundMonitor._instances:
-            BackgroundMonitor._instances.append(self)
+        if self._subprocess is False:
+            # start the thread we are in threading mode.
+            self._start()
+        else:
+            # append to instances
+            if self not in self._get_instances():
+                self._get_instances().append(self)
 
     def wait(self, timeout=None):
         if not self._thread:
@@ -135,6 +140,9 @@ class BackgroundMonitor(object):
         self._done_ev.wait(timeout=timeout)
 
     def _start(self):
+        # if we already started do nothing
+        if isinstance(self._thread, Thread):
+            return
         self._thread = Thread(target=self._daemon)
         self._thread.daemon = True
         self._thread.start()
@@ -148,7 +156,7 @@ class BackgroundMonitor(object):
 
         if isinstance(self._thread, Thread):
             try:
-                self._instances.remove(self)
+                self._get_instances().remove(self)
             except ValueError:
                 pass
             self._thread = None
@@ -169,27 +177,34 @@ class BackgroundMonitor(object):
 
     def set_subprocess_mode(self):
         # called just before launching the daemon in a subprocess
-        self._subprocess = True
-        self._done_ev = SafeEvent()
-        self._start_ev = SafeEvent()
-        self._event = SafeEvent()
+        if not self._subprocess:
+            self._subprocess = True
+        if not isinstance(self._done_ev, SafeEvent):
+            self._done_ev = SafeEvent()
+        if not isinstance(self._start_ev, SafeEvent):
+            self._start_ev = SafeEvent()
+        if not isinstance(self._event, SafeEvent):
+            self._event = SafeEvent()
 
     def _daemon_step(self):
         pass
 
     @classmethod
-    def start_all(cls, execute_in_subprocess, wait_for_subprocess=False):
+    def start_all(cls, task, wait_for_subprocess=False):
+        # noinspection PyProtectedMember
+        execute_in_subprocess = task._report_subprocess_enabled
+
         if not execute_in_subprocess:
-            for d in BackgroundMonitor._instances:
+            for d in BackgroundMonitor._instances.get(id(task), []):
                 d._start()
         elif not BackgroundMonitor._main_process:
             cls._parent_pid = os.getpid()
             cls._sub_process_started = SafeEvent()
             cls._sub_process_started.clear()
             # setup
-            for d in BackgroundMonitor._instances:
+            for d in BackgroundMonitor._instances.get(id(task), []):
                 d.set_subprocess_mode()
-            BackgroundMonitor._main_process = Process(target=cls._background_process_start)
+            BackgroundMonitor._main_process = Process(target=cls._background_process_start, args=(id(task), ))
             BackgroundMonitor._main_process.daemon = True
             BackgroundMonitor._main_process.start()
             # wait until subprocess is up
@@ -197,7 +212,7 @@ class BackgroundMonitor(object):
                 cls._sub_process_started.wait()
 
     @classmethod
-    def _background_process_start(cls):
+    def _background_process_start(cls, task_obj_id):
         is_debugger_running = bool(getattr(sys, 'gettrace', None) and sys.gettrace())
         # restore original signal, this will prevent any deadlocks
         # Do not change the exception we need to catch base exception as well
@@ -214,14 +229,14 @@ class BackgroundMonitor(object):
             sleep(3)
 
         # launch all the threads
-        for d in cls._instances:
+        for d in cls._instances.get(task_obj_id, []):
             d._start()
 
         if cls._sub_process_started:
             cls._sub_process_started.set()
 
         # wait until we are signaled
-        for i in BackgroundMonitor._instances:
+        for i in BackgroundMonitor._instances.get(task_obj_id, []):
             # noinspection PyBroadException
             try:
                 if i._thread and i._thread.is_alive():
@@ -268,6 +283,12 @@ class BackgroundMonitor(object):
                     return child.status() != psutil.STATUS_ZOMBIE
             return False
 
+    def is_subprocess(self):
+        return self._subprocess is not False and bool(self._main_process)
+
+    def _get_instances(self):
+        return self._instances.setdefault(self._task_obj_id, [])
+
     @classmethod
-    def is_subprocess(cls):
+    def is_subprocess_enabled(cls):
         return bool(cls._main_process)

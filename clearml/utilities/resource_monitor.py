@@ -23,7 +23,7 @@ class ResourceMonitor(BackgroundMonitor):
     def __init__(self, task, sample_frequency_per_sec=2., report_frequency_sec=30.,
                  first_report_sec=None, wait_for_first_iteration_to_start_sec=180.0,
                  max_wait_for_first_iteration_to_start_sec=1800., report_mem_used_per_process=True):
-        super(ResourceMonitor, self).__init__(sample_frequency_per_sec)
+        super(ResourceMonitor, self).__init__(task=task, wait_period=sample_frequency_per_sec)
         self._task = task
         self._sample_frequency = sample_frequency_per_sec
         self._report_frequency = report_frequency_sec

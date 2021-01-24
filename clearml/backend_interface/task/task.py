@@ -70,7 +70,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     _store_diff = config.get('development.store_uncommitted_code_diff', False)
     _store_remote_diff = config.get('development.store_code_diff_from_remote', False)
-    _report_use_subprocess = bool(config.get('development.report_use_subprocess', True))
+    _report_subprocess_enabled = config.get('development.report_use_subprocess', True)
     _offline_filename = 'task.json'
 
     class TaskTypes(Enum):
@@ -505,7 +505,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         except ValueError:
             storage_uri = None
         self.__reporter = Reporter(
-            self._get_metrics_manager(storage_uri=storage_uri), use_subprocess=self._report_use_subprocess)
+            metrics=self._get_metrics_manager(storage_uri=storage_uri), task=self)
         return self.__reporter
 
     def _get_output_destination_suffix(self, extra_path=None):

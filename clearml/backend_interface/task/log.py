@@ -17,10 +17,10 @@ from ...utilities.process.mp import SafeQueue as PrQueue, SafeEvent
 class BackgroundLogService(BackgroundMonitor):
     __max_event_size = 1024 * 1024
 
-    def __init__(self, session, wait_period, worker=None, task_id=None, offline_log_filename=None):
-        super(BackgroundLogService, self).__init__(wait_period=wait_period)
+    def __init__(self, session, wait_period, worker=None, task=None, offline_log_filename=None):
+        super(BackgroundLogService, self).__init__(task=task, wait_period=wait_period)
         self._worker = worker
-        self._task_id = task_id
+        self._task_id = task.id
         self._queue = TrQueue()
         self._flush = TrEvent()
         self._last_event = None
@@ -192,7 +192,7 @@ class TaskHandler(BufferingHandler):
             offline_folder.mkdir(parents=True, exist_ok=True)
             self._offline_log_filename = offline_folder / self.__offline_filename
         self._background_log = BackgroundLogService(
-            worker=task.session.worker, task_id=task.id,
+            worker=task.session.worker, task=task,
             session=task.session, wait_period=DevWorker.report_period,
             offline_log_filename=self._offline_log_filename)
         self._background_log_size = 0

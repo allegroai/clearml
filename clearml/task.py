@@ -521,7 +521,7 @@ class Task(_Task):
             # register the main task for at exit hooks (there should only be one)
             task.__register_at_exit(task._at_exit)
             # patch OS forking if we are not logging with a subprocess
-            if not cls._report_use_subprocess:
+            if not cls._report_subprocess_enabled:
                 PatchOsFork.patch_fork()
             if auto_connect_frameworks:
                 is_auto_connect_frameworks_bool = not isinstance(auto_connect_frameworks, dict)
@@ -590,7 +590,7 @@ class Task(_Task):
 
         # start monitoring in background process or background threads
         # monitoring are: Resource monitoring and Dev Worker monitoring classes
-        BackgroundMonitor.start_all(execute_in_subprocess=task._report_use_subprocess)
+        BackgroundMonitor.start_all(task=task)
 
         return task
 

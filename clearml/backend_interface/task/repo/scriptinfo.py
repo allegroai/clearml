@@ -42,7 +42,8 @@ class ScriptRequirements(object):
             reqs, try_imports, guess, local_pks = gr.extract_reqs(
                 module_callback=ScriptRequirements.add_trains_used_packages, entry_point_filename=entry_point_filename)
             return self.create_requirements_txt(reqs, local_pks)
-        except Exception:
+        except Exception as ex:
+            _logger.warning("Failed auto-generating package requirements: {}".format(ex))
             return '', ''
 
     @staticmethod

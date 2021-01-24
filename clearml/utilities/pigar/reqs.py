@@ -426,6 +426,8 @@ def _search_path(path):
                         dev_dir = line
             if not dev_dir:
                 continue
+            if not os.path.exists(dev_dir):
+                continue
             # Egg info path.
             info_dir = [_file for _file in os.listdir(dev_dir)
                         if _file.endswith('egg-info')]

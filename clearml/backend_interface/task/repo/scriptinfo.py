@@ -12,6 +12,7 @@ from threading import Thread, Event
 
 from .util import get_command_output, remove_user_pass_from_url
 from ....backend_api import Session
+from ....config import config
 from ....debugging import get_logger
 from .detectors import GitEnvDetector, GitDetector, HgEnvDetector, HgDetector, Result as DetectionResult
 
@@ -232,6 +233,7 @@ class _JupyterObserver(object):
     _sample_frequency = 30.
     _first_sample_frequency = 3.
     _jupyter_history_logger = None
+    _store_notebook_artifact = config.get('development.store_jupyter_notebook_artifact', True)
 
     @classmethod
     def observer(cls, jupyter_notebook_filename, log_history):
@@ -371,6 +373,11 @@ class _JupyterObserver(object):
                 # get notebook python script
                 if script_code is None:
                     script_code, _ = _script_exporter.from_filename(local_jupyter_filename)
+                    if cls._store_notebook_artifact:
+                        # also upload the jupyter notebook as artifact
+                        task.upload_artifact(
+                            name='notebook', artifact_object=Path(local_jupyter_filename),
+                            preview='No preview available')
 
                 current_script_hash = hash(script_code + (current_cell or ''))
                 if prev_script_hash and prev_script_hash == current_script_hash:
@@ -688,6 +695,8 @@ class ScriptInfo(object):
                         script_dir = d
                         script_path = scripts_path[i]
                         break
+            except SystemExit:
+                raise
             except Exception as ex:
                 _log("no info for {} ({})", scripts_dir, ex)
             else:

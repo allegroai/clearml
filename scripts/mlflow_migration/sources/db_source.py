@@ -2,10 +2,9 @@ import os
 import re
 from urllib.parse import urlparse
 
-import parsers
-from db_util.dblib import *
-
-from source import Source
+from .source import Source
+from ..db_util.dblib import *
+from ..parsers import parse_datetime, get_all_artifact_files, epochs_summary_parser, insert_param, tag_parser
 
 
 class DBSource(Source):
@@ -16,7 +15,7 @@ class DBSource(Source):
     def read_general_information(self, id, _):
         info = get_run_by_run_uuid(id)
         start_time, end_time, artifact_uri, name = info
-        data_time_start, data_time_end = parsers.parse_datetime(start_time, end_time)
+        data_time_start, data_time_end = parse_datetime(start_time, end_time)
         self.info[id][self.general_information] = {
             "started": data_time_start,
             "completed": data_time_end,
@@ -39,7 +38,7 @@ class DBSource(Source):
         elif re.match(r"^[Ff]ile:/", artifact_address):
             p = urlparse(artifact_address)
             path = os.path.abspath(os.path.join(p.netloc, p.path))
-            parsers.get_all_artifact_files(self, id, path)
+            get_all_artifact_files(self, id, path)
 
     def read_metrics(self, id, _):
         self.info[id][self.metrics] = []
@@ -49,7 +48,7 @@ class DBSource(Source):
             if len(parts) > 3:
                 parts = parts[0:-1]
             if len(parts) == 2:
-                parsers.epochs_summary_parser(
+                epochs_summary_parser(
                     self,
                     id,
                     [self.metrics],
@@ -57,7 +56,7 @@ class DBSource(Source):
                     get_metric_values_by_run_uuid(id, name),
                 )
             else:
-                parsers.epochs_summary_parser(
+                epochs_summary_parser(
                     self, id, parts, name, get_metric_values_by_run_uuid(id, name)
                 )
 
@@ -66,7 +65,7 @@ class DBSource(Source):
         param_names = get_param_names_by_run_uuid(id)
         for tag in param_names:
             value = get_param_value_by_run_uuid(id, tag)
-            parsers.insert_param(self, id, value, tag)
+            insert_param(self, id, value, tag)
 
     def read_tags(self, id, _):
         self.info[id][self.tags] = {"VALUETAG": {}}
@@ -80,7 +79,7 @@ class DBSource(Source):
                 tag = "VALUETAG_" + name
             self.tag_parsers[tag](
                 id, value
-            ) if tag in self.tag_parsers.keys() else parsers.tag_parser(
+            ) if tag in self.tag_parsers.keys() else tag_parser(
                 self, id, tag, value
             )
 

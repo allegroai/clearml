@@ -5,16 +5,14 @@ from urllib.parse import urlparse
 
 import mlflow
 import mlflow.server
-from db_util.dblib import get_run_uuids
-from db_util.dblib import init_session
-from db_util.dblib import validate_db_uri
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
 
-from db_source import DBSource
-from http_source import HttpSource
-from local_source import LocalSource
+from .db_source import DBSource
+from .http_source import HttpSource
+from .local_source import LocalSource
+from ..db_util.dblib import get_run_uuids, init_session, validate_db_uri
 
 
 class SourceFactory:

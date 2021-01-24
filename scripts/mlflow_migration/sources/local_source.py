@@ -1,9 +1,9 @@
 import os
 
-import parsers
 import yaml
 
-from source import Source
+from .source import Source
+from ..parsers import parse_datetime, get_all_artifact_files, epochs_summary_parser, insert_param, tag_parser
 
 
 class LocalSource(Source):
@@ -23,7 +23,7 @@ class LocalSource(Source):
                     timestamp_end_time = (
                         documents["end_time"] if documents["end_time"] else None
                     )
-                    data_time_start, data_time_end = parsers.parse_datetime(
+                    data_time_start, data_time_end = parse_datetime(
                         timestamp_start_time, timestamp_end_time
                     )
                     name = documents["name"]
@@ -36,7 +36,7 @@ class LocalSource(Source):
 
     def read_artifacts(self, id, path):
         self.info[id][self.artifacts] = {}
-        parsers.get_all_artifact_files(self, id, path)
+        get_all_artifact_files(self, id, path)
 
     def read_metrics(self, id, path):
         self.info[id][self.metrics] = []
@@ -56,7 +56,7 @@ class LocalSource(Source):
         with open(path + os.sep + name) as file:
             lines = file.readlines()
             lines = [x.strip() for x in lines]
-            parsers.epochs_summary_parser(self, id, path_tree, tag, lines)
+            epochs_summary_parser(self, id, path_tree, tag, lines)
 
     def __read_all_sub_directories_content(self, reader, path, path_tree, id):
         contents = list(os.walk(path))
@@ -79,7 +79,7 @@ class LocalSource(Source):
             tag = name.strip().replace("mlflow.", "")
             with open(path + os.sep + name) as file:
                 value = file.readline().strip()
-                parsers.insert_param(self, id, value, tag)
+                insert_param(self, id, value, tag)
 
     def read_tags(self, id, path):
         self.info[id][self.tags] = {"VALUETAG": {}}
@@ -98,7 +98,7 @@ class LocalSource(Source):
                 value = file.readline().strip()
                 self.tag_parsers[tag](
                     id, value
-                ) if tag in self.tag_parsers.keys() else parsers.tag_parser(
+                ) if tag in self.tag_parsers.keys() else tag_parser(
                     self, id, tag, value
                 )
 

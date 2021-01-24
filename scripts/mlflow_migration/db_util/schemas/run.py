@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, BigInteger
 
-from base import Base
+from .base import Base
 
 
 class Run(Base):

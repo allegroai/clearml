@@ -3,10 +3,10 @@ from urllib.parse import urlparse
 
 from sqlalchemy import distinct
 
-from schemas.metric import Metric
-from schemas.param import Param
-from schemas.run import Run
-from schemas.tag import Tag
+from .schemas.metric import Metric
+from .schemas.param import Param
+from .schemas.run import Run
+from .schemas.tag import Tag
 
 DATABASE_ENGINES = ["postgresql", "mysql", "sqlite", "mssql"]
 
@@ -137,4 +137,5 @@ __all__ = [
     "get_run_by_run_uuid",
     "validate_db_uri",
     "close",
+    "init_session",
 ]

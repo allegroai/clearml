@@ -7,13 +7,12 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor
 from itertools import chain
 
-from clearml import Task
 from tqdm import tqdm
 
+from clearml import Task
 from .db_util.dblib import close
 from .sources import SourceFactory, Source
-from .time_counter import Timer
-from .util import chunks
+from .util import chunks, Timer
 
 
 def do_migration(path: str, analysis: bool):

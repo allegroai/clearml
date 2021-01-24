@@ -2,9 +2,10 @@ import threading
 from abc import ABC, abstractmethod
 from typing import Tuple, Dict, List
 
-import parsers
 from clearml import Task
-from clearml.model import ARCHIVED_TAG
+from ..parsers import source_name_parser, log_model_history_tag_parser
+
+ARCHIVED_TAG = "archived"
 
 
 class Source(ABC):
@@ -55,8 +56,8 @@ class Source(ABC):
         self.msgs = {"ERROR": [], "FAILED": []}
         self.project_link = None
         self.tag_parsers = {
-            "source.name": parsers.source_name_parser(self),
-            "log-model.history": parsers.log_model_history_tag_parser(self),
+            "source.name": source_name_parser(self),
+            "log-model.history": log_model_history_tag_parser(self),
         }
         self.info = {}
         self.ID_to_Name = {}
@@ -114,12 +115,12 @@ class Source(ABC):
                     self.get_run_name_by_id(id),
                 )
                 if task:
-                    task_tags = (
+                    system_tags = (
                         task.data.system_tags
                         if hasattr(task.data, "system_tags")
                         else task.data.tags
                     )
-                    if ARCHIVED_TAG not in task_tags:
+                    if ARCHIVED_TAG not in system_tags:
                         del self.info[id]
                         self.msgs["FAILED"].append(
                             f"task {id} already exist, if you want to migrate it again, "

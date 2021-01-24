@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import json
 import os
@@ -10,8 +12,6 @@ import pandas as pd
 import yaml
 from PIL import Image
 from dateutil.tz import tzutc
-
-from sources.source import Source
 
 
 def tag_parser(source, id, tag, value):
@@ -35,7 +35,7 @@ def source_name_parser(source):
     return f
 
 
-def log_model_history_tag_parser(source: Source) -> Any:
+def log_model_history_tag_parser(source: 'sources.Source') -> Any:
     def f(id: str, value: str) -> None:
         """
         Store history log-model information

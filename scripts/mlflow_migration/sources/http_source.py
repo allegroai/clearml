@@ -2,9 +2,9 @@ import re
 
 import mlflow
 import mlflow.server
-import parsers
 
-from source import Source
+from .source import Source
+from ..parsers import parse_datetime, epochs_summary_parser, insert_param, tag_parser
 
 
 class HttpSource(Source):
@@ -28,7 +28,7 @@ class HttpSource(Source):
         start_time = info.start_time
         end_time = info.end_time
         artifact_uri = info.artifact_uri
-        data_time_start, data_time_end = parsers.parse_datetime(start_time, end_time)
+        data_time_start, data_time_end = parse_datetime(start_time, end_time)
 
         self.info[id][self.general_information] = {
             "started": data_time_start,
@@ -64,7 +64,7 @@ class HttpSource(Source):
             if len(parts) > 3:
                 parts = parts[0:-1]
             if len(parts) == 2:
-                parsers.epochs_summary_parser(
+                epochs_summary_parser(
                     self,
                     id,
                     [self.metrics],
@@ -72,14 +72,14 @@ class HttpSource(Source):
                     value_gen,
                 )
             else:
-                parsers.epochs_summary_parser(self, id, parts, name, value_gen)
+                epochs_summary_parser(self, id, parts, name, value_gen)
 
     def read_params(self, id, _):
         self.info[id][self.params] = {}
         params = self.__get_run_by_run_id(id).data.params
         for param_name in params.keys():
             value = params[param_name]
-            parsers.insert_param(self, id, value, param_name, True)
+            insert_param(self, id, value, param_name, True)
 
     def read_tags(self, id, _):
         self.info[id][self.tags] = {"VALUETAG": {}}
@@ -93,7 +93,7 @@ class HttpSource(Source):
                 tag = "VALUETAG_" + name
             self.tag_parsers[tag](
                 id, tags[name]
-            ) if tag in self.tag_parsers.keys() else parsers.tag_parser(
+            ) if tag in self.tag_parsers.keys() else tag_parser(
                 self, id, tag, tags[name]
             )
 

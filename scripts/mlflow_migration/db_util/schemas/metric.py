@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Float, BigInteger, Boolean
 
-from base import Base
+from .base import Base
 
 
 class Metric(Base):

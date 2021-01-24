@@ -599,7 +599,7 @@ class Task(_Task):
         commit=None,  # Optional[str]
         script=None,  # Optional[str]
         working_directory=None,  # Optional[str]
-        packages=None,  # Optional[Sequence[str]]
+        packages=None,  # Optional[Union[bool, Sequence[str]]]
         requirements_file=None,  # Optional[Union[str, Path]]
         docker=None,  # Optional[str]
         argparse_args=None,  # Optional[Sequence[Tuple[str, str]]]
@@ -633,6 +633,8 @@ class Task(_Task):
         :param working_directory: Working directory to launch the script from. Default: repository root folder.
             Relative to repo root or local folder.
         :param packages: Manually specify a list of required packages. Example: ["tqdm>=2.1", "scikit-learn"]
+            or `True` to automatically create requirements
+            based on locally installed packages (repository must be local).
         :param requirements_file: Specify requirements.txt file to install when setting the session.
             If not provided, the requirements.txt from the repository will be used.
         :param docker: Select the docker image to be executed in by the remote session

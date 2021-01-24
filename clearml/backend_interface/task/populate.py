@@ -23,7 +23,7 @@ class CreateAndPopulate(object):
             commit=None,  # Optional[str]
             script=None,  # Optional[str]
             working_directory=None,  # Optional[str]
-            packages=None,  # Optional[Sequence[str]]
+            packages=None,  # Optional[Union[bool, Sequence[str]]]
             requirements_file=None,  # Optional[Union[str, Path]]
             docker=None,  # Optional[str]
             base_task_id=None,  # Optional[str]
@@ -53,6 +53,8 @@ class CreateAndPopulate(object):
         :param working_directory: Working directory to launch the script from. Default: repository root folder.
             Relative to repo root or local folder.
         :param packages: Manually specify a list of required packages. Example: ["tqdm>=2.1", "scikit-learn"]
+            or `True` to automatically create requirements
+            based on locally installed packages (repository must be local).
         :param requirements_file: Specify requirements.txt file to install when setting the session.
             If not provided, the requirements.txt from the repository will be used.
         :param docker: Select the docker image to be executed in by the remote session
@@ -88,8 +90,9 @@ class CreateAndPopulate(object):
         self.repo = repo
         self.script = script
         self.cwd = working_directory
-        assert not packages or isinstance(packages, (tuple, list))
-        self.packages = list(packages) if packages else None
+        assert not packages or isinstance(packages, (tuple, list, bool))
+        self.packages = list(packages) if packages is not None and not isinstance(packages, bool) \
+            else (packages or None)
         self.requirements_file = Path(requirements_file) if requirements_file else None
         self.base_task_id = base_task_id
         self.docker = docker
@@ -126,7 +129,8 @@ class CreateAndPopulate(object):
             repo_info, requirements = ScriptInfo.get(
                 filepaths=[entry_point],
                 log=getLogger(),
-                create_requirements=False, uncommitted_from_remote=True)
+                create_requirements=self.packages is True, uncommitted_from_remote=True,
+                detect_jupyter_notebook=False)
 
         # check if we have no repository and no requirements raise error
         if self.raise_on_missing_entries and (not self.requirements_file and not self.packages) \
@@ -163,7 +167,7 @@ class CreateAndPopulate(object):
             task_state['script']['working_dir'] = repo_info.script['working_dir']
             task_state['script']['entry_point'] = repo_info.script['entry_point']
             task_state['script']['binary'] = repo_info.script['binary']
-            task_state['script']['requirements'] = {}
+            task_state['script']['requirements'] = repo_info.script.get('requirements') or {}
             if self.cwd:
                 self.cwd = self.cwd
                 cwd = self.cwd if Path(self.cwd).is_dir() else (
@@ -199,7 +203,7 @@ class CreateAndPopulate(object):
         if self.requirements_file:
             with open(self.requirements_file.as_posix(), 'rt') as f:
                 reqs = [line.strip() for line in f.readlines()]
-        if self.packages:
+        if self.packages and self.packages is not True:
             reqs += self.packages
         if reqs:
             # make sure we have clearml.
@@ -214,7 +218,7 @@ class CreateAndPopulate(object):
             if not clearml_found:
                 reqs.append('clearml')
             task_state['script']['requirements'] = {'pip': '\n'.join(reqs)}
-        elif not self.repo and repo_info:
+        elif not self.repo and repo_info and not repo_info.script.get('requirements'):
             # we are in local mode, make sure we have "requirements.txt" it is a must
             reqs_txt_file = Path(repo_info.script['repo_root']) / "requirements.txt"
             if self.raise_on_missing_entries and not reqs_txt_file.is_file():

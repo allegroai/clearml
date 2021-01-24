@@ -643,9 +643,10 @@ class ScriptInfo(object):
         return ''
 
     @classmethod
-    def _get_script_info(cls, filepaths, check_uncommitted=True, create_requirements=True, log=None,
-                         uncommitted_from_remote=False):
-        jupyter_filepath = cls._get_jupyter_notebook_filename()
+    def _get_script_info(
+            cls, filepaths, check_uncommitted=True, create_requirements=True, log=None,
+            uncommitted_from_remote=False, detect_jupyter_notebook=True):
+        jupyter_filepath = cls._get_jupyter_notebook_filename() if detect_jupyter_notebook else None
         if jupyter_filepath:
             scripts_path = [Path(os.path.normpath(jupyter_filepath)).absolute()]
         else:
@@ -756,14 +757,20 @@ class ScriptInfo(object):
 
     @classmethod
     def get(cls, filepaths=None, check_uncommitted=True, create_requirements=True, log=None,
-            uncommitted_from_remote=False):
+            uncommitted_from_remote=False, detect_jupyter_notebook=True):
         try:
             if not filepaths:
                 filepaths = [sys.argv[0], ]
             return cls._get_script_info(
-                filepaths=filepaths, check_uncommitted=check_uncommitted,
-                create_requirements=create_requirements, log=log, uncommitted_from_remote=uncommitted_from_remote)
-        except Exception as ex:
+                filepaths=filepaths,
+                check_uncommitted=check_uncommitted,
+                create_requirements=create_requirements, log=log,
+                uncommitted_from_remote=uncommitted_from_remote,
+                detect_jupyter_notebook=detect_jupyter_notebook,
+            )
+        except SystemExit:
+            pass
+        except BaseException as ex:
             if log:
                 log.warning("Failed auto-detecting task repository: {}".format(ex))
         return ScriptInfoResult(), None

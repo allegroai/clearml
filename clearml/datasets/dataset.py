@@ -339,8 +339,10 @@ class Dataset(object):
 
         if not count:
             zip_file.unlink()
-            LoggerRoot.get_base_logger().warning('No pending files, uploaded aborted')
-            return False
+            LoggerRoot.get_base_logger().info('No pending files, skipping upload.')
+            self._dirty = False
+            self._serialize()
+            return True
 
         archive_preview = 'Dataset archive content [{} files]:\n'.format(count) + archive_preview
 
@@ -651,6 +653,7 @@ class Dataset(object):
         instance._dependency_graph[instance._id] = [p._id for p in parent_datasets]
         instance._serialize()
         instance._task.flush(wait_for_uploads=True)
+        cls._set_project_system_tags(instance._task)
         return instance
 
     @classmethod
@@ -1290,6 +1293,17 @@ class Dataset(object):
             config_type='read-only',
             config_text=dataset_details
         )
+
+    @classmethod
+    def _set_project_system_tags(cls, task):
+        from ..backend_api.services import projects
+        res = task.send(projects.GetByIdRequest(project=task.project), raise_on_errors=False)
+        if not res or not res.response or not res.response.project:
+            return
+        system_tags = res.response.project.system_tags or []
+        if cls.__tag not in system_tags:
+            system_tags += [cls.__tag]
+            task.send(projects.UpdateRequest(project=task.project, system_tags=system_tags), raise_on_errors=False)
 
     def is_dirty(self):
         # type: () -> bool

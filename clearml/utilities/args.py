@@ -150,10 +150,11 @@ class PatchArgumentParser:
             if parsed_args_namespace and isinstance(parsed_args_namespace, Namespace):
                 for k, v in parser._parsed_arg_string_lookup.items():  # noqa
                     if hasattr(parsed_args_namespace, k):
+                        if isinstance(getattr(parsed_args_namespace, k, None), list) and not isinstance(v, list):
+                            v = [v]
                         setattr(
                             parsed_args_namespace, k,
-                            str([v] if (isinstance(getattr(parsed_args_namespace, k, None), list) and
-                                        not isinstance(v, list)) else v)
+                            v if isinstance(v, list) else str(v)
                         )
 
         PatchArgumentParser._last_parsed_args = (PatchArgumentParser._last_parsed_args or []) + [parsed_args]

@@ -95,7 +95,7 @@ class _Arguments(object):
                 else:
                     args_dict = call_original_argparser(a_parser, args=a_args, namespace=a_namespace).__dict__
             defaults_ = {
-                a.dest: cls.__cast_arg(args_dict.get(a.dest)) for a in actions
+                a.dest: cls.__cast_arg(args_dict.get(a.dest), a.type) for a in actions
             }
         except Exception:
             # don't crash us if we failed parsing the inputs
@@ -539,10 +539,12 @@ class _Arguments(object):
         return dictionary
 
     @classmethod
-    def __cast_arg(cls, arg):
+    def __cast_arg(cls, arg, dtype=None):
         if arg is None or callable(arg):
             return ''
         # If this an instance, just store the type
         if str(hex(id(arg))) in str(arg):
             return str(type(arg))
+        if dtype in (float, int) and isinstance(arg, list):
+            return [dtype(a) for a in arg]
         return arg

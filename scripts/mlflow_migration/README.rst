@@ -1,7 +1,8 @@
-==============================================================
-Migration script: Migrate your projects form Mlflow to Trains!
-==============================================================
-Mirgrate all of the tracked experiments, artfiacts, configurations and metrics.
+===============================================================
+Migrate your projects form Mlflow to ClearML!
+===============================================================
+
+Migrate all of the tracked experiments, artifacts, configurations and metrics.
 
 Installing
 ----------
@@ -22,11 +23,11 @@ Supported paths:
 
 Run::
 
-    python trains_immigration.py <path
+    python -m mlflow_migration <path>
 
 
 Important Notes
 ---------------
 - Migrating artifacts from remote HTTP server is only supported if artifacts are stored in an external storage (e.g. S3) and not locally.
-- MLflow tags (e.g., "estimator_class" etc.) will be recorded in Trains configuration tab under "MLflow Tags" section.
-- Custom MLFlow project names (not run-uuid) won't be reocrded when migrating from a remote HTTP server (MLFlow API limitation)
+- MLflow tags (e.g., "estimator_class" etc.) will be recorded in ClearML configuration tab under "MLflow Tags" section.
+- Custom MLFlow project names (not run-uuid) won't be recorded when migrating from a remote HTTP server (MLFlow API limitation)

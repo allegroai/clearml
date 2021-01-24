@@ -1,8 +1,7 @@
-import time;
+import time
+
 
 class Timer:
-
-
     def __init__(self):
         self.dict_start = {
             "read_general_information": {},
@@ -17,7 +16,7 @@ class Timer:
             "Task.get_task": {},
             "task.export_task": {},
             "task.update_task": {},
-            "task.connect_configuration": {}
+            "task.connect_configuration": {},
         }
         self.dict_end = {
             "read_general_information": {},
@@ -32,32 +31,34 @@ class Timer:
             "Task.get_task": {},
             "task.export_task": {},
             "task.update_task": {},
-            "task.connect_configuration": {}
-
+            "task.connect_configuration": {},
         }
         self.current_milli_time = lambda: int(round(time.time() * 1000))
 
-    def start(self, operation ,thread_id, experiment_id):
-        self.dict_start[operation][(thread_id,experiment_id)] = self.current_milli_time()
-    def end(self, operation ,thread_id, experiment_id):
-        self.dict_end[operation][(thread_id,experiment_id)] = self.current_milli_time()
+    def start(self, operation, thread_id, experiment_id):
+        self.dict_start[operation][
+            (thread_id, experiment_id)
+        ] = self.current_milli_time()
+
+    def end(self, operation, thread_id, experiment_id):
+        self.dict_end[operation][(thread_id, experiment_id)] = self.current_milli_time()
 
     def print_times(self):
-        res = ''
+        res = ""
         average_dict = {}
-        for op,dict in self.dict_start.items():
+        for op, dict_ in self.dict_start.items():
             n = 0
-            for p,start_time in dict.items():
-                thread_id,experiment_id = p
+            for p, start_time in dict_.items():
+                thread_id, experiment_id = p
                 end_time = self.dict_end[op][p]
                 total_time = end_time - start_time
-                res += 'Thread: ' +str(thread_id) + ' experiment: ' + str(experiment_id) + ' operation: '+ op + ' time: '+ str(total_time) +' millisecond.\n'
+                res += f"Thread: {thread_id} experiment: {experiment_id} operation: {op} time: {total_time}ms\n"
                 if op in average_dict.keys():
-                    average_dict[op] = (total_time + (n * average_dict[op]))/(n+1)
+                    average_dict[op] = (total_time + (n * average_dict[op])) / (n + 1)
                 else:
                     average_dict[op] = total_time
-                n+=1
-        for op,average in average_dict.items():
-            res+= op +' average time: ' + str(average) + ' millisecond\n'
-        if not res=='':
+                n += 1
+        for op, average in average_dict.items():
+            res += f"{op} average time: {average}ms\n"
+        if not res == "":
             print(res[:-1])

@@ -1,9 +1,11 @@
-from db_util.schemas.base import Base
 from sqlalchemy import Column, Integer, String, BigInteger
+
+from base import Base
 
 
 class Run(Base):
-    __tablename__ = 'runs'
+    __tablename__ = "runs"
+
     run_uuid = Column(String, primary_key=True)
     name = Column(String)
     source_type = Column(String)
@@ -18,7 +20,22 @@ class Run(Base):
     artifact_uri = Column(String)
     experiment_id = Column(Integer)
 
-    def __init__(self, run_uuid, name, source_type, source_name, entry_point_name, user_id, status, start_time, end_time, source_version, lifecycle_stage, artifact_uri, experiment_id):
+    def __init__(
+        self,
+        run_uuid,
+        name,
+        source_type,
+        source_name,
+        entry_point_name,
+        user_id,
+        status,
+        start_time,
+        end_time,
+        source_version,
+        lifecycle_stage,
+        artifact_uri,
+        experiment_id,
+    ):
         self.run_uuid = run_uuid
         self.name = name
         self.source_type = source_type
@@ -34,6 +51,24 @@ class Run(Base):
         self.experiment_id = experiment_id
 
     def __repr__(self):
-        return "<Run(run_uuid='%s', name='%s', source_type='%s', source_name='%s', entry_point_name='%s', user_id='%s', status='%s', start_time='%s', end_time='%s', source_version='%s', lifecycle_stage='%s', artifact_uri='%s', experiment_id='%s')>" %(
-            self.run_uuid, self.name, self.source_type, self.source_name, self.entry_point_name, self.user_id,self.status, self.start_time, self.end_time, self.source_version, self.lifecycle_stage, self.artifact_uri, self.experiment_id
+        return (
+            "<Run(run_uuid='%s', name='%s', source_type='%s', source_name='%s', "
+            "entry_point_name='%s', user_id='%s', status='%s', start_time='%s', "
+            "end_time='%s', source_version='%s', lifecycle_stage='%s', artifact_uri='%s', "
+            "experiment_id='%s')>"
+            % (
+                self.run_uuid,
+                self.name,
+                self.source_type,
+                self.source_name,
+                self.entry_point_name,
+                self.user_id,
+                self.status,
+                self.start_time,
+                self.end_time,
+                self.source_version,
+                self.lifecycle_stage,
+                self.artifact_uri,
+                self.experiment_id,
+            )
         )

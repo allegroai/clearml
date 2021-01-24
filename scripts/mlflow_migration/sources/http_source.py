@@ -1,28 +1,26 @@
-import os
 import re
 
-import parsers
-from os.path import expanduser
-from migrant_classes.migrant import Migrant
 import mlflow
 import mlflow.server
+import parsers
+
+from source import Source
 
 
-class HttpMigrant(Migrant):
-    def __init__(self, addresses,mlflow_url,pbar,timer,analysis,project_indicator):
+class HttpSource(Source):
+    def __init__(self, addresses, mlflow_url, pbar, timer, analysis, project_indicator):
         mlflow.tracking.set_tracking_uri(mlflow_url)
         self.runs = {}
         self.__seed(addresses)
-        super().__init__(addresses,pbar,timer,analysis,project_indicator)
+        super().__init__(addresses, pbar, timer, analysis, project_indicator)
         self.branch = "Remote_Http_server"
 
-
-    def __seed(self,addresses):
-        for id,_ in addresses:
+    def __seed(self, addresses):
+        for id, _ in addresses:
             mlflow_id = id[1:]
             self.runs[id] = mlflow.tracking.MlflowClient().get_run(mlflow_id)
 
-    def __get_run_by_run_id(self,id):
+    def __get_run_by_run_id(self, id):
         return self.runs[id]
 
     def read_general_information(self, id, _):
@@ -30,13 +28,13 @@ class HttpMigrant(Migrant):
         start_time = info.start_time
         end_time = info.end_time
         artifact_uri = info.artifact_uri
-        data_time_start, data_time_end = parsers.parse_DateTime(start_time,end_time)
+        data_time_start, data_time_end = parsers.parse_datetime(start_time, end_time)
 
         self.info[id][self.general_information] = {
             "started": data_time_start,
             "completed": data_time_end,
             "artifact_uri": artifact_uri,
-            "name": '' # No supported (MLflow)API for get\set run name.
+            "name": "",  # No supported (MLflow)API for get\set run name.
         }
 
     def read_artifacts(self, id, _):
@@ -49,16 +47,18 @@ class HttpMigrant(Migrant):
         if re.match(r"^(?:s3:/)|(?:gs:/)|(?:azure:/)", artifact_address):
             artifacts = mlflow.tracking.MlflowClient().list_artifact(id[1:])
             for artifact in artifacts:
-                parts = artifact.path.split('/')
-                self.insert_artifact_by_type(id, "storage-server",parts[-1], artifact.path)
+                parts = artifact.path.split("/")
+                self.insert_artifact_by_type(
+                    id, "storage-server", parts[-1], artifact.path
+                )
 
     def read_metrics(self, id, _):
         self.info[id][self.metrics] = []
-        run_data =  self.__get_run_by_run_id(id).data
+        run_data = self.__get_run_by_run_id(id).data
         metric_names = run_data.metrics.keys()
         run_id = id[1:]
         for name in metric_names:
-            entries = mlflow.tracking.MlflowClient().get_metric_history(run_id,name)
+            entries = mlflow.tracking.MlflowClient().get_metric_history(run_id, name)
             value_gen = (str(entry.value) for entry in entries)
             parts = (self.metrics + "/" + name).split("/")
             if len(parts) > 3:
@@ -72,19 +72,17 @@ class HttpMigrant(Migrant):
                     value_gen,
                 )
             else:
-                parsers.epochs_summary_parser(
-                    self, id, parts, name, value_gen
-                )
+                parsers.epochs_summary_parser(self, id, parts, name, value_gen)
 
     def read_params(self, id, _):
         self.info[id][self.params] = {}
         params = self.__get_run_by_run_id(id).data.params
         for param_name in params.keys():
             value = params[param_name]
-            parsers.insert_param(self, id, value, param_name,True)
+            parsers.insert_param(self, id, value, param_name, True)
 
     def read_tags(self, id, _):
-        self.info[id][self.tags] = {"VALUETAG":{}}
+        self.info[id][self.tags] = {"VALUETAG": {}}
         tags = self.__get_run_by_run_id(id).data.tags
         for name in tags.keys():
             if "mlflow." in name:
@@ -138,8 +136,8 @@ class HttpMigrant(Migrant):
     def transmit_information(self, id):
         super().transmit_information(id)
 
-    def call_func(self, func_name ,id,func, *args):
-        return super().call_func(func_name ,id,func, *args)
+    def call_func(self, func_name, id, func, *args):
+        return super().call_func(func_name, id, func, *args)
 
     def get_run_name_by_id(self, id):
         return super().get_run_name_by_id(id)

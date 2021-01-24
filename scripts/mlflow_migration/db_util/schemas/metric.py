@@ -1,9 +1,11 @@
-from db_util.schemas.base import Base
 from sqlalchemy import Column, String, Float, BigInteger, Boolean
+
+from base import Base
 
 
 class Metric(Base):
     __tablename__ = 'metrics'
+
     key = Column(String, primary_key=True)
     value = Column(Float, primary_key=True)
     timestamp = Column(BigInteger, primary_key=True)
@@ -18,5 +20,8 @@ class Metric(Base):
         self.run_uuid = run_uuid
         self.step = step
         self.is_nan = is_nan
+
     def __repr__(self):
-        return "<User(key='%s', value='%s', timestamp='%s', run_uuid='%s', step='%s', is_nan='%s')>" % (self.key, self.value, self.timestamp, self.run_uuid, self.step, self.is_nan)
+        return "<User(key='%s', value='%s', timestamp='%s', run_uuid='%s', step='%s', is_nan='%s')>" % (
+            self.key, self.value, self.timestamp, self.run_uuid, self.step, self.is_nan
+        )

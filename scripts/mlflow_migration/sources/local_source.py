@@ -1,11 +1,14 @@
-from migrant_classes.migrant import Migrant
 import os
-import yaml
-import parsers
 
-class LocalMigrant(Migrant):
-    def __init__(self, paths,_,pbar,timer,analysis,project_indicator):
-        super().__init__(paths,pbar,timer,analysis,project_indicator)
+import parsers
+import yaml
+
+from source import Source
+
+
+class LocalSource(Source):
+    def __init__(self, paths, _, pbar, timer, analysis, project_indicator):
+        super().__init__(paths, pbar, timer, analysis, project_indicator)
         self.branch = "Local"
 
     def read_general_information(self, id, path):
@@ -15,21 +18,19 @@ class LocalMigrant(Migrant):
                 with open(path + os.sep + name) as file:
                     documents = yaml.full_load(file)
                     timestamp_start_time = (
-                        documents["start_time"]
-                        if documents["start_time"]
-                        else None
+                        documents["start_time"] if documents["start_time"] else None
                     )
                     timestamp_end_time = (
-                        documents["end_time"]
-                        if documents["end_time"]
-                        else None
+                        documents["end_time"] if documents["end_time"] else None
                     )
-                    data_time_start, data_time_end = parsers.parse_DateTime(timestamp_start_time, timestamp_end_time)
+                    data_time_start, data_time_end = parsers.parse_datetime(
+                        timestamp_start_time, timestamp_end_time
+                    )
                     name = documents["name"]
                     self.info[id][self.general_information] = {
                         "started": data_time_start,
                         "completed": data_time_end,
-                        "name": name
+                        "name": name,
                     }
                     break
 
@@ -40,8 +41,8 @@ class LocalMigrant(Migrant):
     def read_metrics(self, id, path):
         self.info[id][self.metrics] = []
         self.__read_all_sub_directories_content(
-            lambda id, name, path, path_tree: self.__read_metric_content(
-                id, name, path, path_tree
+            lambda id_, name, path_, path_tree: self.__read_metric_content(
+                id_, name, path_, path_tree
             ),
             path,
             [self.metrics],
@@ -64,10 +65,10 @@ class LocalMigrant(Migrant):
             reader(id, name, path, path_tree)
         dirs = contents[0][1]
         current_tree = path_tree.copy()
-        for dir in dirs:
-            current_tree.append(dir)
+        for dir_ in dirs:
+            current_tree.append(dir_)
             self.__read_all_sub_directories_content(
-                reader, path + os.sep + dir, current_tree, id
+                reader, path + os.sep + dir_, current_tree, id
             )
             current_tree.pop()
 
@@ -81,7 +82,7 @@ class LocalMigrant(Migrant):
                 parsers.insert_param(self, id, value, tag)
 
     def read_tags(self, id, path):
-        self.info[id][self.tags] = {"VALUETAG":{}}
+        self.info[id][self.tags] = {"VALUETAG": {}}
         files = list(os.walk(path))[0][2]
         for name in files:
             with open(path + os.sep + name) as file:
@@ -140,8 +141,8 @@ class LocalMigrant(Migrant):
     def transmit_information(self, id):
         super().transmit_information(id)
 
-    def call_func(self, func_name ,id,func, *args):
-        return super().call_func(func_name ,id,func, *args)
+    def call_func(self, func_name, id, func, *args):
+        return super().call_func(func_name, id, func, *args)
 
     def get_run_name_by_id(self, id):
         return super().get_run_name_by_id(id)

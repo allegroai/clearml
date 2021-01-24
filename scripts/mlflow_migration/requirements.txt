@@ -1,2 +1,7 @@
+clearml>=0.16.3,<0.18.0
 mlflow==1.12.1
-trains==0.16.3
+pandas
+pillow
+python-dateutil
+pyyaml
+tqdm

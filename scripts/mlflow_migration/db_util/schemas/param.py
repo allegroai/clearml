@@ -1,9 +1,11 @@
-from db_util.schemas.base import Base
 from sqlalchemy import Column, String
+
+from base import Base
 
 
 class Param(Base):
     __tablename__ = "params"
+
     key = Column(String, primary_key=True)
     value = Column(String)
     run_uuid = Column(String, primary_key=True)

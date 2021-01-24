@@ -504,7 +504,7 @@ class Dataset(object):
         :return: List of files with relative path
             (files might not be available locally until get_local_copy() is called)
         """
-        datasets = self._dependency_graph[self._id] if not dataset_id else [dataset_id]
+        datasets = self._dependency_graph[self._id] if not dataset_id or dataset_id == self._id else [dataset_id]
         unified_list = set()
         for ds_id in datasets:
             dataset = self.get(dataset_id=ds_id)
@@ -522,7 +522,7 @@ class Dataset(object):
         :return: List of files with relative path
             (files might not be available locally until get_local_copy() is called)
         """
-        datasets = self._dependency_graph[self._id] if not dataset_id else [dataset_id]
+        datasets = self._dependency_graph[self._id] if not dataset_id or dataset_id == self._id else [dataset_id]
         unified_list = dict()
         for ds_id in datasets:
             dataset = self.get(dataset_id=ds_id)
@@ -541,7 +541,7 @@ class Dataset(object):
         :return: List of files with relative path
             (files might not be available locally until get_local_copy() is called)
         """
-        datasets = self._dependency_graph[self._id] if not dataset_id else [dataset_id]
+        datasets = self._dependency_graph[self._id] if not dataset_id or dataset_id == self._id else [dataset_id]
         unified_list = set()
         for ds_id in datasets:
             dataset = self.get(dataset_id=ds_id)

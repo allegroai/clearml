@@ -309,6 +309,9 @@ def is_std_or_local_lib(name):
             module_info = importlib.util.find_spec(name) # noqa
         except ImportError:
             exist = False
+        except ValueError:
+            # if we got here, the loader failed on us, meaning this is definitely a module and not std
+            return False
         mpath = module_info.origin if module_info else None
 
     if exist and mpath is not None:

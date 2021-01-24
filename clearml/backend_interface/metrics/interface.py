@@ -16,6 +16,7 @@ from ...debugging import get_logger
 from ...storage.helper import StorageHelper
 
 from .events import MetricsEventAdapter
+from ...utilities.process.mp import SingletonLock
 
 
 log = get_logger('metrics')
@@ -23,7 +24,7 @@ log = get_logger('metrics')
 
 class Metrics(InterfaceBase):
     """ Metrics manager and batch writer """
-    _storage_lock = Lock()
+    _storage_lock = SingletonLock()
     _file_upload_starvation_warning_sec = config.get('network.metrics.file_upload_starvation_warning_sec', None)
     _file_upload_retries = 3
     _upload_pool = None

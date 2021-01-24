@@ -1,12 +1,12 @@
 import os
 import time
-from multiprocessing import Lock
-
 import six
+
+from .process.mp import SingletonLock
 
 
 class AsyncManagerMixin(object):
-    _async_results_lock = Lock()
+    _async_results_lock = SingletonLock()
     # per pid (process) list of async jobs (support for sub-processes forking)
     _async_results = {}
 

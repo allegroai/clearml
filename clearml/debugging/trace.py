@@ -342,6 +342,19 @@ def end_of_program():
     pass
 
 
+def stdout_print(*args, **kwargs):
+    if len(args) == 1 and not kwargs:
+        line = str(args[0])
+        if not line.endswith('\n'):
+            line += '\n'
+    else:
+        line = '{} {}\n'.format(args or '', kwargs or '')
+    if hasattr(sys.stdout, '_original_write'):
+        sys.stdout._original_write(line)
+    else:
+        sys.stdout.write(line)
+
+
 if __name__ == '__main__':
     # from clearml import Task
     # task = Task.init(project_name="examples", task_name="trace test")

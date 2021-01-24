@@ -62,6 +62,7 @@ from .utilities.proxy_object import ProxyDictPreWrite, ProxyDictPostWrite, flatt
 from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
+from .utilities.process.mp import BackgroundMonitor
 # noinspection PyProtectedMember
 from .backend_interface.task.args import _Arguments
 
@@ -519,8 +520,9 @@ class Task(_Task):
             Task.__main_task = task
             # register the main task for at exit hooks (there should only be one)
             task.__register_at_exit(task._at_exit)
-            # patch OS forking
-            PatchOsFork.patch_fork()
+            # patch OS forking if we are not logging with a subprocess
+            if not cls._report_use_subprocess:
+                PatchOsFork.patch_fork()
             if auto_connect_frameworks:
                 is_auto_connect_frameworks_bool = not isinstance(auto_connect_frameworks, dict)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('hydra', True):
@@ -585,6 +587,10 @@ class Task(_Task):
         # Make sure we start the dev worker if required, otherwise it will only be started when we write
         # something to the log.
         task._dev_mode_task_start()
+
+        # start monitoring in background process or background threads
+        # monitoring are: Resource monitoring and Dev Worker monitoring classes
+        BackgroundMonitor.start_all(execute_in_subprocess=task._report_use_subprocess)
 
         return task
 
@@ -1282,8 +1288,8 @@ class Task(_Task):
             self._logger._flush_stdout_handler()
         if self.__reporter:
             self.__reporter.flush()
-            if wait_for_uploads:
-                self.__reporter.wait_for_events()
+            # if wait_for_uploads:
+            #     self.__reporter.wait_for_events()
 
         LoggerRoot.flush()
 
@@ -2707,7 +2713,7 @@ class Task(_Task):
         """ Called when we suspect the task has started running """
         self._dev_mode_setup_worker(model_updated=model_updated)
 
-    def _dev_mode_stop_task(self, stop_reason):
+    def _dev_mode_stop_task(self, stop_reason, pid=None):
         # make sure we do not get called (by a daemon thread) after at_exit
         if self._at_exit_called:
             return
@@ -2726,30 +2732,45 @@ class Task(_Task):
         # NOTICE! This will end the entire execution tree!
         if self.__exit_hook:
             self.__exit_hook.remote_user_aborted = True
-        self._kill_all_child_processes(send_kill=False)
+        self._kill_all_child_processes(send_kill=False, pid=pid, allow_kill_calling_pid=False)
         time.sleep(2.0)
-        self._kill_all_child_processes(send_kill=True)
+        self._kill_all_child_processes(send_kill=True, pid=pid, allow_kill_calling_pid=True)
         os._exit(1)  # noqa
 
     @staticmethod
-    def _kill_all_child_processes(send_kill=False):
+    def _kill_all_child_processes(send_kill=False, pid=None, allow_kill_calling_pid=True):
         # get current process if pid not provided
-        pid = os.getpid()
+        current_pid = os.getpid()
+        kill_ourselves = None
+        pid = pid or current_pid
         try:
             parent = psutil.Process(pid)
         except psutil.Error:
             # could not find parent process id
             return
         for child in parent.children(recursive=True):
+            # kill ourselves last (if we need to)
+            if child.pid == current_pid:
+                kill_ourselves = child
+                continue
             if send_kill:
                 child.kill()
             else:
                 child.terminate()
-        # kill ourselves
-        if send_kill:
-            parent.kill()
-        else:
-            parent.terminate()
+
+        # parent ourselves
+        if allow_kill_calling_pid or parent.pid != current_pid:
+            if send_kill:
+                parent.kill()
+            else:
+                parent.terminate()
+
+        # kill ourselves if we need to:
+        if allow_kill_calling_pid and kill_ourselves:
+            if send_kill:
+                kill_ourselves.kill()
+            else:
+                kill_ourselves.terminate()
 
     def _dev_mode_setup_worker(self, model_updated=False):
         if running_remotely() or not self.is_main_task() or self._at_exit_called or self._offline_mode:
@@ -2840,115 +2861,122 @@ class Task(_Task):
 
         is_sub_process = self.__is_subprocess()
 
-        # noinspection PyBroadException
-        try:
-            wait_for_uploads = True
-            # first thing mark task as stopped, so we will not end up with "running" on lost tasks
-            # if we are running remotely, the daemon will take care of it
-            task_status = None
-            wait_for_std_log = True
-            if (not running_remotely() or DEBUG_SIMULATE_REMOTE_TASK.get()) \
-                    and self.is_main_task() and not is_sub_process:
-                # check if we crashed, ot the signal is not interrupt (manual break)
-                task_status = ('stopped', )
-                if self.__exit_hook:
-                    is_exception = self.__exit_hook.exception
-                    # check if we are running inside a debugger
-                    if not is_exception and sys.modules.get('pydevd'):
+        if not is_sub_process:
+            # noinspection PyBroadException
+            try:
+                wait_for_uploads = True
+                # first thing mark task as stopped, so we will not end up with "running" on lost tasks
+                # if we are running remotely, the daemon will take care of it
+                task_status = None
+                wait_for_std_log = True
+                if (not running_remotely() or DEBUG_SIMULATE_REMOTE_TASK.get()) \
+                        and self.is_main_task() and not is_sub_process:
+                    # check if we crashed, ot the signal is not interrupt (manual break)
+                    task_status = ('stopped', )
+                    if self.__exit_hook:
+                        is_exception = self.__exit_hook.exception
+                        # check if we are running inside a debugger
+                        if not is_exception and sys.modules.get('pydevd'):
+                            # noinspection PyBroadException
+                            try:
+                                is_exception = sys.last_type
+                            except Exception:
+                                pass
+
+                        # only if we have an exception (and not ctrl-break) or signal is not SIGTERM / SIGINT
+                        if (is_exception and not isinstance(self.__exit_hook.exception, KeyboardInterrupt)) \
+                                or (not self.__exit_hook.remote_user_aborted and
+                                    self.__exit_hook.signal not in (None, 2, 15)):
+                            task_status = (
+                                'failed',
+                                'Exception {}'.format(is_exception) if is_exception else
+                                'Signal {}'.format(self.__exit_hook.signal))
+                            wait_for_uploads = False
+                        else:
+                            wait_for_uploads = (self.__exit_hook.remote_user_aborted or self.__exit_hook.signal is None)
+                            if not self.__exit_hook.remote_user_aborted and self.__exit_hook.signal is None and \
+                                    not is_exception:
+                                task_status = ('completed', )
+                            else:
+                                task_status = ('stopped', )
+                                # user aborted. do not bother flushing the stdout logs
+                                wait_for_std_log = self.__exit_hook.signal is not None
+
+                # wait for repository detection (if we didn't crash)
+                if wait_for_uploads and self._logger:
+                    # we should print summary here
+                    self._summary_artifacts()
+                    # make sure that if we crashed the thread we are not waiting forever
+                    if not is_sub_process:
+                        self._wait_for_repo_detection(timeout=10.)
+
+                # kill the repo thread (negative timeout, do not wait), if it hasn't finished yet.
+                self._wait_for_repo_detection(timeout=-1)
+
+                # wait for uploads
+                print_done_waiting = False
+                if wait_for_uploads and (BackendModel.get_num_results() > 0 or
+                                         (self.__reporter and self.__reporter.events_waiting())):
+                    self.log.info('Waiting to finish uploads')
+                    print_done_waiting = True
+                # from here, do not send log in background thread
+                if wait_for_uploads:
+                    self.flush(wait_for_uploads=True)
+                    # wait until the reporter flush everything
+                    if self.__reporter:
+                        self.__reporter.stop()
+                        if self.is_main_task():
+                            # notice: this will close the reporting for all the Tasks in the system
+                            Metrics.close_async_threads()
+                            # notice: this will close the jupyter monitoring
+                            ScriptInfo.close()
+                    if self.is_main_task():
                         # noinspection PyBroadException
                         try:
-                            is_exception = sys.last_type
+                            from .storage.helper import StorageHelper
+                            StorageHelper.close_async_threads()
                         except Exception:
                             pass
 
-                    if (is_exception and not isinstance(self.__exit_hook.exception, KeyboardInterrupt)) \
-                            or (not self.__exit_hook.remote_user_aborted and self.__exit_hook.signal not in (None, 2)):
-                        task_status = ('failed', 'Exception')
-                        wait_for_uploads = False
-                    else:
-                        wait_for_uploads = (self.__exit_hook.remote_user_aborted or self.__exit_hook.signal is None)
-                        if not self.__exit_hook.remote_user_aborted and self.__exit_hook.signal is None and \
-                                not is_exception:
-                            task_status = ('completed', )
-                        else:
-                            task_status = ('stopped', )
-                            # user aborted. do not bother flushing the stdout logs
-                            wait_for_std_log = self.__exit_hook.signal is not None
+                    if print_done_waiting:
+                        self.log.info('Finished uploading')
+                # elif self._logger:
+                #     # noinspection PyProtectedMember
+                #     self._logger._flush_stdout_handler()
 
-            # wait for repository detection (if we didn't crash)
-            if wait_for_uploads and self._logger:
-                # we should print summary here
-                self._summary_artifacts()
-                # make sure that if we crashed the thread we are not waiting forever
+                # from here, do not check worker status
+                if self._dev_worker:
+                    self._dev_worker.unregister()
+                    self._dev_worker = None
+
+                # stop resource monitoring
+                if self._resource_monitor:
+                    self._resource_monitor.stop()
+                    self._resource_monitor = None
+
                 if not is_sub_process:
-                    self._wait_for_repo_detection(timeout=10.)
-
-            # kill the repo thread (negative timeout, do not wait), if it hasn't finished yet.
-            self._wait_for_repo_detection(timeout=-1)
-
-            # wait for uploads
-            print_done_waiting = False
-            if wait_for_uploads and (BackendModel.get_num_results() > 0 or
-                                     (self.__reporter and self.__reporter.get_num_results() > 0)):
-                self.log.info('Waiting to finish uploads')
-                print_done_waiting = True
-            # from here, do not send log in background thread
-            if wait_for_uploads:
-                self.flush(wait_for_uploads=True)
-                # wait until the reporter flush everything
-                if self.__reporter:
-                    self.__reporter.stop()
-                    if self.is_main_task():
-                        # notice: this will close the reporting for all the Tasks in the system
-                        Metrics.close_async_threads()
-                        # notice: this will close the jupyter monitoring
-                        ScriptInfo.close()
-                if self.is_main_task():
-                    # noinspection PyBroadException
-                    try:
-                        from .storage.helper import StorageHelper
-                        StorageHelper.close_async_threads()
-                    except Exception:
+                    # change task status
+                    if not task_status:
                         pass
+                    elif task_status[0] == 'failed':
+                        self.mark_failed(status_reason=task_status[1])
+                    elif task_status[0] == 'completed':
+                        self.completed()
+                    elif task_status[0] == 'stopped':
+                        self.stopped()
 
-                if print_done_waiting:
-                    self.log.info('Finished uploading')
-            elif self._logger:
-                # noinspection PyProtectedMember
-                self._logger._flush_stdout_handler()
+                if self._logger:
+                    self._logger.set_flush_period(None)
+                    # noinspection PyProtectedMember
+                    self._logger._close_stdout_handler(wait=wait_for_uploads or wait_for_std_log)
 
-            # from here, do not check worker status
-            if self._dev_worker:
-                self._dev_worker.unregister()
-                self._dev_worker = None
-
-            # stop resource monitoring
-            if self._resource_monitor:
-                self._resource_monitor.stop()
-                self._resource_monitor = None
-
-            if not is_sub_process:
-                # change task status
-                if not task_status:
-                    pass
-                elif task_status[0] == 'failed':
-                    self.mark_failed(status_reason=task_status[1])
-                elif task_status[0] == 'completed':
-                    self.completed()
-                elif task_status[0] == 'stopped':
-                    self.stopped()
-
-            if self._logger:
-                self._logger.set_flush_period(None)
-                # noinspection PyProtectedMember
-                self._logger._close_stdout_handler(wait=wait_for_uploads or wait_for_std_log)
-
-            # this is so in theory we can close a main task and start a new one
-            if self.is_main_task():
-                Task.__main_task = None
-        except Exception:
-            # make sure we do not interrupt the exit process
-            pass
+                # this is so in theory we can close a main task and start a new one
+                if self.is_main_task():
+                    Task.__main_task = None
+            except Exception as ex:
+                import traceback
+                # make sure we do not interrupt the exit process
+                pass
 
         # make sure we store last task state
         if self._offline_mode and not is_sub_process:
@@ -3095,6 +3123,7 @@ class Task(_Task):
                 except Exception:
                     pass
 
+                # noinspection PyUnresolvedReferences
                 os.kill(os.getpid(), sig)
 
                 self._signal_recursion_protection_flag = False
@@ -3126,6 +3155,10 @@ class Task(_Task):
                 cls.__exit_hook = None
         else:
             cls.__exit_hook.update_callback(exit_callback)
+
+    @classmethod
+    def _remove_at_exit_callbacks(cls):
+        cls.__register_at_exit(None, only_remove_signal_and_exception_hooks=True)
 
     @classmethod
     def __get_task(cls, task_id=None, project_name=None, task_name=None):

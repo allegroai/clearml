@@ -1081,22 +1081,25 @@ class Logger(object):
         """
         Set the logger flush period.
 
+        Deprecated - Use ``sdk.development.worker.report_period_sec`` to externally control the flush period.
+
         :param float period: The period to flush the logger in seconds. To set no periodic flush,
             specify ``None`` or ``0``.
         """
-        if self._task.is_main_task() and self._task_handler and DevWorker.report_period and \
-                not self._skip_console_log() and period is not None:
-            period = min(period or DevWorker.report_period, DevWorker.report_period)
-
-        if not period:
-            if self._flusher:
-                self._flusher.exit()
-                self._flusher = None
-        elif self._flusher:
-            self._flusher.set_period(period)
-        else:
-            self._flusher = LogFlusher(self, period)
-            self._flusher.start()
+        # if self._task.is_main_task() and self._task_handler and DevWorker.report_period and \
+        #         not self._skip_console_log() and period is not None:
+        #     period = min(period or DevWorker.report_period, DevWorker.report_period)
+        #
+        # if not period:
+        #     if self._flusher:
+        #         self._flusher.exit()
+        #         self._flusher = None
+        # elif self._flusher:
+        #     self._flusher.set_period(period)
+        # else:
+        #     self._flusher = LogFlusher(self, period)
+        #     self._flusher.start()
+        pass
 
     def report_image_and_upload(
             self,

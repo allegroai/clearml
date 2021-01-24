@@ -16,6 +16,7 @@ from ...backend_api.services import events
 from ...config import config
 from ...storage.util import quote_url
 from ...utilities.attrs import attrs
+from ...utilities.process.mp import SingletonLock
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -202,7 +203,7 @@ class UploadEvent(MetricsEventAdapter):
     _upload_retries = 3
 
     _metric_counters = {}
-    _metric_counters_lock = Lock()
+    _metric_counters_lock = SingletonLock()
     _file_history_size = int(config.get('metrics.file_history_size', 5))
 
     @staticmethod

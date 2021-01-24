@@ -2,11 +2,12 @@ import logging
 import os
 import warnings
 from time import time
-from threading import Thread, Event
 
 import psutil
 from pathlib2 import Path
 from typing import Text
+
+from .process.mp import BackgroundMonitor
 from ..binding.frameworks.tensorflow_bind import IsTensorboardInit
 
 try:
@@ -15,13 +16,14 @@ except ImportError:
     gpustat = None
 
 
-class ResourceMonitor(object):
+class ResourceMonitor(BackgroundMonitor):
     _title_machine = ':monitor:machine'
     _title_gpu = ':monitor:gpu'
 
     def __init__(self, task, sample_frequency_per_sec=2., report_frequency_sec=30.,
                  first_report_sec=None, wait_for_first_iteration_to_start_sec=180.0,
                  max_wait_for_first_iteration_to_start_sec=1800., report_mem_used_per_process=True):
+        super(ResourceMonitor, self).__init__(sample_frequency_per_sec)
         self._task = task
         self._sample_frequency = sample_frequency_per_sec
         self._report_frequency = report_frequency_sec
@@ -32,8 +34,6 @@ class ResourceMonitor(object):
         self._readouts = {}
         self._previous_readouts = {}
         self._previous_readouts_ts = time()
-        self._thread = None
-        self._exit_event = Event()
         self._gpustat_fail = 0
         self._gpustat = gpustat
         self._active_gpus = None
@@ -43,6 +43,7 @@ class ResourceMonitor(object):
         if not self._gpustat:
             self._task.get_logger().report_text('ClearML Monitor: GPU monitoring is not available')
         else:  # if running_remotely():
+            # noinspection PyBroadException
             try:
                 active_gpus = os.environ.get('NVIDIA_VISIBLE_DEVICES', '') or \
                     os.environ.get('CUDA_VISIBLE_DEVICES', '')
@@ -51,24 +52,7 @@ class ResourceMonitor(object):
             except Exception:
                 pass
 
-    def start(self):
-        self._exit_event.clear()
-        self._thread = Thread(target=self._run)
-        self._thread.daemon = True
-        self._thread.start()
-
-    def stop(self):
-        self._exit_event.set()
-        # self._thread.join()
-
-    def _run(self):
-        # noinspection PyBroadException
-        try:
-            self._daemon()
-        except Exception:
-            pass
-
-    def _daemon(self):
+    def daemon(self):
         seconds_since_started = 0
         reported = 0
         last_iteration = 0
@@ -76,6 +60,7 @@ class ResourceMonitor(object):
 
         # get max GPU ID, and make sure our active list is within range
         if self._active_gpus:
+            # noinspection PyBroadException
             try:
                 gpu_stat = self._gpustat.new_query()
                 if max(self._active_gpus) > len(gpu_stat.gpus) - 1:
@@ -91,7 +76,7 @@ class ResourceMonitor(object):
             current_report_frequency = self._report_frequency if reported != 0 else self._first_report_sec
             while (time() - last_report) < current_report_frequency:
                 # wait for self._sample_frequency seconds, if event set quit
-                if self._exit_event.wait(1.0 / self._sample_frequency):
+                if self._event.wait(1.0 / self._sample_frequency):
                     return
                 # noinspection PyBroadException
                 try:
@@ -225,6 +210,7 @@ class ResourceMonitor(object):
 
         # check if we can access the gpu statistics
         if self._gpustat:
+            # noinspection PyBroadException
             try:
                 stats.update(self._get_gpu_stats())
             except Exception:
@@ -243,6 +229,7 @@ class ResourceMonitor(object):
 
     @classmethod
     def get_logger_reported_titles(cls, task):
+        # noinspection PyProtectedMember
         titles = list(task.get_logger()._get_used_title_series().keys())
         try:
             titles.remove(cls._title_machine)

@@ -2,27 +2,120 @@ import datetime
 import json
 import logging
 import math
-from time import time
+from multiprocessing import Semaphore
+from threading import Event as TrEvent
+
+import numpy as np
+import six
+from six.moves.queue import Queue as TrQueue, Empty
+
+from .events import (
+    ScalarEvent, VectorEvent, ImageEvent, PlotEvent, ImageEventNoUpload,
+    UploadEvent, MediaEvent, ConsoleEvent, )
+from ..base import InterfaceBase
+from ..setupuploadmixin import SetupUploadMixin
+from ...config import config
+from ...utilities.async_manager import AsyncManagerMixin
+from ...utilities.plotly_reporter import (
+    create_2d_histogram_plot, create_value_matrix, create_3d_surface,
+    create_2d_scatter_series, create_3d_scatter_series, create_line_plot, plotly_scatter3d_layout_dict,
+    create_image_plot, create_plotly_table, )
+from ...utilities.process.mp import BackgroundMonitor
+from ...utilities.py3_interop import AbstractContextManager
+from ...utilities.process.mp import SafeQueue as PrQueue, SafeEvent
 
 try:
     from collections.abc import Iterable  # noqa
 except ImportError:
     from collections import Iterable
 
-import six
-import numpy as np
-from threading import Thread, Event
 
-from ..base import InterfaceBase
-from ..setupuploadmixin import SetupUploadMixin
-from ...utilities.async_manager import AsyncManagerMixin
-from ...utilities.plotly_reporter import create_2d_histogram_plot, create_value_matrix, create_3d_surface, \
-    create_2d_scatter_series, create_3d_scatter_series, create_line_plot, plotly_scatter3d_layout_dict, \
-    create_image_plot, create_plotly_table
-from ...utilities.py3_interop import AbstractContextManager
-from .events import ScalarEvent, VectorEvent, ImageEvent, PlotEvent, ImageEventNoUpload, \
-    UploadEvent, MediaEvent, ConsoleEvent
-from ...config import config
+class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
+    def __init__(self, use_subprocess, async_enable, metrics, flush_frequency, flush_threshold):
+        super(BackgroundReportService, self).__init__(wait_period=flush_frequency)
+        self._subprocess = use_subprocess
+        self._flush_threshold = flush_threshold
+        self._exit_event = SafeEvent() if self._subprocess else TrEvent()
+        self._queue = PrQueue() if self._subprocess else TrQueue()
+        self._queue_size = 0
+        self._res_waiting = Semaphore()
+        self._metrics = metrics
+        self._storage_uri = None
+        self._async_enable = async_enable
+
+    def set_storage_uri(self, uri):
+        self._storage_uri = uri
+
+    def set_subprocess_mode(self):
+        if isinstance(self._queue, TrQueue):
+            self._write()
+            self._queue = PrQueue()
+        super(BackgroundReportService, self).set_subprocess_mode()
+
+    def stop(self):
+        if not self.is_subprocess() or self.is_subprocess_alive():
+            self._exit_event.set()
+        super(BackgroundReportService, self).stop()
+
+    def flush(self):
+        self._queue_size = 0
+        if not self.is_subprocess() or self.is_subprocess_alive():
+            self._event.set()
+
+    def add_event(self, ev):
+        self._queue.put(ev)
+        self._queue_size += 1
+        if self._queue_size >= self._flush_threshold:
+            self.flush()
+
+    def daemon(self):
+        while not self._exit_event.wait(0):
+            self._event.wait(self._wait_timeout)
+            self._event.clear()
+            self._res_waiting.acquire()
+            self._write()
+            # wait for all reports
+            if self.get_num_results() > 0:
+                self.wait_for_results()
+            self._res_waiting.release()
+        # make sure we flushed everything
+        self._async_enable = False
+        self._res_waiting.acquire()
+        self._write()
+        if self.get_num_results() > 0:
+            self.wait_for_results()
+        self._res_waiting.release()
+
+    def _write(self):
+        if self._queue.empty():
+            return
+        # print('reporting %d events' % len(self._events))
+        events = []
+        while not self._queue.empty():
+            try:
+                events.append(self._queue.get())
+            except Empty:
+                break
+
+        res = self._metrics.write_events(
+            events, async_enable=self._async_enable, storage_uri=self._storage_uri)
+        if self._async_enable:
+            self._add_async_result(res)
+
+    def send_all_events(self, wait=True):
+        self._write()
+        if wait and self.get_num_results() > 0:
+            self.wait_for_results()
+
+    def events_waiting(self):
+        if not self._queue.empty():
+            return True
+        if not self.is_alive():
+            return False
+        return not self._res_waiting.get_value()
+
+    def post_execution(self):
+        super(BackgroundReportService, self).post_execution()
 
 
 class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncManagerMixin):
@@ -40,7 +133,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         reporter.flush()
     """
 
-    def __init__(self, metrics, flush_threshold=10, async_enable=False):
+    def __init__(self, metrics, flush_threshold=10, async_enable=False, use_subprocess=False):
         """
         Create a reporter
         :param metrics: A Metrics manager instance that handles actual reporting, uploads etc.
@@ -53,34 +146,23 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         log.setLevel(log.level)
         super(Reporter, self).__init__(session=metrics.session, log=log)
         self._metrics = metrics
-        self._flush_threshold = flush_threshold
-        self._events = []
         self._bucket_config = None
         self._storage_uri = None
         self._async_enable = async_enable
         self._flush_frequency = 30.0
-        self._exit_flag = False
-        self._flush_event = Event()
-        self._flush_event.clear()
-        self._thread = Thread(target=self._daemon)
-        self._thread.daemon = True
-        self._thread.start()
         self._max_iteration = 0
+        self._report_service = BackgroundReportService(
+            use_subprocess=use_subprocess, async_enable=async_enable, metrics=metrics,
+            flush_frequency=self._flush_frequency, flush_threshold=flush_threshold)
+        self._report_service.start()
 
     def _set_storage_uri(self, value):
         value = '/'.join(x for x in (value.rstrip('/'), self._metrics.storage_key_prefix) if x)
         self._storage_uri = value
+        self._report_service.set_storage_uri(self._storage_uri)
 
     storage_uri = property(None, _set_storage_uri)
     max_float_num_digits = config.get('metrics.plot_max_num_digits', None)
-
-    @property
-    def flush_threshold(self):
-        return self._flush_threshold
-
-    @flush_threshold.setter
-    def flush_threshold(self, value):
-        self._flush_threshold = max(0, value)
 
     @property
     def async_enable(self):
@@ -94,55 +176,38 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
     def max_iteration(self):
         return self._max_iteration
 
-    def _daemon(self):
-        while not self._exit_flag:
-            self._flush_event.wait(self._flush_frequency)
-            self._flush_event.clear()
-            self._write()
-            # wait for all reports
-            if self.get_num_results() > 0:
-                self.wait_for_results()
-        # make sure we flushed everything
-        self._async_enable = False
-        self._write()
-        if self.get_num_results() > 0:
-            self.wait_for_results()
-
     def _report(self, ev):
         ev_iteration = ev.get_iteration()
         if ev_iteration is not None:
             # we have to manually add get_iteration_offset() because event hasn't reached the Metric manager
             self._max_iteration = max(self._max_iteration, ev_iteration + self._metrics.get_iteration_offset())
-        self._events.append(ev)
-        if len(self._events) >= self._flush_threshold:
-            self.flush()
-
-    def _write(self):
-        if not self._events:
-            return
-        # print('reporting %d events' % len(self._events))
-        res = self._metrics.write_events(self._events, async_enable=self._async_enable, storage_uri=self._storage_uri)
-        if self._async_enable:
-            self._add_async_result(res)
-        self._events = []
+        self._report_service.add_event(ev)
 
     def flush(self):
         """
         Flush cached reports to backend.
         """
-        self._flush_event.set()
+        self._report_service.flush()
 
     def stop(self):
-        self._exit_flag = True
-        self._flush_event.set()
-        self._thread.join()
+        if not self._report_service:
+            return
+        report_service = self._report_service
+        self._report_service = None
+        if not report_service.is_subprocess() or report_service.is_alive():
+            report_service.stop()
+            report_service.wait()
+        else:
+            report_service.send_all_events()
 
-    def wait_for_events(self, timeout=None, step=2.0):
-        tic = time()
-        while self._events or self.get_num_results():
-            self.wait_for_results(timeout=step)
-            if timeout and time() - tic >= timeout:
-                break
+    def get_num_results(self):
+        return self._report_service.get_num_results()
+
+    def events_waiting(self):
+        return self._report_service.events_waiting()
+
+    def wait_for_results(self, *args, **kwargs):
+        return self._report_service.wait_for_results(*args, **kwargs)
 
     def report_scalar(self, title, series, value, iter):
         """
@@ -254,7 +319,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             plot = json.dumps(plot, default=default)
         elif not isinstance(plot, six.string_types):
             raise ValueError('Plot should be a string or a dict')
-        
+
         ev = PlotEvent(metric=self._normalize_name(title), variant=self._normalize_name(series),
                        plot_str=plot, iter=iter)
         self._report(ev)
@@ -734,7 +799,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             image_src=url,
             title=title + '/' + series,
             width=640,
-            height=int(640*float(height or 480)/float(width or 640)),
+            height=int(640 * float(height or 480) / float(width or 640)),
         )
 
         return self.report_plot(

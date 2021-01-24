@@ -53,6 +53,7 @@ from .access import AccessMixin
 from .repo import ScriptInfo, pip_freeze
 from .hyperparams import HyperParams
 from ...config import config, PROC_MASTER_ID_ENV_VAR, SUPPRESS_UPDATE_MESSAGE_ENV_VAR
+from ...utilities.process.mp import SingletonLock
 
 
 class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
@@ -69,6 +70,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     _store_diff = config.get('development.store_uncommitted_code_diff', False)
     _store_remote_diff = config.get('development.store_code_diff_from_remote', False)
+    _report_use_subprocess = bool(config.get('development.report_use_subprocess', True))
     _offline_filename = 'task.json'
 
     class TaskTypes(Enum):
@@ -138,6 +140,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param force_create: If True a new task will always be created (task_id, if provided, will be ignored)
         :type force_create: bool
         """
+        SingletonLock.instantiate()
         task_id = self._resolve_task_id(task_id, log=log) if not force_create else None
         self.__edit_lock = None
         super(Task, self).__init__(id=task_id, session=session, log=log)
@@ -501,7 +504,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             storage_uri = self.get_output_destination(log_on_error=False)
         except ValueError:
             storage_uri = None
-        self.__reporter = Reporter(self._get_metrics_manager(storage_uri=storage_uri))
+        self.__reporter = Reporter(
+            self._get_metrics_manager(storage_uri=storage_uri), use_subprocess=self._report_use_subprocess)
         return self.__reporter
 
     def _get_output_destination_suffix(self, extra_path=None):

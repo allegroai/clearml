@@ -7,10 +7,10 @@ import yaml
 from pathlib2 import Path
 from six.moves import input
 
-from trains import Task
-from trains.automation.aws_auto_scaler import AwsAutoScaler
-from trains.config import running_remotely
-from trains.utilities.wizard.user_input import (
+from clearml import Task
+from clearml.automation.aws_auto_scaler import AwsAutoScaler
+from clearml.config import running_remotely
+from clearml.utilities.wizard.user_input import (
     get_input,
     input_int,
     input_bool,
@@ -45,7 +45,7 @@ def main():
         print("AWS Autoscaler setup wizard\n"
               "---------------------------\n"
               "Follow the wizard to configure your AWS auto-scaler service.\n"
-              "Once completed, you will be able to view and change the configuration in the trains-server web UI.\n"
+              "Once completed, you will be able to view and change the configuration in the clearml-server web UI.\n"
               "It means there is no need to worry about typos or mistakes :)\n")
 
         config_file = Path(CONF_FILE).absolute()
@@ -76,6 +76,8 @@ def main():
                 )
                 return
 
+    # Connecting ClearML with the current process,
+    # from here on everything is logged automatically
     task = Task.init(project_name="DevOps", task_name="AWS Auto-Scaler", task_type=Task.TaskTypes.service)
     task.connect(hyper_params)
     task.connect_configuration(configurations)
@@ -85,7 +87,7 @@ def main():
 
     if args.remote:
         # if we are running remotely enqueue this run, and leave the process
-        # the trains-agent services will pick it up and execute it for us.
+        # the clearml-agent services will pick it up and execute it for us.
         task.execute_remotely(queue_name='services')
 
     autoscaler = AwsAutoScaler(hyper_params, configurations)
@@ -178,11 +180,9 @@ def run_wizard():
             ),
             "key_name": get_input(
                 "the Amazon Key Pair name",
-                required=True,
             ),
             "security_group_ids": input_list(
                 "Amazon Security Group ID",
-                required=True,
             ),
         }
 

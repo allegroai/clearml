@@ -4,9 +4,12 @@ from time import sleep
 import pandas as pd
 import numpy as np
 from PIL import Image
-from trains import Task
+from clearml import Task
 
-task = Task.init('examples', 'artifacts example')
+
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
+task = Task.init(project_name='examples', task_name='artifacts example')
 
 df = pd.DataFrame(
     {

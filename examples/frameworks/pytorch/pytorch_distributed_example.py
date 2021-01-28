@@ -1,4 +1,4 @@
-# TRAINS - example of TRAINS torch distributed support
+# ClearML - example of ClearML torch distributed support
 # notice all nodes will be reporting to the master Task (experiment)
 
 import os
@@ -15,7 +15,7 @@ import torch.nn.functional as F
 from torch import optim
 from torchvision import datasets, transforms
 
-from trains import Task
+from clearml import Task
 
 
 local_dataset_path = './MNIST_data'
@@ -150,7 +150,7 @@ if __name__ == "__main__":
 
     # We have to initialize the task in the master process,
     # it will make sure that any sub-process calling Task.init will get the master task object
-    # notice that we exclude the `rank` argument, so we can launch multiple sub-processes with trains-agent
+    # notice that we exclude the `rank` argument, so we can launch multiple sub-processes with clearml-agent
     # otherwise, the `rank` will always be set to the original value.
     task = Task.init("examples", "test torch distributed", auto_connect_arg_parser={'rank': False})
 

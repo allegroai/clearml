@@ -1,9 +1,11 @@
-# TRAINS - Example reporting video or audio links/file
+# ClearML - Example reporting video or audio links/file
 #
 import os
-from trains import Task, Logger
+from clearml import Task, Logger
 
 
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name="examples", task_name="audio and video reporting")
 
 print('reporting audio and video samples to the debug samples section')

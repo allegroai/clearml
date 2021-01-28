@@ -1,4 +1,4 @@
-# TRAINS - Example of new tensorboard pr_curves model
+# ClearML - Example of new tensorboard pr_curves model
 #
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
@@ -37,8 +37,11 @@ from absl import flags
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 from tensorboard.plugins.pr_curve import summary
-from trains import Task
+from clearml import Task
 
+
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name='examples', task_name='tensorboard pr_curve')
 
 tf.compat.v1.disable_v2_behavior()

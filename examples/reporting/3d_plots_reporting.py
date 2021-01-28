@@ -1,8 +1,8 @@
-# TRAINS - Example of manual graphs and statistics reporting
+# ClearML - Example of manual graphs and statistics reporting
 #
 import numpy as np
 
-from trains import Task, Logger
+from clearml import Task, Logger
 
 
 def report_plots(logger, iteration=0):
@@ -39,7 +39,8 @@ def report_plots(logger, iteration=0):
 
 
 def main():
-    # Create the experiment Task
+    # Connecting ClearML with the current process,
+    # from here on everything is logged automatically
     task = Task.init(project_name="examples", task_name="3D plot reporting")
 
     print('reporting 3D plot graphs')

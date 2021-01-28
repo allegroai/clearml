@@ -8,11 +8,12 @@ import tensorflow as tf
 from tensorflow.keras.layers import Dense, Flatten, Conv2D
 from tensorflow.keras import Model
 
-from trains import Task
+from clearml import Task
 
 
-task = Task.init(project_name='examples',
-                 task_name='Tensorflow v2 mnist with summaries')
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
+task = Task.init(project_name='examples', task_name='Tensorflow v2 mnist with summaries')
 
 
 # Load and prepare the MNIST dataset.

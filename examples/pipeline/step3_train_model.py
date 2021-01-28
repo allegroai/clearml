@@ -3,9 +3,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 
-from trains import Task
+from clearml import Task
 
-# Connecting TRAINS
+
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name="examples", task_name="pipeline step 3 train model")
 
 # Arguments

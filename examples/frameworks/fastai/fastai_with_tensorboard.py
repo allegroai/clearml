@@ -1,11 +1,13 @@
-# TRAINS - Fastai with Tensorboard example code, automatic logging the model and Tensorboard outputs
+# ClearML - Fastai with Tensorboard example code, automatic logging the model and Tensorboard outputs
 #
 
 from fastai.callbacks.tensorboard import LearnerTensorboardWriter
 from fastai.vision import *  # Quick access to computer vision functionality
 
-from trains import Task
+from clearml import Task
 
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name="example", task_name="fastai with tensorboard callback")
 
 path = untar_data(URLs.MNIST_SAMPLE)

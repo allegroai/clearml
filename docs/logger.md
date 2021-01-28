@@ -1,6 +1,6 @@
-# TRAINS Explicit Logging
+# ClearML Explicit Logging
 
-Using the **TRAINS** [Logger](https://github.com/allegroai/trains/blob/master/trains/logger.py) module and other **TRAINS** features, you can explicitly log any of the following:
+Using the **ClearML** [Logger](https://github.com/allegroai/clearml/blob/master/clearml/logger.py) module and other **ClearML** features, you can explicitly log any of the following:
 
 * Report graphs and images
   * [Scalar metrics](#scalar-metrics)
@@ -19,10 +19,10 @@ Using the **TRAINS** [Logger](https://github.com/allegroai/trains/blob/master/tr
 * Message logging
   * [Reporting text without formatting](#reporting-text-without-formatting) 
   
-Additionally, the **TRAINS** Logger module provides methods that allow you to do the following:
+Additionally, the **ClearML** Logger module provides methods that allow you to do the following:
     
   * Get the [current logger]()
-  * Overrride the TRAINS configuration file with a [default upload destination]() for images and files
+  * Overrride the ClearML configuration file with a [default upload destination]() for images and files
   
 ## Graphs and Images
 
@@ -30,7 +30,7 @@ Additionally, the **TRAINS** Logger module provides methods that allow you to do
 
 Use to report scalar metrics by iteration as a line plot.
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/scalar_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/scalar_reporting.py)) with the following method.
 
 **Method**:
 
@@ -101,7 +101,7 @@ def report_scalar(self, title, series, value, iteration)
 
 Use to report any data by iteration as a histogram.
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
 
 **Method**:
 
@@ -199,7 +199,7 @@ def report_histogram(self, title, series, values, iteration, labels=None, xlabel
 
 Use to report any data by iteration as a single or multiple line plot.
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
 
 **Method**:
 
@@ -325,7 +325,7 @@ def report_line_plot(self, title, series, iteration, xaxis, yaxis, mode='lines',
 
 Use to report any vector data as a 2D scatter diagram.
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
 
 **Method**:
 
@@ -461,7 +461,7 @@ def report_scatter2d(self, title, series, scatter, iteration, xaxis=None, yaxis=
 
 Use to report any array data as a 3D scatter diagram.
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/3d_plots_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/3d_plots_reporting.py)) with the following method.
 
 **Method**:
 
@@ -597,7 +597,7 @@ def report_scatter3d(self, title, series, scatter, iteration, labels=None, mode=
 
 Use to report a heat-map matrix as a confusion matrix. You can also plot a heat-map as a [surface diagram](#surface-diagrams).
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
 
 **Method**:
 
@@ -689,7 +689,7 @@ def report_confusion_matrix(self, title, series, matrix, iteration, xlabels=None
 
 Use to plot a heat-map matrix as a surface diagram. You can also plot a heat-map as a [confusion matrix](#confusion-matrices).
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/3d_plots_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/3d_plots_reporting.py)) with the following method.
 
 **Method**:
 
@@ -818,10 +818,10 @@ def report_surface(self, title, series, matrix, iteration, xlabels=None, ylabels
 
 ### Images
 
-Use to report an image and upload its contents to the bucket specified in the **TRAINS** configuration file,
+Use to report an image and upload its contents to the bucket specified in the **ClearML** configuration file,
 or a [a default upload destination](#set-default-upload-destination), if you set a default. 
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/manual_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/manual_reporting.py)) with the following method.
 
 **Method**:
 
@@ -929,7 +929,7 @@ def report_image(self, title, series, iteration, local_path=None, matrix=None, m
 
 ### Logging Experiment Parameter Dictionaries
 
-In order for **TRAINS** to log a dictionary of parameters, use the `Task.connect` method.
+In order for **ClearML** to log a dictionary of parameters, use the `Task.connect` method.
 
 For example, to log the hyper-parameters <code>learning_rate</code>, <code>batch_size</code>, <code>display_step</code>, <code>model_path</code>, <code>n_hidden_1</code>, and <code>n_hidden_2</code>:  
 
@@ -938,27 +938,27 @@ For example, to log the hyper-parameters <code>learning_rate</code>, <code>batch
 parameters_dict = { 'learning_rate': 0.001, 'batch_size': 100, 'display_step': 1, 
     'model_path': "/tmp/model.ckpt", 'n_hidden_1': 256, 'n_hidden_2': 256 }
     
-# Connect the dictionary to your TRAINS Task    
+# Connect the dictionary to your ClearML Task    
 parameters_dict = Task.current_task().connect(parameters_dict)
 ```
 
 ### Specifying Environment Variables to Track
 
-By setting the `TRAINS_LOG_ENVIRONMENT` environment variable, make **TRAINS** log either:
+By setting the `CLEARML_LOG_ENVIRONMENT` environment variable, make **ClearML** log either:
 
 * All environment variables
 
-        export TRAINS_LOG_ENVIRONMENT="*"
+        export CLEARML_LOG_ENVIRONMENT="*"
 
 * Specific environment variables
 
     For example, log `PWD` and `PYTHONPATH`
 
-        export TRAINS_LOG_ENVIRONMENT="PWD,PYTHONPATH"
+        export CLEARML_LOG_ENVIRONMENT="PWD,PYTHONPATH"
 
 * No environment variables
 
-        export TRAINS_LOG_ENVIRONMENT=
+        export CLEARML_LOG_ENVIRONMENT=
 
 ## Logging Messages
 
@@ -972,7 +972,7 @@ Use the methods in this section to log various types of messages. The method nam
 def debug(self, msg, *args, **kwargs)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:
 
@@ -1010,7 +1010,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 def info(self, msg, *args, **kwargs)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:
 
@@ -1048,7 +1048,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 def warn(self, msg, *args, **kwargs)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:<a name="log_arguments"></a>
 
@@ -1087,7 +1087,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 def error(self, msg, *args, **kwargs)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:
 
@@ -1125,7 +1125,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 def critical(self, msg, *args, **kwargs)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:
     
@@ -1163,7 +1163,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 def fatal(self, msg, *args, **kwargs)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:
 
@@ -1201,7 +1201,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 def console(self, msg, level=logging.INFO, omit_console=False, *args, **kwargs)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:
 
@@ -1279,7 +1279,7 @@ First [get the current logger](#get-the-current-logger) and then use it (see an 
 def report_text(self, msg, level=logging.INFO, print_console=False, *args, **_)
 ```
 
-First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/trains/blob/master/examples/reporting/text_reporting.py)) with the following method.
+First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/text_reporting.py)) with the following method.
 
 **Arguments**:
 
@@ -1371,7 +1371,7 @@ None.
 Use to specify the default destination storage location used for uploading images.
 Images are uploaded and a link to the image is reported.
 
-Credentials for the storage location are in the global configuration file (for example, on Linux, <code>~/trains.conf</code>). 
+Credentials for the storage location are in the global configuration file (for example, on Linux, <code>~/clearml.conf</code>). 
 
 **Method**:
 

@@ -1,4 +1,4 @@
-# TRAINS - Example of tensorflow eager mode, model logging and tensorboard
+# ClearML - Example of tensorflow eager mode, model logging and tensorboard
 #
 # Copyright 2017 The TensorFlow Authors. All Rights Reserved.
 #
@@ -30,12 +30,14 @@ from tempfile import gettempdir
 import tensorflow as tf
 from tensorflow.examples.tutorials.mnist import input_data
 
-from trains import Task
+from clearml import Task
+
 
 tf.compat.v1.enable_eager_execution()
 
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name='examples', task_name='Tensorflow eager mode')
-
 
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_integer('data_num', 100, """Flag of type integer""")

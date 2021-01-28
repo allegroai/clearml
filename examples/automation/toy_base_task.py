@@ -1,7 +1,7 @@
 # This Task is the base task that we will be executing as a second step (see task_piping.py)
 # In order to make sure this experiment is registered in the platform, you must execute it once.
 
-from trains import Task
+from clearml import Task
 
 # Initialize the task pipe's first task used to start the task pipe
 task = Task.init('examples', 'Toy Base Task')

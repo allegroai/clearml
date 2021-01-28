@@ -1,11 +1,12 @@
-# TRAINS - Example of Matplotlib and Seaborn integration and reporting
+# ClearML - Example of Matplotlib and Seaborn integration and reporting
 #
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from trains import Task
+from clearml import Task
 
-
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name='examples', task_name='Matplotlib example')
 
 # Create a plot

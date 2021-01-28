@@ -1,11 +1,13 @@
-# TRAINS - Example of LightGBM integration
+# ClearML - Example of LightGBM integration
 #
 import lightgbm as lgb
 import pandas as pd
 from sklearn.metrics import mean_squared_error
 
-from trains import Task
+from clearml import Task
 
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name="examples", task_name="LIGHTgbm")
 
 print('Loading data...')

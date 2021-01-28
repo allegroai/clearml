@@ -1,8 +1,9 @@
 from random import sample
 
-from trains import Task
+from clearml import Task
 
-# Connecting TRAINS
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name='examples', task_name='Random Hyper-Parameter Search Example', task_type=Task.TaskTypes.optimizer)
 
 # Create a hyper-parameter dictionary for the task

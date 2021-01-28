@@ -1,9 +1,11 @@
-# TRAINS - Example of Plotly integration and reporting
+# ClearML - Example of Plotly integration and reporting
 #
-from trains import Task
+from clearml import Task
 import plotly.express as px
 
 
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init('examples', 'plotly reporting')
 
 print('reporting plotly figures')

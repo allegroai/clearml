@@ -1,4 +1,4 @@
-# TRAINS - example of multiple sub-processes interacting and reporting to a single master experiment
+# ClearML - example of multiple sub-processes interacting and reporting to a single master experiment
 
 import multiprocessing
 import os
@@ -7,7 +7,7 @@ import sys
 import time
 from argparse import ArgumentParser
 
-from trains import Task
+from clearml import Task
 
 # fake data for us to "process"
 data = (
@@ -51,7 +51,7 @@ if __name__ == '__main__':
 
     # We have to initialize the task in the master process,
     # it will make sure that any sub-process calling Task.init will get the master task object
-    # notice that we exclude the `counter` argument, so we can launch multiple sub-processes with trains-agent
+    # notice that we exclude the `counter` argument, so we can launch multiple sub-processes with clearml-agent
     # otherwise, the `counter` will always be set to the original value.
     task = Task.init('examples', 'Popen example', auto_connect_arg_parser={'counter': False})
 

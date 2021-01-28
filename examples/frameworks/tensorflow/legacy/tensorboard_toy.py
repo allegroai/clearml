@@ -1,4 +1,4 @@
-# TRAINS - Example of tensorboard with tensorflow (without any actual training)
+# ClearML - Example of tensorboard with tensorflow (without any actual training)
 #
 import os
 from tempfile import gettempdir
@@ -7,9 +7,12 @@ import tensorflow as tf
 import numpy as np
 from PIL import Image
 
-from trains import Task
-task = Task.init(project_name='examples', task_name='tensorboard toy example')
+from clearml import Task
 
+
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
+task = Task.init(project_name='examples', task_name='tensorboard toy example')
 
 k = tf.placeholder(tf.float32)
 

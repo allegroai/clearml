@@ -1,31 +1,23 @@
 import logging
 
-from trains import Task
-from trains.automation import (
+from clearml import Task
+from clearml.automation import (
     DiscreteParameterRange, HyperParameterOptimizer, RandomSearch,
     UniformIntegerParameterRange)
 
-aSearchStrategy = None
-
-if not aSearchStrategy:
+# trying to load Bayesian optimizer package
+try:
+    from clearml.automation.optuna import OptimizerOptuna  # noqa
+    aSearchStrategy = OptimizerOptuna
+except ImportError as ex:
     try:
-        from trains.automation.optuna import OptimizerOptuna
-        aSearchStrategy = OptimizerOptuna
-    except ImportError as ex:
-        pass
-
-if not aSearchStrategy:
-    try:
-        from trains.automation.hpbandster import OptimizerBOHB
+        from clearml.automation.hpbandster import OptimizerBOHB  # noqa
         aSearchStrategy = OptimizerBOHB
     except ImportError as ex:
-        pass
-
-if not aSearchStrategy:
-    logging.getLogger().warning(
-        'Apologies, it seems you do not have \'optuna\' or \'hpbandster\' installed, '
-        'we will be using RandomSearch strategy instead')
-    aSearchStrategy = RandomSearch
+        logging.getLogger().warning(
+            'Apologies, it seems you do not have \'optuna\' or \'hpbandster\' installed, '
+            'we will be using RandomSearch strategy instead')
+        aSearchStrategy = RandomSearch
 
 
 def job_complete_callback(
@@ -40,7 +32,8 @@ def job_complete_callback(
         print('WOOT WOOT we broke the record! Objective reached {}'.format(objective_value))
 
 
-# Connecting TRAINS
+# Connecting ClearML with the current process,
+# from here on everything is logged automatically
 task = Task.init(project_name='Hyper-Parameter Optimization',
                  task_name='Automatic Hyper-Parameter Optimization',
                  task_type=Task.TaskTypes.optimizer,
@@ -58,11 +51,20 @@ if not args['template_task_id']:
     args['template_task_id'] = Task.get_task(
         project_name='examples', task_name='Keras HP optimization base').id
 
+# Set default queue name for the Training tasks themselves.
+# later can be overridden in the UI
+execution_queue = '1xGPU'
+
 # Example use case:
 an_optimizer = HyperParameterOptimizer(
     # This is the experiment we want to optimize
     base_task_id=args['template_task_id'],
     # here we define the hyper-parameters to optimize
+    # Notice: The parameter name should exactly match what you see in the UI: <section_name>/<parameter>
+    # For Example, here we see in the base experiment a section Named: "General"
+    # under it a parameter named "batch_size", this becomes "General/batch_size"
+    # If you have `argparse` for example, then arguments will appear under the "Args" section,
+    # and you should instead pass "Args/batch_size"
     hyper_parameters=[
         UniformIntegerParameterRange('General/layer_1', min_value=128, max_value=512, step_size=128),
         UniformIntegerParameterRange('General/layer_2', min_value=128, max_value=512, step_size=128),
@@ -83,7 +85,11 @@ an_optimizer = HyperParameterOptimizer(
     # more are coming soon...
     optimizer_class=aSearchStrategy,
     # Select an execution queue to schedule the experiments for execution
-    execution_queue='1xGPU',
+    execution_queue=execution_queue,
+    # If specified all Tasks created by the HPO process will be created under the `spawned_project` project
+    spawn_project=None,  # 'HPO spawn project',
+    # If specified only the top K performing Tasks will be kept, the others will be automatically archived
+    save_top_k_tasks_only=None,  # 5,
     # Optional: Limit the execution time of a single experiment, in minutes.
     # (this is optional, and if using  OptimizerBOHB, it is ignored)
     time_limit_per_job=10.,
@@ -104,7 +110,7 @@ an_optimizer = HyperParameterOptimizer(
 
 # if we are running as a service, just enqueue ourselves into the services queue and let it run the optimization
 if args['run_as_service']:
-    # if this code is executed by `trains-agent` the function call does nothing.
+    # if this code is executed by `clearml-agent` the function call does nothing.
     # if executed locally, the local process will be terminated, and a remote copy will be executed instead
     task.execute_remotely(queue_name='services', exit_process=True)
 

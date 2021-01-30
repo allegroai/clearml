@@ -73,8 +73,8 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "analysis",
-        action="store_true",
-        help="Analysis mode (default %(default)s",
+        action="store_false",
+        help="Analysis mode (default %(default)s)",
         default=False,
     )
 

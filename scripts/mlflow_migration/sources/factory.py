@@ -79,7 +79,7 @@ class SourceFactory:
                 continue
             runs = list(os.walk(join(path_abs, experiment)))[0][1]
             for run in runs:
-                current_path = join(path_abs, experiment, run)
+                current_path = join(path_abs, experiment, run) + os.sep
                 id = experiment + run
                 l.append((id, current_path))
                 ids_count += 1

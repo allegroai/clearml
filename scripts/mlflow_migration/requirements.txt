@@ -1,4 +1,4 @@
-clearml>=0.16.3,<0.18.0
+clearml>=0.16.3
 mlflow==1.12.1
 pandas
 pillow
@@ -6,3 +6,5 @@ python-dateutil
 pyyaml
 sqlalchemy
 tqdm
+pyarrow
+fastparquet

@@ -2,7 +2,7 @@ import os
 import sys
 from copy import copy
 from functools import partial
-from tempfile import mkstemp
+from tempfile import mkstemp, gettempdir
 
 import attr
 import logging
@@ -378,6 +378,18 @@ class _JupyterObserver(object):
                         task.upload_artifact(
                             name='notebook', artifact_object=Path(local_jupyter_filename),
                             preview='No preview available')
+                        # noinspection PyBroadException
+                        try:
+                            from nbconvert.exporters import HTMLExporter  # noqa
+                            html, _ = HTMLExporter().from_filename(filename=local_jupyter_filename)
+                            local_html = Path(gettempdir()) / 'notebook_{}.html'.format(task.id)
+                            with open(local_html.as_posix(), 'wt') as f:
+                                f.write(html)
+                            task.upload_artifact(
+                                name='notebook preview', artifact_object=local_html,
+                                preview=' ', delete_after_upload=True)
+                        except Exception:
+                            pass
 
                 current_script_hash = hash(script_code + (current_cell or ''))
                 if prev_script_hash and prev_script_hash == current_script_hash:

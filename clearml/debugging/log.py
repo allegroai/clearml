@@ -108,7 +108,12 @@ def get_logger(path=None, level=None, stream=None, colored=False):
     """ Get a python logging object named using the provided filename and preconfigured with a color-formatted
         stream handler
     """
-    path = path or os.path.abspath((inspect.stack()[1])[1])
+    # noinspection PyBroadException
+    try:
+        path = path or os.path.abspath((inspect.stack()[1])[1])
+    except BaseException:
+        # if for some reason we could not find the calling file, use our own
+        path = os.path.abspath(__file__)
     root_log = LoggerRoot.get_base_logger(level=default_level, stream=sys.stdout, colored=colored)
     log = root_log.getChild(Path(path).stem)
     if level is not None:

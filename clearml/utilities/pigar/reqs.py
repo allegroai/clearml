@@ -308,11 +308,16 @@ def is_std_or_local_lib(name):
         try:
             module_info = importlib.util.find_spec(name) # noqa
         except ImportError:
-            exist = False
+            return False
         except ValueError:
             # if we got here, the loader failed on us, meaning this is definitely a module and not std
             return False
-        mpath = module_info.origin if module_info else None
+        if not module_info:
+            return False
+        mpath = module_info.origin
+        # this is std
+        if mpath == 'built-in':
+            mpath = None
 
     if exist and mpath is not None:
         if ('site-packages' in mpath or

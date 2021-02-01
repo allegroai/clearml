@@ -278,10 +278,11 @@ class _Arguments(object):
                         # casting
                         if v:
                             if current_action.type:
-                                v = [current_action.type(a) for a in v]
+                                v = [current_action.type(a) if str(a) != str(None) else None for a in v]
                             elif current_action.default:
                                 v_type = type(current_action.default[0])
-                                v = [v_type(a) for a in v]
+                                if v_type != type(None):  # noqa
+                                    v = [v_type(a) if str(a) != str(None) else None for a in v]
 
                         if current_action.default is not None or v not in (None, ''):
                             arg_parser_arguments[k] = v
@@ -290,6 +291,7 @@ class _Arguments(object):
                             self._task.log.warning(
                                 'Failed parsing task parameter {}="{}" keeping default {}={}'.format(
                                     k, v, k, current_action.default))
+                        continue
 
                 elif current_action and not current_action.type:
                     # cast manually if there is no type

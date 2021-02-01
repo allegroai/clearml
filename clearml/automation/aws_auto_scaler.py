@@ -87,7 +87,7 @@ class AwsAutoScaler(AutoScaler):
             queue=queue_name,
             git_user=self.git_user or "",
             git_pass=self.git_pass or "",
-            clearml_conf='\\"'.join(self.extra_trains_conf.split('"')),
+            clearml_conf='\\"'.join(self.extra_clearml_conf.split('"')),
             bash_script=self.extra_vm_bash_script,
             docker="--docker '{}'".format(self.default_docker_image)
             if self.default_docker_image

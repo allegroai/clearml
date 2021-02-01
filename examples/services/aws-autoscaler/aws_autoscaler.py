@@ -1,3 +1,4 @@
+import json
 from argparse import ArgumentParser
 from collections import defaultdict
 from itertools import chain
@@ -80,7 +81,8 @@ def main():
     # from here on everything is logged automatically
     task = Task.init(project_name="DevOps", task_name="AWS Auto-Scaler", task_type=Task.TaskTypes.service)
     task.connect(hyper_params)
-    task.connect_configuration(configurations)
+    configurations.update(json.loads(task.get_configuration_object(name="General") or "{}"))
+    task.set_configuration_object(name="General", config_text=json.dumps(configurations, indent=2))
 
     if args.remote or args.run:
         print("Running AWS auto-scaler as a service\nExecution log {}".format(task.get_output_log_web_page()))
@@ -159,14 +161,14 @@ def run_wizard():
             ),
             "ami_id": get_input(
                 "the Amazon Machine Image id",
-                "['ami-07c95cafbb788face']",
+                "['ami-04c0416d6bd8e4b1f']",
                 question='Select',
-                default="ami-07c95cafbb788face",
+                default="ami-04c0416d6bd8e4b1f",
             ),
             "ebs_device_name": get_input(
                 "the Amazon EBS device",
-                "['/dev/xvda']",
-                default="/dev/xvda",
+                "['/dev/sda1']",
+                default="/dev/sda1",
             ),
             "ebs_volume_size": input_int(
                 "the Amazon EBS volume size",
@@ -175,8 +177,8 @@ def run_wizard():
             ),
             "ebs_volume_type": get_input(
                 "the Amazon EBS volume type",
-                "['gp2']",
-                default="gp2",
+                "['gp3']",
+                default="gp3",
             ),
             "key_name": get_input(
                 "the Amazon Key Pair name",
@@ -209,10 +211,10 @@ def run_wizard():
     )
     print("Entered {} lines of pre-execution bash script".format(num_lines_bash_script))
 
-    configurations.extra_trains_conf, num_lines_trains_conf = multiline_input(
-        "\nEnter anything you'd like to include in your trains.conf file []"
+    configurations.extra_clearml_conf, num_lines_clearml_conf = multiline_input(
+        "\nEnter anything you'd like to include in your clearml.conf file []"
     )
-    print("Entered {} extra lines for trains.conf file".format(num_lines_trains_conf))
+    print("Entered {} extra lines for clearml.conf file".format(num_lines_clearml_conf))
 
     print("\nDefine the machines budget:")
     print("-----------------------------")
@@ -274,7 +276,7 @@ def run_wizard():
 
             if not input_bool("Do you wish to add another instance type to queue? [y/N]: "):
                 break
-        if not input_bool("\nAdd another queue? [y/N]: "):
+        if not input_bool("\nAdd another queue? [y/N]"):
             break
     configurations.queues = dict(queues)
 

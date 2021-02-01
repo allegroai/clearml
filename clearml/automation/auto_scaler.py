@@ -33,7 +33,8 @@ class AutoScaler(object):
     class Configuration(object):
         resource_configurations = attr.ib(default=None)
         queues = attr.ib(default=None)
-        extra_trains_conf = attr.ib(default="")
+        extra_trains_conf = attr.ib(default="")     # Backwards compatibility
+        extra_clearml_conf = attr.ib(default="")
         extra_vm_bash_script = attr.ib(default="")
 
         def as_dict(self):
@@ -61,7 +62,7 @@ class AutoScaler(object):
         self.cloud_credentials_region = settings.cloud_credentials_region
         self.default_docker_image = settings.default_docker_image
 
-        self.extra_trains_conf = configuration.extra_trains_conf
+        self.extra_clearml_conf = configuration.extra_clearml_conf or configuration.extra_trains_conf
         self.extra_vm_bash_script = configuration.extra_vm_bash_script
         self.resource_configurations = configuration.resource_configurations
         self.queues = configuration.queues

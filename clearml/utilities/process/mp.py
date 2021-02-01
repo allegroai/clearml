@@ -206,7 +206,24 @@ class BackgroundMonitor(object):
                 d.set_subprocess_mode()
             BackgroundMonitor._main_process = Process(target=cls._background_process_start, args=(id(task), ))
             BackgroundMonitor._main_process.daemon = True
+            # Hack allow to create daemon subprocesses (even though python doesn't like it)
+            un_daemonize = False
+            # noinspection PyBroadException
+            try:
+                from multiprocessing import current_process
+                if current_process()._config.get('daemon'):  # noqa
+                    un_daemonize = current_process()._config.get('daemon')  # noqa
+                    current_process()._config['daemon'] = False  # noqa
+            except BaseException:
+                pass
             BackgroundMonitor._main_process.start()
+            if un_daemonize:
+                # noinspection PyBroadException
+                try:
+                    from multiprocessing import current_process
+                    current_process()._config['daemon'] = un_daemonize  # noqa
+                except BaseException:
+                    pass
             # wait until subprocess is up
             if wait_for_subprocess:
                 cls._sub_process_started.wait()

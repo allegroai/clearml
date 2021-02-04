@@ -2954,6 +2954,11 @@ class Task(_Task):
                     self._resource_monitor.stop()
                     self._resource_monitor = None
 
+                if self._logger:
+                    self._logger.set_flush_period(None)
+                    # noinspection PyProtectedMember
+                    self._logger._close_stdout_handler(wait=wait_for_uploads or wait_for_std_log)
+
                 if not is_sub_process:
                     # change task status
                     if not task_status:
@@ -2964,11 +2969,6 @@ class Task(_Task):
                         self.completed()
                     elif task_status[0] == 'stopped':
                         self.stopped()
-
-                if self._logger:
-                    self._logger.set_flush_period(None)
-                    # noinspection PyProtectedMember
-                    self._logger._close_stdout_handler(wait=wait_for_uploads or wait_for_std_log)
 
                 # this is so in theory we can close a main task and start a new one
                 if self.is_main_task():

@@ -34,9 +34,9 @@ task = Task.init(
 )
 
 # set the base docker including the mount point for the file server data data
-file_server_mount = "/opt/trains/data/fileserver/"
+file_server_mount = "/opt/clearml/data/fileserver/"
 task.set_base_docker(
-    "ubuntu:18.04 -v /opt/trains/data/fileserver/:{}".format(file_server_mount)
+    "ubuntu:18.04 -v /opt/clearml/data/fileserver/:{}".format(file_server_mount)
 )
 
 # args for the running task

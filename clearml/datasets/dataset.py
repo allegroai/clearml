@@ -214,7 +214,7 @@ class Dataset(object):
 
             self._dataset_file_entries = {
                 k: v for k, v in self._dataset_file_entries.items()
-                if not (fnmatch(k, path) and fnmatch(k, '*/' + wildcard))}
+                if not (fnmatch(k, path) and fnmatch(k if '/' in k else '/{}'.format(k), '*/' + wildcard))}
 
         if verbose and org_files:
             for f in org_files:

@@ -2695,7 +2695,8 @@ class Task(_Task):
 
             return an_object
         else:
-            return self._connect_dictionary(a_dict, name)
+            self._connect_dictionary(a_dict, name)
+            return an_object
 
     def _validate(self, check_output_dest_credentials=False):
         if running_remotely():

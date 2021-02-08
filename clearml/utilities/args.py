@@ -144,9 +144,10 @@ class PatchArgumentParser:
                 parsed_args_namespace = copy(parsed_args[0])
                 parsed_args = (parsed_args_namespace, parsed_args[1])
             else:
-                parsed_args = parsed_args_namespace = copy(parsed_args)
+                parsed_args_namespace = copy(parsed_args)
+                parsed_args = (parsed_args_namespace, [])
 
-            # cast arguments in parsed_args_namespace entries to str
+                # cast arguments in parsed_args_namespace entries to str
             if parsed_args_namespace and isinstance(parsed_args_namespace, Namespace):
                 for k, v in parser._parsed_arg_string_lookup.items():  # noqa
                     if hasattr(parsed_args_namespace, k):
@@ -157,7 +158,8 @@ class PatchArgumentParser:
                             v if isinstance(v, list) else str(v)
                         )
 
-        PatchArgumentParser._last_parsed_args = (PatchArgumentParser._last_parsed_args or []) + [parsed_args]
+        if not PatchArgumentParser._last_parsed_args or parsed_args not in PatchArgumentParser._last_parsed_args:
+            PatchArgumentParser._last_parsed_args = (PatchArgumentParser._last_parsed_args or []) + [parsed_args]
         return parsed_args
 
     @staticmethod

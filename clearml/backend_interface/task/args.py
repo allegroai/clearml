@@ -548,5 +548,5 @@ class _Arguments(object):
         if str(hex(id(arg))) in str(arg):
             return str(type(arg))
         if dtype in (float, int) and isinstance(arg, list):
-            return [dtype(a) for a in arg]
+            return [None if a is None else dtype(a) for a in arg]
         return arg

@@ -517,11 +517,11 @@ class EventTrainsWriter(object):
                 num_thresholds = plot_values.shape[1]
                 width = 1.0 / num_thresholds
                 thresholds = np.arange(0.0, 1.0, width, dtype=plot_values.dtype)
-                data_points = ['TP     ', 'FP     ', 'TN     ', 'FN     ', 'Precision ', ' Recall']
-                series = [{'name': series, 'data': np.vstack((thresholds, plot_values[-2])).T,
-                           'labels': [''.join(data_points) + '<br> ' +
+                data_points = ['Threshold ', 'TP     ', 'FP     ', 'TN     ', 'FN     ', 'Precision ', ' Recall']
+                series = [{'name': series, 'data': np.vstack((plot_values[-1], plot_values[-2])).T,
+                           'labels': [''.join(data_points) + '<br> {:.3f}  '.format(thresholds[j]) +
                                       '  '.join(['%-3.2f' % v for v in plot_values[:, j]]) for j in
-                                      range(plot_values.shape[1])]}]
+                                      range(num_thresholds)]}]
                 reverse_xaxis = False
             else:
                 reverse_xaxis = False

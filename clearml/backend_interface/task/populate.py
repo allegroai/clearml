@@ -1,8 +1,9 @@
 import json
 import os
+import re
 from functools import reduce
 from logging import getLogger
-from typing import Optional, Sequence, Union, Tuple
+from typing import Optional, Sequence, Union, Tuple, List
 
 from six.moves.urllib.parse import urlparse
 
@@ -234,19 +235,12 @@ class CreateAndPopulate(object):
             if local_entry_file:
                 with open(local_entry_file, 'rt') as f:
                     lines = f.readlines()
-                future_found = -1
-                for i, line in enumerate(lines):
-                    tokens = [t.strip() for t in line.split(' ') if t.strip()]
-                    if tokens and tokens[0] in ('import', 'from',):
-                        if '__future__' in line:
-                            future_found = i
-                        else:
-                            break
+                future_found = self._locate_future_import(lines)
                 if future_found >= 0:
                     idx_a = future_found + 1
 
             task_init_patch = ''
-            if self.repo:
+            if self.repo or task_state.get('script', {}).get('repository'):
                 # if we do not have requirements, add clearml to the requirements.txt
                 if not reqs:
                     task_init_patch += \
@@ -272,7 +266,11 @@ class CreateAndPopulate(object):
                     "from clearml import Task\n" \
                     "Task.init()\n\n"
 
-            task_state['script']['diff'] = task_init_patch + task_state['script'].get('diff', '')
+            # make sure we add the dif at the end of the current diff
+            task_state['script']['diff'] = task_state['script'].get('diff', '')
+            if task_state['script']['diff'] and not task_state['script']['diff'].endswith('\n'):
+                task_state['script']['diff'] += '\n'
+            task_state['script']['diff'] += task_init_patch
 
         # set base docker image if provided
         if self.docker:
@@ -343,3 +341,52 @@ class CreateAndPopulate(object):
         :return: Return the created Task id (str)
         """
         return self.task.id if self.task else None
+
+    @staticmethod
+    def _locate_future_import(lines):
+        # type: (List[str]) -> int
+        """
+        :param lines: string lines of a python file
+        :return: line index of the last __future_ import. return -1 if no __future__ was found
+        """
+        # skip over the first two lines, they are ours
+        # then skip over empty or comment lines
+        lines = [(i, line.split('#', 1)[0].rstrip()) for i, line in enumerate(lines)
+                 if line.strip('\r\n\t ') and not line.strip().startswith('#')]
+
+        # remove triple quotes ' """ '
+        nested_c = -1
+        skip_lines = []
+        for i, line_pair in enumerate(lines):
+            for _ in line_pair[1].split('"""')[1:]:
+                if nested_c >= 0:
+                    skip_lines.extend(list(range(nested_c, i + 1)))
+                    nested_c = -1
+                else:
+                    nested_c = i
+        # now select all the
+        lines = [pair for i, pair in enumerate(lines) if i not in skip_lines]
+
+        from_future = re.compile(r"^from[\s]*__future__[\s]*")
+        import_future = re.compile(r"^import[\s]*__future__[\s]*")
+        # test if we have __future__ import
+        found_index = -1
+        for a_i, (_, a_line) in enumerate(lines):
+            if found_index >= a_i:
+                continue
+            if from_future.match(a_line) or import_future.match(a_line):
+                found_index = a_i
+                # check the last import block
+                i, line = lines[found_index]
+                # wither we have \\ character at the end of the line or the line is indented
+                parenthesized_lines = '(' in line and ')' not in line
+                while line.endswith('\\') or parenthesized_lines:
+                    found_index += 1
+                    i, line = lines[found_index]
+                    if ')' in line:
+                        break
+
+            else:
+                break
+
+        return found_index if found_index < 0 else lines[found_index][0]

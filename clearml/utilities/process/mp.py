@@ -216,7 +216,16 @@ class BackgroundMonitor(object):
                     current_process()._config['daemon'] = False  # noqa
             except BaseException:
                 pass
-            BackgroundMonitor._main_process.start()
+            # try to start the background process, if we fail retry again, or crash
+            for i in range(4):
+                try:
+                    BackgroundMonitor._main_process.start()
+                    break
+                except BaseException:
+                    if i < 3:
+                        sleep(1)
+                        continue
+                    raise
             if un_daemonize:
                 # noinspection PyBroadException
                 try:

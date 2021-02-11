@@ -406,6 +406,21 @@ class Dataset(object):
 
         return True
 
+    def publish(self, raise_on_error=True):
+        # type: (bool) -> bool
+        """
+        Publish the dataset
+        If dataset is not finalize, throw exception
+
+        :param raise_on_error: If True raise exception if dataset publishing failed
+        """
+        # check we can publish this dataset
+        if not self.is_final():
+            raise ValueError("Cannot publish dataset, dataset in status {}.".format(self._task.get_status()))
+
+        self._task.publish(ignore_errors=raise_on_error)
+        return True
+
     def is_final(self):
         # type: () -> bool
         """

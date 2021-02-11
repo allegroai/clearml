@@ -148,6 +148,10 @@ def cli():
     finalize.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
     finalize.set_defaults(func=ds_close)
 
+    publish = subparsers.add_parser('publish', help='Publish dataset task')
+    publish.add_argument('--id', type=str, required=True, help='The dataset task id to be published.')
+    publish.set_defaults(func=ds_publish)
+
     delete = subparsers.add_parser('delete', help='Delete a dataset')
     delete.add_argument('--id', type=str, required=False,
                         help='Previously created dataset id. Default: previously created/accessed dataset')
@@ -369,6 +373,20 @@ def ds_close(args):
     ds.finalize()
     print('Dataset closed and finalized')
     clear_state()
+    return 0
+
+
+def ds_publish(args):
+    print('Publishing dataset id {}'.format(args.id))
+    check_null_id(args)
+    print_args(args)
+    ds = Dataset.get(dataset_id=args.id)
+    if not ds.is_final():
+        raise ValueError("Cannot publish dataset. Please finalize it first, run `clearml-data close`")
+
+    ds.publish()
+    print('Dataset published')
+    clear_state()  # just to verify the state is clear
     return 0
 
 

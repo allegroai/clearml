@@ -86,6 +86,7 @@ def cli():
         working_directory=args.cwd,
         packages=args.packages,
         requirements_file=args.requirements,
+        docker=args.docker,
         base_task_id=args.base_task_id,
         add_task_init_call=not args.skip_task_init,
         raise_on_missing_entries=True,

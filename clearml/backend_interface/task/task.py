@@ -581,7 +581,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def publish(self, ignore_errors=True):
         # type: (bool) -> ()
         """ The signal that this Task will be published """
-        if str(self.status) != str(tasks.TaskStatusEnum.stopped):
+        if str(self.status) not in (str(tasks.TaskStatusEnum.stopped), str(tasks.TaskStatusEnum.completed)):
             raise ValueError("Can't publish, Task is not stopped")
         resp = self.send(tasks.PublishRequest(self.id), ignore_errors=ignore_errors)
         assert isinstance(resp.response, tasks.PublishResponse)

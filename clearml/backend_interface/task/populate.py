@@ -42,7 +42,7 @@ class CreateAndPopulate(object):
         :param task_name: Set the name of the remote task. Required if base_task_id is None.
         :param task_type: Optional, The task type to be created. Supported values: 'training', 'testing', 'inference',
             'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc', 'custom'
-        :param repo: Remote URL for the repository to use, or path to local copy of the git repository
+        :param repo: Remote URL for the repository to use, OR path to local copy of the git repository
             Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'
         :param branch: Select specific repository branch/tag (implies the latest commit from the branch)
         :param commit: Select specific commit id to use (default: latest commit,
@@ -114,7 +114,7 @@ class CreateAndPopulate(object):
         """
         local_entry_file = None
         repo_info = None
-        if self.folder or (self.script and Path(self.script).is_file()):
+        if self.folder or (self.script and Path(self.script).is_file() and not self.repo):
             self.folder = os.path.expandvars(os.path.expanduser(self.folder)) if self.folder else None
             self.script = os.path.expandvars(os.path.expanduser(self.script)) if self.script else None
             self.cwd = os.path.expandvars(os.path.expanduser(self.cwd)) if self.cwd else None

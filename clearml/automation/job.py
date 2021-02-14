@@ -19,6 +19,7 @@ class TrainsJob(object):
             task_overrides=None,  # type: Optional[Mapping[str, str]]
             tags=None,  # type: Optional[Sequence[str]]
             parent=None,  # type: Optional[str]
+            disable_clone_task=False,  # type: bool
             **kwargs  # type: Any
     ):
         # type: (...) -> ()
@@ -31,8 +32,24 @@ class TrainsJob(object):
         :param list tags: additional tags to add to the newly cloned task
         :param str parent: Set newly created Task parent task field, default: base_tak_id.
         :param dict kwargs: additional Task creation parameters
+        :param bool disable_clone_task: if False (default) clone base task id.
+            If True, use the base_task_id directly (base-task must be in draft-mode / created),
         """
-        self.task = Task.clone(base_task_id, parent=parent or base_task_id, **kwargs)
+        if disable_clone_task:
+            self.task = Task.get_task(task_id=base_task_id)
+            task_status = self.task.status
+            if task_status != Task.TaskStatusEnum.created:
+                logger.warning('Task cloning disabled but requested Task [{}] status={}. '
+                               'Reverting to clone Task'.format(base_task_id, task_status))
+                disable_clone_task = False
+                self.task = None
+            elif parent:
+                self.task.set_parent(parent)
+
+        # check again if we need to clone the Task
+        if not disable_clone_task:
+            self.task = Task.clone(base_task_id, parent=parent or base_task_id, **kwargs)
+
         if tags:
             self.task.set_tags(list(set(self.task.get_tags()) | set(tags)))
         self.task_parameter_override = None

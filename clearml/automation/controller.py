@@ -520,11 +520,33 @@ class PipelineController(object):
             orientation='h'
         )
 
+        task_link_template = self._task.get_output_log_web_page()\
+            .replace('/{}/'.format(self._task.project), '/{project}/')\
+            .replace('/{}/'.format(self._task.id), '/{task}/')
+
         # create the detailed parameter table
+        def create_task_link(a_node):
+            task_id = project_id = None
+            if a_node.job:
+                project_id = a_node.job.task.project
+                task_id = a_node.job.task.id
+            elif a_node.executed:
+                task_id = a_node.executed
+                # noinspection PyBroadException
+                try:
+                    project_id = Task.get_task(task_id=task_id).project
+                except Exception:
+                    project_id = '*'
+
+            if not task_id:
+                return ''
+
+            return '<a href="{}"> {} </a>'.format(
+                task_link_template.format(project=project_id, task=task_id), task_id)
+
         table_values = [["Pipeline Step", "Task ID", "Parameters"]]
         table_values += [
-            [v, self._nodes[v].executed or (self._nodes[v].job.task_id() if self._nodes[v].job else ''), str(n)]
-            for v, n in zip(visited, node_params)]
+            [v, create_task_link(self._nodes[v]), str(n)] for v, n in zip(visited, node_params)]
 
         # hack, show single node sankey
         if single_nodes:

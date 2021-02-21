@@ -21,6 +21,7 @@ class PatchArgumentParser:
     _calling_current_task = False
     _last_parsed_args = None
     _last_arg_parser = None
+    _recursion_guard = False
 
     @staticmethod
     def add_subparsers(self, **kwargs):
@@ -34,13 +35,31 @@ class PatchArgumentParser:
 
     @staticmethod
     def parse_args(self, args=None, namespace=None):
-        return PatchArgumentParser._patched_parse_args(PatchArgumentParser._original_parse_args,
-                                                       self, args=args, namespace=namespace)
+        if PatchArgumentParser._recursion_guard:
+            return {} if not PatchArgumentParser._original_parse_args else \
+                PatchArgumentParser._original_parse_args(self, args=args, namespace=namespace)
+
+        PatchArgumentParser._recursion_guard = True
+        try:
+            result = PatchArgumentParser._patched_parse_args(
+                PatchArgumentParser._original_parse_args, self, args=args, namespace=namespace)
+        finally:
+            PatchArgumentParser._recursion_guard = False
+        return result
 
     @staticmethod
     def parse_known_args(self, args=None, namespace=None):
-        return PatchArgumentParser._patched_parse_args(PatchArgumentParser._original_parse_known_args,
-                                                       self, args=args, namespace=namespace)
+        if PatchArgumentParser._recursion_guard:
+            return {} if not PatchArgumentParser._original_parse_args else \
+                PatchArgumentParser._original_parse_known_args(self, args=args, namespace=namespace)
+
+        PatchArgumentParser._recursion_guard = True
+        try:
+            result = PatchArgumentParser._patched_parse_args(
+                PatchArgumentParser._original_parse_known_args, self, args=args, namespace=namespace)
+        finally:
+            PatchArgumentParser._recursion_guard = False
+        return result
 
     @staticmethod
     def _patched_parse_args(original_parse_fn, self, args=None, namespace=None):
@@ -54,6 +73,11 @@ class PatchArgumentParser:
                 # noinspection PyBroadException
                 try:
                     current_task = Task.get_task(task_id=get_remote_task_id())
+                    # make sure we do not store back the values
+                    # (we will do that when we actually call parse args)
+                    # this will make sure that if we have args we should not track we know them
+                    # noinspection PyProtectedMember
+                    current_task._arguments.exclude_parser_args({'*': True})
                 except Exception:
                     pass
         # automatically connect to current task:
@@ -147,7 +171,7 @@ class PatchArgumentParser:
                 parsed_args_namespace = copy(parsed_args)
                 parsed_args = (parsed_args_namespace, [])
 
-                # cast arguments in parsed_args_namespace entries to str
+            # cast arguments in parsed_args_namespace entries to str
             if parsed_args_namespace and isinstance(parsed_args_namespace, Namespace):
                 for k, v in parser._parsed_arg_string_lookup.items():  # noqa
                     if hasattr(parsed_args_namespace, k):

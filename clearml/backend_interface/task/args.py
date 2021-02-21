@@ -356,6 +356,9 @@ class _Arguments(object):
                         bool_value = cast_to_bool_int(v, strip=True)
                         if bool_value is not None and current_action.default == bool(bool_value):
                             continue
+                    elif str(current_action.default) == v:
+                        # if we changed nothing, leave it as is (i.e. default value)
+                        v = current_action.default
 
                     arg_parser_arguments[k] = v
                     # noinspection PyBroadException
@@ -397,7 +400,7 @@ class _Arguments(object):
                     pass
 
         # if API supports sections, we can update back the Args section with all the missing default
-        if Session.check_min_api_version('2.9'):
+        if Session.check_min_api_version('2.9') and not self._exclude_parser_args.get('*', None):
             # noinspection PyBroadException
             try:
                 task_defaults, task_defaults_descriptions, task_defaults_types = \

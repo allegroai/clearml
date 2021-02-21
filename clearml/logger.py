@@ -1178,7 +1178,12 @@ class Logger(object):
 
     @classmethod
     def _remove_std_logger(cls):
-        StdStreamPatch.remove_std_logger()
+        # noinspection PyBroadException
+        try:
+            StdStreamPatch.remove_std_logger()
+        except Exception:
+            return False
+        return True
 
     def _console(self, msg, level=logging.INFO, omit_console=False, *args, **_):
         # type: (str, int, bool, Any, Any) -> None

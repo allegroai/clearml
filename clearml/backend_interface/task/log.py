@@ -158,8 +158,6 @@ class BackgroundLogService(BackgroundMonitor):
             # noinspection PyProtectedMember
             TaskHandler._log_stderr(
                 "{}\nWARNING: trains.log - Failed logging task to backend ({:d} lines)".format(ex, len(buffer)))
-            import traceback
-            traceback.print_stack()
 
     def flush(self):
         if self.is_alive():
@@ -230,11 +228,10 @@ class TaskHandler(BufferingHandler):
                 TaskHandler.__once = True
 
         # if we passed the max buffer
-        return self.counter >= self.capacity and self._background_log and \
-               self._background_log_size >= self.capacity
+        return (self.counter >= self.capacity and self._background_log and
+                self._background_log_size >= self.capacity)
 
     def flush(self):
-        import traceback
         if self._task_id is None:
             return
         self.counter = 0

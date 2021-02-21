@@ -1327,6 +1327,7 @@ class Task(_Task):
 
         # store is main before we call at_exit, because will will Null it
         is_main = self.is_main_task()
+        is_sub_process = self.__is_subprocess()
 
         # wait for repository detection (5 minutes should be reasonable time to detect all packages)
         if self._logger and not self.__is_subprocess():
@@ -1336,6 +1337,11 @@ class Task(_Task):
         # unregister atexit callbacks and signal hooks, if we are the main task
         if is_main:
             self.__register_at_exit(None)
+            if not is_sub_process:
+                # make sure we enable multiple Task.init callas with reporting sub-processes
+                BackgroundMonitor.clear_main_process()
+                # noinspection PyProtectedMember
+                Logger._remove_std_logger()
 
     def delete(self, delete_artifacts_and_models=True, skip_models_used_by_other_tasks=True, raise_on_error=False):
         # type: (bool, bool, bool) -> bool
@@ -2975,7 +2981,6 @@ class Task(_Task):
                 if self.is_main_task():
                     Task.__main_task = None
             except Exception as ex:
-                import traceback
                 # make sure we do not interrupt the exit process
                 pass
 

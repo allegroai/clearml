@@ -16,7 +16,6 @@ except ImportError:  # noqa
 
 
 class SingletonThreadPool(object):
-    __lock = None
     __thread_pool = None
     __thread_pool_pid = None
 
@@ -26,6 +25,13 @@ class SingletonThreadPool(object):
             cls.__thread_pool = ThreadPool(1)
             cls.__thread_pool_pid = os.getpid()
         return cls.__thread_pool
+
+    @classmethod
+    def clear(cls):
+        if cls.__thread_pool:
+            cls.__thread_pool.close()
+        cls.__thread_pool = None
+        cls.__thread_pool_pid = None
 
 
 class SafeQueue(object):
@@ -318,3 +324,11 @@ class BackgroundMonitor(object):
     @classmethod
     def is_subprocess_enabled(cls):
         return bool(cls._main_process)
+
+    @classmethod
+    def clear_main_process(cls):
+        BackgroundMonitor._main_process = None
+        BackgroundMonitor._parent_pid = None
+        BackgroundMonitor._sub_process_started = None
+        BackgroundMonitor._instances = {}
+        SingletonThreadPool.clear()

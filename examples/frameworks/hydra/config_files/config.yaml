@@ -1,0 +1,8 @@
+# data
+dataset:
+  data: rawdata.csv
+  user: root
+  password: password
+
+pipeline:
+  pipeline_1: my_pipeline

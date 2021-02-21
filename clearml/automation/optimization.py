@@ -1,7 +1,7 @@
 import hashlib
 import json
 import six
-from copy import copy
+from copy import copy, deepcopy
 from datetime import datetime
 from itertools import product
 from logging import getLogger
@@ -1501,7 +1501,8 @@ class HyperParameterOptimizer(object):
             pairs = []
             labels = []
             created_jobs = copy(self.optimizer.get_created_jobs_ids())
-            id_status = {j_id: j_run.status() for j_id, j_run in self.optimizer.get_created_jobs_tasks().items()}
+            created_jobs_tasks = self.optimizer.get_created_jobs_tasks()
+            id_status = {j_id: j_run.status() for j_id, j_run in created_jobs_tasks.items()}
             for i, (job_id, params) in enumerate(created_jobs.items()):
                 value = self.objective_metric.get_objective(job_id)
                 if job_id in completed_jobs:
@@ -1548,14 +1549,28 @@ class HyperParameterOptimizer(object):
                 job_ids, key=lambda x: completed_jobs[x][0], reverse=bool(self.objective_metric.sign >= 0))
             # sort the columns except for 'objective', 'iteration'
             columns = list(sorted(set([c for k, v in completed_jobs.items() for c in v[2].keys()])))
+
             # add the index column (task id) and the first two columns 'objective', 'iteration' then the rest
             table_values = [['task id', 'objective', 'iteration'] + columns]
-
             table_values += \
                 [([job, completed_jobs[job][0], completed_jobs[job][1]] +
                   [completed_jobs[job][2].get(c, '') for c in columns]) for job in job_ids_sorted_by_objective]
+
+            # create links for task id in the table
+            task_link_template = self._task.get_output_log_web_page() \
+                .replace('/{}/'.format(self._task.project), '/{project}/') \
+                .replace('/{}/'.format(self._task.id), '/{task}/')
+            # create links for task id in the table
+            table_values_with_links = deepcopy(table_values)
+            for i in range(1, len(table_values_with_links)):
+                task_id = table_values_with_links[i][0]
+                project_id = created_jobs_tasks[task_id].task.project \
+                    if task_id in created_jobs_tasks else '*'
+                table_values_with_links[i][0] = '<a href="{}"> {} </a>'.format(
+                    task_link_template.format(project=project_id, task=task_id), task_id)
+
             task_logger.report_table(
-                "summary", "job", 0, table_plot=table_values,
+                "summary", "job", 0, table_plot=table_values_with_links,
                 extra_layout={"title": "objective: {}".format(title)})
 
             # Build parallel Coordinates: convert to columns, and reorder accordingly

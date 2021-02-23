@@ -194,7 +194,6 @@ class Dataset(object):
         :param verbose: If True print to console files removed
         :return: Number of files removed
         """
-        self._dirty = True
         self._task.get_logger().report_text(
             'Removing files from dataset: {}'.format(
                 dict(dataset_path=dataset_path, recursive=recursive, verbose=verbose)),

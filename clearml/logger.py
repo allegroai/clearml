@@ -15,9 +15,8 @@ try:
 except ImportError:
     pd = None
 
-from .backend_interface.logger import StdStreamPatch, LogFlusher
+from .backend_interface.logger import StdStreamPatch
 from .backend_interface.task import Task as _Task
-from .backend_interface.task.development.worker import DevWorker
 from .backend_interface.task.log import TaskHandler
 from .backend_interface.util import mutually_exclusive
 from .config import running_remotely, get_cache_dir, config, DEBUG_SIMULATE_REMOTE_TASK

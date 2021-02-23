@@ -3,7 +3,6 @@ import hashlib
 import time
 from functools import reduce
 from logging import getLevelName
-from multiprocessing import Lock
 
 import attr
 import numpy as np

@@ -2980,7 +2980,7 @@ class Task(_Task):
                 # this is so in theory we can close a main task and start a new one
                 if self.is_main_task():
                     Task.__main_task = None
-            except Exception as ex:
+            except Exception:
                 # make sure we do not interrupt the exit process
                 pass
 

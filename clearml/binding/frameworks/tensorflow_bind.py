@@ -1325,7 +1325,7 @@ class PatchTensorFlowEager(object):
                     # the operator itself, will do the reporting to the backend
                     py_function(
                         _report_summary_op,
-                        inp=[writer, step, tag, value, name], Tout=[])
+                        inp=[writer, step, tag, values, name], Tout=[])
             except Exception as ex:
                 LoggerRoot.get_base_logger(TensorflowBinding).warning(str(ex))
 

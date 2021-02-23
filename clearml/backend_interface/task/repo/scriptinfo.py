@@ -276,7 +276,8 @@ class _JupyterObserver(object):
             # noinspection PyPackageRequirements
             from nbconvert.exporters.script import ScriptExporter
             _script_exporter = ScriptExporter()
-        except Exception:
+        except Exception as ex:
+            _logger.warning('Could not read Jupyter Notebook: {}'.format(ex))
             return
         # load pigar
         # noinspection PyBroadException
@@ -493,7 +494,7 @@ class ScriptInfo(object):
                 import ipykernel
                 from glob import glob
                 import json
-                for f in glob(os.path.join(os.path.dirname(ipykernel.get_connection_file()), 'nbserver-*.json')):
+                for f in glob(os.path.join(os.path.dirname(ipykernel.get_connection_file()), '??server-*.json')):
                     # noinspection PyBroadException
                     try:
                         with open(f, 'r') as json_data:

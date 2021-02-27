@@ -38,10 +38,10 @@ will be logged in real-time, alongside your TensorBoard and matplotlib.
 ### Launching a job from a repository
 
 We will be launching this [script](https://github.com/allegroai/trains/blob/master/examples/frameworks/scikit-learn/sklearn_matplotlib_example.py) on a remote machine. The following are the command-line options we will be using:
-- First, we have to give the experiment a name and select a project (`--project examples --name remote_test`)
-- Then, we select the repository with our code. If we do not specify branch / commit, it will take the latest commit 
-  from the master branch (`--repo https://github.com/allegroai/clearml.git`)
-- Lastly, we need to specify which script in the repository needs to be run (`--script examples/frameworks/scikit-learn/sklearn_matplotlib_example.py`)
+1. Give the experiment a name and select a project, for example: `--project examples --name remote_test`
+2. Select the repository with our code. If we do not specify branch / commit, it will take the latest commit 
+  from the master branch, for example: `--repo https://github.com/allegroai/clearml.git`
+3. Specify which script in the repository needs to be run, for example: `--script examples/frameworks/scikit-learn/sklearn_matplotlib_example.py`
 Notice that by default, the execution working directory will be the root of the repository. If we need to change it, add `--cwd <folder>`
 
 If we additionally need to pass an argument to our scripts, use the `--args` switch. 
@@ -81,11 +81,11 @@ clearml-task --help
 ```
 
 ``` console
-ClearML launch - launch any codebase on remote machines running clearml-agent
+ClearML launch - launch any codebase on remote machine running clearml-agent
 
 optional arguments:
   -h, --help            show this help message and exit
-  --version             Display the Allegro.ai utility version
+  --version             Display the clearml-task utility version
   --project PROJECT     Required: set the project name for the task. If
                         --base-task-id is used, this arguments is optional.
   --name NAME           Required: select a name for the remote task
@@ -125,12 +125,17 @@ optional arguments:
                         Manually specify a list of required packages. Example:
                         --packages "tqdm>=2.1" "scikit-learn"
   --docker DOCKER       Select the docker image to use in the remote session
+  --task-type TASK_TYPE
+                        Set the Task type, optional values: training, testing,
+                        inference, data_processing, application, monitor,
+                        controller, optimizer, service, qc, custom
   --skip-task-init      If set, Task.init() call is not added to the entry
                         point, and is assumed to be called in within the
                         script. Default: add Task.init() call entry point
                         script
   --base-task-id BASE_TASK_ID
-                        Use a pre-existing task in the system, instead of a local repo/script.
-                        Essentially clones an existing task and overrides arguments/requirements.
+                        Use a pre-existing task in the system, instead of a
+                        local repo/script. Essentially clones an existing task
+                        and overrides arguments/requirements.
                         
 ```

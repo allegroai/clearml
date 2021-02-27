@@ -496,7 +496,8 @@ class PipelineController(object):
                     '<br />'.join('{}: {}'.format(k, v if len(str(v)) < 24 else (str(v)[:24]+' ...'))
                                   for k, v in (node.parameters or {}).items()))
                 sankey_node['color'].append(
-                    ("blue" if not node.job or not node.job.is_failed() else "red")
+                    ("red" if node.job and node.job.is_failed() else
+                     ("blue" if not node.job or node.job.is_completed() else "royalblue"))
                     if node.executed is not None else ("green" if node.job else "lightsteelblue"))
 
                 for p in parents:

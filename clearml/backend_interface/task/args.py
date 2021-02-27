@@ -105,7 +105,7 @@ class _Arguments(object):
             }
 
         desc_ = {
-            a.dest: a.help or (
+            a.dest: str(a.help) or (
                 '{}default: {}'.format('choices: {}, '.format(a.choices) if a.choices else '',
                                        defaults_.get(a.dest, '')))
             for a in actions}

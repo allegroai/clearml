@@ -1,4 +1,5 @@
 import itertools
+from copy import copy
 
 import six
 
@@ -116,7 +117,8 @@ def flatten_dictionary(a_dict, prefix=''):
 def nested_from_flat_dictionary(a_dict, flat_dict, prefix=''):
     basic_types = (float, int, bool, six.string_types, )
     sep = '/'
-    for k, v in a_dict.items():
+    org_dict = copy(a_dict)
+    for k, v in org_dict.items():
         k = str(k)
         if isinstance(v, (float, int, bool, six.string_types)):
             a_dict[k] = flat_dict.get(prefix + k, v)

@@ -1031,11 +1031,13 @@ class _HttpDriver(_Driver):
         if res.status_code != requests.codes.ok:
             raise ValueError('Failed uploading object %s (%d): %s' % (object_name, res.status_code, res.text))
 
-        if callback and stream_size:
-            try:
-                callback(stream_size)
-            except Exception as ex:
-                log.debug('Exception raised when running callback function: %s' % ex)
+        # call back is useless because we are not calling it while uploading...
+
+        # if callback and stream_size:
+        #     try:
+        #         callback(stream_size)
+        #     except Exception as ex:
+        #         log.debug('Exception raised when running callback function: %s' % ex)
         return res
 
     def list_container_objects(self, *args, **kwargs):

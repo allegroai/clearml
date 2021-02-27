@@ -1612,9 +1612,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def add_requirements(cls, package_name, package_version=None):
         # type: (str, Optional[str]) -> ()
         """
-        Force the adding of a package to the requirements list. If ``package_version`` is not specified, use the
+        Force the adding of a package to the requirements list. If ``package_version`` is None, use the
         installed package version, if found.
         Example: Task.add_requirements('tensorflow', '2.4.0')
+        Example: Task.add_requirements('tensorflow', '>=2.4')
+        Example: Task.add_requirements('tensorflow') -> use the installed tensorflow version
+        Example: Task.add_requirements('tensorflow', '') -> no version limit
 
         :param str package_name: The package name to add to the "Installed Packages" section of the task.
         :param package_version: The package version requirements. If ``None``, then  use the installed version.

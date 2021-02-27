@@ -172,24 +172,14 @@ class ScriptRequirements(object):
             version = v.version
             if k in forced_packages:
                 forced_version = forced_packages.pop(k, None)
-                if forced_version:
+                if forced_version is not None:
                     version = forced_version
             # requirements_txt += ''.join(['# {0}\n'.format(c) for c in v.comments.sorted_items()])
-            if k == '-e' and version:
-                requirements_txt += '{0}\n'.format(version)
-            elif k.startswith('-e '):
-                requirements_txt += '{0} {1}\n'.format(k.replace('-e ', '', 1), version or '')
-            elif version:
-                requirements_txt += '{0} {1} {2}\n'.format(k, '==', version)
-            else:
-                requirements_txt += '{0}\n'.format(k)
+            requirements_txt += ScriptRequirements._make_req_line(k, version)
 
         # add forced requirements that we could not find installed on the system
         for k in sorted(forced_packages.keys()):
-            if forced_packages[k]:
-                requirements_txt += '{0} {1} {2}\n'.format(k, '==', forced_packages[k])
-            else:
-                requirements_txt += '{0}\n'.format(k)
+            requirements_txt += ScriptRequirements._make_req_line(k, forced_packages.get(k))
 
         requirements_txt_packages_only = \
             requirements_txt + '\n# Skipping detailed import analysis, it is too large\n'
@@ -217,6 +207,21 @@ class ScriptRequirements(object):
         return (requirements_txt if len(requirements_txt) < ScriptRequirements._max_requirements_size
                 else requirements_txt_packages_only,
                 conda_requirements)
+
+    @staticmethod
+    def _make_req_line(k, version):
+        requirements_txt = ''
+        if k == '-e' and version:
+            requirements_txt += '{0}\n'.format(version)
+        elif k.startswith('-e '):
+            requirements_txt += '{0} {1}\n'.format(k.replace('-e ', '', 1), version or '')
+        elif version and (str(version).strip() or ' ')[0] in '><~=':
+            requirements_txt += '{0} {1}\n'.format(k, version)
+        elif version and str(version).strip():
+            requirements_txt += '{0} {1} {2}\n'.format(k, '==', version)
+        else:
+            requirements_txt += '{0}\n'.format(k)
+        return requirements_txt
 
     @staticmethod
     def _remove_package_versions(installed_pkgs, package_names_to_remove_version):

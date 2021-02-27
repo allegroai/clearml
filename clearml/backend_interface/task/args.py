@@ -498,7 +498,7 @@ class _Arguments(object):
                 # noinspection PyBroadException
                 try:
                     p = str(param).strip()
-                    param = yaml.load(p, Loader=yaml.SafeLoader)
+                    param = yaml.load(p, Loader=FloatSafeLoader)
                 except Exception:
                     self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
                                            (str(k), str(param), str(k), str(v)))
@@ -507,7 +507,7 @@ class _Arguments(object):
                 # noinspection PyBroadException
                 try:
                     p = str(param).strip().replace('(', '[', 1)[::-1].replace(')', ']', 1)[::-1]
-                    param = tuple(yaml.load(p, Loader=yaml.SafeLoader))
+                    param = tuple(yaml.load(p, Loader=FloatSafeLoader))
                 except Exception:
                     self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
                                            (str(k), str(param), str(k), str(v)))
@@ -516,7 +516,7 @@ class _Arguments(object):
                 # noinspection PyBroadException
                 try:
                     p = str(param).strip()
-                    param = yaml.load(p, Loader=yaml.SafeLoader)
+                    param = yaml.load(p, Loader=FloatSafeLoader)
                 except Exception:
                     self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
                                            (str(k), str(param), str(k), str(v)))
@@ -553,3 +553,32 @@ class _Arguments(object):
         if dtype in (float, int) and isinstance(arg, list):
             return [None if a is None else dtype(a) for a in arg]
         return arg
+
+
+# fix pyyaml Numbers in scientific notation without dot are parsed as string
+# [#173](https://github.com/yaml/pyyaml/issues/173) [PR #174](https://github.com/yaml/pyyaml/pull/174)
+# noinspection PyBroadException
+try:
+    import re
+    from yaml.resolver import Resolver
+
+    class FloatResolver(Resolver):
+        pass
+
+    FloatResolver.add_implicit_resolver(
+        'tag:yaml.org,2002:float',
+        re.compile(r'''^(?:[-+]?(?:[0-9][0-9_]*)\.[0-9_]*(?:[eE][-+][0-9]+)?
+                        |[-+]?(?:[0-9][0-9_]*)(?:[eE][-+][0-9]+)
+                        |\.[0-9_]+(?:[eE][-+][0-9]+)?
+                        |[-+]?[0-9][0-9_]*(?::[0-5]?[0-9])+\.[0-9_]*
+                        |[-+]?\.(?:inf|Inf|INF)
+                        |\.(?:nan|NaN|NAN))$''', re.X),
+        list('-+0123456789.'))
+
+    class FloatSafeLoader(yaml.SafeLoader, FloatResolver):
+        def __init__(self, stream):
+            super(FloatSafeLoader, self).__init__(stream)
+            FloatResolver.__init__(self)
+
+except Exception:
+    FloatSafeLoader = yaml.SafeLoader

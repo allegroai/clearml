@@ -140,14 +140,15 @@ class Dataset(object):
         # type: (List[str]) -> ()
         self._task.set_tags(values or [])
 
-    def add_files(self,
-                  path,  # type: Union[str, Path, _Path]
-                  wildcard=None,  # type: Optional[Union[str, Sequence[str]]]
-                  local_base_folder=None,  # type: Optional[str]
-                  dataset_path=None,  # type: Optional[str]
-                  recursive=True,  # type: bool
-                  verbose=False  # type: bool
-                  ):
+    def add_files(
+            self,
+            path,  # type: Union[str, Path, _Path]
+            wildcard=None,  # type: Optional[Union[str, Sequence[str]]]
+            local_base_folder=None,  # type: Optional[str]
+            dataset_path=None,  # type: Optional[str]
+            recursive=True,  # type: bool
+            verbose=False  # type: bool
+    ):
         # type: (...) -> ()
         """
         Add a folder into the current dataset. calculate file hash,
@@ -748,30 +749,43 @@ class Dataset(object):
         client.tasks.delete(task=dataset_id, force=True)
 
     @classmethod
-    def get(cls, dataset_id=None, dataset_project=None, dataset_name=None, only_completed=False, only_published=False):
-        # type: (Optional[str], Optional[str], Optional[str], bool , bool) -> Dataset
+    def get(
+            cls,
+            dataset_id=None,  # type: Optional[str]
+            dataset_project=None,  # type: Optional[str]
+            dataset_name=None,  # type: Optional[str]
+            dataset_tags=None,  # type: Optional[Sequence[str]]
+            only_completed=False,  # type: bool
+            only_published=False  # type: bool
+    ):
+        # type: (...) -> Dataset
         """
         Get a specific Dataset. If only dataset_project is given, return the last Dataset in the Dataset project
 
         :param dataset_id: Requested Dataset ID
         :param dataset_project: Requested Dataset project name
         :param dataset_name: Requested Dataset name
+        :param dataset_tags: Requested Dataset tags (list of tag strings)
         :param only_completed: Return only if the requested dataset is completed or published
         :param only_published: Return only if the requested dataset is published
         :return: Dataset object
         """
-        mutually_exclusive(dataset_id=dataset_id, dataset_project=dataset_project)
-        mutually_exclusive(dataset_id=dataset_id, dataset_name=dataset_name)
+        mutually_exclusive(dataset_id=dataset_id, dataset_project=dataset_project, _require_at_least_one=False)
+        mutually_exclusive(dataset_id=dataset_id, dataset_name=dataset_name, _require_at_least_one=False)
+        if not any([dataset_id, dataset_project, dataset_name, dataset_tags]):
+            raise ValueError('Dataset selection provided not provided (id/name/project/tags')
+
         tasks = Task.get_tasks(
             task_ids=[dataset_id] if dataset_id else None,
             project_name=dataset_project,
             task_name=exact_match_regex(dataset_name) if dataset_name else None,
             task_filter=dict(
                 system_tags=[cls.__tag, '-archived'], order_by=['-created'],
+                tags=dataset_tags,
                 type=[str(Task.TaskTypes.data_processing)],
                 page_size=1, page=0,
-                status=['publish'] if only_published else
-                ['publish', 'stopped', 'completed', 'closed'] if only_completed else None)
+                status=['published'] if only_published else
+                ['published', 'completed', 'closed'] if only_completed else None)
         )
         if not tasks:
             raise ValueError('Could not find Dataset {} {}'.format(

@@ -514,6 +514,12 @@ class Artifacts(object):
         else:
             raise ValueError("Artifact type {} not supported".format(type(artifact_object)))
 
+        # verify preview not out of scope:
+        if artifact_type_data.preview and len(artifact_type_data.preview) > (self.max_preview_size_bytes+1024):
+            artifact_type_data.preview = '# full preview too large to store, storing first {}kb\n{}'.format(
+                self.max_preview_size_bytes // 1024, artifact_type_data.preview[:self.max_preview_size_bytes]
+            )
+
         # remove from existing list, if exists
         for artifact in self._task_artifact_list:
             if artifact.key == name:

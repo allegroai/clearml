@@ -375,6 +375,8 @@ class EventTrainsWriter(object):
                     val = val[:, :, [2, 1, 0]]
                 else:
                     val = val[:, :, [0, 1, 2]]
+        except KeyboardInterrupt:
+            raise
         except Exception as e:
             logger = LoggerRoot.get_base_logger(TensorflowBinding)
             logger.warning('Failed decoding debug image [%s, %s, %s]' % (width, height, color_channels))

@@ -1167,9 +1167,6 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         inside the provided docker image.
         When running remotely the call is ignored
         """
-        if not self.running_locally():
-            return
-
         with self._edit_lock:
             self.reload()
             execution = self.data.execution
@@ -1622,6 +1619,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param str package_name: The package name to add to the "Installed Packages" section of the task.
         :param package_version: The package version requirements. If ``None``, then  use the installed version.
         """
+        if not running_remotely() and hasattr(cls, 'current_task') and cls.current_task():
+            get_logger('task').warning(
+                'Requirement ignored, Task.add_requirements() must be called before Task.init()')
         cls._force_requirements[package_name] = package_version
 
     def _get_models(self, model_type='output'):

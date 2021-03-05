@@ -325,8 +325,8 @@ def is_std_or_local_lib(name):
                 'bin/' in mpath and mpath.endswith('.py')):
             exist = False
         elif ((sys.prefix not in mpath) and
-              (sys.base_exec_prefix not in mpath) and
-              (sys.base_prefix not in mpath)):
+              (six.PY2 or (sys.base_exec_prefix not in mpath)) and
+              (six.PY2 or (sys.base_prefix not in mpath))):
             exist = mpath
 
     return exist

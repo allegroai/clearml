@@ -30,6 +30,8 @@ class BackgroundLogService(BackgroundMonitor):
         self._last_timestamp = 0
 
     def stop(self):
+        if isinstance(self._queue, PrQueue):
+            self._queue.close(self._event)
         super(BackgroundLogService, self).stop()
         self.flush()
 

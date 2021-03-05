@@ -50,11 +50,13 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
         if isinstance(self._queue, TrQueue):
             self._write()
             self._queue = PrQueue()
-        if isinstance(self._exit_event, TrEvent):
+        if not isinstance(self._exit_event, SafeEvent):
             self._exit_event = SafeEvent()
         super(BackgroundReportService, self).set_subprocess_mode()
 
     def stop(self):
+        if isinstance(self._queue, PrQueue):
+            self._queue.close(self._event)
         if not self.is_subprocess() or self.is_subprocess_alive():
             self._exit_event.set()
         super(BackgroundReportService, self).stop()
@@ -65,6 +67,8 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
             self._event.set()
 
     def add_event(self, ev):
+        if not self._queue:
+            return
         self._queue.put(ev)
         self._queue_size += 1
         if self._queue_size >= self._flush_threshold:
@@ -98,7 +102,8 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
                 events.append(self._queue.get())
             except Empty:
                 break
-
+        if not events:
+            return
         res = self._metrics.write_events(
             events, async_enable=self._async_enable, storage_uri=self._storage_uri)
         if self._async_enable:

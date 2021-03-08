@@ -135,20 +135,21 @@ class Artifact(object):
         self._preview = artifact_api_object.type_data.preview if artifact_api_object.type_data else None
         self._object = None
 
-    def get(self):
-        # type: () -> Any
+    def get(self, force_download=False):
+        # type: (bool) -> Any
         """
         Return an object constructed from the artifact file
 
         Currently supported types: Numpy.array, pandas.DataFrame, PIL.Image, dict (json)
         All other types will return a pathlib2.Path object pointing to a local copy of the artifacts file (or directory)
 
+        :param bool force_download: download file from remote even if exists in local cache
         :return: One of the following objects Numpy.array, pandas.DataFrame, PIL.Image, dict (json), or pathlib2.Path.
         """
         if self._object:
             return self._object
 
-        local_file = self.get_local_copy(raise_on_error=True)
+        local_file = self.get_local_copy(raise_on_error=True, force_download=force_download)
 
         # noinspection PyProtectedMember
         if self.type == 'numpy' and np:
@@ -176,13 +177,14 @@ class Artifact(object):
 
         return self._object
 
-    def get_local_copy(self, extract_archive=True, raise_on_error=False):
-        # type: (bool, bool) -> str
+    def get_local_copy(self, extract_archive=True, raise_on_error=False, force_download=False):
+        # type: (bool, bool, bool) -> str
         """
         :param bool extract_archive: If True and artifact is of type 'archive' (compressed folder)
             The returned path will be a temporary folder containing the archive content
         :param bool raise_on_error: If True and the artifact could not be downloaded,
             raise ValueError, otherwise return None on failure and output log warning.
+        :param bool force_download: download file from remote even if exists in local cache
         :raise: Raises error if local copy not found.
         :return: A local path to a downloaded copy of the artifact.
         """
@@ -190,7 +192,8 @@ class Artifact(object):
         local_copy = StorageManager.get_local_copy(
             remote_url=self.url,
             extract_archive=extract_archive and self.type == 'archive',
-            name=self.name
+            name=self.name,
+            force_download=force_download
         )
         if raise_on_error and local_copy is None:
             raise ValueError(

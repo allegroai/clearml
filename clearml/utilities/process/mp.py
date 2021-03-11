@@ -228,7 +228,7 @@ class BackgroundMonitor(object):
                 self._get_instances().append(self)
 
     def wait(self, timeout=None):
-        if not self._thread:
+        if not self._done_ev:
             return
         self._done_ev.wait(timeout=timeout)
 
@@ -264,6 +264,7 @@ class BackgroundMonitor(object):
         self._start_ev.set()
         self.daemon()
         self.post_execution()
+        self._thread = None
 
     def post_execution(self):
         self._done_ev.set()

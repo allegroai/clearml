@@ -70,7 +70,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     _store_diff = config.get('development.store_uncommitted_code_diff', False)
     _store_remote_diff = config.get('development.store_code_diff_from_remote', False)
-    _report_subprocess_enabled = config.get('development.report_use_subprocess', True)
+    _report_subprocess_enabled = config.get('development.report_use_subprocess', sys.platform == 'linux')
     _offline_filename = 'task.json'
 
     class TaskTypes(Enum):
@@ -1607,7 +1607,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     @classmethod
     def add_requirements(cls, package_name, package_version=None):
-        # type: (str, Optional[str]) -> ()
+        # type: (str, Optional[str]) -> None
         """
         Force the adding of a package to the requirements list. If ``package_version`` is None, use the
         installed package version, if found.
@@ -2091,7 +2091,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     @classmethod
     def __update_master_pid_task(cls, pid=None, task=None):
-        # type: (Optional[int], Union[str, Task]) -> ()
+        # type: (Optional[int], Union[str, Task]) -> None
         pid = pid or os.getpid()
         if not task:
             PROC_MASTER_ID_ENV_VAR.set(str(pid) + ':')
@@ -2122,7 +2122,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     @classmethod
     def set_offline(cls, offline_mode=False):
-        # type: (bool) -> ()
+        # type: (bool) -> None
         """
         Set offline mode, where all data and logs are stored into local folder, for later transmission
 

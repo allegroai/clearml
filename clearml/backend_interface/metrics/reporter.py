@@ -119,7 +119,10 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
             return True
         if not self.is_alive():
             return False
-        return not self._res_waiting.get_value()
+        try:
+            return not self._res_waiting.get_value()
+        except NotImplementedError:
+            return self.get_num_results() > 0
 
 
 class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncManagerMixin):
@@ -206,6 +209,9 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             report_service.wait()
         else:
             report_service.send_all_events()
+
+    def is_alive(self):
+        return self._report_service and self._report_service.is_alive()
 
     def get_num_results(self):
         return self._report_service.get_num_results()

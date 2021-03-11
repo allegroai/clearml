@@ -92,8 +92,7 @@ class BackgroundLogService(BackgroundMonitor):
         while self._queue and not self._queue.empty():
             # noinspection PyBroadException
             try:
-                # request = self._queue.get(block=False)
-                request = self._queue.get()
+                request = self._queue.get(block=False)
                 if request:
                     buffer.append(request)
             except Exception:

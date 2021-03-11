@@ -3,6 +3,7 @@ import os
 import six
 
 from ..config import TASK_LOG_ENVIRONMENT, running_remotely, config
+from ..utilities.process.mp import BackgroundMonitor
 
 
 class EnvironmentBind(object):
@@ -83,10 +84,8 @@ class PatchOsFork(object):
                 task = Task.init(project_name=None, task_name=None, task_type=None)
                 task.get_logger().flush()
 
-                # Hack: now make sure we setup the reporter thread
-
-                # noinspection PyProtectedMember
-                task._setup_reporter()
+                # Hack: now make sure we setup the reporter threads (Log+Reporter)
+                BackgroundMonitor.start_all(task=task)
 
                 # TODO: Check if the signal handler method is enough, for the time being, we have both
                 # # if we got here patch the os._exit of our instance to call us

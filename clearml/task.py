@@ -45,7 +45,7 @@ from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
 from .binding.joblib_bind import PatchedJoblib
 from .binding.matplotlib_bind import PatchedMatplotlib
 from .binding.hydra_bind import PatchHydra
-from .config import config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK
+from .config import config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, PROC_MASTER_ID_ENV_VAR
 from .config import running_remotely, get_remote_task_id
 from .config.cache import SessionCache
 from .debugging.log import LoggerRoot
@@ -179,6 +179,11 @@ class Task(_Task):
 
         :return: The current running Task (experiment).
         """
+        # check if we have no main Task, but the main process created one.
+        if not cls.__main_task and PROC_MASTER_ID_ENV_VAR.get():
+            # initialize the Task, connect to stdout
+            Task.init()
+        # return main Task
         return cls.__main_task
 
     @classmethod
@@ -433,7 +438,7 @@ class Task(_Task):
 
         is_sub_process_task_id = None
         # check that we are not a child process, in that case do nothing.
-        # we should not get here unless this is Windows platform, all others support fork
+        # we should not get here unless this is Windows/macOS platform, linux support fork
         if cls.__is_subprocess():
             class _TaskStub(object):
                 def __call__(self, *args, **kwargs):
@@ -587,6 +592,10 @@ class Task(_Task):
         # Make sure we start the dev worker if required, otherwise it will only be started when we write
         # something to the log.
         task._dev_mode_task_start()
+
+        if (not task._reporter or not task._reporter.is_alive()) and \
+                is_sub_process_task_id and not cls._report_subprocess_enabled:
+            task._setup_reporter()
 
         # start monitoring in background process or background threads
         # monitoring are: Resource monitoring and Dev Worker monitoring classes
@@ -2159,7 +2168,7 @@ class Task(_Task):
             secret=None,
             store_conf_file=False
     ):
-        # type: (Optional[str], Optional[str], Optional[str], Optional[str], Optional[str], bool) -> ()
+        # type: (Optional[str], Optional[str], Optional[str], Optional[str], Optional[str], bool) -> None
         """
         Set new default **ClearML Server** (backend) host and credentials.
 
@@ -2606,7 +2615,7 @@ class Task(_Task):
         try:
             if 'IPython' in sys.modules:
                 # noinspection PyPackageRequirements
-                from IPython import get_ipython
+                from IPython import get_ipython  # noqa
                 ip = get_ipython()
                 if ip is not None and 'IPKernelApp' in ip.config:
                     return parser
@@ -2868,7 +2877,7 @@ class Task(_Task):
 
         is_sub_process = self.__is_subprocess()
 
-        if not is_sub_process:
+        if True:##not is_sub_process:
             # noinspection PyBroadException
             try:
                 wait_for_uploads = True
@@ -2918,7 +2927,8 @@ class Task(_Task):
                         self._wait_for_repo_detection(timeout=10.)
 
                 # kill the repo thread (negative timeout, do not wait), if it hasn't finished yet.
-                self._wait_for_repo_detection(timeout=-1)
+                if not is_sub_process:
+                    self._wait_for_repo_detection(timeout=-1)
 
                 # wait for uploads
                 print_done_waiting = False

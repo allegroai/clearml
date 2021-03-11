@@ -117,7 +117,7 @@ def cli():
     remove = subparsers.add_parser('remove', help='Remove files from the dataset')
     remove.add_argument('--id', type=str, required=False,
                         help='Previously created dataset id. Default: previously created/accessed dataset')
-    remove.add_argument('--files', type=str, nargs='*',
+    remove.add_argument('--files', type=str, required=True, nargs='*',
                         help='Files / folders to remove (support for wildcard selection). '
                              'Notice: File path is the dataset path not the local path. '
                              'Example: data/*.jpg data/jsons/')

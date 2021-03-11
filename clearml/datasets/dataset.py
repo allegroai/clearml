@@ -890,13 +890,17 @@ class Dataset(object):
             type=[str(Task.TaskTypes.data_processing)],
             tags=tags or None,
             status=['stopped', 'published', 'completed', 'closed'] if only_completed else None,
-            only_fields=['created', 'id', 'name', 'project']
+            only_fields=['created', 'id', 'name', 'project', 'tags']
         )
         project_ids = {d.project for d in datasets}
         # noinspection PyProtectedMember
         project_id_lookup = {d: Task._get_project_name(d) for d in project_ids}
         return [
-            {'name': d.name, 'created': d.created, 'project': project_id_lookup[d.project], 'id': d.id}
+            {'name': d.name,
+             'created': d.created,
+             'project': project_id_lookup[d.project],
+             'id': d.id,
+             'tags': d.tags}
             for d in datasets
         ]
 

@@ -330,11 +330,12 @@ def ds_search(args):
         dataset_project=args.project or None, partial_name=args.name or None,
         tags=args.tags or None, ids=args.ids or None
     )
-    formatting = '{:16} | {:32} | {:19} | {:32}'
-    print(formatting.format('project', 'name', 'created', 'id'))
-    print('-' * len(formatting.format('-', '-', '-', '-')))
+    formatting = '{:16} | {:32} | {:19} | {:19} | {:32}'
+    print(formatting.format('project', 'name', 'tags', 'created', 'id'))
+    print('-' * len(formatting.format('-', '-', '-', '-', '-')))
     for d in datasets:
-        print(formatting.format(d['project'], d['name'], str(d['created']).split('.')[0], d['id']))
+        print(formatting.format(
+            d['project'], d['name'], str(d['tags'] or [])[1:-1], str(d['created']).split('.')[0], d['id']))
     return 0
 
 

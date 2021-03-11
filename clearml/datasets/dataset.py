@@ -72,6 +72,7 @@ class Dataset(object):
             if str(task.task_type) != str(Task.TaskTypes.data_processing) and \
                     str(task.data.status) in ('created', 'in_progress'):
                 task.set_task_type(task_type=Task.TaskTypes.data_processing)
+                task.set_system_tags((task.get_system_tags() or []) + [self.__tag])
         else:
             self._created_task = True
             task = Task.create(

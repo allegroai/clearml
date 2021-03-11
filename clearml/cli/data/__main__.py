@@ -101,7 +101,7 @@ def cli():
                       help='[Optional - Create new dataset] Specify dataset parents IDs (i.e. merge all parents)')
     sync.add_argument('--project', type=str, required=False, default=None,
                       help='[Optional - Create new dataset] Dataset project name')
-    sync.add_argument('--name', type=str, required=True, default=None,
+    sync.add_argument('--name', type=str, required=False, default=None,
                       help='[Optional - Create new dataset] Dataset project name')
     sync.add_argument('--tags', type=str, nargs='*',
                       help='[Optional - Create new dataset] Dataset user Tags')

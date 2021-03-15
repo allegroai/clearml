@@ -310,7 +310,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         project_id = None
         if project_name:
-            project_id = get_or_create_project(self, project_name, created_msg)
+            project_id = get_or_create_project(self, project_name)
 
         tags = [self._development_tag] if not running_remotely() else []
         extra_properties = {'system_tags': tags} if Session.check_min_api_version('2.3') else {'tags': tags}

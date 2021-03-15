@@ -53,7 +53,7 @@ Before you submit a new PR:
 * Verify the work you plan to merge addresses an existing [issue](https://github.com/allegroai/clearml/issues) (If not, open a new one)
 * Check related discussions in the [ClearML slack community](https://join.slack.com/t/allegroai-trains/shared_invite/enQtOTQyMTI1MzQxMzE4LTY5NTUxOTY1NmQ1MzQ5MjRhMGRhZmM4ODE5NTNjMTg2NTBlZGQzZGVkMWU3ZDg1MGE1MjQxNDEzMWU2NmVjZmY) (Or start your own discussion on the `#clearml-dev` channel)
 * Make sure your code conforms to the ClearML coding standards by running:  
-  `flake8 --max-line-length=120 --statistics --show-source --extend-ignore=E501 ./trains*`
+  `flake8 --max-line-length=120 --statistics --show-source --extend-ignore=E501 ./clearml*`
 
 In your PR include:
 * A reference to the issue it addresses

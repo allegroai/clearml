@@ -292,8 +292,16 @@ class WeightsFileHandler(object):
         return filepath
 
     @staticmethod
-    def create_output_model(model, saved_path, framework, task, singlefile=False, model_name=None):
-        # type: (Optional[Any], Optional[str], Optional[str], Optional[Task], bool, Optional[str]) -> str
+    def create_output_model(
+            model,  # type: Optional[Any]
+            saved_path,  # type: Optional[str]
+            framework,  # type: Optional[str]
+            task,  # type: Optional[Task]
+            singlefile=False,  # type: bool
+            model_name=None,  # type: Optional[str]
+            config_obj=None  # type: Optional[Union[str, dict]]
+    ):
+        # type: (...) -> str
         if task is None:
             return saved_path
 
@@ -384,7 +392,8 @@ class WeightsFileHandler(object):
 
                 trains_out_model = OutputModel(
                     task=task,
-                    # config_dict=config,
+                    config_dict=config_obj if isinstance(config_obj, dict) else None,
+                    config_text=config_obj if isinstance(config_obj, str) else None,
                     name=(task.name + ' - ' + model_name) if model_name else None,
                     label_enumeration=task.get_labels_enumeration(),
                     framework=framework,

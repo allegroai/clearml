@@ -1893,7 +1893,7 @@ class Task(_Task):
         # leave this process.
         if exit_process:
             LoggerRoot.get_base_logger().warning('Terminating local execution process')
-            os._exit(0)  # noqa
+            exit(0)
 
         return task
 

@@ -282,6 +282,21 @@ class TrainsJob(object):
         self.task_started = True
         return True
 
+    def delete(self):
+        # type: () -> bool
+        """
+        Delete the current temporary job (before launching)
+        Return False if the Job/Task could not deleted
+        """
+        if not self.task:
+            return False
+
+        if self.task.delete():
+            self.task = None
+            return True
+
+        return False
+
 
 # noinspection PyMethodMayBeStatic, PyUnusedLocal
 class _JobStub(object):

@@ -71,6 +71,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     _store_diff = config.get('development.store_uncommitted_code_diff', False)
     _store_remote_diff = config.get('development.store_code_diff_from_remote', False)
     _report_subprocess_enabled = config.get('development.report_use_subprocess', sys.platform == 'linux')
+    _force_use_pip_freeze = \
+        config.get('development.detect_with_pip_freeze', False) or \
+        config.get('development.detect_with_conda_freeze', False)
     _offline_filename = 'task.json'
 
     class TaskTypes(Enum):
@@ -273,10 +276,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             if result.script and script_requirements:
                 entry_point_filename = None if config.get('development.force_analyze_entire_repo', False) else \
                     os.path.join(result.script['working_dir'], entry_point)
-                if config.get('development.detect_with_pip_freeze', False) or \
-                        config.get('development.detect_with_conda_freeze', False):
+                if self._force_use_pip_freeze:
                     requirements, conda_requirements = pip_freeze(
-                        config.get('development.detect_with_conda_freeze', False))
+                        combine_conda_with_pip=config.get('development.detect_with_conda_freeze', True))
                     requirements = '# Python ' + sys.version.replace('\n', ' ').replace('\r', ' ') + '\n\n'\
                                    + requirements
                 else:
@@ -1623,6 +1625,18 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             get_logger('task').warning(
                 'Requirement ignored, Task.add_requirements() must be called before Task.init()')
         cls._force_requirements[package_name] = package_version
+
+    @classmethod
+    def force_requirements_env_freeze(cls, force=True):
+        # type: (bool) -> None
+        """
+        Force using `pip freeze` / `conda list` to store the full requirements of the active environment
+        (instead of statically analyzing the running code and listing directly imported packages)
+        Notice: Must be called before `Task.init` !
+
+        :param force: Set force using `pip freeze` flag on/off
+        """
+        cls._force_use_pip_freeze = bool(force)
 
     def _get_models(self, model_type='output'):
         # type: (str) -> Sequence[Model]

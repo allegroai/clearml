@@ -1777,6 +1777,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # type: (Union[dict, str]) -> ()
         if not isinstance(requirements, dict):
             requirements = {'pip': requirements}
+
+        # make sure we have str as values:
+        for key in requirements.keys():
+            if requirements[key] and not isinstance(requirements[key], str):
+                requirements[key] = '\n'.join(requirements[key])
+
         # protection, Old API might not support it
         # noinspection PyBroadException
         try:

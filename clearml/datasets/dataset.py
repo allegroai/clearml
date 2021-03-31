@@ -190,8 +190,7 @@ class Dataset(object):
     def remove_files(self, dataset_path=None, recursive=True, verbose=False):
         # type: (Optional[str], bool, bool) -> int
         """
-        Add a folder into the current dataset. calculate file hash,
-        and compare against parent, mark files to be uploaded
+        Remove files from the current dataset
 
         :param dataset_path: Remove files from the dataset.
             The path is always relative to the dataset (e.g 'folder/file.bin')

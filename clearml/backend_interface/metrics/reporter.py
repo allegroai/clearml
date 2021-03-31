@@ -197,7 +197,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         """
         Flush cached reports to backend.
         """
-        self._report_service.flush()
+        if self._report_service:
+            self._report_service.flush()
 
     def stop(self):
         if not self._report_service:

@@ -1851,7 +1851,7 @@ class Task(_Task):
 
                 If ``clone==False``, then ``exit_process`` must be ``True``.
 
-        :return Task: return the task object of the newly generated remotely excuting task
+        :return Task: return the task object of the newly generated remotely executing task
         """
         # do nothing, we are running remotely
         if running_remotely() and self.is_main_task():
@@ -1878,7 +1878,11 @@ class Task(_Task):
             task = Task.clone(self)
         else:
             task = self
-            self.reset()
+            # check if the server supports enqueueing aborted/stopped Tasks
+            if Session.check_min_api_server_version('2.10'):
+                self.mark_stopped(force=True)
+            else:
+                self.reset()
 
         # enqueue ourselves
         if queue_name:

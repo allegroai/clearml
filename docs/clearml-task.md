@@ -1,76 +1,94 @@
 # `clearml-task` - Execute ANY python code on a remote machine
 
-If you are already familiar with `clearml`, then you can think of `clearml-task` as a way to create a Task/experiment 
-from any script without the need to add even a single line of code to the original codebase.
+Using only your command line and __zero__ additional lines of code, you can easily integrate the ClearML platform
+into your experiment. With the `clearml-task` command, you can create a [Task](https://allegro.ai/clearml/docs/docs/concepts_fundamentals/concepts_fundamentals_tasks.html)
+using any script from **any python code or repository and launch it on a remote machine**.
 
-`clearml-task` allows a user to **take any python code/repository and launch it on a remote machine**.
-
-The remote execution is fully monitored, all outputs - including console / tensorboard / matplotlib 
-are logged in real-time into the ClearML UI
+The remote execution is fully monitored. All outputs - including console / tensorboard / matplotlib -
+are logged in real-time into the ClearML UI.
 
 ## What does it do?
 
-`clearml-task` creates a new experiment on your `clearml-server`; it populates the experiment's environment with:
+With the `clearml-task` command, you specify the details of your experiment including:
+* Project and task name
+* Repository / commit / branch
+* [Queue](https://allegro.ai/clearml/docs/docs/concepts_fundamentals/concepts_fundamentals_workers_and_queues.html)
+  name
+* Optional: the base docker image to be used as underlying environment
+* Optional: alternative python requirements, in case `requirements.txt` is not found inside the repository.
 
-* repository/commit/branch, as specified by the command-line invocation. 
-* optional: the base docker image to be used as underlying environment
-* optional: alternative python requirements, in case `requirements.txt` is not found inside the repository.
+Then `clearml-task` does the rest of the heavy-lifting. It creates a new experiment or Task on your `clearml-server`
+according to your specifications, and then, it will enqueue the experiment to the selected execution queue.
 
-Once the new experiment is created and populated, it will enqueue the experiment to the selected execution queue.
-
-When the experiment is executed on the remote machine (performed by an available `clearml-agent`), all the console outputs
-will be logged in real-time, alongside your TensorBoard and matplotlib.
+While the Task is executed on the remote machine (performed by an available `clearml-agent`), all the console outputs
+will be logged in real-time, alongside your TensorBoard and matplotlib. During and after the Task execution, you can
+track and visualize the results in the ClearML Web UI.
 
 ### Use-cases for `clearml-task` remote execution
 
 - You have an off-the-shelf code, and you want to launch it on a remote machine with a specific resource (i.e., GPU)
-- You want to run the [hyper-parameter optimization]() on a codebase that is still not connected with `clearml`
+- You want to run the [hyper-parameter optimization]() on a codebase that is still not connected to `clearml`
 - You want to create a [pipeline]() from an assortment of scripts, and you need to create Tasks for those scripts
-- Sometimes, you just want to run some code on a remote machine, either using an on-prem cluster or on the cloud... 
+- Sometimes, you just want to run some code on a remote machine, either using an on-prem cluster or on the cloud...
 
 ### Prerequisites
 
 - A single python script, or an up-to-date repository containing the codebase.
-- `clearml-agent` running on at least one machine (to execute the experiment) 
+- `clearml` installed. `clearml` also has a [Task](https://allegro.ai/clearml/docs/rst/getting_started/index.html)
+  feature but it requires two lines of code in order to integrate the platform.
+- `clearml-agent` running on at least one machine (to execute the experiment)
 
 ## Tutorial
 
 ### Launching a job from a repository
 
-We will be launching this [script](https://github.com/allegroai/trains/blob/master/examples/frameworks/scikit-learn/sklearn_matplotlib_example.py) on a remote machine. The following are the command-line options we will be using:
-1. Give the experiment a name and select a project, for example: `--project examples --name remote_test`
-2. Select the repository with our code. If we do not specify branch / commit, it will take the latest commit 
-  from the master branch, for example: `--repo https://github.com/allegroai/clearml.git`
-3. Specify which script in the repository needs to be run, for example: `--script examples/frameworks/scikit-learn/sklearn_matplotlib_example.py`
-Notice that by default, the execution working directory will be the root of the repository. If we need to change it, add `--cwd <folder>`
-
-If we additionally need to pass an argument to our scripts, use the `--args` switch. 
-  The names of the arguments should match the argparse arguments, removing the '--' prefix 
-  (e.g. instead of --key=value -> use `--args key=value` )   
+You will be launching this [script](https://github.com/allegroai/events/blob/master/webinar-0620/keras_mnist.py)
+on a remote machine. You will be using the following command-line options:
+1. Give the experiment a name and select a project, for example: `--project keras_examples --name remote_test`. If the project
+   doesn't exist, a new project will be created with the selected name.
+2. Select the repository with your code. For example: `--repo https://github.com/allegroai/events.git` You can specify a
+   branch and/or commit using `--branch <branch_name> --commit <commit_id>`. If you do not specify the
+   branch / commit, it will use by default the latest commit from the master branch,
+3. Specify which script in the repository needs to be run, for example: `--script /webinar-0620/keras_mnist.py`
+By default, the execution working directory will be the root of the repository. If you need to change it,
+   add `--cwd <folder>`
+4. If you need, pass an argument to your scripts, use `--args`, followed by the arguments.
+   The names of the arguments should match the argparse arguments, but without the '--' prefix. Instead
+   of --key=value -> use `--args key=value`, for example `--args batch_size=64 epochs=1`
+5. Select the queue for your Task's execution, for example: `--queue default`. If a queue isn't chosen, the Task
+   will not be executed, it will be left in [draft mode](https://allegro.ai/clearml/docs/docs/concepts_fundamentals/concepts_fundamentals_tasks.html?highlight=draft#task-states-and-state-transitions),
+   and you can enqueue and execute the Task at a later point.
+6. Add required packages. If your repo has a requirements.txt file, you don't need to do anything; `clearml-task`
+   will automatically find the file and put it in your Task. If your repo does __not__ have a requirements file and
+there are packages that are necessary for the execution of your code, use --packages <package_name>. For example:
+   `--packages "keras" "tensorflow>2.2"`.
 
 ``` bash
-clearml-task --project examples --name remote_test --repo https://github.com/allegroai/clearml.git 
---script examples/frameworks/scikit-learn/sklearn_matplotlib_example.py
---queue single_gpu
+clearml-task --project keras_examples --name remote_test --repo https://github.com/allegroai/events.git
+--script /webinar-0620/keras_mnist.py --args batch_size=64 epochs=1 --queue default
 ```
+
 
 ### Launching a job from a local script
 
-We will be launching a single local script file (no git repo needed) on a remote machine.
+You will be launching a single local script file (no git repo needed) on a remote machine:
 
-- First, we have to give the experiment a name and select a project (`--project examples --name remote_test`)
-- Then, we select the script file on our machine, `--script /path/to/my/script.py`
-- If we need specific packages, we can specify them manually with `--packages "tqdm>=4" "torch>1.0"` 
-  or we can pass a requirements file `--requirements /path/to/my/requirements.txt`
-- Same as in the repo case, if we need to pass arguments to `argparse` we can add `--args key=value`
-- If we have a docker container with an entire environment we want our script to run inside, 
-  add e.g., `--docker nvcr.io/nvidia/pytorch:20.11-py3`
-
-Note: In this example, the exact version of PyTorch to install will be resolved by the `clearml-agent` depending on the CUDA environment available at runtime.
+1. Give the experiment a name and select a project (`--project examples --name remote_test`)
+2. Select the script file on your machine, `--script /path/to/my/script.py`
+3. If you require specific packages to run your code, you can specify them manually with `--packages "package_name" "package_name2`,
+   for example: `packages "keras" "tensorflow>2.2"`
+  or you can pass a requirements file `--requirements /path/to/my/requirements.txt`
+4. If you need to pass arguments, like in the repo case, add `--args key=value` and make sure that the key names match
+   the argparse arguments (`--args batch_size=64 epochs=1`)
+5. If you have a docker container with an entire environment in which you want your script to run inside,
+  add e.g. `--docker nvcr.io/nvidia/pytorch:20.11-py3`
+6. Select the queue for your Task's execution, for example: `--queue dual_gpu`. If a queue isn't chosen, the Task
+   will not be executed, it will be left in [draft mode](https://allegro.ai/clearml/docs/docs/concepts_fundamentals/concepts_fundamentals_tasks.html?highlight=draft#task-states-and-state-transitions),
+   and you can enqueue and execute it at a later point.
 
 ``` bash
-clearml-task --project examples --name remote_test --script /path/to/my/script.py 
---packages "tqdm>=4" "torch>1.0" --args verbose=true
+clearml-task --project examples --name remote_test --script /path/to/my/script.py
+--packages "keras" "tensorflow>2.2" --args epochs=1 batch_size=64
 --queue dual_gpu
 ```
 

@@ -8,10 +8,25 @@ import math
 
 import warnings
 import matplotlib.dates
+from matplotlib import __version__ as matplotlib_version
 try:
     from matplotlib.patches import FancyBboxPatch
 except ImportError:
     FancyBboxPatch = None
+
+
+def check_maplotlib_max_version(ver_maj, ver_min):
+    """
+    return True if check_maplotlib_version is lower than specified version
+    """
+    parts = matplotlib_version.split('.')
+    if not parts:
+        return False
+    if parts[0] < str(ver_maj):
+        return True
+    if len(parts) > 1 and parts[1] < str(ver_min):
+        return True
+    return False
 
 
 def check_bar_match(old_bar, new_bar):
@@ -368,7 +383,10 @@ def get_spine_visible(ax, spine_key):
     """Return some spine parameters for the spine, `spine_key`."""
     spine = ax.spines[spine_key]
     ax_frame_on = ax.get_frame_on()
-    spine_frame_like = spine.is_frame_like() if hasattr(spine, 'is_frame_like') else True
+    if check_maplotlib_max_version('3', '1'):
+        spine_frame_like = spine.is_frame_like() if hasattr(spine, 'is_frame_like') else True
+    else:
+        spine_frame_like = True
     if not spine.get_visible():
         return False
     elif not spine._edgecolor[-1]:  # user's may have set edgecolor alpha==0

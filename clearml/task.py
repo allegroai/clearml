@@ -45,7 +45,9 @@ from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
 from .binding.joblib_bind import PatchedJoblib
 from .binding.matplotlib_bind import PatchedMatplotlib
 from .binding.hydra_bind import PatchHydra
-from .config import config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, PROC_MASTER_ID_ENV_VAR
+from .config import (
+    config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, PROC_MASTER_ID_ENV_VAR,
+    DEV_DEFAULT_OUTPUT_URI, )
 from .config import running_remotely, get_remote_task_id
 from .config.cache import SessionCache
 from .debugging.log import LoggerRoot
@@ -131,7 +133,7 @@ class Task(_Task):
     __forked_proc_main_pid = None
     __task_id_reuse_time_window_in_hours = float(config.get('development.task_reuse_time_window_in_hours', 24.0))
     __detect_repo_async = config.get('development.vcs_repo_detect_async', False)
-    __default_output_uri = config.get('development.default_output_uri', None)
+    __default_output_uri = DEV_DEFAULT_OUTPUT_URI.get() or config.get('development.default_output_uri', None)
 
     class _ConnectedParametersType(object):
         argparse = "argument_parser"
@@ -1879,7 +1881,7 @@ class Task(_Task):
         else:
             task = self
             # check if the server supports enqueueing aborted/stopped Tasks
-            if Session.check_min_api_server_version('2.10'):
+            if Session.check_min_api_server_version('2.13'):
                 self.mark_stopped(force=True)
             else:
                 self.reset()

@@ -152,7 +152,7 @@ The upcoming community release 0.17.6 has the following keypoints
 release 0.17.6
 - [x] Fix Keras model Storage
 - [x] Allow to continue running from previous execution iteration
-- [x] Numerous Documentation Updates around Task
+- [x] Numerous Major Documentation Updates
 
 Following this, ClearML will be targetting it's much anticipated 1.0 Release
 

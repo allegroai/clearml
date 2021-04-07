@@ -147,15 +147,14 @@ Additionally, you can always find us at *clearml@allegro.ai*
 
 ## Community Roadmap
 
-The upcoming community release 0.18 has the following keypoints
+The upcoming community release 0.17.6 has the following keypoints
 
-release 0.18
+release 0.17.6
 - [x] Fix Keras model Storage
 - [x] Allow to continue running from previous execution iteration
-- [ ] Fix reporting after task closing
-- [ ] Numerous Documentation Updates around Task
+- [x] Numerous Documentation Updates around Task
 
-Following this, ClearML will be targetting it's 1.0 Release with these items
+Following this, ClearML will be targetting it's much anticipated 1.0 Release
 
 release 1.0
 - [ ] Sub projects and project nesting
@@ -163,6 +162,13 @@ release 1.0
 - [ ] Allow presenting All metric samples
 - [ ] Global search regex support - GH#81
 - [ ] Task, Model, Project deletion support
+
+and lastly, the 1.1 Release should arrive with these items
+
+release 1.1
+- [ ] Enhancements to Experiment view 
+- [ ] initial Clear-Serving release
+- [ ] Increased Project customisation
 
 ## Contributing
 

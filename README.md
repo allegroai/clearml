@@ -159,9 +159,12 @@ Following this, ClearML will be targetting it's much anticipated 1.0 Release
 release 1.0
 - [ ] Sub projects and project nesting
 - [ ] Filters for custom and time columns
-- [ ] Allow presenting All metric samples
+- [ ] Allow presenting all metric samples
 - [ ] Global search regex support - GH#81
 - [ ] Task, Model, Project deletion support
+- [ ] Project markdown overview 
+- [ ] Flexible container configuration
+- [ ] Multi-model per Task support
 
 and lastly, the 1.1 Release should arrive with these items
 
@@ -169,6 +172,7 @@ release 1.1
 - [ ] Enhancements to Experiment view 
 - [ ] initial Clear-Serving release
 - [ ] Increased Project customisation
+- [ ] IP/port Proxy service for accessing task containers
 
 ## Contributing
 

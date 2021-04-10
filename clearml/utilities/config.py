@@ -4,6 +4,8 @@ import json
 
 import six
 import pyparsing
+
+from .dicts import hocon_quote_key, hocon_unquote_key
 from .pyhocon import ConfigFactory, HOCONConverter
 from ..storage.util import parse_size
 
@@ -59,7 +61,7 @@ def config_dict_to_text(config):
     try:
         # noinspection PyBroadException
         try:
-            text = HOCONConverter.to_hocon(ConfigFactory.from_dict(config))
+            text = HOCONConverter.to_hocon(ConfigFactory.from_dict(hocon_quote_key(config)))
         except Exception:
             # fallback json+pyhocon
             # hack, pyhocon is not very good with dict conversion so we pass through json
@@ -77,7 +79,7 @@ def text_to_config_dict(text):
         raise ValueError("Configuration parsing only supports string")
     # noinspection PyBroadException
     try:
-        return ConfigFactory.parse_string(text).as_plain_ordered_dict()
+        return hocon_unquote_key(ConfigFactory.parse_string(text).as_plain_ordered_dict())
     except pyparsing.ParseBaseException as ex:
         pos = "at char {}, line:{}, col:{}".format(ex.loc, ex.lineno, ex.column)
         six.raise_from(ValueError("Could not parse configuration text ({}):\n{}".format(pos, text)), None)

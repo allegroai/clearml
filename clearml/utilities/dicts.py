@@ -132,11 +132,11 @@ def hocon_quote_key(a_dict):
         return a_dict
     # preserve dict type
     new_dict = type(a_dict)()
-    for v, k in a_dict.items():
+    for k, v in a_dict.items():
         if isinstance(k, str) and '.' in k:
             new_dict['"{}"'.format(k)] = hocon_quote_key(v)
         else:
-            new_dict[k] = v
+            new_dict[k] = hocon_quote_key(v)
     return new_dict
 
 
@@ -146,9 +146,9 @@ def hocon_unquote_key(a_dict):
         return a_dict
     # preserve dict type
     new_dict = type(a_dict)()
-    for v, k in a_dict.items():
+    for k, v in a_dict.items():
         if isinstance(k, str) and k[0] == '"' and k[-1] == '"' and '.' in k:
             new_dict[k[1:-1]] = hocon_unquote_key(v)
         else:
-            new_dict[k] = v
+            new_dict[k] = hocon_unquote_key(v)
     return new_dict

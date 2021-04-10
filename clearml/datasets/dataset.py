@@ -467,7 +467,7 @@ class Dataset(object):
         :return: A the target folder containing the entire dataset
         """
         assert self._id
-        target_folder = Path(target_folder)
+        target_folder = Path(target_folder).absolute()
         target_folder.mkdir(parents=True, exist_ok=True)
         # noinspection PyBroadException
         try:
@@ -1139,7 +1139,7 @@ class Dataset(object):
                 raise ValueError("Dataset merging failed: {}".format([e for e in errors if e is not None]))
 
         pool.close()
-        return target_base_folder.as_posix()
+        return target_base_folder.absolute().as_posix()
 
     def _get_dependencies_by_order(self, include_unused=False):
         # type: (bool) -> List[str]
@@ -1285,8 +1285,8 @@ class Dataset(object):
             removed = len(self.list_removed_files(node))
             modified = len(self.list_modified_files(node))
             table_values += [[node, node_names.get(node, ''),
-                              removed, modified, count-modified, format_size(size)]]
-            node_details[node] = [removed, modified, count-modified, format_size(size)]
+                              removed, modified, max(0, count-modified), format_size(size)]]
+            node_details[node] = [removed, modified, max(0, count-modified), format_size(size)]
 
         # create DAG
         visited = []
@@ -1311,17 +1311,39 @@ class Dataset(object):
                 sankey_link['target'].append(idx)
                 sankey_link['value'].append(max(1, node_details[visited[p]][-2]))
 
-        # create the sankey graph
-        dag_flow = dict(
-            link=sankey_link,
-            node=sankey_node,
-            textfont=dict(color='rgba(0,0,0,255)', size=10),
-            type='sankey',
-            orientation='h'
-        )
-        fig = dict(data=[dag_flow], layout={'xaxis': {'visible': False}, 'yaxis': {'visible': False}})
-
         if len(nodes) > 1:
+            # create the sankey graph
+            dag_flow = dict(
+                link=sankey_link,
+                node=sankey_node,
+                textfont=dict(color='rgba(0,0,0,255)', size=10),
+                type='sankey',
+                orientation='h'
+            )
+            fig = dict(data=[dag_flow], layout={'xaxis': {'visible': False}, 'yaxis': {'visible': False}})
+        elif len(nodes) == 1:
+            # hack, show single node sankey
+            singles_flow = dict(
+                x=list(range(len(nodes))), y=[1] * len(nodes),
+                text=sankey_node['label'],
+                customdata=sankey_node['customdata'],
+                mode='markers',
+                hovertemplate='%{customdata}<extra></extra>',
+                marker=dict(
+                    color=[v for i, v in enumerate(sankey_node['color']) if i in nodes],
+                    size=[40] * len(nodes),
+                ),
+                showlegend=False,
+                type='scatter',
+            )
+            # only single nodes
+            fig = dict(data=[singles_flow], layout={
+                'hovermode': 'closest', 'xaxis': {'visible': False}, 'yaxis': {'visible': False}})
+        else:
+            fig = None
+
+        # report genealogy
+        if fig:
             self._task.get_logger().report_plotly(
                 title='Dataset Genealogy', series='', iteration=0, figure=fig)
 

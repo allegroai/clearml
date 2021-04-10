@@ -1,4 +1,5 @@
 import hashlib
+import warnings
 from datetime import datetime
 from logging import getLogger
 from time import time, sleep
@@ -11,7 +12,7 @@ from ..backend_api.services import tasks as tasks_service
 logger = getLogger('clearml.automation.job')
 
 
-class TrainsJob(object):
+class ClearmlJob(object):
     def __init__(
             self,
             base_task_id,  # type: str
@@ -58,10 +59,19 @@ class TrainsJob(object):
             params.update(parameter_override)
             self.task.set_parameters(params)
             self.task_parameter_override = dict(**parameter_override)
+
         if task_overrides:
-            # todo: make sure it works
+            sections = {}
+            # set values inside the Task
+            for k, v in task_overrides.items():
+                # noinspection PyProtectedMember
+                self.task._set_task_property(k, v, raise_on_error=False, log_on_error=True)
+                section = k.split('.')[0]
+                sections[section] = getattr(self.task.data, section, None)
+            # store back Task parameters into backend
             # noinspection PyProtectedMember
-            self.task._edit(**task_overrides)
+            self.task._edit(**sections)
+
         self.task_started = False
         self._worker = None
 
@@ -297,6 +307,15 @@ class TrainsJob(object):
 
         return False
 
+
+class TrainsJob(ClearmlJob):
+
+    def __init__(self, **kwargs):
+        super(TrainsJob, self).__init__(**kwargs)
+        warnings.warn(
+            "Use clearml.automation.ClearmlJob",
+            DeprecationWarning,
+        )
 
 # noinspection PyMethodMayBeStatic, PyUnusedLocal
 class _JobStub(object):

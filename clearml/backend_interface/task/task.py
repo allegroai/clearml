@@ -6,6 +6,7 @@ import os
 import re
 import sys
 from copy import copy
+from datetime import datetime
 from enum import Enum
 from multiprocessing import RLock
 from operator import itemgetter
@@ -1702,6 +1703,20 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return all_tasks[0].status, all_tasks[0].status_message
         except Exception:
             return None, None
+
+    def _get_last_update(self):
+        # type: () -> (Optional[datetime])
+        if self._offline_mode:
+            return None
+
+        # noinspection PyBroadException
+        try:
+            all_tasks = self.send(
+                tasks.GetAllRequest(id=[self.id], only_fields=['last_update']),
+            ).response.tasks
+            return all_tasks[0].last_update
+        except Exception:
+            return None
 
     def _reload_last_iteration(self):
         # type: () -> ()

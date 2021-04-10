@@ -8,12 +8,12 @@ import six
 from typing import List, Dict, Union, Optional, Mapping, TYPE_CHECKING, Sequence
 
 from .backend_api import Session
-from .backend_api.services import models
+from .backend_api.services import models, projects
 from pathlib2 import Path
 
 from .utilities.config import config_dict_to_text, text_to_config_dict
 
-from .backend_interface.util import validate_dict, get_single_result, mutually_exclusive
+from .backend_interface.util import validate_dict, get_single_result, mutually_exclusive, exact_match_regex
 from .debugging.log import get_logger
 from .storage.cache import CacheManager
 from .storage.helper import StorageHelper
@@ -439,6 +439,71 @@ class Model(BaseModel):
     def _get_model_data(self):
         return self._get_base_model().data
 
+    @classmethod
+    def query_models(
+            cls,
+            project_name=None,  # type: Optional[str]
+            model_name=None,  # type: Optional[str]
+            tags=None,  # type: Optional[Sequence[str]]
+            only_published=False,  # type: bool
+            include_archived=False,  # type: bool
+            max_results=None,  # type: Optional[int]
+    ):
+        # type: (...) -> List[Model]
+        """
+        Return Model objects from the project artifactory.
+        Filter based on project-name / model-name / tags.
+        List is always returned sorted by descending last update time (i.e. latest model is the first in the list)
+
+        :param project_name: Optional, filter based project name string, if not given query models from all projects
+        :param model_name: Optional Model name as shown in the model artifactory
+        :param tags: Optional filter models based on list of tags, example: ['production', 'verified', '-qa']
+        Notice use '-' prefix to filter out tags.
+        :param only_published: If True only return published models.
+        :param include_archived: If True return archived models.
+        :param max_results: Optional return the last X models,
+        sorted by last update time (from the most recent to the least).
+
+        :return: ModeList of Models objects
+        """
+        if project_name:
+            # noinspection PyProtectedMember
+            res = _Model._get_default_session().send(
+                projects.GetAllRequest(
+                    name=exact_match_regex(project_name),
+                    only_fields=['id', 'name', 'last_update']
+                )
+            )
+            project = get_single_result(entity='project', query=project_name, results=res.response.projects)
+        else:
+            project = None
+
+        only_fields = ['id', 'created', 'system_tags']
+
+        # noinspection PyProtectedMember
+        res = _Model._get_default_session().send(
+            models.GetAllRequest(
+                project=[project.id] if project else None,
+                name=model_name or None,
+                only_fields=only_fields,
+                tags=tags or None,
+                system_tags=["-" + cls._archived_tag] if not include_archived else None,
+                ready=True if only_published else None,
+                order_by=['-created'],
+                page=0 if max_results else None,
+                page_size=max_results or None,
+            )
+        )
+        if not res.response.models:
+            return []
+
+        return [Model(model_id=m.id) for m in res.response.models]
+
+    @property
+    def id(self):
+        # type: () -> str
+        return self._base_model_id if self._base_model_id else super(Model, self).id
+
 
 class InputModel(Model):
     """
@@ -712,12 +777,26 @@ class InputModel(Model):
         m._data.labels = label_enumeration
         return this_model
 
-    def __init__(self, model_id):
-        # type: (str) -> None
+    def __init__(self, model_id=None, name=None, project=None, tags=None, only_published=False):
+        # type: (Optional[str], Optional[str], Optional[str], Optional[Sequence[str]], bool) -> None
         """
-        :param str model_id: The ClearML Id (system UUID) of the input model whose metadata the **ClearML Server**
-            (backend) stores.
+        Load a model from the Model artifactory,
+        based on model_id (uuid) or a model name/projects/tags combination.
+
+        :param model_id: The ClearML Id (system UUID) of the input model whose metadata the **ClearML Server**
+            (backend) stores. If provided all other arguments are ignored
+        :param name: Model name to search and load
+        :param project: Model project name to search model in
+        :param tags: Model tags list to filter by
+        :param only_published: If True filter out non-published (draft) models
         """
+        if not model_id:
+            models = self.query_models(
+                project_name=project, model_name=name, tags=tags, only_published=only_published)
+            if not models:
+                raise ValueError("Could not locate model with project={} name={} tags={} published={}".format(
+                    project, name, tags, only_published))
+            model_id = models[0].id
         super(InputModel, self).__init__(model_id)
 
     @property

@@ -19,7 +19,7 @@ class ReadOnlyDict(dict):
 class Logs:
     _logs_instances = []
 
-    def __init__(self, data={}):
+    def __init__(self, data=None):
         self._data = data or {}
         self._logs_instances.append(self)
 
@@ -124,3 +124,31 @@ def merge_dicts(dict1, dict2):
         else:
             dict1[k] = dict2[k]
     return dict1
+
+
+def hocon_quote_key(a_dict):
+    """ Recursively quote key with '.' to \"key\" """
+    if not isinstance(a_dict, dict):
+        return a_dict
+    # preserve dict type
+    new_dict = type(a_dict)()
+    for v, k in a_dict.items():
+        if isinstance(k, str) and '.' in k:
+            new_dict['"{}"'.format(k)] = hocon_quote_key(v)
+        else:
+            new_dict[k] = v
+    return new_dict
+
+
+def hocon_unquote_key(a_dict):
+    """ Recursively unquote \"key\" with '.' to key """
+    if not isinstance(a_dict, dict):
+        return a_dict
+    # preserve dict type
+    new_dict = type(a_dict)()
+    for v, k in a_dict.items():
+        if isinstance(k, str) and k[0] == '"' and k[-1] == '"' and '.' in k:
+            new_dict[k[1:-1]] = hocon_unquote_key(v)
+        else:
+            new_dict[k] = v
+    return new_dict

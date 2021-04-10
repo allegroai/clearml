@@ -263,7 +263,6 @@ class WeightsFileHandler(object):
             #         ref_model = None
             #     WeightsFileHandler._model_in_store_lookup[id(model)] = (trains_in_model, ref_model)
 
-            # todo: support multiple models for the same task
             task.connect(trains_in_model)
             # if we are running remotely we should deserialize the object
             # because someone might have changed the config_dict
@@ -332,7 +331,7 @@ class WeightsFileHandler(object):
 
             # check if we have output storage, and generate list of files to upload
             if Path(model_info.local_model_path).is_dir():
-                files = [str(f) for f in Path(model_info.local_model_path).rglob('*') if f.is_file()]
+                files = [str(f) for f in Path(model_info.local_model_path).rglob('*')]
             elif singlefile:
                 files = [str(Path(model_info.local_model_path).absolute())]
             else:
@@ -394,7 +393,8 @@ class WeightsFileHandler(object):
                     task=task,
                     config_dict=config_obj if isinstance(config_obj, dict) else None,
                     config_text=config_obj if isinstance(config_obj, str) else None,
-                    name=(task.name + ' - ' + model_name) if model_name else None,
+                    name=None if in_model_id else '{} - {}'.format(
+                        task.name, model_name or Path(model_info.local_model_path).stem),
                     label_enumeration=task.get_labels_enumeration(),
                     framework=framework,
                     base_model_id=in_model_id

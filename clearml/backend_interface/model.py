@@ -7,7 +7,7 @@ from pathlib2 import Path
 from .base import IdObjectBase
 from .util import make_message
 from ..backend_api import Session
-from ..backend_api.services import models
+from ..backend_api.services import models, tasks
 from ..storage import StorageManager
 from ..storage.helper import StorageHelper
 from ..utilities.async_manager import AsyncManagerMixin
@@ -32,13 +32,14 @@ class _StorageUriMixin(object):
 
 def create_dummy_model(upload_storage_uri=None, *args, **kwargs):
     class DummyModel(models.Model, _StorageUriMixin):
-        def __init__(self, upload_storage_uri=None, *args, **kwargs):
-            super(DummyModel, self).__init__(*args, **kwargs)
+        def __init__(self, upload_storage_uri=None, *_, **__):
+            super(DummyModel, self).__init__(*_, **__)
             self.upload_storage_uri = upload_storage_uri
 
-        def update(self, **kwargs):
-            for k, v in kwargs.items():
+        def update(self, **a_kwargs):
+            for k, v in a_kwargs.items():
                 setattr(self, k, v)
+
     return DummyModel(upload_storage_uri=upload_storage_uri, *args, **kwargs)
 
 
@@ -300,58 +301,24 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
 
             return uri
 
-    def _complete_update_for_task(self, uri, task_id=None, name=None, comment=None, tags=None, override_model_id=None,
-                                  cb=None):
-        if self._data:
-            name = name or self.data.name
-            comment = comment or self.data.comment
-            tags = tags or (self.data.system_tags if hasattr(self.data, 'system_tags') else self.data.tags)
-            uri = (uri or self.data.uri) if not override_model_id else None
-
-        if tags:
-            extra = {'system_tags': tags} if Session.check_min_api_version('2.3') else {'tags': tags}
+    def update_for_task(self, task_id, name=None, model_id=None, type_="output", iteration=None):
+        if Session.check_min_api_version("2.13"):
+            req = tasks.AddOrUpdateModelRequest(
+                task=task_id, name=name, type=type_, model=model_id, iteration=iteration
+            )
+        elif type_ == "output":
+            # backwards compatibility
+            req = models.UpdateForTaskRequest(task=task_id, override_model_id=model_id)
+        elif type_ == "input":
+            # backwards compatibility, None
+            req = None
         else:
-            extra = {}
-        res = self.send(
-            models.UpdateForTaskRequest(task=task_id, uri=uri, name=name, comment=comment,
-                                        override_model_id=override_model_id, **extra))
-        if self.id is None:
-            # update the model id. in case it was just created, this will trigger a reload of the model object
-            self.id = res.response.id if res else None
-        else:
-            self.reload()
-        try:
-            if cb:
-                cb(uri)
-        except Exception as ex:
-            self.log.warning('Failed calling callback on complete_update_for_task: %s' % str(ex))
-            pass
+            raise ValueError("Type '{}' unsupported (use either 'input' or 'output')".format(type_))
 
-    def update_for_task_and_upload(
-            self, model_file, task_id, name=None, comment=None, tags=None, override_model_id=None, target_filename=None,
-            async_enable=False, cb=None, iteration=None):
-        """ Update the given model for a given task ID """
-        if async_enable:
-            callback = partial(
-                self._complete_update_for_task, task_id=task_id, name=name, comment=comment, tags=tags,
-                override_model_id=override_model_id, cb=cb)
-            uri = self._upload_model(model_file, target_filename=target_filename,
-                                     async_enable=async_enable, cb=callback)
-            return uri
-        else:
-            uri = self._upload_model(model_file, target_filename=target_filename, async_enable=async_enable)
-            self._complete_update_for_task(uri, task_id, name, comment, tags, override_model_id)
-            if tags:
-                extra = {'system_tags': tags} if Session.check_min_api_version('2.3') else {'tags': tags}
-            else:
-                extra = {}
-            _ = self.send(models.UpdateForTaskRequest(task=task_id, uri=uri, name=name, comment=comment,
-                                                      override_model_id=override_model_id, iteration=iteration,
-                                                      **extra))
-            return uri
+        if req:
+            self.send(req)
 
-    def update_for_task(self, task_id, uri=None, name=None, comment=None, tags=None, override_model_id=None):
-        self._complete_update_for_task(uri, task_id, name, comment, tags, override_model_id)
+        self.reload()
 
     @property
     def model_design(self):
@@ -480,6 +447,9 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         :param name: Name for the new model
         :param comment: Optional comment for the new model
         :param child: Should the new model be a child of this model (default True)
+        :param tags:  Optional tags for the cloned model
+        :param task: Creating Task of the Model
+        :param ready:  If True set the true flag for the newly created model
         :return: The new model's ID
         """
         data = self.data

@@ -1,7 +1,8 @@
 import hashlib
 import re
 import sys
-from typing import Optional, Union
+from typing import Optional, Union, Sequence
+from pathlib2 import Path
 
 from six.moves.urllib.parse import quote, urlparse, urlunparse
 import six
@@ -214,3 +215,44 @@ def parse_size(size, binary=False):
                     return int(tokens[0] * k)
 
     raise ValueError("Failed to parse size! (input {} was tokenized as {})".format(size, tokens))
+
+
+def get_common_path(list_of_files):
+    # type: (Sequence[Union[str, Path]]) -> Optional[str]
+    """
+    Return the common path of a list of files
+
+    :param list_of_files: list of files (str or Path objects)
+    :return: Common path string (always absolute) or None if common path could not be found
+    """
+    if not list_of_files:
+        return None
+
+    # a single file has its parent as common path
+    if len(list_of_files) == 1:
+        return Path(list_of_files[0]).absolute().parent.as_posix()
+
+    # find common path to support folder structure inside zip
+    common_path_parts = Path(list_of_files[0]).absolute().parts
+    for f in list_of_files:
+        f_parts = Path(f).absolute().parts
+        num_p = min(len(f_parts), len(common_path_parts))
+        if f_parts[:num_p] == common_path_parts[:num_p]:
+            common_path_parts = common_path_parts[:num_p]
+            continue
+        num_p = min(
+            [i for i, (a, b) in enumerate(zip(common_path_parts[:num_p], f_parts[:num_p])) if a != b] or [-1])
+        # no common path, break
+        if num_p < 0:
+            common_path_parts = []
+            break
+        # update common path
+        common_path_parts = common_path_parts[:num_p]
+
+    if common_path_parts:
+        common_path = Path()
+        for f in common_path_parts:
+            common_path /= f
+        return common_path.as_posix()
+
+    return None

@@ -1153,26 +1153,28 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         image = docker_cmd.split(' ')[0] if docker_cmd else ''
         if not docker_arguments and docker_cmd:
-            arguments = docker_cmd.split(' ')[1:] if len(docker_cmd.split(' ')) > 1 else ''
-        else:
-            arguments = (docker_arguments if isinstance(docker_arguments, str) else ' '.join(docker_arguments)) \
-                if docker_arguments else ''
+            docker_arguments = docker_cmd.split(' ')[1:] if len(docker_cmd.split(' ')) > 1 else ''
+
+        arguments = (docker_arguments if isinstance(docker_arguments, str) else ' '.join(docker_arguments)) \
+            if docker_arguments else ''
+
         if docker_setup_bash_script:
             setup_shell_script = docker_setup_bash_script \
                 if isinstance(docker_setup_bash_script, str) else '\n'.join(docker_setup_bash_script)
         else:
-            setup_shell_script = None
+            setup_shell_script = ''
 
         with self._edit_lock:
             self.reload()
             if Session.check_min_api_version("2.13"):
                 self.data.container = dict(image=image, arguments=arguments, setup_shell_script=setup_shell_script)
+                self._edit(container=self.data.container)
             else:
                 if setup_shell_script:
                     raise ValueError(
                         "Your ClearML-server does not support docker bash script feature, please upgrade.")
                 execution = self.data.execution
-                execution.docker_cmd = docker_cmd + (' {}'.format(arguments) if arguments else '')
+                execution.docker_cmd = image + (' {}'.format(arguments) if arguments else '')
                 self._edit(execution=execution)
 
     def get_base_docker(self):

@@ -622,6 +622,8 @@ class Task(_Task):
         packages=None,  # Optional[Union[bool, Sequence[str]]]
         requirements_file=None,  # Optional[Union[str, Path]]
         docker=None,  # Optional[str]
+        docker_args=None,  # Optional[str]
+        docker_bash_setup_script=None,  # Optional[str]
         argparse_args=None,  # Optional[Sequence[Tuple[str, str]]]
         base_task_id=None,  # Optional[str]
         add_task_init_call=True,  # bool
@@ -658,6 +660,9 @@ class Task(_Task):
         :param requirements_file: Specify requirements.txt file to install when setting the session.
             If not provided, the requirements.txt from the repository will be used.
         :param docker: Select the docker image to be executed in by the remote session
+        :param docker_args: Add docker arguments, pass a single string
+        :param docker_bash_setup_script: Add bash script to be executed
+            inside the docker before setting up the Task's environement
         :param argparse_args: Arguments to pass to the remote execution, list of string pairs (argument, value)
             Notice, only supported if the codebase itself uses argparse.ArgumentParser
         :param base_task_id: Use a pre-existing task in the system, instead of a local repo/script.
@@ -677,7 +682,7 @@ class Task(_Task):
             repo=repo, branch=branch, commit=commit,
             script=script, working_directory=working_directory,
             packages=packages, requirements_file=requirements_file,
-            docker=docker,
+            docker=docker, docker_args=docker_args, docker_bash_setup_script=docker_bash_setup_script,
             base_task_id=base_task_id,
             add_task_init_call=add_task_init_call,
             raise_on_missing_entries=False,

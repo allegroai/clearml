@@ -555,11 +555,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return self.send(tasks.CompletedRequest(self.id, status_reason='completed'), ignore_errors=ignore_errors)
         return self.send(tasks.StoppedRequest(self.id, status_reason='completed'), ignore_errors=ignore_errors)
 
-    def mark_failed(self, ignore_errors=True, status_reason=None, status_message=None):
-        # type: (bool, Optional[str], Optional[str]) -> ()
+    def mark_failed(self, ignore_errors=True, status_reason=None, status_message=None, force=False):
+        # type: (bool, Optional[str], Optional[str], bool) -> ()
         """ The signal that this Task stopped. """
-        return self.send(tasks.FailedRequest(self.id, status_reason=status_reason, status_message=status_message),
-                         ignore_errors=ignore_errors)
+        return self.send(
+            tasks.FailedRequest(
+                task=self.id, status_reason=status_reason, status_message=status_message, force=force),
+            ignore_errors=ignore_errors,
+        )
 
     def publish(self, ignore_errors=True):
         # type: (bool) -> ()

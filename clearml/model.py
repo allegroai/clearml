@@ -236,13 +236,13 @@ class BaseModel(object):
 
     @property
     def task(self):
-        # type: () -> _Task
+        # type: () -> str
         """
-        Return the creating task object
+        Return the creating task ID
 
-        :return: The Task object.
+        :return: The Task ID (str)
         """
-        return self._task or self._get_base_model().task
+        return self._task.id if self._task else self._get_base_model().task
 
     @property
     def url(self):

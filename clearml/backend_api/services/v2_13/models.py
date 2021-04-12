@@ -72,6 +72,68 @@ class MultiFieldPatternData(NonStrictDataModel):
         self._property_fields = value
 
 
+class MetadataItem(NonStrictDataModel):
+    _schema = {
+        "type": "object",
+        "properties": {
+            "key": {
+                "description": "The key uniquely identifying the metadata item inside the given entity",
+                "type": "string",
+            },
+            "type": {
+                "description": "The type of the metadata item",
+                "type": "string",
+            },
+            "value": {
+                "description": "The value stored in the metadata item",
+                "type": "string",
+            },
+        },
+    }
+
+    def __init__(self, key, type, value, **kwargs):
+        super(MetadataItem, self).__init__(**kwargs)
+        self.key = key
+        self.type = type
+        self.value = value
+
+    @schema_property("key")
+    def key(self):
+        return self._property_key
+
+    @key.setter
+    def key(self, value):
+        if value is None:
+            self._property_key = None
+            return
+        self.assert_isinstance(value, "key", six.string_types)
+        self._property_key = value
+
+    @schema_property("type")
+    def type(self):
+        return self._property_type
+
+    @type.setter
+    def type(self, value):
+        if value is None:
+            self._property_type = None
+            return
+        self.assert_isinstance(value, "type", six.string_types)
+        self._property_type = value
+
+    @schema_property("value")
+    def value(self):
+        return self._property_value
+
+    @value.setter
+    def value(self, value):
+        if value is None:
+            self._property_value = None
+            return
+        self.assert_isinstance(value, "value", six.string_types)
+        self._property_value = value
+
+
 class Model(NonStrictDataModel):
     """
     :param id: Model id
@@ -115,6 +177,25 @@ class Model(NonStrictDataModel):
     """
 
     _schema = {
+        "definitions": {
+            "metadata_item": {
+                "properties": {
+                    "key": {
+                        "description": "The key uniquely identifying the metadata item inside the given entity",
+                        "type": "string",
+                    },
+                    "type": {
+                        "description": "The type of the metadata item",
+                        "type": "string",
+                    },
+                    "value": {
+                        "description": "The value stored in the metadata item",
+                        "type": "string",
+                    },
+                },
+                "type": "object",
+            }
+        },
         "properties": {
             "comment": {"description": "Model comment", "type": ["string", "null"]},
             "company": {"description": "Company id", "type": ["string", "null"]},
@@ -172,6 +253,11 @@ class Model(NonStrictDataModel):
                 "type": ["string", "null"],
             },
             "user": {"description": "Associated user id", "type": ["string", "null"]},
+            "metadata": {
+                "type": "array",
+                "items": {"$ref": "#/definitions/metadata_item"},
+                "description": "Model metadata",
+            },
         },
         "type": "object",
     }
@@ -195,6 +281,7 @@ class Model(NonStrictDataModel):
         uri=None,
         ready=None,
         ui_cache=None,
+        metadata=None,
         **kwargs
     ):
         super(Model, self).__init__(**kwargs)
@@ -215,6 +302,7 @@ class Model(NonStrictDataModel):
         self.uri = uri
         self.ready = ready
         self.ui_cache = ui_cache
+        self.metadata = metadata
 
     @schema_property("id")
     def id(self):
@@ -443,11 +531,28 @@ class Model(NonStrictDataModel):
         self.assert_isinstance(value, "ui_cache", (dict,))
         self._property_ui_cache = value
 
+    @schema_property("metadata")
+    def metadata(self):
+        return self._property_metadata
+
+    @metadata.setter
+    def metadata(self, value):
+        if value is None:
+            self._property_metadata = None
+            return
+        self.assert_isinstance(value, "metadata", (list, tuple))
+        if any(isinstance(v, dict) for v in value):
+            value = [
+                MetadataItem.from_dict(v) if isinstance(v, dict) else v for v in value
+            ]
+        else:
+            self.assert_isinstance(value, "metadata", MetadataItem, is_array=True)
+        self._property_metadata = value
+
 
 class AddOrUpdateMetadataRequest(Request):
     """
     Add or update model metadata
-
     :param model: ID of the model
     :type model: str
     :param metadata: Metadata items to add or update
@@ -459,30 +564,28 @@ class AddOrUpdateMetadataRequest(Request):
     _version = "2.13"
     _schema = {
         "definitions": {
-            "metadata": {
-                "items": {
-                    "properties": {
-                        "key": {
-                            "description": "The key uniquely identifying the metadata item inside the given entity",
-                            "type": "string",
-                        },
-                        "tyoe": {
-                            "description": "The type of the metadata item",
-                            "type": "string",
-                        },
-                        "value": {
-                            "description": "The value stored in the metadata item",
-                            "type": "string",
-                        },
+            "metadata_item": {
+                "properties": {
+                    "key": {
+                        "description": "The key uniquely identifying the metadata item inside the given entity",
+                        "type": "string",
                     },
-                    "type": "object",
+                    "type": {
+                        "description": "The type of the metadata item",
+                        "type": "string",
+                    },
+                    "value": {
+                        "description": "The value stored in the metadata item",
+                        "type": "string",
+                    },
                 },
-                "type": "array",
+                "type": "object",
             }
         },
         "properties": {
             "metadata": {
-                "$ref": "#/definitions/metadata",
+                "type": "array",
+                "items": {"$ref": "#/definitions/metadata_item"},
                 "description": "Metadata items to add or update",
             },
             "model": {"description": "ID of the model", "type": "string"},
@@ -505,7 +608,6 @@ class AddOrUpdateMetadataRequest(Request):
         if value is None:
             self._property_model = None
             return
-
         self.assert_isinstance(value, "model", six.string_types)
         self._property_model = value
 
@@ -518,10 +620,13 @@ class AddOrUpdateMetadataRequest(Request):
         if value is None:
             self._property_metadata = None
             return
-        if isinstance(value, dict):
-            value = Metadata.from_dict(value)
+        self.assert_isinstance(value, "metadata", (list, tuple))
+        if any(isinstance(v, dict) for v in value):
+            value = [
+                MetadataItem.from_dict(v) if isinstance(v, dict) else v for v in value
+            ]
         else:
-            self.assert_isinstance(value, "metadata", Metadata)
+            self.assert_isinstance(value, "metadata", MetadataItem, is_array=True)
         self._property_metadata = value
 
 
@@ -711,7 +816,25 @@ class CreateRequest(Request):
     _action = "create"
     _version = "2.13"
     _schema = {
-        "definitions": {},
+        "definitions": {
+            "metadata_item": {
+                "properties": {
+                    "key": {
+                        "description": "The key uniquely identifying the metadata item inside the given entity",
+                        "type": "string",
+                    },
+                    "type": {
+                        "description": "The type of the metadata item",
+                        "type": "string",
+                    },
+                    "value": {
+                        "description": "The value stored in the metadata item",
+                        "type": "string",
+                    },
+                },
+                "type": "object",
+            }
+        },
         "properties": {
             "comment": {"description": "Model comment", "type": "string"},
             "design": {
@@ -759,6 +882,11 @@ class CreateRequest(Request):
             },
             "task": {"description": "Associated task ID", "type": "string"},
             "uri": {"description": "URI for the model", "type": "string"},
+            "metadata": {
+                "type": "array",
+                "items": {"$ref": "#/definitions/metadata_item"},
+                "description": "Model metadata",
+            },
         },
         "required": ["uri", "name"],
         "type": "object",
@@ -779,6 +907,7 @@ class CreateRequest(Request):
         project=None,
         parent=None,
         task=None,
+        metadata=None,
         **kwargs
     ):
         super(CreateRequest, self).__init__(**kwargs)
@@ -795,6 +924,7 @@ class CreateRequest(Request):
         self.project = project
         self.parent = parent
         self.task = task
+        self.metadata = metadata
 
     @schema_property("uri")
     def uri(self):
@@ -968,6 +1098,24 @@ class CreateRequest(Request):
 
         self.assert_isinstance(value, "task", six.string_types)
         self._property_task = value
+
+    @schema_property("metadata")
+    def metadata(self):
+        return self._property_metadata
+
+    @metadata.setter
+    def metadata(self, value):
+        if value is None:
+            self._property_metadata = None
+            return
+        self.assert_isinstance(value, "metadata", (list, tuple))
+        if any(isinstance(v, dict) for v in value):
+            value = [
+                MetadataItem.from_dict(v) if isinstance(v, dict) else v for v in value
+            ]
+        else:
+            self.assert_isinstance(value, "metadata", MetadataItem, is_array=True)
+        self._property_metadata = value
 
 
 class CreateResponse(Response):
@@ -1417,13 +1565,33 @@ class EditRequest(Request):
     :type task: str
     :param iteration: Iteration (used to update task statistics)
     :type iteration: int
+    :param metadata: Model metadata
+    :type metadata: list
     """
 
     _service = "models"
     _action = "edit"
     _version = "2.13"
     _schema = {
-        "definitions": {},
+        "definitions": {
+            "metadata_item": {
+                "properties": {
+                    "key": {
+                        "description": "The key uniquely identifying the metadata item inside the given entity",
+                        "type": "string",
+                    },
+                    "type": {
+                        "description": "The type of the metadata item",
+                        "type": "string",
+                    },
+                    "value": {
+                        "description": "The value stored in the metadata item",
+                        "type": "string",
+                    },
+                },
+                "type": "object",
+            }
+        },
         "properties": {
             "comment": {"description": "Model comment", "type": "string"},
             "design": {
@@ -1470,6 +1638,11 @@ class EditRequest(Request):
             },
             "task": {"description": "Associated task ID", "type": "string"},
             "uri": {"description": "URI for the model", "type": "string"},
+            "metadata": {
+                "type": "array",
+                "items": {"$ref": "#/definitions/metadata_item"},
+                "description": "Model metadata",
+            },
         },
         "required": ["model"],
         "type": "object",
@@ -1491,6 +1664,7 @@ class EditRequest(Request):
         parent=None,
         task=None,
         iteration=None,
+        metadata=None,
         **kwargs
     ):
         super(EditRequest, self).__init__(**kwargs)
@@ -1508,6 +1682,7 @@ class EditRequest(Request):
         self.parent = parent
         self.task = task
         self.iteration = iteration
+        self.metadata = metadata
 
     @schema_property("model")
     def model(self):
@@ -1696,6 +1871,24 @@ class EditRequest(Request):
 
         self.assert_isinstance(value, "iteration", six.integer_types)
         self._property_iteration = value
+
+    @schema_property("metadata")
+    def metadata(self):
+        return self._property_metadata
+
+    @metadata.setter
+    def metadata(self, value):
+        if value is None:
+            self._property_metadata = None
+            return
+        self.assert_isinstance(value, "metadata", (list, tuple))
+        if any(isinstance(v, dict) for v in value):
+            value = [
+                MetadataItem.from_dict(v) if isinstance(v, dict) else v for v in value
+            ]
+        else:
+            self.assert_isinstance(value, "metadata", MetadataItem, is_array=True)
+        self._property_metadata = value
 
 
 class EditResponse(Response):

@@ -365,8 +365,8 @@ class Output(NonStrictDataModel):
     }
 
     def __init__(
-	    self, destination=None, model=None, result=None, error=None, **kwargs
-	):
+        self, destination=None, model=None, result=None, error=None, **kwargs
+    ):
         super(Output, self).__init__(**kwargs)
         self.destination = destination
         self.model = model

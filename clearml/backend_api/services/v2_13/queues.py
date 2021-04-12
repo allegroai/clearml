@@ -191,6 +191,68 @@ class Entry(NonStrictDataModel):
         self._property_added = value
 
 
+class MetadataItem(NonStrictDataModel):
+    _schema = {
+        "type": "object",
+        "properties": {
+            "key": {
+                "description": "The key uniquely identifying the metadata item inside the given entity",
+                "type": "string",
+            },
+            "type": {
+                "description": "The type of the metadata item",
+                "type": "string",
+            },
+            "value": {
+                "description": "The value stored in the metadata item",
+                "type": "string",
+            },
+        },
+    }
+
+    def __init__(self, key, type, value, **kwargs):
+        super(MetadataItem, self).__init__(**kwargs)
+        self.key = key
+        self.type = type
+        self.value = value
+
+    @schema_property("key")
+    def key(self):
+        return self._property_key
+
+    @key.setter
+    def key(self, value):
+        if value is None:
+            self._property_key = None
+            return
+        self.assert_isinstance(value, "key", six.string_types)
+        self._property_key = value
+
+    @schema_property("type")
+    def type(self):
+        return self._property_type
+
+    @type.setter
+    def type(self, value):
+        if value is None:
+            self._property_type = None
+            return
+        self.assert_isinstance(value, "type", six.string_types)
+        self._property_type = value
+
+    @schema_property("value")
+    def value(self):
+        return self._property_value
+
+    @value.setter
+    def value(self, value):
+        if value is None:
+            self._property_value = None
+            return
+        self.assert_isinstance(value, "value", six.string_types)
+        self._property_value = value
+
+
 class Queue(NonStrictDataModel):
     """
     :param id: Queue id
@@ -211,10 +273,29 @@ class Queue(NonStrictDataModel):
     :param entries: List of ordered queue entries
     :type entries: Sequence[Entry]
     :param metadata: Queue metadata
-    :type metadata: Metadata
+    :type metadata: list
     """
 
     _schema = {
+        "definitions": {
+            "metadata_item": {
+                "properties": {
+                    "key": {
+                        "description": "The key uniquely identifying the metadata item inside the given entity",
+                        "type": "string",
+                    },
+                    "type": {
+                        "description": "The type of the metadata item",
+                        "type": "string",
+                    },
+                    "value": {
+                        "description": "The value stored in the metadata item",
+                        "type": "string",
+                    },
+                },
+                "type": "object",
+            }
+        },
         "properties": {
             "company": {"description": "Company id", "type": ["string", "null"]},
             "created": {
@@ -229,8 +310,9 @@ class Queue(NonStrictDataModel):
             },
             "id": {"description": "Queue id", "type": ["string", "null"]},
             "metadata": {
+                "type": "array",
+                "items": {"$ref": "#/definitions/metadata_item"},
                 "description": "Queue metadata",
-                "oneOf": [{"$ref": "#/definitions/metadata"}, {"type": "null"}],
             },
             "name": {"description": "Queue name", "type": ["string", "null"]},
             "system_tags": {
@@ -281,7 +363,6 @@ class Queue(NonStrictDataModel):
         if value is None:
             self._property_id = None
             return
-
         self.assert_isinstance(value, "id", six.string_types)
         self._property_id = value
 
@@ -294,7 +375,6 @@ class Queue(NonStrictDataModel):
         if value is None:
             self._property_name = None
             return
-
         self.assert_isinstance(value, "name", six.string_types)
         self._property_name = value
 
@@ -307,7 +387,6 @@ class Queue(NonStrictDataModel):
         if value is None:
             self._property_user = None
             return
-
         self.assert_isinstance(value, "user", six.string_types)
         self._property_user = value
 
@@ -320,7 +399,6 @@ class Queue(NonStrictDataModel):
         if value is None:
             self._property_company = None
             return
-
         self.assert_isinstance(value, "company", six.string_types)
         self._property_company = value
 
@@ -333,7 +411,6 @@ class Queue(NonStrictDataModel):
         if value is None:
             self._property_created = None
             return
-
         self.assert_isinstance(value, "created", six.string_types + (datetime,))
         if not isinstance(value, datetime):
             value = parse_datetime(value)
@@ -348,9 +425,7 @@ class Queue(NonStrictDataModel):
         if value is None:
             self._property_tags = None
             return
-
         self.assert_isinstance(value, "tags", (list, tuple))
-
         self.assert_isinstance(value, "tags", six.string_types, is_array=True)
         self._property_tags = value
 
@@ -363,9 +438,7 @@ class Queue(NonStrictDataModel):
         if value is None:
             self._property_system_tags = None
             return
-
         self.assert_isinstance(value, "system_tags", (list, tuple))
-
         self.assert_isinstance(value, "system_tags", six.string_types, is_array=True)
         self._property_system_tags = value
 
@@ -378,7 +451,6 @@ class Queue(NonStrictDataModel):
         if value is None:
             self._property_entries = None
             return
-
         self.assert_isinstance(value, "entries", (list, tuple))
         if any(isinstance(v, dict) for v in value):
             value = [Entry.from_dict(v) if isinstance(v, dict) else v for v in value]
@@ -395,17 +467,19 @@ class Queue(NonStrictDataModel):
         if value is None:
             self._property_metadata = None
             return
-        if isinstance(value, dict):
-            value = Metadata.from_dict(value)
+        self.assert_isinstance(value, "metadata", (list, tuple))
+        if any(isinstance(v, dict) for v in value):
+            value = [
+                MetadataItem.from_dict(v) if isinstance(v, dict) else v for v in value
+            ]
         else:
-            self.assert_isinstance(value, "metadata", Metadata)
+            self.assert_isinstance(value, "metadata", MetadataItem, is_array=True)
         self._property_metadata = value
 
 
 class AddOrUpdateMetadataRequest(Request):
     """
     Add or update queue metadata
-
     :param queue: ID of the queue
     :type queue: str
     :param metadata: Metadata items to add or update
@@ -417,31 +491,29 @@ class AddOrUpdateMetadataRequest(Request):
     _version = "2.13"
     _schema = {
         "definitions": {
-            "metadata": {
-                "items": {
-                    "properties": {
-                        "key": {
-                            "description": "The key uniquely identifying the metadata item inside the given entity",
-                            "type": "string",
-                        },
-                        "tyoe": {
-                            "description": "The type of the metadata item",
-                            "type": "string",
-                        },
-                        "value": {
-                            "description": "The value stored in the metadata item",
-                            "type": "string",
-                        },
+            "metadata_item": {
+                "properties": {
+                    "key": {
+                        "description": "The key uniquely identifying the metadata item inside the given entity",
+                        "type": "string",
                     },
-                    "type": "object",
+                    "type": {
+                        "description": "The type of the metadata item",
+                        "type": "string",
+                    },
+                    "value": {
+                        "description": "The value stored in the metadata item",
+                        "type": "string",
+                    },
                 },
-                "type": "array",
+                "type": "object",
             }
         },
         "properties": {
             "metadata": {
-                "$ref": "#/definitions/metadata",
-                "description": "Metadata items to add or update",
+                "type": "array",
+                "items": {"$ref": "#/definitions/metadata_item"},
+                "description": "Queue metadata",
             },
             "queue": {"description": "ID of the queue", "type": "string"},
         },
@@ -463,7 +535,6 @@ class AddOrUpdateMetadataRequest(Request):
         if value is None:
             self._property_queue = None
             return
-
         self.assert_isinstance(value, "queue", six.string_types)
         self._property_queue = value
 
@@ -476,10 +547,13 @@ class AddOrUpdateMetadataRequest(Request):
         if value is None:
             self._property_metadata = None
             return
-        if isinstance(value, dict):
-            value = Metadata.from_dict(value)
+        self.assert_isinstance(value, "metadata", (list, tuple))
+        if any(isinstance(v, dict) for v in value):
+            value = [
+                MetadataItem.from_dict(v) if isinstance(v, dict) else v for v in value
+            ]
         else:
-            self.assert_isinstance(value, "metadata", Metadata)
+            self.assert_isinstance(value, "metadata", MetadataItem, is_array=True)
         self._property_metadata = value
 
 
@@ -1238,7 +1312,7 @@ class GetAllResponse(Response):
                             "description": "The key uniquely identifying the metadata item inside the given entity",
                             "type": "string",
                         },
-                        "tyoe": {
+                        "type": {
                             "description": "The type of the metadata item",
                             "type": "string",
                         },
@@ -1394,7 +1468,7 @@ class GetByIdResponse(Response):
                             "description": "The key uniquely identifying the metadata item inside the given entity",
                             "type": "string",
                         },
-                        "tyoe": {
+                        "type": {
                             "description": "The type of the metadata item",
                             "type": "string",
                         },

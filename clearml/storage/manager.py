@@ -38,7 +38,7 @@ class StorageManager(object):
         :param str cache_context: Optional caching context identifier (string), default context 'global'
         :param bool extract_archive: if True returned path will be a cached folder containing the archive's content,
             currently only zip files are supported.
-        :param name: name of artifact.
+        :param name: name of the target file
         :param force_download: download file from remote even if exists in local cache
         :return: Full path to local copy of the requested url. Return None on Error.
         """

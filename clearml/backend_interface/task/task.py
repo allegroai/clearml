@@ -860,9 +860,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 # backwards compatibility
                 self._set_task_property("execution.model", model_id, raise_on_error=False, log_on_error=False)
 
-            # Auto populate input field from model, if they are empty
-            if update_task_design and not self.data.execution.model_desc:
-                self.data.execution.model_desc = model.design if model else ''
+            # Auto populate from model, if empty
             if update_task_labels and not self.data.execution.model_labels:
                 self.data.execution.model_labels = model.labels if model else {}
 

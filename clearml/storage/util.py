@@ -1,6 +1,7 @@
 import hashlib
 import re
 import sys
+from zlib import crc32
 from typing import Optional, Union, Sequence
 from pathlib2 import Path
 
@@ -84,7 +85,34 @@ def md5text(text, seed=1337):
     :param seed: use prefix seed for hashing
     :return: md5 string
     """
-    h = hashlib.md5()
+    return hash_text(text=text, seed=seed, hash_func='md5')
+
+
+def crc32text(text, seed=1337):
+    # type: (str, Union[int, str]) -> str
+    """
+    Return crc32 hash of a string
+    Do not use this hash for security, if needed use something stronger like SHA2
+
+    :param text: string to hash
+    :param seed: use prefix seed for hashing
+    :return: crc32 hex in string (32bits = 8 characters in hex)
+    """
+    return '{:08x}'.format(crc32((str(seed)+str(text)).encode('utf-8')))
+
+
+def hash_text(text, seed=1337, hash_func='md5'):
+    # type: (str, Union[int, str], str) -> str
+    """
+    Return hash_func (md5/sha1/sha256/sha384/sha512) hash of a string
+
+    :param text: string to hash
+    :param seed: use prefix seed for hashing
+    :param hash_func: hashing function. currently supported md5 sha256
+    :return: hashed string
+    """
+    assert hash_func in ('md5', 'sha256', 'sha256', 'sha384', 'sha512')
+    h = getattr(hashlib, hash_func)()
     h.update((str(seed) + str(text)).encode('utf-8'))
     return h.hexdigest()
 

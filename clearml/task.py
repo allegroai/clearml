@@ -3125,6 +3125,11 @@ class Task(_Task):
                 org_handler = self._org_handlers.get(sig)
                 signal.signal(sig, org_handler or signal.SIG_DFL)
 
+                # if this is a sig term, we wait until __at_exit is called (basically do nothing)
+                if sig == signal.SIGINT:
+                    # return original handler result
+                    return org_handler if not callable(org_handler) else org_handler(sig, frame)
+
                 if self._signal_recursion_protection_flag:
                     # call original
                     os.kill(os.getpid(), sig)

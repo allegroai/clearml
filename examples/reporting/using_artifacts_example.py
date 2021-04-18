@@ -1,3 +1,7 @@
+# Using artifacts example
+"""
+Upload artifacts from a Task, and then a different Task can access and utilize the data from that artifact.
+"""
 from clearml import Task
 from time import sleep
 

@@ -10,7 +10,7 @@
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/clearml.svg)](https://img.shields.io/pypi/pyversions/clearml.svg)
 [![PyPI version shields.io](https://img.shields.io/pypi/v/clearml.svg)](https://img.shields.io/pypi/v/clearml.svg)
 [![Optuna](https://img.shields.io/badge/Optuna-integrated-blue)](https://optuna.org)
-[![Slack Channel](https://img.shields.io/badge/slack-%23clearml--community-blueviolet?logo=slack)](https://join.slack.com/t/allegroai-trains/shared_invite/zt-c0t13pty-aVUZZW1TSSSg2vyIGVPBhg)
+[![Slack Channel](https://img.shields.io/badge/slack-%23clearml--community-blueviolet?logo=slack)](https://join.slack.com/t/clearml/shared_invite/zt-c0t13pty-aVUZZW1TSSSg2vyIGVPBhg)
 
 </div>
 

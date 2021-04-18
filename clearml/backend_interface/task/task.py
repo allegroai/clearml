@@ -6,6 +6,7 @@ import os
 import re
 import sys
 from copy import copy
+from datetime import datetime
 from enum import Enum
 from multiprocessing import RLock
 from operator import itemgetter
@@ -23,7 +24,6 @@ except ImportError:
     from collections import Iterable
 
 import six
-from collections import OrderedDict
 from six.moves.urllib.parse import quote
 
 from ...utilities.locks import RLock as FileRLock
@@ -52,7 +52,7 @@ from ...storage.helper import StorageHelper, StorageError
 from .access import AccessMixin
 from .repo import ScriptInfo, pip_freeze
 from .hyperparams import HyperParams
-from ...config import config, PROC_MASTER_ID_ENV_VAR, SUPPRESS_UPDATE_MESSAGE_ENV_VAR
+from ...config import config, PROC_MASTER_ID_ENV_VAR, SUPPRESS_UPDATE_MESSAGE_ENV_VAR, DOCKER_BASH_SETUP_ENV_VAR
 from ...utilities.process.mp import SingletonLock
 
 
@@ -149,8 +149,6 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         super(Task, self).__init__(id=task_id, session=session, log=log)
         self._project_name = None
         self._storage_uri = None
-        self._input_model = None
-        self._output_model = None
         self._metrics_manager = None
         self.__reporter = None
         self._curr_label_stats = {}
@@ -333,8 +331,6 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._storage_uri = StorageHelper.conform_url(value)
         self.data.output.destination = self._storage_uri
         self._edit(output_dest=self._storage_uri or ('' if Session.check_min_api_version('2.3') else None))
-        if self._storage_uri or self._output_model:
-            self.output_model.upload_storage_uri = self._storage_uri
 
     @property
     def storage_uri(self):
@@ -382,14 +378,24 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return self.data.parent
 
     @property
-    def input_model_id(self):
-        # type: () -> str
-        return self.data.execution.model
+    def input_models_id(self):
+        # type: () -> Mapping[str, str]
+        if not Session.check_min_api_version("2.13"):
+            model_id = self._get_task_property('execution.model', raise_on_error=False)
+            return {'Input Model': model_id} if model_id else {}
+
+        input_models = self._get_task_property('models.input', default=[]) or []
+        return {m.name: m.model for m in input_models}
 
     @property
-    def output_model_id(self):
-        # type: () -> str
-        return self.data.output.model
+    def output_models_id(self):
+        # type: () -> Mapping[str, str]
+        if not Session.check_min_api_version("2.13"):
+            model_id = self._get_task_property('output.model', raise_on_error=False)
+            return {'Output Model': model_id} if model_id else {}
+
+        output_models = self._get_task_property('models.output', default=[]) or []
+        return {m.name: m.model for m in output_models}
 
     @property
     def comment(self):
@@ -424,34 +430,6 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """ Return the task's cached status (don't reload if we don't have to) """
         return str(self.data.status)
 
-    @property
-    def input_model(self):
-        # type: () -> Optional[Model]
-        """ A model manager used to handle the input model object """
-        model_id = self._get_task_property('execution.model', raise_on_error=False)
-        if not model_id:
-            return None
-        if self._input_model is None:
-            self._input_model = Model(
-                session=self.session,
-                model_id=model_id,
-                cache_dir=self.cache_dir,
-                log=self.log,
-                upload_storage_uri=None)
-        return self._input_model
-
-    @property
-    def output_model(self):
-        # type: () -> Optional[Model]
-        """ A model manager used to manage the output model object """
-        if self._output_model is None:
-            self._output_model = self._get_output_model(upload_required=True)
-        return self._output_model
-
-    def create_output_model(self):
-        # type: () -> Model
-        return self._get_output_model(upload_required=False, force=True)
-
     def reload(self):
         # type: () -> ()
         """
@@ -460,12 +438,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         return super(Task, self).reload()
 
-    def _get_output_model(self, upload_required=True, force=False, model_id=None):
-        # type: (bool, bool, Optional[str]) -> Model
+    def _get_output_model(self, upload_required=True, model_id=None):
+        # type: (bool, Optional[str]) -> Model
         return Model(
             session=self.session,
-            model_id=model_id or (None if force else self._get_task_property(
-                'output.model', raise_on_error=False, log_on_error=False)),
+            model_id=model_id or None,
             cache_dir=self.cache_dir,
             upload_storage_uri=self.storage_uri or self.get_output_destination(
                 raise_on_error=upload_required, log_on_error=upload_required),
@@ -547,7 +524,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def reset(self, set_started_on_success=True):
         # type: (bool) -> ()
-        """ Reset the task. Task will be reloaded following a successful reset. """
+        """
+        Reset the task. Task will be reloaded following a successful reset.
+
+        :param  set_started_on_success: If True automatically set Task status to started after resetting it.
+        """
         self.send(tasks.ResetRequest(task=self.id))
         if set_started_on_success:
             self.started()
@@ -574,11 +555,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return self.send(tasks.CompletedRequest(self.id, status_reason='completed'), ignore_errors=ignore_errors)
         return self.send(tasks.StoppedRequest(self.id, status_reason='completed'), ignore_errors=ignore_errors)
 
-    def mark_failed(self, ignore_errors=True, status_reason=None, status_message=None):
-        # type: (bool, Optional[str], Optional[str]) -> ()
+    def mark_failed(self, ignore_errors=True, status_reason=None, status_message=None, force=False):
+        # type: (bool, Optional[str], Optional[str], bool) -> ()
         """ The signal that this Task stopped. """
-        return self.send(tasks.FailedRequest(self.id, status_reason=status_reason, status_message=status_message),
-                         ignore_errors=ignore_errors)
+        return self.send(
+            tasks.FailedRequest(
+                task=self.id, status_reason=status_reason, status_message=status_message, force=force),
+            ignore_errors=ignore_errors,
+        )
 
     def publish(self, ignore_errors=True):
         # type: (bool) -> ()
@@ -747,36 +731,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             res = self._edit(execution=execution)
             return res.response
 
-    def update_output_model(self, model_uri, name=None, comment=None, tags=None):
-        # type: (str, Optional[str], Optional[str], Optional[Sequence[str]]) -> ()
-        """
-        Update the Task's output model. Use this method to update the output model when you have a local model URI,
-        for example, storing the weights file locally, and specifying a ``file://path/to/file`` URI)
-
-        .. important::
-           This method only updates the model's metadata using the API. It does not upload any data.
-
-        :param model_uri: The URI of the updated model weights file.
-        :type model_uri: str
-        :param name: The updated model name. (Optional)
-        :type name: str
-        :param comment: The updated model description. (Optional)
-        :type comment: str
-        :param tags: The updated model tags. (Optional)
-        :type tags: [str]
-        """
-        self._conditionally_start_task()
-        self._get_output_model(upload_required=False).update_for_task(
-            uri=model_uri, task_id=self.id, name=name, comment=comment, tags=tags)
-
-    def update_output_model_and_upload(
+    def update_output_model(
             self,
-            model_file,  # type: str
+            model_path,  # type: str
             name=None,  # type: Optional[str]
             comment=None,  # type: Optional[str]
             tags=None,  # type: Optional[Sequence[str]]
-            async_enable=False,  # type: bool
-            cb=None,   # type: Optional[Callable[[Optional[bool]], bool]]
+            model_name=None,  # type: Optional[str]
             iteration=None,  # type: Optional[int]
     ):
         # type: (...) -> str
@@ -786,34 +747,29 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         then ClearML updates the model object associated with the Task an API call. The API call uses with the URI
         of the uploaded file, and other values provided by additional arguments.
 
-        :param str model_file: The path to the updated model weights file.
-        :param str name: The updated model name. (Optional)
-        :param str comment: The updated model description. (Optional)
-        :param list tags: The updated model tags. (Optional)
-        :param bool async_enable: Request asynchronous upload
+        :param model_path: A local weights file or folder to be uploaded.
+            If remote URI is provided (e.g. http:// or s3: // etc) then the URI is stored as is, without any upload
+        :param name: The updated model name.
+            If not provided, the name is the model weights file filename without the extension.
+        :param comment: The updated model description. (Optional)
+        :param tags: The updated model tags. (Optional)
+        :param model_name: If provided the model name as it will appear in the model artifactory. (Optional)
+            Default: Task.name - name
+        :param iteration: iteration number for the current stored model (Optional)
 
-            - ``True`` - The API call returns immediately, while the upload and update are scheduled in another thread.
-            - ``False`` - The API call blocks until the upload completes, and the API call updating the model returns.
-              (default)
-
-        :param callable cb: Asynchronous callback. A callback. If ``async_enable`` is set to ``True``,
-            this is a callback that is invoked once the asynchronous upload and update complete.
-        :param int iteration: iteration number for the current stored model (Optional)
-
-        :return: The URI of the uploaded weights file. If ``async_enable`` is set to ``True``,
-            this is the expected URI, as the upload is probably still in progress.
+        :return: The URI of the uploaded weights file.
+            Notice: upload is done is a background thread, while the function call returns immediately
         """
-        self._conditionally_start_task()
-        uri = self.output_model.update_for_task_and_upload(
-            model_file, self.id, name=name, comment=comment, tags=tags, async_enable=async_enable, cb=cb,
-            iteration=iteration
+        from ...model import OutputModel
+        output_model = OutputModel(
+            task=self,
+            name=model_name or ('{} - {}'.format(self.name, name) if name else self.name),
+            tags=tags,
+            comment=comment
         )
-        return uri
-
-    def _conditionally_start_task(self):
-        # type: () -> ()
-        if str(self.status) == str(tasks.TaskStatusEnum.created):
-            self.started()
+        output_model.connect(task=self, name=name)
+        url = output_model.update_weights(weights_filename=model_path, iteration=iteration)
+        return url
 
     @property
     def labels_stats(self):
@@ -831,16 +787,24 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             else:
                 self._curr_label_stats[label] = roi_stats[label]
 
-    def set_input_model(self, model_id=None, model_name=None, update_task_design=True, update_task_labels=True):
-        # type: (str, Optional[str], bool, bool) -> ()
+    def set_input_model(
+            self,
+            model_id=None,
+            model_name=None,
+            update_task_design=True,
+            update_task_labels=True,
+            name=None
+    ):
+        # type: (str, Optional[str], bool, bool, Optional[str]) -> ()
         """
         Set a new input model for the Task. The model must be "ready" (status is ``Published``) to be used as the
         Task's input model.
 
         :param model_id: The Id of the model on the **ClearML Server** (backend). If ``model_name`` is not specified,
             then ``model_id`` must be specified.
-        :param model_name: The model name. The name is used to locate an existing model in the **ClearML Server**
-            (backend). If ``model_id`` is not specified, then ``model_name`` must be specified.
+        :param model_name: The model name in the artifactory. The model_name is used to locate an existing model
+            in the **ClearML Server** (backend). If ``model_id`` is not specified,
+            then ``model_name`` must be specified.
         :param update_task_design: Update the Task's design
 
             - ``True`` - ClearML copies the Task's model design from the input model.
@@ -850,11 +814,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
             - ``True`` - ClearML copies the Task's label enumeration from the input model.
             - ``False`` - ClearML does not copy the Task's label enumeration from the input model.
+
+        :param name: Model section name to be stored on the Task (unrelated to the model object name itself)
+            Default: the the model weight filename is used (excluding file extension)
         """
         if model_id is None and not model_name:
             raise ValueError('Expected one of [model_id, model_name]')
 
-        if model_name:
+        if model_name and not model_id:
             # Try getting the model by name. Limit to 10 results.
             res = self.send(
                 models.GetAllRequest(
@@ -863,7 +830,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     page=0,
                     page_size=10,
                     order_by=['-created'],
-                    only_fields=['id', 'created']
+                    only_fields=['id', 'created', 'uri']
                 )
             )
             model = get_single_result(entity='model', query=model_name, results=res.response.models, log=self.log)
@@ -875,19 +842,25 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             if not model.ready:
                 # raise ValueError('Model %s is not published (not ready)' % model_id)
                 self.log.debug('Model %s [%s] is not published yet (not ready)' % (model_id, model.uri))
+            name = name or Path(model.uri).stem
         else:
             # clear the input model
             model = None
             model_id = ''
+            name = name or 'Input Model'
 
         with self._edit_lock:
             self.reload()
             # store model id
-            self.data.execution.model = model_id
+            if Session.check_min_api_version("2.13"):
+                self.send(tasks.AddOrUpdateModelRequest(
+                    task=self.id, name=name, model=model_id, type=tasks.ModelTypeEnum.input
+                ))
+            else:
+                # backwards compatibility
+                self._set_task_property("execution.model", model_id, raise_on_error=False, log_on_error=False)
 
-            # Auto populate input field from model, if they are empty
-            if update_task_design and not self.data.execution.model_desc:
-                self.data.execution.model_desc = model.design if model else ''
+            # Auto populate from model, if empty
             if update_task_labels and not self.data.execution.model_labels:
                 self.data.execution.model_labels = model.labels if model else {}
 
@@ -1157,28 +1130,62 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def _set_default_docker_image(self):
         # type: () -> ()
-        if not DOCKER_IMAGE_ENV_VAR.exists():
+        if not DOCKER_IMAGE_ENV_VAR.exists() and not DOCKER_BASH_SETUP_ENV_VAR.exists():
             return
-        self.set_base_docker(DOCKER_IMAGE_ENV_VAR.get(default=""))
+        self.set_base_docker(
+            docker_cmd=DOCKER_IMAGE_ENV_VAR.get(default=""),
+            docker_setup_bash_script=DOCKER_BASH_SETUP_ENV_VAR.get(default=""))
 
-    def set_base_docker(self, docker_cmd):
-        # type: (str) -> ()
+    def set_base_docker(self, docker_cmd, docker_arguments=None, docker_setup_bash_script=None):
+        # type: (str, Optional[Union[str, Sequence[str]]], Optional[Union[str, Sequence[str]]]) -> ()
         """
         Set the base docker image for this experiment
         If provided, this value will be used by clearml-agent to execute this experiment
         inside the provided docker image.
         When running remotely the call is ignored
+
+        :param docker_cmd: docker container image (example: 'nvidia/cuda:11.1')
+        :param docker_arguments: docker execution parameters (example: '-e ENV=1')
+        :param docker_setup_bash_script: bash script to run at the
+            beginning of the docker before launching the Task itself. example: ['apt update', 'apt-get install -y gcc']
         """
+        image = docker_cmd.split(' ')[0] if docker_cmd else ''
+        if not docker_arguments and docker_cmd:
+            docker_arguments = docker_cmd.split(' ')[1:] if len(docker_cmd.split(' ')) > 1 else ''
+
+        arguments = (docker_arguments if isinstance(docker_arguments, str) else ' '.join(docker_arguments)) \
+            if docker_arguments else ''
+
+        if docker_setup_bash_script:
+            setup_shell_script = docker_setup_bash_script \
+                if isinstance(docker_setup_bash_script, str) else '\n'.join(docker_setup_bash_script)
+        else:
+            setup_shell_script = ''
+
         with self._edit_lock:
             self.reload()
-            execution = self.data.execution
-            execution.docker_cmd = docker_cmd
-            self._edit(execution=execution)
+            if Session.check_min_api_version("2.13"):
+                self.data.container = dict(image=image, arguments=arguments, setup_shell_script=setup_shell_script)
+                self._edit(container=self.data.container)
+            else:
+                if setup_shell_script:
+                    raise ValueError(
+                        "Your ClearML-server does not support docker bash script feature, please upgrade.")
+                execution = self.data.execution
+                execution.docker_cmd = image + (' {}'.format(arguments) if arguments else '')
+                self._edit(execution=execution)
 
     def get_base_docker(self):
         # type: () -> str
         """Get the base Docker command (image) that is set for this experiment."""
-        return self._get_task_property('execution.docker_cmd', raise_on_error=False, log_on_error=False)
+        if Session.check_min_api_version("2.13"):
+            # backwards compatibility
+            container = self._get_task_property(
+                "container", raise_on_error=False, log_on_error=False, default={})
+            return (container.get('image', '') +
+                    (' {}'.format(container['arguments']) if container.get('arguments', '') else '')) or None
+        else:
+            return self._get_task_property("execution.docker_cmd", raise_on_error=False, log_on_error=False)
 
     def set_artifacts(self, artifacts_list=None):
         # type: (Sequence[tasks.Artifact]) -> ()
@@ -1246,11 +1253,6 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         # noinspection PyProtectedMember
         return Model._unwrap_design(design)
-
-    def set_output_model_id(self, model_id):
-        # type: (str) -> ()
-        self.data.output.model = str(model_id)
-        self._edit(output=self.data.output)
 
     def get_random_seed(self):
         # type: () -> int
@@ -1638,48 +1640,6 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         cls._force_use_pip_freeze = bool(force)
 
-    def _get_models(self, model_type='output'):
-        # type: (str) -> Sequence[Model]
-        # model_type is either 'output' or 'input'
-        model_type = model_type.lower().strip()
-        assert model_type == 'output' or model_type == 'input'
-
-        if model_type == 'input':
-            regex = r'((?i)(Using model id: )(\w+)?)'
-            compiled = re.compile(regex)
-            ids = [i[-1] for i in re.findall(compiled, self.comment)] + (
-                [self.input_model_id] if self.input_model_id else [])
-            # remove duplicates and preserve order
-            ids = list(OrderedDict.fromkeys(ids))
-            from ...model import Model as TrainsModel
-            in_model = []
-            for i in ids:
-                m = TrainsModel(model_id=i)
-                # noinspection PyBroadException
-                try:
-                    # make sure the model is is valid
-                    # noinspection PyProtectedMember
-                    m._get_model_data()
-                    in_model.append(m)
-                except Exception:
-                    pass
-            return in_model
-        else:
-            res = self.send(
-                models.GetAllRequest(
-                    task=[self.id],
-                    order_by=['created'],
-                    only_fields=['id']
-                )
-            )
-            if not res.response.models:
-                return []
-            ids = [m.id for m in res.response.models] + ([self.output_model_id] if self.output_model_id else [])
-            # remove duplicates and preserve order
-            ids = list(OrderedDict.fromkeys(ids))
-            from ...model import Model as TrainsModel
-            return [TrainsModel(model_id=i) for i in ids]
-
     def _get_default_report_storage_uri(self):
         # type: () -> str
         if self._offline_mode:
@@ -1703,6 +1663,20 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         except Exception:
             return None, None
 
+    def _get_last_update(self):
+        # type: () -> (Optional[datetime])
+        if self._offline_mode:
+            return None
+
+        # noinspection PyBroadException
+        try:
+            all_tasks = self.send(
+                tasks.GetAllRequest(id=[self.id], only_fields=['last_update']),
+            ).response.tasks
+            return all_tasks[0].last_update
+        except Exception:
+            return None
+
     def _reload_last_iteration(self):
         # type: () -> ()
         # noinspection PyBroadException
@@ -1720,8 +1694,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             binary='', repository='', tag='', branch='', version_num='', entry_point='',
             working_dir='', requirements={}, diff='',
         )
+        if Session.check_min_api_version("2.13"):
+            self._data.models = tasks.TaskModels(input=[], output=[])
+            self._data.container = dict()
+
         self._data.execution = tasks.Execution(
             artifacts=[], dataviews=[], model='', model_desc={}, model_labels={}, parameters={}, docker_cmd='')
+
         self._data.comment = str(comment)
 
         self._storage_uri = None
@@ -1729,7 +1708,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         self._update_requirements('')
 
-        if Session.check_min_api_version('2.9'):
+        if Session.check_min_api_version('2.13'):
+            self._set_task_property("system_tags", system_tags)
+            self._edit(system_tags=self._data.system_tags, comment=self._data.comment,
+                       script=self._data.script, execution=self._data.execution, output_dest='',
+                       hyperparams=dict(), configuration=dict(),
+                       container=self._data.container, models=self._data.models)
+        elif Session.check_min_api_version('2.9'):
             self._set_task_property("system_tags", system_tags)
             self._edit(system_tags=self._data.system_tags, comment=self._data.comment,
                        script=self._data.script, execution=self._data.execution, output_dest='',

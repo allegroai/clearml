@@ -9,7 +9,7 @@ from threading import Thread, Event
 from time import time
 from typing import List, Set, Union, Any, Sequence, Optional, Mapping, Callable
 
-from .job import TrainsJob
+from .job import ClearmlJob
 from .parameters import Parameter
 from ..backend_interface.util import get_or_create_project
 from ..logger import Logger
@@ -58,7 +58,7 @@ class Objective(object):
         self.extremum = extremum
 
     def get_objective(self, task_id):
-        # type: (Union[str, Task, TrainsJob]) -> Optional[float]
+        # type: (Union[str, Task, ClearmlJob]) -> Optional[float]
         """
         Return a specific task scalar value based on the objective settings (title/series).
 
@@ -71,7 +71,7 @@ class Objective(object):
 
         if isinstance(task_id, Task):
             task_id = task_id.id
-        elif isinstance(task_id, TrainsJob):
+        elif isinstance(task_id, ClearmlJob):
             task_id = task_id.task_id()
 
         # noinspection PyBroadException, Py
@@ -97,7 +97,7 @@ class Objective(object):
             return None
 
     def get_current_raw_objective(self, task):
-        # type: (Union[TrainsJob, Task]) -> (int, float)
+        # type: (Union[ClearmlJob, Task]) -> (int, float)
         """
         Return the current raw value (without sign normalization) of the objective.
 
@@ -108,7 +108,7 @@ class Objective(object):
         """
         if isinstance(task, Task):
             task_id = task.id
-        elif isinstance(task, TrainsJob):
+        elif isinstance(task, ClearmlJob):
             task_id = task.task_id()
         else:
             task_id = task
@@ -162,7 +162,7 @@ class Objective(object):
         return self.title, self.series
 
     def get_normalized_objective(self, task_id):
-        # type: (Union[str, Task, TrainsJob]) -> Optional[float]
+        # type: (Union[str, Task, ClearmlJob]) -> Optional[float]
         """
         Return a normalized task scalar value based on the objective settings (title/series).
         I.e. objective is always to maximize the returned value
@@ -269,7 +269,7 @@ class SearchStrategy(object):
     The base search strategy class. Inherit this class to implement your custom strategy.
     """
     _tag = 'optimization'
-    _job_class = TrainsJob  # type: TrainsJob
+    _job_class = ClearmlJob  # type: ClearmlJob
 
     def __init__(
             self,
@@ -414,7 +414,7 @@ class SearchStrategy(object):
         return bool(self._current_jobs)
 
     def create_job(self):
-        # type: () -> Optional[TrainsJob]
+        # type: () -> Optional[ClearmlJob]
         """
         Abstract helper function. Implementation is not required. Default use in process_step default implementation
         Create a new job if needed. return the newly created job. If no job needs to be created, return ``None``.
@@ -424,7 +424,7 @@ class SearchStrategy(object):
         return None
 
     def monitor_job(self, job):
-        # type: (TrainsJob) -> bool
+        # type: (ClearmlJob) -> bool
         """
         Helper function, Implementation is not required. Default use in process_step default implementation.
         Check if the job needs to be aborted or already completed.
@@ -434,7 +434,7 @@ class SearchStrategy(object):
         If there is a budget limitation, this call should update
         ``self.budget.compute_time.update`` / ``self.budget.iterations.update``
 
-        :param TrainsJob job: A ``TrainsJob`` object to monitor.
+        :param ClearmlJob job: A ``TrainsJob`` object to monitor.
 
         :return: False, if the job is no longer relevant.
         """
@@ -472,7 +472,7 @@ class SearchStrategy(object):
         return abort_job
 
     def get_running_jobs(self):
-        # type: () -> Sequence[TrainsJob]
+        # type: () -> Sequence[ClearmlJob]
         """
         Return the current running TrainsJobs.
 
@@ -534,7 +534,7 @@ class SearchStrategy(object):
             parent=None,  # type: Optional[str]
             **kwargs  # type: Any
     ):
-        # type: (...) -> TrainsJob
+        # type: (...) -> ClearmlJob
         """
         Create a Job using the specified arguments, ``TrainsJob`` for details.
 
@@ -564,11 +564,11 @@ class SearchStrategy(object):
         return new_job
 
     def set_job_class(self, job_class):
-        # type: (TrainsJob) -> ()
+        # type: (ClearmlJob) -> ()
         """
         Set the class to use for the :meth:`helper_create_job` function.
 
-        :param TrainsJob job_class: The Job Class type.
+        :param ClearmlJob job_class: The Job Class type.
         """
         self._job_class = job_class
 
@@ -643,7 +643,7 @@ class SearchStrategy(object):
         return self._job_project.get(parent_task_id)
 
     def _get_job_iterations(self, job):
-        # type: (Union[TrainsJob, Task]) -> int
+        # type: (Union[ClearmlJob, Task]) -> int
         iteration_value = self._objective_metric.get_current_raw_objective(job)
         return iteration_value[0] if iteration_value else -1
 
@@ -788,7 +788,7 @@ class GridSearch(SearchStrategy):
         self._param_iterator = None
 
     def create_job(self):
-        # type: () -> Optional[TrainsJob]
+        # type: () -> Optional[ClearmlJob]
         """
         Create a new job if needed. Return the newly created job. If no job needs to be created, return ``None``.
 
@@ -863,7 +863,7 @@ class RandomSearch(SearchStrategy):
         self._hyper_parameters_collection = set()
 
     def create_job(self):
-        # type: () -> Optional[TrainsJob]
+        # type: () -> Optional[ClearmlJob]
         """
         Create a new job if needed. Return the newly created job. If no job needs to be created, return ``None``.
 
@@ -1299,11 +1299,11 @@ class HyperParameterOptimizer(object):
         return self.optimizer
 
     def set_default_job_class(self, job_class):
-        # type: (TrainsJob) -> ()
+        # type: (ClearmlJob) -> ()
         """
         Set the Job class to use when the optimizer spawns new Jobs.
 
-        :param TrainsJob job_class: The Job Class type.
+        :param ClearmlJob job_class: The Job Class type.
         """
         self.optimizer.set_job_class(job_class)
 
@@ -1709,8 +1709,8 @@ class HyperParameterOptimizer(object):
         return completed_value, obj_values
 
     def _get_last_value(self, response):
-        metrics, title, series, values = TrainsJob.get_metric_req_params(self.objective_metric.title,
-                                                                         self.objective_metric.series)
+        metrics, title, series, values = ClearmlJob.get_metric_req_params(self.objective_metric.title,
+                                                                          self.objective_metric.series)
         last_values = response.response_data["task"]['last_metrics'][title][series]
         return last_values
 

@@ -33,6 +33,7 @@ from .backend_interface.task import Task as _Task
 from .backend_interface.task.log import TaskHandler
 from .backend_interface.task.development.worker import DevWorker
 from .backend_interface.task.repo import ScriptInfo
+from .backend_interface.task.models import TaskModels
 from .backend_interface.util import get_single_result, exact_match_regex, make_message, mutually_exclusive
 from .binding.absl_bind import PatchAbsl
 from .binding.artifacts import Artifacts, Artifact
@@ -45,7 +46,9 @@ from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
 from .binding.joblib_bind import PatchedJoblib
 from .binding.matplotlib_bind import PatchedMatplotlib
 from .binding.hydra_bind import PatchHydra
-from .config import config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, PROC_MASTER_ID_ENV_VAR
+from .config import (
+    config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, PROC_MASTER_ID_ENV_VAR,
+    DEV_DEFAULT_OUTPUT_URI, )
 from .config import running_remotely, get_remote_task_id
 from .config.cache import SessionCache
 from .debugging.log import LoggerRoot
@@ -131,7 +134,7 @@ class Task(_Task):
     __forked_proc_main_pid = None
     __task_id_reuse_time_window_in_hours = float(config.get('development.task_reuse_time_window_in_hours', 24.0))
     __detect_repo_async = config.get('development.vcs_repo_detect_async', False)
-    __default_output_uri = config.get('development.default_output_uri', None)
+    __default_output_uri = DEV_DEFAULT_OUTPUT_URI.get() or config.get('development.default_output_uri', None)
 
     class _ConnectedParametersType(object):
         argparse = "argument_parser"
@@ -159,7 +162,6 @@ class Task(_Task):
         super(Task, self).__init__(**kwargs)
         self._arguments = _Arguments(self)
         self._logger = None
-        self._last_input_model_id = None
         self._connected_output_model = None
         self._dev_worker = None
         self._connected_parameter_type = None
@@ -594,7 +596,7 @@ class Task(_Task):
                 logger.report_text('ClearML results page: {}'.format(task.get_output_log_web_page()))
         # Make sure we start the dev worker if required, otherwise it will only be started when we write
         # something to the log.
-        task._dev_mode_task_start()
+        task._dev_mode_setup_worker()
 
         if (not task._reporter or not task._reporter.is_alive()) and \
                 is_sub_process_task_id and not cls._report_subprocess_enabled:
@@ -620,6 +622,8 @@ class Task(_Task):
         packages=None,  # Optional[Union[bool, Sequence[str]]]
         requirements_file=None,  # Optional[Union[str, Path]]
         docker=None,  # Optional[str]
+        docker_args=None,  # Optional[str]
+        docker_bash_setup_script=None,  # Optional[str]
         argparse_args=None,  # Optional[Sequence[Tuple[str, str]]]
         base_task_id=None,  # Optional[str]
         add_task_init_call=True,  # bool
@@ -656,6 +660,9 @@ class Task(_Task):
         :param requirements_file: Specify requirements.txt file to install when setting the session.
             If not provided, the requirements.txt from the repository will be used.
         :param docker: Select the docker image to be executed in by the remote session
+        :param docker_args: Add docker arguments, pass a single string
+        :param docker_bash_setup_script: Add bash script to be executed
+            inside the docker before setting up the Task's environement
         :param argparse_args: Arguments to pass to the remote execution, list of string pairs (argument, value)
             Notice, only supported if the codebase itself uses argparse.ArgumentParser
         :param base_task_id: Use a pre-existing task in the system, instead of a local repo/script.
@@ -675,7 +682,7 @@ class Task(_Task):
             repo=repo, branch=branch, commit=commit,
             script=script, working_directory=working_directory,
             packages=packages, requirements_file=requirements_file,
-            docker=docker,
+            docker=docker, docker_args=docker_args, docker_bash_setup_script=docker_bash_setup_script,
             base_task_id=base_task_id,
             add_task_init_call=add_task_init_call,
             raise_on_missing_entries=False,
@@ -807,11 +814,35 @@ class Task(_Task):
 
     @property
     def models(self):
-        # type: () -> Dict[str, Sequence[Model]]
+        # type: () -> Mapping[str, Sequence[Model]]
         """
-        Read-only dictionary of the Task's loaded/stored models
+        Read-only dictionary of the Task's loaded/stored models.
 
-        :return: A dictionary of models loaded/stored {'input': list(Model), 'output': list(Model)}.
+        :return: A dictionary-like object with "input"/"output" keys and input/output properties, pointing to a
+            list-like object containing of Model objects. Each list-like object also acts as a dictionary, mapping
+            model name to a appropriate model instance.
+
+            Get input/output models:
+
+            .. code-block:: py
+
+                task.models.input
+                task.models["input"]
+
+                task.models.output
+                task.models["output"]
+
+            Get the last output model:
+
+            .. code-block:: py
+
+                task.models.output[-1]
+
+            Get a model by name:
+
+            .. code-block:: py
+
+                task.models.output["model name"]
         """
         return self.get_models()
 
@@ -1049,7 +1080,7 @@ class Task(_Task):
         )
 
         multi_config_support = Session.check_min_api_version('2.9')
-        if multi_config_support and not name:
+        if multi_config_support and not name and not isinstance(mutable, (OutputModel, InputModel)):
             name = self._default_configuration_section_name
 
         if not multi_config_support and name and name != self._default_configuration_section_name:
@@ -1496,14 +1527,16 @@ class Task(_Task):
             auto_pickle=auto_pickle, preview=preview, wait_on_upload=wait_on_upload)
 
     def get_models(self):
-        # type: () -> Dict[str, Sequence[Model]]
+        # type: () -> Mapping[str, Sequence[Model]]
         """
         Return a dictionary with {'input': [], 'output': []} loaded/stored models of the current Task
         Input models are files loaded in the task, either manually or automatically logged
         Output models are files stored in the task, either manually or automatically logged
         Automatically logged frameworks are for example: TensorFlow, Keras, PyTorch, ScikitLearn(joblib) etc.
 
-        :return: A dictionary with keys input/output, each is list of Model objects.
+        :return: A dictionary-like object with "input"/"output" keys and input/output properties, pointing to a
+            list-like object containing of Model objects. Each list-like object also acts as a dictionary, mapping
+            model name to a appropriate model instance.
 
             Example:
 
@@ -1512,9 +1545,7 @@ class Task(_Task):
                 {'input': [clearml.Model()], 'output': [clearml.Model()]}
 
         """
-        task_models = {'input': self._get_models(model_type='input'),
-                       'output': self._get_models(model_type='output')}
-        return task_models
+        return TaskModels(self)
 
     def is_current_task(self):
         # type: () -> bool
@@ -1793,17 +1824,27 @@ class Task(_Task):
 
         return self._hyper_params_manager.delete_hyper_params(*iterables)
 
-    def set_base_docker(self, docker_cmd):
-        # type: (str) -> ()
+    def set_base_docker(self, docker_cmd, docker_arguments=None, docker_setup_bash_script=None):
+        # type: (str, Optional[Union[str, Sequence[str]]], Optional[Union[str, Sequence[str]]]) -> ()
         """
         Set the base docker image for this experiment
         If provided, this value will be used by clearml-agent to execute this experiment
         inside the provided docker image.
+        When running remotely the call is ignored
+
+        :param docker_cmd: docker container image (example: 'nvidia/cuda:11.1')
+        :param docker_arguments: docker execution parameters (example: '-e ENV=1')
+        :param docker_setup_bash_script: bash script to run at the
+            beginning of the docker before launching the Task itself. example: ['apt update', 'apt-get install -y gcc']
         """
         if not self.running_locally() and self.is_main_task():
             return
 
-        super(Task, self).set_base_docker(docker_cmd)
+        super(Task, self).set_base_docker(
+            docker_cmd=docker_cmd,
+            docker_arguments=docker_arguments,
+            docker_setup_bash_script=docker_setup_bash_script
+        )
 
     def set_resource_monitor_iteration_timeout(self, seconds_from_start=1800):
         # type: (float) -> bool
@@ -1879,7 +1920,7 @@ class Task(_Task):
         else:
             task = self
             # check if the server supports enqueueing aborted/stopped Tasks
-            if Session.check_min_api_server_version('2.10'):
+            if Session.check_min_api_server_version('2.13'):
                 self.mark_stopped(force=True)
             else:
                 self.reset()
@@ -2416,7 +2457,7 @@ class Task(_Task):
                             if hasattr(task.data.execution, 'artifacts') else None
                         if ((str(task._status) in (
                                 str(tasks.TaskStatusEnum.published), str(tasks.TaskStatusEnum.closed)))
-                                or task.output_model_id or (cls.archived_tag in task_tags)
+                                or task.output_models_id or (cls.archived_tag in task_tags)
                                 or (cls._development_tag not in task_tags)
                                 or task_artifacts):
                             # If the task is published or closed, we shouldn't reset it so we can't use it in dev mode
@@ -2556,25 +2597,27 @@ class Task(_Task):
 
     def _connect_output_model(self, model, name=None):
         assert isinstance(model, OutputModel)
-        model.connect(self)
+        model.connect(self, name=name)
         return model
 
     def _save_output_model(self, model):
         """
-        Save a reference to the connected output model.
+        Deprecated: Save a reference to the connected output model.
 
         :param model: The connected output model
         """
+        # deprecated
         self._connected_output_model = model
 
     def _reconnect_output_model(self):
         """
-        If there is a saved connected output model, connect it again.
+        Deprecated: If there is a saved connected output model, connect it again.
 
         This is needed if the input model is connected after the output model
         is connected, an then we will have to get the model design from the
         input model by reconnecting.
         """
+        # Deprecated:
         if self._connected_output_model:
             self.connect(self._connected_output_model)
 
@@ -2589,32 +2632,9 @@ class Task(_Task):
             comment += '\n'
         comment += 'Using model id: {}'.format(model.id)
         self.set_comment(comment)
-        if self._last_input_model_id and self._last_input_model_id != model.id:
-            self.log.info('Task connect, second input model is not supported, adding into comment section')
-            return
-        self._last_input_model_id = model.id
-        model.connect(self)
+
+        model.connect(self, name)
         return model
-
-    def _try_set_connected_parameter_type(self, option):
-        # """ Raise an error if current value is not None and not equal to the provided option value """
-        # value = self._connected_parameter_type
-        # if not value or value == option:
-        #     self._connected_parameter_type = option
-        #     return option
-        #
-        # def title(option):
-        #     return " ".join(map(str.capitalize, option.split("_")))
-        #
-        # raise ValueError(
-        #     "Task already connected to {}. "
-        #     "Task can be connected to only one the following argument options: {}".format(
-        #         title(value),
-        #         ' / '.join(map(title, self._ConnectedParametersType._options())))
-        # )
-
-        # added support for multiple type connections through _Arguments
-        return option
 
     def _connect_argparse(self, parser, args=None, namespace=None, parsed_args=None, name=None):
         # do not allow argparser to connect to jupyter notebook
@@ -2628,8 +2648,6 @@ class Task(_Task):
                     return parser
         except Exception:
             pass
-
-        self._try_set_connected_parameter_type(self._ConnectedParametersType.argparse)
 
         if self.is_main_task():
             argparser_update_currenttask(self)
@@ -2670,8 +2688,6 @@ class Task(_Task):
             config_dict.clear()
             config_dict.update(nested_from_flat_dictionary(nested_dict, a_flat_dict))
 
-        self._try_set_connected_parameter_type(self._ConnectedParametersType.dictionary)
-
         if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):
             self._arguments.copy_from_dict(flatten_dictionary(dictionary), prefix=name)
             dictionary = ProxyDictPostWrite(self, _update_args_dict, **dictionary)
@@ -2684,8 +2700,6 @@ class Task(_Task):
         return dictionary
 
     def _connect_task_parameters(self, attr_class, name=None):
-        self._try_set_connected_parameter_type(self._ConnectedParametersType.task_parameters)
-
         if running_remotely() and (self.is_main_task() or self._is_remote_main_task()):
             parameters = self.get_parameters()
             if not name:
@@ -2723,18 +2737,6 @@ class Task(_Task):
     def _validate(self, check_output_dest_credentials=False):
         if running_remotely():
             super(Task, self)._validate(check_output_dest_credentials=False)
-
-    def _output_model_updated(self):
-        """ Called when a connected output model is updated """
-        if running_remotely() or not self.is_main_task():
-            return
-
-        # Make sure we know we've started, just in case we didn't so far
-        self._dev_mode_task_start(model_updated=True)
-
-    def _dev_mode_task_start(self, model_updated=False):
-        """ Called when we suspect the task has started running """
-        self._dev_mode_setup_worker(model_updated=model_updated)
 
     def _dev_mode_stop_task(self, stop_reason, pid=None):
         # make sure we do not get called (by a daemon thread) after at_exit
@@ -2795,7 +2797,7 @@ class Task(_Task):
             else:
                 kill_ourselves.terminate()
 
-    def _dev_mode_setup_worker(self, model_updated=False):
+    def _dev_mode_setup_worker(self):
         if running_remotely() or not self.is_main_task() or self._at_exit_called or self._offline_mode:
             return
 
@@ -2884,7 +2886,7 @@ class Task(_Task):
 
         is_sub_process = self.__is_subprocess()
 
-        if True:##not is_sub_process:
+        if True:  # not is_sub_process: # todo: remove IF
             # noinspection PyBroadException
             try:
                 wait_for_uploads = True
@@ -3122,6 +3124,11 @@ class Task(_Task):
 
                 org_handler = self._org_handlers.get(sig)
                 signal.signal(sig, org_handler or signal.SIG_DFL)
+
+                # if this is a sig term, we wait until __at_exit is called (basically do nothing)
+                if sig == signal.SIGINT:
+                    # return original handler result
+                    return org_handler if not callable(org_handler) else org_handler(sig, frame)
 
                 if self._signal_recursion_protection_flag:
                     # call original

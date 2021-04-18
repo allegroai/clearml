@@ -31,21 +31,17 @@ that is both machine and environment agnostic.
 clearml-data create --project <my_project> --name <my_dataset_name>
 ```
 - Add local files to the dataset
-``` bashtrue
-clearml-data add --id <dataset_id_from_previous_command> --files ~/datasets/best_dataset/
-```
-- Upload files (Optional: specify storage `--storage` `s3://bucket`, `gs://`, `azure://` or `/mnt/shared/`)
 ``` bash
-clearml-data upload --id <dataset_id>
+clearml-data add --files ~/datasets/best_dataset/
 ```
-- Close dataset
+- Close dataset and upload files (Optional: specify storage `--storage` `s3://bucket`, `gs://`, `azure://` or `/mnt/shared/`)
 ``` bash
 clearml-data close --id <dataset_id>
 ```
 
 
 #### Integrating datasets into your code:
-``` python
+```python
 from argparse import ArgumentParser
 from clearml import Dataset
 
@@ -63,21 +59,44 @@ dataset_folder = Dataset.get(dataset_id=args.dataset).get_local_copy()
 # go over the files in `dataset_folder` and train your model
 ```
 
+#### Create dataset from code
+Creating datasets from code is especially helpful when some preprocessing is done on raw data and we want to save
+preprocessing code as well as dataset in a single Task.
+
+```python
+from clearml import Dataset
+
+# Preprocessing code here
+
+dataset = Dataset.create(dataset_name='dataset name',dataset_project='dataset project')
+dataset.add_files('/path_to_data')
+dataset.upload()
+dataset.close()
+
+```
 
 #### Modifying a dataset with CLI:
 
 - Create a new dataset (specify the parent dataset id)
-``` bash
+```bash
 clearml-data create --name <improved_dataset> --parents <existing_dataset_id>
 ```
 - Get a mutable copy of the current dataset
-``` bash
+```bash
 clearml-data get --id <created_dataset_id> --copy ~/datasets/working_dataset
 ```
 - Change / add / remove files from the dataset folder
-``` bash
+```bash
 vim ~/datasets/working_dataset/everything.csv
 ```
+
+#### Folder sync mode
+
+Folder sync mode updates dataset according to folder content changes.<br/>
+This is useful in case there's a single point of truth, either a local or network folder that gets updated periodically.
+When using `clearml-data sync` and specifying parent dataset, the folder changes will be reflected in a new dataset version.
+This saves time manually updating (adding \ removing) files.
+
 - Sync local changes
 ``` bash
 clearml-data sync --id <created_dataset_id> --folder ~/datasets/working_dataset

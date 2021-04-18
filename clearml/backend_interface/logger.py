@@ -185,11 +185,15 @@ class PrintPatchLogger(object):
         self._log_level = level
         self._cur_line = ''
         self._force_lf_flush = False
+        self._lf_last_flush = 0
 
     def write(self, message):
         # make sure that we do not end up in infinite loop (i.e. log.console ends up calling us)
         if self._log and not PrintPatchLogger.recursion_protect_lock._is_owned():  # noqa
             try:
+                # make sure we flush from time to time on \r
+                self._test_lr_flush()
+
                 self.lock.acquire()
                 with PrintPatchLogger.recursion_protect_lock:
                     if hasattr(self._terminal, '_original_write'):
@@ -205,8 +209,6 @@ class PrintPatchLogger(object):
                     self._cur_line += '\n'
                     do_flush = True
 
-                self._force_lf_flush = False
-
                 if (not do_flush and (PrintPatchLogger.cr_flush_period or not do_cr)) or not message:
                     return
 
@@ -221,6 +223,7 @@ class PrintPatchLogger(object):
                 self.lock.release()
 
             if cur_line:
+                self._force_lf_flush = False
                 with PrintPatchLogger.recursion_protect_lock:
                     # noinspection PyBroadException
                     try:
@@ -245,65 +248,22 @@ class PrintPatchLogger(object):
         if not logger or self._log == logger:
             self.connect(None)
 
-    def force_lf_flush(self):
-        self._force_lf_flush = True
+    def _test_lr_flush(self):
+        if not self.cr_flush_period:
+            return
+        if time() - self._lf_last_flush > self.cr_flush_period:
+            self._force_lf_flush = True
+            self._lf_last_flush = time()
 
     def __getattr__(self, attr):
-        if attr in ['_log', '_terminal', '_log_level', '_cur_line', '_cr_overwrite', '_force_lf_flush']:
+        if attr in ['_log', '_terminal', '_log_level', '_cur_line', '_cr_overwrite',
+                    '_force_lf_flush', '_lf_last_flush']:
             return self.__dict__.get(attr)
         return getattr(self._terminal, attr)
 
     def __setattr__(self, key, value):
-        if key in ['_log', '_terminal', '_log_level', '_cur_line', '_cr_overwrite', '_force_lf_flush']:
+        if key in ['_log', '_terminal', '_log_level', '_cur_line', '_cr_overwrite',
+                   '_force_lf_flush', '_lf_last_flush']:
             self.__dict__[key] = value
         else:
             return setattr(self._terminal, key, value)
-
-
-class LogFlusher(threading.Thread):
-    def __init__(self, logger, period, **kwargs):
-        super(LogFlusher, self).__init__(**kwargs)
-        self.daemon = True
-
-        self._period = period
-        self._logger = logger
-        self._exit_event = threading.Event()
-        self._cr_last_flush = 0
-        try:
-            self._cr_flush_period = float(PrintPatchLogger.cr_flush_period)
-        except (ValueError, TypeError):
-            self._cr_flush_period = 0
-
-    @property
-    def period(self):
-        return self._period
-
-    def run(self):
-        self._logger.flush()
-        # store original wait period
-        while True:
-            period = self._period
-            while not self._exit_event.wait(period or 1.0):
-                if self._cr_flush_period and time() - self._cr_last_flush > self._cr_flush_period:
-                    if isinstance(sys.stdout, PrintPatchLogger):
-                        sys.stdout.force_lf_flush()
-                    if isinstance(sys.stderr, PrintPatchLogger):
-                        sys.stderr.force_lf_flush()
-                    self._cr_last_flush = time()
-                # now signal the real flush
-                self._logger.flush()
-
-            # check if period is negative or None we should exit
-            if self._period is None or self._period < 0:
-                break
-            # check if period was changed, we should restart
-            self._exit_event.clear()
-
-    def exit(self):
-        self._period = None
-        self._exit_event.set()
-
-    def set_period(self, period):
-        self._period = period
-        # make sure we exit the previous wait
-        self._exit_event.set()

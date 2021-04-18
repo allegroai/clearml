@@ -99,7 +99,7 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
         events = []
         while not self._queue.empty():
             try:
-                events.append(self._queue.get())
+                events.append(self._queue.get(block=False))
             except Empty:
                 break
         if not events:

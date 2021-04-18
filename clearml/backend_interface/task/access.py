@@ -18,24 +18,32 @@ class AccessMixin(object):
         obj = self.data
         props = prop_path.split('.')
         for i in range(len(props)):
-            if not hasattr(obj, props[i]):
+            if not hasattr(obj, props[i]) and (not isinstance(obj, dict) or props[i] not in obj):
                 msg = 'Task has no %s section defined' % '.'.join(props[:i + 1])
                 if log_on_error:
                     self.log.info(msg)
                 if raise_on_error:
                     raise ValueError(msg)
                 return default
-            obj = getattr(obj, props[i], None)
+
+            if isinstance(obj, dict):
+                obj = obj.get(props[i])
+            else:
+                obj = getattr(obj, props[i], None)
+
         return obj
 
     def _set_task_property(self, prop_path, value, raise_on_error=True, log_on_error=True):
         props = prop_path.split('.')
         if len(props) > 1:
-            obj = self._get_task_property('.'.join(props[:-1]), raise_on_error=raise_on_error,
-                                          log_on_error=log_on_error)
+            obj = self._get_task_property(
+                '.'.join(props[:-1]), raise_on_error=raise_on_error, log_on_error=log_on_error)
         else:
             obj = self.data
-        setattr(obj, props[-1], value)
+        if not hasattr(obj, props[-1]) and isinstance(obj, dict):
+            obj[props[-1]] = value
+        else:
+            setattr(obj, props[-1], value)
 
     def save_exec_model_design_file(self, filename='model_design.txt', use_cache=False):
         """ Save execution model design to file """

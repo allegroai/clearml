@@ -8,15 +8,16 @@ import six
 from typing import List, Dict, Union, Optional, Mapping, TYPE_CHECKING, Sequence
 
 from .backend_api import Session
-from .backend_api.services import models
+from .backend_api.services import models, projects
 from pathlib2 import Path
 
 from .utilities.config import config_dict_to_text, text_to_config_dict
 
-from .backend_interface.util import validate_dict, get_single_result, mutually_exclusive
+from .backend_interface.util import validate_dict, get_single_result, mutually_exclusive, exact_match_regex
 from .debugging.log import get_logger
 from .storage.cache import CacheManager
 from .storage.helper import StorageHelper
+from .storage.util import get_common_path
 from .utilities.enum import Options
 from .backend_interface import Task as _Task
 from .backend_interface.model import create_dummy_model, Model as _Model
@@ -235,13 +236,13 @@ class BaseModel(object):
 
     @property
     def task(self):
-        # type: () -> _Task
+        # type: () -> str
         """
-        Return the creating task object
+        Return the creating task ID
 
-        :return: The Task object.
+        :return: The Task ID (str)
         """
-        return self._task or self._get_base_model().task
+        return self._task.id if self._task else self._get_base_model().task
 
     @property
     def url(self):
@@ -438,6 +439,71 @@ class Model(BaseModel):
 
     def _get_model_data(self):
         return self._get_base_model().data
+
+    @classmethod
+    def query_models(
+            cls,
+            project_name=None,  # type: Optional[str]
+            model_name=None,  # type: Optional[str]
+            tags=None,  # type: Optional[Sequence[str]]
+            only_published=False,  # type: bool
+            include_archived=False,  # type: bool
+            max_results=None,  # type: Optional[int]
+    ):
+        # type: (...) -> List[Model]
+        """
+        Return Model objects from the project artifactory.
+        Filter based on project-name / model-name / tags.
+        List is always returned sorted by descending last update time (i.e. latest model is the first in the list)
+
+        :param project_name: Optional, filter based project name string, if not given query models from all projects
+        :param model_name: Optional Model name as shown in the model artifactory
+        :param tags: Optional filter models based on list of tags, example: ['production', 'verified', '-qa']
+        Notice use '-' prefix to filter out tags.
+        :param only_published: If True only return published models.
+        :param include_archived: If True return archived models.
+        :param max_results: Optional return the last X models,
+        sorted by last update time (from the most recent to the least).
+
+        :return: ModeList of Models objects
+        """
+        if project_name:
+            # noinspection PyProtectedMember
+            res = _Model._get_default_session().send(
+                projects.GetAllRequest(
+                    name=exact_match_regex(project_name),
+                    only_fields=['id', 'name', 'last_update']
+                )
+            )
+            project = get_single_result(entity='project', query=project_name, results=res.response.projects)
+        else:
+            project = None
+
+        only_fields = ['id', 'created', 'system_tags']
+
+        # noinspection PyProtectedMember
+        res = _Model._get_default_session().send(
+            models.GetAllRequest(
+                project=[project.id] if project else None,
+                name=model_name or None,
+                only_fields=only_fields,
+                tags=tags or None,
+                system_tags=["-" + cls._archived_tag] if not include_archived else None,
+                ready=True if only_published else None,
+                order_by=['-created'],
+                page=0 if max_results else None,
+                page_size=max_results or None,
+            )
+        )
+        if not res.response.models:
+            return []
+
+        return [Model(model_id=m.id) for m in res.response.models]
+
+    @property
+    def id(self):
+        # type: () -> str
+        return self._base_model_id if self._base_model_id else super(Model, self).id
 
 
 class InputModel(Model):
@@ -712,12 +778,26 @@ class InputModel(Model):
         m._data.labels = label_enumeration
         return this_model
 
-    def __init__(self, model_id):
-        # type: (str) -> None
+    def __init__(self, model_id=None, name=None, project=None, tags=None, only_published=False):
+        # type: (Optional[str], Optional[str], Optional[str], Optional[Sequence[str]], bool) -> None
         """
-        :param str model_id: The ClearML Id (system UUID) of the input model whose metadata the **ClearML Server**
-            (backend) stores.
+        Load a model from the Model artifactory,
+        based on model_id (uuid) or a model name/projects/tags combination.
+
+        :param model_id: The ClearML Id (system UUID) of the input model whose metadata the **ClearML Server**
+            (backend) stores. If provided all other arguments are ignored
+        :param name: Model name to search and load
+        :param project: Model project name to search model in
+        :param tags: Model tags list to filter by
+        :param only_published: If True filter out non-published (draft) models
         """
+        if not model_id:
+            found_models = self.query_models(
+                project_name=project, model_name=name, tags=tags, only_published=only_published)
+            if not found_models:
+                raise ValueError("Could not locate model with project={} name={} tags={} published={}".format(
+                    project, name, tags, only_published))
+            model_id = found_models[0].id
         super(InputModel, self).__init__(model_id)
 
     @property
@@ -725,8 +805,8 @@ class InputModel(Model):
         # type: () -> str
         return self._base_model_id
 
-    def connect(self, task):
-        # type: (Task) -> None
+    def connect(self, task, name=None):
+        # type: (Task, Optional[str]) -> None
         """
         Connect the current model to a Task object, if the model is preexisting. Preexisting models include:
 
@@ -744,31 +824,36 @@ class InputModel(Model):
            to execute in a worker.
 
         :param object task: A Task object.
+        :param str name: The model name to be stored on the Task
+        (default the filename, of the model weights, without the file extension)
         """
         self._set_task(task)
 
+        model_id = None
         # noinspection PyProtectedMember
-        if running_remotely() and task.input_model and (task.is_main_task() or task._is_remote_main_task()):
-            self._base_model = task.input_model
-            self._base_model_id = task.input_model.id
-        else:
+        if running_remotely() and (task.is_main_task() or task._is_remote_main_task()):
+            input_models = task.input_models_id
+            try:
+                model_id = next(m_id for m_name, m_id in input_models if m_name == (name or 'Input Model'))
+                self._base_model_id = model_id
+                self._base_model = InputModel(model_id=model_id)._get_base_model()
+            except StopIteration:
+                model_id = None
+
+        if not model_id:
             # we should set the task input model to point to us
             model = self._get_base_model()
             # try to store the input model id, if it is not empty
+            # (Empty Should not happen)
             if model.id != self._EMPTY_MODEL_ID:
-                task.set_input_model(model_id=model.id)
+                task.set_input_model(model_id=model.id, name=name)
             # only copy the model design if the task has no design to begin with
             # noinspection PyProtectedMember
-            if not self._task._get_model_config_text():
+            if not self._task._get_model_config_text() and model.model_design:
                 # noinspection PyProtectedMember
                 task._set_model_config(config_text=model.model_design)
-            if not self._task.get_labels_enumeration():
+            if not self._task.get_labels_enumeration() and model.data.labels:
                 task.set_model_label_enumeration(model.data.labels)
-
-        # If there was an output model connected, it may need to be updated by
-        # the newly connected input model
-        # noinspection PyProtectedMember
-        self.task._reconnect_output_model()
 
 
 class OutputModel(BaseModel):
@@ -791,6 +876,8 @@ class OutputModel(BaseModel):
        When executing a Task (experiment) remotely in a worker, you can modify the model configuration and / or model's
        label enumeration using the **ClearML Web-App**.
     """
+
+    _default_output_uri = None
 
     @property
     def published(self):
@@ -947,6 +1034,8 @@ class OutputModel(BaseModel):
         self._model_local_filename = None
         self._last_uploaded_url = None
         self._base_model = None
+        self._base_model_id = None
+        self._task_connect_name = None
         # noinspection PyProtectedMember
         self._floating_data = create_dummy_model(
             design=_Model._wrap_design(config_text),
@@ -958,34 +1047,37 @@ class OutputModel(BaseModel):
             framework=framework,
             upload_storage_uri=task.output_uri,
         )
-        if base_model_id:
-            # noinspection PyBroadException
-            try:
-                # noinspection PyProtectedMember
-                _base_model = self._task._get_output_model(model_id=base_model_id)
-                _base_model.update(
-                    labels=self._floating_data.labels,
-                    design=self._floating_data.design,
-                    task_id=self._task.id,
-                    project_id=self._task.project,
-                    name=self._floating_data.name or self._task.name,
-                    comment=('{}\n{}'.format(_base_model.comment, self._floating_data.comment)
-                             if (_base_model.comment and self._floating_data.comment and
-                                 self._floating_data.comment not in _base_model.comment)
-                             else (_base_model.comment or self._floating_data.comment)),
-                    tags=self._floating_data.tags,
-                    framework=self._floating_data.framework,
-                    upload_storage_uri=self._floating_data.upload_storage_uri
-                )
-                self._base_model = _base_model
-                self._floating_data = None
-                self._base_model.update_for_task(task_id=self._task.id, override_model_id=self.id)
-            except Exception:
-                pass
-        self.connect(task)
+        # If we have no real model ID, we are done
+        if not base_model_id:
+            return
 
-    def connect(self, task):
-        # type: (Task) -> None
+        # noinspection PyBroadException
+        try:
+            # noinspection PyProtectedMember
+            _base_model = self._task._get_output_model(model_id=base_model_id)
+            _base_model.update(
+                labels=self._floating_data.labels,
+                design=self._floating_data.design,
+                task_id=self._task.id,
+                project_id=self._task.project,
+                name=self._floating_data.name or self._task.name,
+                comment=('{}\n{}'.format(_base_model.comment, self._floating_data.comment)
+                         if (_base_model.comment and self._floating_data.comment and
+                             self._floating_data.comment not in _base_model.comment)
+                         else (_base_model.comment or self._floating_data.comment)),
+                tags=self._floating_data.tags,
+                framework=self._floating_data.framework,
+                upload_storage_uri=self._floating_data.upload_storage_uri
+            )
+            self._base_model = _base_model
+            self._floating_data = None
+            name = self._task_connect_name or Path(_base_model.uri).stem
+        except Exception:
+            pass
+        self.connect(task, name=name)
+
+    def connect(self, task, name=None):
+        # type: (Task, Optional[str]) -> None
         """
         Connect the current model to a Task object, if the model is a preexisting model. Preexisting models include:
 
@@ -994,46 +1086,31 @@ class OutputModel(BaseModel):
         - Models from another source, such as frameworks like TensorFlow.
 
         :param object task: A Task object.
+        :param str name: The model name as it would appear on the Task object.
+            The model object itself can have a different name,
+            this is designed to support multiple models used/created by a single Task.
+            Use examples would be GANs or model ensemble
         """
         if self._task != task:
             raise ValueError('Can only connect preexisting model to task, but this is a fresh model')
 
-        # noinspection PyProtectedMember
-        if running_remotely() and (task.is_main_task() or task._is_remote_main_task()):
-            if self._floating_data:
-                # noinspection PyProtectedMember
-                self._floating_data.design = _Model._wrap_design(self._task._get_model_config_text()) or \
-                    self._floating_data.design
-                self._floating_data.labels = self._task.get_labels_enumeration() or \
-                    self._floating_data.labels
-            elif self._base_model:
-                # noinspection PyProtectedMember
-                self._base_model.update(design=_Model._wrap_design(self._task._get_model_config_text()) or
-                                        self._base_model.design)
-                self._base_model.update(labels=self._task.get_labels_enumeration() or self._base_model.labels)
+        if name:
+            self._task_connect_name = name
 
-        elif self._floating_data is not None:
-            # we copy configuration / labels if they exist, obviously someone wants them as the output base model
+        # we should set the task input model to point to us
+        model = self._get_base_model()
+
+        # only copy the model design if the task has no design to begin with
+        # noinspection PyProtectedMember
+        if not self._task._get_model_config_text():
             # noinspection PyProtectedMember
-            design = _Model._unwrap_design(self._floating_data.design)
-            if design:
-                # noinspection PyProtectedMember
-                if not task._get_model_config_text():
-                    if not Session.check_min_api_version('2.9'):
-                        design = self._floating_data.design
-                    # noinspection PyProtectedMember
-                    task._set_model_config(config_text=design)
-            else:
-                # noinspection PyProtectedMember
-                self._floating_data.design = _Model._wrap_design(self._task._get_model_config_text())
+            task._set_model_config(config_text=model.model_design)
+        if not self._task.get_labels_enumeration():
+            task.set_model_label_enumeration(model.data.labels)
 
-            if self._floating_data.labels:
-                task.set_model_label_enumeration(self._floating_data.labels)
-            else:
-                self._floating_data.labels = self._task.get_labels_enumeration()
-
-        # noinspection PyProtectedMember
-        self.task._save_output_model(self)
+        if self._base_model:
+            self._base_model.update_for_task(
+                task_id=self._task.id, model_id=self.id, type_="output", name=self._task_connect_name)
 
     def set_upload_destination(self, uri):
         # type: (str) -> None
@@ -1156,7 +1233,9 @@ class OutputModel(BaseModel):
                 self._model_local_filename = weights_filename
 
         # make sure the created model is updated:
-        model = self._get_force_base_model()
+        out_model_file_name = target_filename or weights_filename or register_uri
+        name = Path(out_model_file_name).stem if out_model_file_name else (self._task_connect_name or "Output Model")
+        model = self._get_force_base_model(task_model_entry=name)
         if not model:
             raise ValueError('Failed creating internal output model')
 
@@ -1220,10 +1299,6 @@ class OutputModel(BaseModel):
         if is_package:
             self._set_package_tag()
 
-        # make sure that if we are in dev move we report that we are training (not debugging)
-        # noinspection PyProtectedMember
-        self._task._output_model_updated()
-
         return output_uri
 
     def update_weights_package(
@@ -1268,13 +1343,17 @@ class OutputModel(BaseModel):
 
         if not weights_filenames:
             weights_filenames = list(map(six.text_type, Path(weights_path).rglob('*')))
+        elif weights_filenames and len(weights_filenames) > 1:
+            weights_path = get_common_path(weights_filenames)
 
         # create packed model from all the files
         fd, zip_file = mkstemp(prefix='model_package.', suffix='.zip')
         try:
             with zipfile.ZipFile(zip_file, 'w', allowZip64=True, compression=zipfile.ZIP_STORED) as zf:
                 for filename in weights_filenames:
-                    zf.write(filename, arcname=Path(filename).name)
+                    relative_file_name = Path(filename).name if not weights_path else \
+                        Path(filename).absolute().relative_to(Path(weights_path).absolute()).as_posix()
+                    zf.write(filename, arcname=relative_file_name)
         finally:
             os.close(fd)
 
@@ -1392,24 +1471,38 @@ class OutputModel(BaseModel):
         """
         _Model.wait_for_results(timeout=timeout, max_num_uploads=max_num_uploads)
 
-    def _get_force_base_model(self):
+    @classmethod
+    def set_default_upload_uri(cls, output_uri):
+        # type: (Optional[str]) -> None
+        """
+        Set the default upload uri for all OutputModels
+
+        :param output_uri: URL for uploading models. examples:
+            https://demofiles.demo.clear.ml, s3://bucket/, gs://bucket/, azure://bucket/, file:///mnt/shared/nfs
+        """
+        cls._default_output_uri = str(output_uri) if output_uri else None
+
+    def _get_force_base_model(self, model_name=None, task_model_entry=None):
         if self._base_model:
             return self._base_model
 
         # create a new model from the task
-        self._base_model = self._task.create_output_model()
+        # noinspection PyProtectedMember
+        self._base_model = self._task._get_output_model(model_id=None)
         # update the model from the task inputs
         labels = self._task.get_labels_enumeration()
         # noinspection PyProtectedMember
         config_text = self._task._get_model_config_text()
-        parent = self._task.output_model_id or self._task.input_model_id
+        model_name = model_name or self._floating_data.name or self._task.name
+        task_model_entry = task_model_entry or self._task_connect_name or Path(self._get_model_data().uri).stem
+        parent = self._task.input_models_id.get(task_model_entry)
         self._base_model.update(
             labels=self._floating_data.labels or labels,
             design=self._floating_data.design or config_text,
             task_id=self._task.id,
             project_id=self._task.project,
             parent_id=parent,
-            name=self._floating_data.name or self._task.name,
+            name=model_name,
             comment=self._floating_data.comment,
             tags=self._floating_data.tags,
             framework=self._floating_data.framework,
@@ -1420,11 +1513,13 @@ class OutputModel(BaseModel):
         self._floating_data = None
 
         # now we have to update the creator task so it points to us
-        if self._task.status not in (self._task.TaskStatusEnum.created, self._task.TaskStatusEnum.in_progress):
+        if str(self._task.status) not in (
+                str(self._task.TaskStatusEnum.created), str(self._task.TaskStatusEnum.in_progress)):
             self._log.warning('Could not update last created model in Task {}, '
                               'Task status \'{}\' cannot be updated'.format(self._task.id, self._task.status))
         else:
-            self._base_model.update_for_task(task_id=self._task.id, override_model_id=self.id)
+            self._base_model.update_for_task(
+                task_id=self._task.id, model_id=self.id, type_="output", name=task_model_entry)
 
         return self._base_model
 

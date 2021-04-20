@@ -157,7 +157,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._bucket_config = None
         self._storage_uri = None
         self._async_enable = async_enable
-        self._flush_frequency = 30.0
+        self._flush_frequency = 5.0
         self._max_iteration = 0
         self._report_service = BackgroundReportService(
             task=task, async_enable=async_enable, metrics=metrics,

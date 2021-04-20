@@ -242,8 +242,8 @@ class GSBucketConfigurations(BaseBucketConfigurations):
         config_list = gs_configuration.get("credentials", [])
         buckets_configs = [GSBucketConfig(**entry) for entry in config_list]
 
-        default_project = gs_configuration.get("project") or {}
-        default_credentials = gs_configuration.get("credentials_json") or default_credentials
+        default_project = gs_configuration.get("project", None) or {}
+        default_credentials = gs_configuration.get("credentials_json", None) or default_credentials
 
         return cls(buckets_configs, default_project, default_credentials)
 

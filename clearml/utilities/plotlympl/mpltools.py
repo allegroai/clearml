@@ -156,6 +156,7 @@ def merge_color_and_opacity(color, opacity):
     if opacity is None:
         return "rgb {}".format(rgb_tup)
 
+    opacity = int(opacity*255.) if opacity <= 1.0 else int(opacity)
     rgba_tup = rgb_tup + (opacity,)
     return "rgba {}".format(rgba_tup)
 

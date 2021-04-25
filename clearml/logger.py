@@ -170,7 +170,7 @@ class Logger(object):
             title,  # type: str
             series,  # type: str
             values,  # type: Sequence[Union[int, float]]
-            iteration,  # type: int
+            iteration=None,  # type: Optional[int]
             labels=None,  # type: Optional[List[str]]
             xlabels=None,  # type: Optional[List[str]]
             xaxis=None,  # type: Optional[str]
@@ -207,7 +207,7 @@ class Logger(object):
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
         self._touch_title_series(title, series)
-        return self.report_histogram(title, series, values, iteration, labels=labels, xlabels=xlabels,
+        return self.report_histogram(title, series, values, iteration or 0, labels=labels, xlabels=xlabels,
                                      xaxis=xaxis, yaxis=yaxis, mode=mode, extra_layout=extra_layout)
 
     def report_histogram(
@@ -215,7 +215,7 @@ class Logger(object):
             title,  # type: str
             series,  # type: str
             values,  # type: Sequence[Union[int, float]]
-            iteration,  # type: int
+            iteration=None,  # type: Optional[int]
             labels=None,  # type: Optional[List[str]]
             xlabels=None,  # type: Optional[List[str]]
             xaxis=None,  # type: Optional[str]
@@ -265,7 +265,7 @@ class Logger(object):
             title=title,
             series=series,
             histogram=values,
-            iter=iteration,
+            iter=iteration or 0,
             labels=labels,
             xlabels=xlabels,
             xtitle=xaxis,
@@ -278,7 +278,7 @@ class Logger(object):
             self,
             title,  # type: str
             series,  # type: str
-            iteration,  # type: int
+            iteration=None,  # type: Optional[int]
             table_plot=None,  # type: Optional[pd.DataFrame, Sequence[Sequence]]
             csv=None,  # type: Optional[str]
             url=None,  # type: Optional[str]
@@ -351,7 +351,7 @@ class Logger(object):
             title=title,
             series=series,
             table=reporter_table,
-            iteration=iteration,
+            iteration=iteration or 0,
             layout_config=extra_layout,
         )
 
@@ -359,10 +359,10 @@ class Logger(object):
             self,
             title,  # type: str
             series,  # type: Sequence[SeriesInfo]
-            iteration,  # type: int
             xaxis,  # type: str
             yaxis,  # type: str
             mode='lines',  # type: str
+            iteration=None,  # type: Optional[int]
             reverse_xaxis=False,  # type: bool
             comment=None,  # type: Optional[str]
             extra_layout=None,  # type: Optional[dict]
@@ -405,7 +405,7 @@ class Logger(object):
         return self._task._reporter.report_line_plot(
             title=title,
             series=series,
-            iter=iteration,
+            iter=iteration or 0,
             xtitle=xaxis,
             ytitle=yaxis,
             mode=mode,
@@ -419,7 +419,7 @@ class Logger(object):
             title,  # type: str
             series,  # type: str
             scatter,  # type: Union[Sequence[Tuple[float, float]], np.ndarray]
-            iteration,  # type: int
+            iteration=None,  # type: Optional[int]
             xaxis=None,  # type: Optional[str]
             yaxis=None,  # type: Optional[str]
             labels=None,  # type: Optional[List[str]]
@@ -485,7 +485,7 @@ class Logger(object):
             title=title,
             series=series,
             data=scatter,
-            iter=iteration,
+            iter=iteration or 0,
             mode=mode,
             xtitle=xaxis,
             ytitle=yaxis,
@@ -499,7 +499,7 @@ class Logger(object):
             title,  # type: str
             series,  # type: str
             scatter,  # type: Union[Sequence[Tuple[float, float, float]], np.ndarray]
-            iteration,  # type: int
+            iteration=None,  # type: Optional[int]
             xaxis=None,  # type: Optional[str]
             yaxis=None,  # type: Optional[str]
             zaxis=None,  # type: Optional[str]
@@ -580,7 +580,7 @@ class Logger(object):
             title=title,
             series=series,
             data=scatter,
-            iter=iteration,
+            iter=iteration or 0,
             labels=labels,
             mode=mode,
             fill=fill,
@@ -596,7 +596,7 @@ class Logger(object):
             title,  # type: str
             series,  # type: str
             matrix,  # type: np.ndarray
-            iteration,  # type: int
+            iteration=None,  # type: Optional[int]
             xaxis=None,  # type: Optional[str]
             yaxis=None,  # type: Optional[str]
             xlabels=None,  # type: Optional[List[str]]
@@ -641,7 +641,7 @@ class Logger(object):
             title=title,
             series=series,
             data=matrix.astype(np.float32),
-            iter=iteration,
+            iter=iteration or 0,
             xtitle=xaxis,
             ytitle=yaxis,
             xlabels=xlabels,
@@ -656,7 +656,7 @@ class Logger(object):
             title,  # type: str
             series,  # type: str
             matrix,  # type: np.ndarray
-            iteration,  # type: int
+            iteration=None,  # type: Optional[int]
             xaxis=None,  # type: Optional[str]
             yaxis=None,  # type: Optional[str]
             xlabels=None,  # type: Optional[List[str]]
@@ -683,7 +683,7 @@ class Logger(object):
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
         self._touch_title_series(title, series)
-        return self.report_confusion_matrix(title, series, matrix, iteration,
+        return self.report_confusion_matrix(title, series, matrix, iteration or 0,
                                             xaxis=xaxis, yaxis=yaxis, xlabels=xlabels, ylabels=ylabels,
                                             yaxis_reversed=yaxis_reversed,
                                             extra_layout=extra_layout)
@@ -693,7 +693,7 @@ class Logger(object):
             title,  # type: str
             series,  # type: str
             matrix,  # type: np.ndarray
-            iteration,  # type: int
+            iteration=None,  # type: Optional[int]
             xaxis=None,  # type: Optional[str]
             yaxis=None,  # type: Optional[str]
             zaxis=None,  # type: Optional[str]
@@ -742,7 +742,7 @@ class Logger(object):
             title=title,
             series=series,
             data=matrix.astype(np.float32),
-            iter=iteration,
+            iter=iteration or 0,
             xlabels=xlabels,
             ylabels=ylabels,
             xtitle=xaxis,
@@ -757,7 +757,7 @@ class Logger(object):
             self,
             title,  # type: str
             series,  # type: str
-            iteration,  # type: int
+            iteration=None,  # type: Optional[int]
             local_path=None,  # type: Optional[str]
             image=None,  # type: Optional[Union[np.ndarray, Image.Image]]
             matrix=None,  # type: Optional[np.ndarray]
@@ -833,7 +833,7 @@ class Logger(object):
                 title=title,
                 series=series,
                 src=url,
-                iter=iteration,
+                iter=iteration or 0,
             )
 
         else:
@@ -854,7 +854,7 @@ class Logger(object):
                 series=series,
                 path=local_path,
                 image=image,
-                iter=iteration,
+                iter=iteration or 0,
                 upload_uri=upload_uri,
                 max_image_history=max_image_history,
                 delete_after_upload=delete_after_upload,
@@ -864,7 +864,7 @@ class Logger(object):
             self,
             title,  # type: str
             series,  # type: str
-            iteration,  # type: int
+            iteration=None,  # type: Optional[int]
             local_path=None,  # type: Optional[str]
             stream=None,  # type: Optional[Union[six.BytesIO, six.StringIO]]
             file_extension=None,  # type: Optional[str]
@@ -919,7 +919,7 @@ class Logger(object):
                 title=title,
                 series=series,
                 src=url,
-                iter=iteration,
+                iter=iteration or 0,
             )
 
         else:
@@ -937,7 +937,7 @@ class Logger(object):
                 series=series,
                 path=local_path,
                 stream=stream,
-                iter=iteration,
+                iter=iteration or 0,
                 upload_uri=upload_uri,
                 max_history=max_history,
                 delete_after_upload=delete_after_upload,
@@ -948,8 +948,8 @@ class Logger(object):
             self,
             title,  # type: str
             series,  # type: str
-            iteration,  # type: int
             figure,  # type: Union[Dict, "Figure"]  # noqa: F821
+            iteration=None,  # type: Optional[int]
     ):
         """
         Report a ``Plotly`` figure (plot) directly
@@ -977,15 +977,15 @@ class Logger(object):
             title=title,
             series=series,
             plot=plot,
-            iter=iteration,
+            iter=iteration or 0,
         )
 
     def report_matplotlib_figure(
             self,
             title,  # type: str
             series,  # type: str
-            iteration,  # type: int
             figure,  # type: Union[MatplotlibFigure, pyplot]
+            iteration=None,  # type: Optional[int]
             report_image=False,  # type: bool
     ):
         """
@@ -1008,7 +1008,7 @@ class Logger(object):
             title=title,
             series=series,
             figure=figure,
-            iter=iteration,
+            iter=iteration or 0,
             logger=self,
             force_save_as_image='png' if report_image else False,
         )
@@ -1091,7 +1091,7 @@ class Logger(object):
             self,
             title,  # type: str
             series,  # type: str
-            iteration,  # type: int
+            iteration=None,  # type: Optional[int]
             path=None,  # type: Optional[str]
             matrix=None,  # type: Optional[Union[np.ndarray, Image.Image]]
             max_image_history=None,  # type: Optional[int]
@@ -1101,7 +1101,7 @@ class Logger(object):
         .. deprecated:: 0.13.0
             Use :meth:`Logger.report_image` instead
         """
-        self.report_image(title=title, series=series, iteration=iteration, local_path=path, image=matrix,
+        self.report_image(title=title, series=series, iteration=iteration or 0, local_path=path, image=matrix,
                           max_image_history=max_image_history, delete_after_upload=delete_after_upload)
 
     def capture_logging(self):
@@ -1234,7 +1234,7 @@ class Logger(object):
             self,
             title,  # type: str
             series,  # type: str
-            iteration,  # type: int
+            iteration=None,  # type: Optional[int]
             path=None,  # type: Optional[str]
             matrix=None,  # type: Optional[np.ndarray]
             max_image_history=None,  # type: Optional[int]
@@ -1280,7 +1280,7 @@ class Logger(object):
             series=series,
             path=path,
             matrix=matrix,
-            iter=iteration,
+            iter=iteration or 0,
             upload_uri=upload_uri,
             max_image_history=max_image_history,
             delete_after_upload=delete_after_upload,
@@ -1290,7 +1290,7 @@ class Logger(object):
             self,
             title,  # type: str
             series,  # type: str
-            iteration,  # type: int
+            iteration=None,  # type: Optional[int]
             path=None,  # type: Optional[str]
             max_file_history=None,  # type: Optional[int]
             delete_after_upload=False  # type: bool
@@ -1332,7 +1332,7 @@ class Logger(object):
             series=series,
             path=path,
             image=None,
-            iter=iteration,
+            iter=iteration or 0,
             upload_uri=upload_uri,
             max_image_history=max_file_history,
             delete_after_upload=delete_after_upload,

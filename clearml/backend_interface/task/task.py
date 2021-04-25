@@ -1188,23 +1188,55 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return self._get_task_property("execution.docker_cmd", raise_on_error=False, log_on_error=False)
 
     def set_artifacts(self, artifacts_list=None):
-        # type: (Sequence[tasks.Artifact]) -> ()
+        # type: (Sequence[tasks.Artifact]) -> Optional[List[tasks.Artifact]]
         """
         List of artifacts (tasks.Artifact) to update the task
 
         :param list artifacts_list: list of artifacts (type tasks.Artifact)
+        :return: List of current Task's Artifacts or None if error.
         """
         if not Session.check_min_api_version('2.3'):
-            return False
+            return None
         if not (isinstance(artifacts_list, (list, tuple))
                 and all(isinstance(a, tasks.Artifact) for a in artifacts_list)):
-            raise ValueError('Expected artifacts to [tasks.Artifacts]')
+            raise ValueError('Expected artifacts as List[tasks.Artifact]')
         with self._edit_lock:
             self.reload()
             execution = self.data.execution
             keys = [a.key for a in artifacts_list]
             execution.artifacts = [a for a in execution.artifacts or [] if a.key not in keys] + artifacts_list
             self._edit(execution=execution)
+        return execution.artifacts or []
+
+    def _add_artifacts(self, artifacts_list):
+        # type: (Sequence[tasks.Artifact]) -> Optional[List[tasks.Artifact]]
+        """
+        List of artifacts (tasks.Artifact) to add to the the task
+        If an artifact by the same name already exists it will overwrite the existing artifact.
+
+        :param list artifacts_list: list of artifacts (type tasks.Artifact)
+        :return: List of current Task's Artifacts
+        """
+        if not Session.check_min_api_version('2.3'):
+            return None
+        if not (isinstance(artifacts_list, (list, tuple))
+                and all(isinstance(a, tasks.Artifact) for a in artifacts_list)):
+            raise ValueError('Expected artifacts as List[tasks.Artifact]')
+
+        with self._edit_lock:
+            if Session.check_min_api_version("2.13") and not self._offline_mode:
+                req = tasks.AddOrUpdateArtifactsRequest(task=self.task_id, artifacts=artifacts_list, force=True)
+                res = self.send(req, raise_on_errors=False)
+                if not res or not res.response or not res.response.updated:
+                    return None
+                self.reload()
+            else:
+                self.reload()
+                execution = self.data.execution
+                keys = [a.key for a in artifacts_list]
+                execution.artifacts = [a for a in execution.artifacts or [] if a.key not in keys] + artifacts_list
+                self._edit(execution=execution)
+        return self.data.execution.artifacts or []
 
     def _set_model_design(self, design=None):
         # type: (str) -> ()

@@ -9,7 +9,6 @@ from attr import attrib, attrs
 from typing import Sequence, Optional, Mapping, Callable, Any, Union
 
 from ..backend_interface.util import get_or_create_project
-from ..config import get_remote_task_id
 from ..debugging.log import LoggerRoot
 from ..task import Task
 from ..automation import ClearmlJob
@@ -41,6 +40,7 @@ class PipelineController(object):
         clone_task = attrib(type=bool, default=True)
         job = attrib(type=ClearmlJob, default=None)
         skip_job = attrib(type=bool, default=False)
+        cache_executed_step = attrib(type=bool, default=False)
 
     def __init__(
             self,
@@ -125,7 +125,7 @@ class PipelineController(object):
             clone_base_task=True,  # type: bool
             pre_execute_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node, dict], bool]]  # noqa
             post_execute_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node], None]]  # noqa
-
+            cache_executed_step=False,  # type: bool
     ):
         # type: (...) -> bool
         """
@@ -199,6 +199,13 @@ class PipelineController(object):
                 ):
                     pass
 
+        :param cache_executed_step: If True, before launching the new step,
+            after updating with the latest configuration, check if an exact Task with the same parameter/code
+            was already executed. If it was found, use it instead of launching a new Task.
+            Default: False, a new cloned copy of base_task is always used.
+            Notice: If the git repo reference does not have a specific commit ID, the Task will never be used.
+            If `clone_base_task` is False there is no cloning, hence the base_task is used.
+
         :return: True if successful
         """
 
@@ -219,7 +226,17 @@ class PipelineController(object):
         if not base_task_id:
             if not base_task_project or not base_task_name:
                 raise ValueError('Either base_task_id or base_task_project/base_task_name must be provided')
-            base_task = Task.get_task(project_name=base_task_project, task_name=base_task_name)
+            base_task = Task.get_task(
+                project_name=base_task_project,
+                task_name=base_task_name,
+                allow_archived=True,
+                task_filter=dict(
+                    status=[str(Task.TaskStatusEnum.created), str(Task.TaskStatusEnum.queued),
+                            str(Task.TaskStatusEnum.in_progress), str(Task.TaskStatusEnum.published),
+                            str(Task.TaskStatusEnum.stopped), str(Task.TaskStatusEnum.completed),
+                            str(Task.TaskStatusEnum.closed)],
+                )
+            )
             if not base_task:
                 raise ValueError('Could not find base_task_project={} base_task_name={}'.format(
                     base_task_project, base_task_name))
@@ -235,6 +252,7 @@ class PipelineController(object):
             parameters=parameter_override or {},
             clone_task=clone_base_task,
             task_overrides=task_overrides,
+            cache_executed_step=cache_executed_step,
         )
 
         if self._task and not self._task.running_locally():
@@ -606,6 +624,7 @@ class PipelineController(object):
             parent=self._task.id if self._task else None,
             disable_clone_task=not node.clone_task,
             task_overrides=task_overrides,
+            allow_caching=node.cache_executed_step,
             **extra_args
         )
 
@@ -619,6 +638,8 @@ class PipelineController(object):
             # delete the job we just created
             node.job.delete()
             node.skip_job = True
+        elif node.job.is_cached_task():
+            node.executed = node.job.task_id()
         else:
             node.job.launch(queue_name=node.queue or self._default_execution_queue)
 
@@ -674,11 +695,8 @@ class PipelineController(object):
                     '{}<br />'.format(node.name) +
                     '<br />'.join('{}: {}'.format(k, v if len(str(v)) < 24 else (str(v)[:24]+' ...'))
                                   for k, v in (node.parameters or {}).items()))
-                sankey_node['color'].append(
-                    ("red" if node.job and node.job.is_failed() else
-                     ("blue" if not node.job or node.job.is_completed() else "royalblue"))
-                    if node.executed is not None else
-                    ("green" if node.job else ("gray" if node.skip_job else "lightsteelblue")))
+
+                sankey_node['color'].append(self._get_node_color(node))
 
                 for p in parents:
                     sankey_link['source'].append(p)
@@ -747,6 +765,36 @@ class PipelineController(object):
         # report detailed table
         self._task.get_logger().report_table(
             title='Pipeline Details', series='Execution Details', iteration=0, table_plot=table_values)
+
+    @staticmethod
+    def _get_node_color(node):
+        # type (self.Mode) -> str
+        """
+        Return the node color based on the node/job state
+        :param node: A node in the pipeline
+        :return: string representing the color of the node (e.g. "red", "green", etc)
+        """
+        if not node:
+            return ""
+
+        if node.executed is not None:
+            if node.job and node.job.is_failed():
+                return "red"  # failed job
+            elif node.job and node.job.is_cached_task():
+                return "darkslateblue"
+            elif not node.job or node.job.is_completed():
+                return "blue"  # completed job
+            else:
+                return "royalblue"  # aborted job
+        elif node.job:
+            if node.job.is_pending():
+                return "mediumseagreen"  # pending in queue
+            else:
+                return "green"  # running job
+        elif node.skip_job:
+            return "gray"  # skipped job
+        else:
+            return "lightsteelblue"  # pending job
 
     def _force_task_configuration_update(self):
         pipeline_dag = self._serialize()
@@ -1036,9 +1084,12 @@ class PipelineController(object):
             return "pending"
         if a_node.skip_job:
             return "skipped"
+        if a_node.job and a_node.job.is_cached_task():
+            return "cached"
         if a_node.job and a_node.job.task:
+            # no need to refresh status
             return str(a_node.job.task.data.status)
-        if a_node.job and a_node.job.executed:
+        if a_node.executed:
             return "executed"
         return "pending"
 

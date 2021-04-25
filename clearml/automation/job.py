@@ -5,6 +5,7 @@ from logging import getLogger
 from time import time, sleep
 from typing import Optional, Mapping, Sequence, Any
 
+from ..storage.util import hash_dict
 from ..task import Task
 from ..backend_api.services import tasks as tasks_service
 
@@ -13,6 +14,8 @@ logger = getLogger('clearml.automation.job')
 
 
 class ClearmlJob(object):
+    _job_hash_description = 'job_hash={}'
+
     def __init__(
             self,
             base_task_id,  # type: str
@@ -21,6 +24,7 @@ class ClearmlJob(object):
             tags=None,  # type: Optional[Sequence[str]]
             parent=None,  # type: Optional[str]
             disable_clone_task=False,  # type: bool
+            allow_caching=False,  # type: bool
             **kwargs  # type: Any
     ):
         # type: (...) -> ()
@@ -34,10 +38,13 @@ class ClearmlJob(object):
         :param str parent: Set newly created Task parent task field, default: base_tak_id.
         :param dict kwargs: additional Task creation parameters
         :param bool disable_clone_task: if False (default) clone base task id.
-            If True, use the base_task_id directly (base-task must be in draft-mode / created),
+        If True, use the base_task_id directly (base-task must be in draft-mode / created),
+        :param bool allow_caching: If True check if we have a previously executed Task with the same specification
+        If we do, use it and set internal is_cached flag. Default False (always create new Task).
         """
+        base_temp_task = Task.get_task(task_id=base_task_id)
         if disable_clone_task:
-            self.task = Task.get_task(task_id=base_task_id)
+            self.task = base_temp_task
             task_status = self.task.status
             if task_status != Task.TaskStatusEnum.created:
                 logger.warning('Task cloning disabled but requested Task [{}] status={}. '
@@ -47,31 +54,56 @@ class ClearmlJob(object):
             elif parent:
                 self.task.set_parent(parent)
 
+        self.task_parameter_override = None
+        task_params = None
+        if parameter_override:
+            task_params = base_temp_task.get_parameters(backwards_compatibility=False)
+            task_params.update(parameter_override)
+            self.task_parameter_override = dict(**parameter_override)
+
+        sections = {}
+        if task_overrides:
+            # set values inside the Task
+            for k, v in task_overrides.items():
+                # notice we can allow ourselves to change the base-task object as we will not use it any further
+                # noinspection PyProtectedMember
+                base_temp_task._set_task_property(k, v, raise_on_error=False, log_on_error=True)
+                section = k.split('.')[0]
+                sections[section] = getattr(base_temp_task.data, section, None)
+
+        # check cached task
+        self._is_cached_task = False
+        task_hash = None
+        if allow_caching and not disable_clone_task or not self.task:
+            # look for a cached copy of the Task
+            # get parameters + task_overrides + as dict and hash it.
+            task_hash = self._create_task_hash(
+                base_temp_task, section_overrides=sections, params_override=task_params)
+            task = self._get_cached_task(task_hash)
+            # if we found a task, just use
+            if task:
+                self._is_cached_task = True
+                self.task = task
+                self.task_started = True
+                self._worker = None
+                return
+
         # check again if we need to clone the Task
         if not disable_clone_task:
             self.task = Task.clone(base_task_id, parent=parent or base_task_id, **kwargs)
 
         if tags:
             self.task.set_tags(list(set(self.task.get_tags()) | set(tags)))
-        self.task_parameter_override = None
-        if parameter_override:
-            params = self.task.get_parameters(backwards_compatibility=False)
-            params.update(parameter_override)
-            self.task.set_parameters(params)
-            self.task_parameter_override = dict(**parameter_override)
 
-        if task_overrides:
-            sections = {}
-            # set values inside the Task
-            for k, v in task_overrides.items():
-                # noinspection PyProtectedMember
-                self.task._set_task_property(k, v, raise_on_error=False, log_on_error=True)
-                section = k.split('.')[0]
-                sections[section] = getattr(self.task.data, section, None)
+        if task_params:
+            self.task.set_parameters(task_params)
+
+        if task_overrides and sections:
             # store back Task parameters into backend
             # noinspection PyProtectedMember
             self.task._edit(**sections)
 
+        self._set_task_cache_hash(self.task, task_hash)
         self.task_started = False
         self._worker = None
 
@@ -108,22 +140,29 @@ class ClearmlJob(object):
         return metrics, title, series, values
 
     def launch(self, queue_name=None):
-        # type: (str) -> ()
+        # type: (str) -> bool
         """
         Send Job for execution on the requested execution queue
 
         :param str queue_name:
+        :return False if Task is not in "created" status (i.e. cannot be enqueued)
         """
+        if self._is_cached_task:
+            return False
         try:
             Task.enqueue(task=self.task, queue_name=queue_name)
+            return True
         except Exception as ex:
             logger.warning(ex)
+        return False
 
     def abort(self):
         # type: () -> ()
         """
         Abort currently running job (can be called multiple times)
         """
+        if not self.task or self._is_cached_task:
+            return
         try:
             self.task.stopped()
         except Exception as ex:
@@ -234,7 +273,7 @@ class ClearmlJob(object):
     def is_stopped(self):
         # type: () -> bool
         """
-        Return True, if job is has executed and is not any more
+        Return True, if job finished executing (for any reason)
 
         :return: True the task is currently one of these states, stopped / completed / failed / published.
         """
@@ -298,7 +337,7 @@ class ClearmlJob(object):
         Delete the current temporary job (before launching)
         Return False if the Job/Task could not deleted
         """
-        if not self.task:
+        if not self.task or self._is_cached_task:
             return False
 
         if self.task.delete():
@@ -306,6 +345,82 @@ class ClearmlJob(object):
             return True
 
         return False
+
+    def is_cached_task(self):
+        # type: () -> bool
+        """
+        :return: True if the internal Task is a cached one, False otherwise.
+        """
+        return self._is_cached_task
+
+    @classmethod
+    def _create_task_hash(cls, task, section_overrides=None, params_override=None):
+        # type: (Task, Optional[dict], Optional[dict]) -> Optional[str]
+        """
+        Create Hash (str) representing the state of the Task
+        :param task: A Task to hash
+        :param section_overrides: optional dict (keys are Task's section names) with task overrides.
+        :param params_override: Alternative to the entire Task's hyper parameters section
+        (notice this should not be a nested dict but a flat key/value)
+        :return: str crc32 of the Task configuration
+        """
+        if not task:
+            return None
+        if section_overrides and section_overrides.get('script'):
+            script = section_overrides['script']
+            if not isinstance(script, dict):
+                script = script.to_dict()
+        else:
+            script = task.data.script.to_dict() if task.data.script else {}
+
+        # if we have a repository, we must make sure we have a specific version_num to ensure consistency
+        if script.get('repository') and not script.get('version_num') and not script.get('tag'):
+            return None
+
+        # we need to ignore `requirements` section because ir might be changing from run to run
+        script.pop("requirements", None)
+
+        hyper_params = task.get_parameters() if params_override is None else params_override
+        configs = task.get_configuration_objects()
+        return hash_dict(dict(script=script, hyper_params=hyper_params, configs=configs), hash_func='crc32')
+
+    @classmethod
+    def _get_cached_task(cls, task_hash):
+        # type: (str) -> Optional[Task]
+        """
+
+        :param task_hash:
+        :return: A task matching the requested task hash
+        """
+        if not task_hash:
+            return None
+        # noinspection PyProtectedMember
+        potential_tasks = Task._query_tasks(
+            status=['completed', 'stopped', 'published'],
+            system_tags=['-{}'.format(Task.archived_tag)],
+            _all_=dict(fields=['comment'], pattern=cls._job_hash_description.format(task_hash)),
+            only_fields=['id'],
+        )
+        for obj in potential_tasks:
+            task = Task.get_task(task_id=obj.id)
+            if task_hash == cls._create_task_hash(task):
+                return task
+        return None
+
+    @classmethod
+    def _set_task_cache_hash(cls, task, task_hash=None):
+        # type: (Task, Optional[str]) -> ()
+        """
+        Store the task state hash for later querying
+        :param task: The Task object that was created
+        :param task_hash: The Task Hash (string) to store, if None generate a new task_hash from the Task
+        """
+        if not task:
+            return
+        if not task_hash:
+            task_hash = cls._create_task_hash(task=task)
+        hash_comment = cls._job_hash_description.format(task_hash) + '\n'
+        task.set_comment(task.comment + '\n' + hash_comment if task.comment else hash_comment)
 
 
 class TrainsJob(ClearmlJob):
@@ -316,6 +431,7 @@ class TrainsJob(ClearmlJob):
             "Use clearml.automation.ClearmlJob",
             DeprecationWarning,
         )
+
 
 # noinspection PyMethodMayBeStatic, PyUnusedLocal
 class _JobStub(object):

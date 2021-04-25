@@ -2915,7 +2915,8 @@ class Task(_Task):
                             pass
 
                     # only if we have an exception (and not ctrl-break) or signal is not SIGTERM / SIGINT
-                    if (is_exception and not isinstance(self.__exit_hook.exception, KeyboardInterrupt)) \
+                    if (is_exception and not isinstance(is_exception, KeyboardInterrupt)
+                        and is_exception != KeyboardInterrupt) \
                             or (not self.__exit_hook.remote_user_aborted and
                                 self.__exit_hook.signal not in (None, 2, 15)):
                         task_status = (

@@ -26,7 +26,8 @@ from pathlib2 import Path
 
 from .backend_config.defs import get_active_config_file, get_config_file
 from .backend_api.services import tasks, projects, queues
-from .backend_api.session.session import Session, ENV_ACCESS_KEY, ENV_SECRET_KEY
+from .backend_api.session.session import (
+    Session, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_HOST, ENV_WEB_HOST, ENV_FILES_HOST)
 from .backend_interface.metrics import Metrics
 from .backend_interface.model import Model as BackendModel
 from .backend_interface.task import Task as _Task
@@ -2245,10 +2246,16 @@ class Task(_Task):
         """
         if api_host:
             Session.default_host = api_host
+            if not running_remotely() and not ENV_HOST.get():
+                ENV_HOST.set(api_host)
         if web_host:
             Session.default_web = web_host
+            if not running_remotely() and not ENV_WEB_HOST.get():
+                ENV_WEB_HOST.set(web_host)
         if files_host:
             Session.default_files = files_host
+            if not running_remotely() and not ENV_FILES_HOST.get():
+                ENV_FILES_HOST.set(files_host)
         if key:
             Session.default_key = key
             if not running_remotely():

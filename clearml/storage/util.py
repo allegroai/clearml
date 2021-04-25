@@ -1,8 +1,9 @@
 import hashlib
+import json
 import re
 import sys
 from zlib import crc32
-from typing import Optional, Union, Sequence
+from typing import Optional, Union, Sequence, Dict
 from pathlib2 import Path
 
 from six.moves.urllib.parse import quote, urlparse, urlunparse
@@ -115,6 +116,25 @@ def hash_text(text, seed=1337, hash_func='md5'):
     h = getattr(hashlib, hash_func)()
     h.update((str(seed) + str(text)).encode('utf-8'))
     return h.hexdigest()
+
+
+def hash_dict(a_dict, seed=1337, hash_func='md5'):
+    # type: (Dict, Union[int, str], str) -> str
+    """
+    Return hash_func (crc32/md5/sha1/sha256/sha384/sha512) hash of the dict values
+    (dict must be JSON serializable)
+
+    :param a_dict: a dictionary to hash
+    :param seed: use prefix seed for hashing
+    :param hash_func: hashing function. currently supported md5 sha256
+    :return: hashed string
+    """
+    assert hash_func in ('crc32', 'md5', 'sha256', 'sha256', 'sha384', 'sha512')
+    repr_string = json.dumps(a_dict, sort_keys=True)
+    if hash_func == 'crc32':
+        return crc32text(repr_string, seed=seed)
+    else:
+        return hash_text(repr_string, seed=seed, hash_func=hash_func)
 
 
 def is_windows():

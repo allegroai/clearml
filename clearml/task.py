@@ -696,8 +696,8 @@ class Task(_Task):
         return task
 
     @classmethod
-    def get_task(cls, task_id=None, project_name=None, task_name=None):
-        # type: (Optional[str], Optional[str], Optional[str]) -> Task
+    def get_task(cls, task_id=None, project_name=None, task_name=None, allow_archived=True, task_filter=None):
+        # type: (Optional[str], Optional[str], Optional[str], bool, Optional[dict]) -> Task
         """
         Get a Task by Id, or project name / task name combination.
 
@@ -732,13 +732,20 @@ class Task(_Task):
                     train_task.get_logger().report_scalar('title', 'series', value=x * 2, iteration=x)
 
         :param str task_id: The Id (system UUID) of the experiment to get.
-            If specified, ``project_name`` and ``task_name`` are ignored.
+         If specified, ``project_name`` and ``task_name`` are ignored.
         :param str project_name: The project name of the Task to get.
         :param str task_name: The name of the Task within ``project_name`` to get.
+        :param bool allow_archived: Only applicable if *not* using specific ``task_id``,
+        If True (default) allow to return archived Tasks, if False filter out archived Tasks
+        :param bool task_filter: Only applicable if *not* using specific ``task_id``,
+        Pass additional query filters, on top of project/name. See details in Task.get_tasks.
 
         :return: The Task specified by ID, or project name / experiment name combination.
         """
-        return cls.__get_task(task_id=task_id, project_name=project_name, task_name=task_name)
+        return cls.__get_task(
+            task_id=task_id, project_name=project_name, task_name=task_name,
+            include_archived=allow_archived, task_filter=task_filter,
+        )
 
     @classmethod
     def get_tasks(cls, task_ids=None, project_name=None, task_name=None, task_filter=None):
@@ -3199,7 +3206,7 @@ class Task(_Task):
         cls.__register_at_exit(None, only_remove_signal_and_exception_hooks=True)
 
     @classmethod
-    def __get_task(cls, task_id=None, project_name=None, task_name=None):
+    def __get_task(cls, task_id=None, project_name=None, task_name=None, include_archived=True, task_filter=None):
         if task_id:
             return cls(private=cls.__create_protection, task_id=task_id, log_to_backend=False)
 
@@ -3215,12 +3222,16 @@ class Task(_Task):
             project = None
 
         system_tags = 'system_tags' if hasattr(tasks.Task, 'system_tags') else 'tags'
+        task_filter = task_filter or {}
+        if not include_archived:
+            task_filter['system_tags'] = ['-{}'.format(cls.archived_tag)]
         res = cls._send(
             cls._get_default_session(),
             tasks.GetAllRequest(
                 project=[project.id] if project else None,
                 name=exact_match_regex(task_name) if task_name else None,
-                only_fields=['id', 'name', 'last_update', system_tags]
+                only_fields=['id', 'name', 'last_update', system_tags],
+                **task_filter
             )
         )
         res_tasks = res.response.tasks

@@ -1085,8 +1085,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :return: True if the parameter was deleted successfully
         """
         if not Session.check_min_api_version('2.9'):
-            raise ValueError("Delete hyper parameter is not supported by your clearml-server, "
-                             "upgrade to the latest version")
+            raise ValueError(
+                "Delete hyper-parameter is not supported by your clearml-server, "
+                "upgrade to the latest version")
+
         with self._edit_lock:
             paramkey = tasks.ParamKey(section=name.split('/', 1)[0], name=name.split('/', 1)[1])
             res = self.send(tasks.DeleteHyperParamsRequest(
@@ -1580,6 +1582,23 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         return self._get_configuration_text(name)
 
+    def get_configuration_objects(self):
+        # type: () -> Optional[Mapping[str, str]]
+        """
+        Get the Task's configuration object section as a blob of text
+        Use only for automation (externally), otherwise use `Task.connect_configuration`.
+
+        :return: The Task's configurations as a
+        dict (config name as key) and text blob as value (unconstrained text string)
+        """
+        if not Session.check_min_api_version('2.9'):
+            raise ValueError(
+                "Multiple configurations are not supported with the current 'clearml-server', "
+                "please upgrade to the latest version")
+
+        configuration = self.data.configuration or {}
+        return {k: v.value for k, v in configuration.items()}
+
     def set_configuration_object(self, name, config_text=None, description=None, config_type=None):
         # type: (str, Optional[str], Optional[str], Optional[str]) -> None
         """
@@ -1851,7 +1870,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         mutually_exclusive(config_dict=config_dict, config_text=config_text, _check_none=True)
 
         if not Session.check_min_api_version('2.9'):
-            raise ValueError("Multiple configurations is not supported with the current 'clearml-server', "
+            raise ValueError("Multiple configurations are not supported with the current 'clearml-server', "
                              "please upgrade to the latest version")
 
         if description:
@@ -1875,7 +1894,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return None if configuration name is not valid.
         """
         if not Session.check_min_api_version('2.9'):
-            raise ValueError("Multiple configurations is not supported with the current 'clearml-server', "
+            raise ValueError("Multiple configurations are not supported with the current 'clearml-server', "
                              "please upgrade to the latest version")
 
         configuration = self.data.configuration or {}

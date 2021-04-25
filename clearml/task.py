@@ -545,11 +545,13 @@ class Task(_Task):
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('tensorflow', True) \
                         or auto_connect_frameworks.get('tensorboard', True):
                     PatchAbsl.update_current_task(Task.__main_task)
-                    TensorflowBinding.update_current_task(task,
-                                                          is_auto_connect_frameworks_bool or
-                                                          auto_connect_frameworks.get('tensorflow', True),
-                                                          is_auto_connect_frameworks_bool or
-                                                          auto_connect_frameworks.get('tensorboard', True))
+                    TensorflowBinding.update_current_task(
+                        task,
+                        patch_reporting=(is_auto_connect_frameworks_bool
+                                         or auto_connect_frameworks.get('tensorboard', True)),
+                        patch_model_io=(is_auto_connect_frameworks_bool
+                                        or auto_connect_frameworks.get('tensorflow', True)),
+                    )
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('pytorch', True):
                     PatchPyTorchModelIO.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('xgboost', True):

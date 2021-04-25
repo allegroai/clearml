@@ -11,7 +11,6 @@ from typing import Any
 import numpy as np
 import six
 from PIL import Image
-from pathlib2 import Path
 
 from ...debugging.log import LoggerRoot
 from ..frameworks import _patched_call, WeightsFileHandler, _Empty
@@ -27,15 +26,17 @@ except ImportError:
 
 class TensorflowBinding(object):
     @classmethod
-    def update_current_task(cls, task):
+    def update_current_task(cls, task, save_models, report_tensorboard):
         if not task:
             IsTensorboardInit.clear_tensorboard_used()
-        EventTrainsWriter.update_current_task(task)
-        PatchSummaryToEventTransformer.update_current_task(task)
-        PatchTensorFlowEager.update_current_task(task)
-        PatchKerasModelIO.update_current_task(task)
-        PatchTensorflowModelIO.update_current_task(task)
-        PatchTensorflow2ModelIO.update_current_task(task)
+        if report_tensorboard:
+            EventTrainsWriter.update_current_task(task)
+            PatchSummaryToEventTransformer.update_current_task(task)
+            PatchTensorFlowEager.update_current_task(task)
+        if save_models:
+            PatchKerasModelIO.update_current_task(task)
+            PatchTensorflowModelIO.update_current_task(task)
+            PatchTensorflow2ModelIO.update_current_task(task)
 
 
 class IsTensorboardInit(object):

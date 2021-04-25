@@ -354,7 +354,7 @@ class Task(_Task):
 
             .. code-block:: py
 
-               auto_connect_frameworks={'matplotlib': True, 'tensorflow': True, 'pytorch': True,
+               auto_connect_frameworks={'matplotlib': True, 'tensorflow': True, 'tensorboard': True, 'pytorch': True,
                     'xgboost': True, 'scikit': True, 'fastai': True, 'lightgbm': True, 'hydra': True}
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
@@ -542,9 +542,14 @@ class Task(_Task):
                     PatchedJoblib.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('matplotlib', True):
                     PatchedMatplotlib.update_current_task(Task.__main_task)
-                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('tensorflow', True):
+                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('tensorflow', True) \
+                        or auto_connect_frameworks.get('tensorboard', True):
                     PatchAbsl.update_current_task(Task.__main_task)
-                    TensorflowBinding.update_current_task(task)
+                    TensorflowBinding.update_current_task(task,
+                                                          is_auto_connect_frameworks_bool or
+                                                          auto_connect_frameworks.get('tensorflow', True),
+                                                          is_auto_connect_frameworks_bool or
+                                                          auto_connect_frameworks.get('tensorboard', True))
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('pytorch', True):
                     PatchPyTorchModelIO.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('xgboost', True):

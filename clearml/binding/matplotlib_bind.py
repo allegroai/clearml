@@ -418,7 +418,7 @@ class PatchedMatplotlib:
                                 lines_ = plotly_renderer.plotly_fig['data']
                                 half_mark = len(lines_)//2
                                 if len(lines_) % 2 == 0 and \
-                                        all(l for l in lines_[half_mark:] if not l.get('x') and not l.get('y')):
+                                        all(ln for ln in lines_[half_mark:] if not ln.get('x') and not ln.get('y')):
                                     for i, line in enumerate(lines_[:half_mark]):
                                         line['name'] = lines_[i+half_mark].get('name')
                         except Exception:

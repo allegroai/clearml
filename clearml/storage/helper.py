@@ -308,9 +308,6 @@ class StorageHelper(object):
                 region=final_region,
             )
 
-            if not self._conf.key or not self._conf.secret:
-                raise ValueError('Missing key and secret for S3 storage access (%s)' % base_url)
-
             self._driver = _Boto3Driver()
             self._container = self._driver.get_container(container_name=self._base_url, retries=retries,
                                                          config=self._conf)
@@ -1237,18 +1234,23 @@ class _Boto3Driver(_Driver):
 
             # boto3 client creation isn't thread-safe (client itself is)
             with self._creation_lock:
-                self.resource = boto3.resource(
-                    's3',
-                    aws_access_key_id=cfg.key,
-                    aws_secret_access_key=cfg.secret,
-                    endpoint_url=endpoint,
-                    use_ssl=cfg.secure,
-                    verify=cfg.verify,
-                    config=botocore.client.Config(
+                boto_kwargs = {
+                    "endpoint_url": endpoint,
+                    "use_ssl": cfg.secure,
+                    "verify": cfg.verify,
+                    "config": botocore.client.Config(
                         max_pool_connections=max(
                             _Boto3Driver._min_pool_connections,
                             _Boto3Driver._pool_connections)
-                    ),
+                    )
+                }
+                if cfg.key and cfg.secret:
+                    boto_kwargs["aws_access_key_id"] = cfg.key
+                    boto_kwargs["aws_secret_access_key"] = cfg.secret
+
+                self.resource = boto3.resource(
+                    's3',
+                    **boto_kwargs
                 )
 
                 self.config = cfg

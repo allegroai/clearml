@@ -1365,6 +1365,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param name: The name of the Task.
         :type name: str
         """
+        name = name or ''
         self._set_task_property("name", str(name))
         self._edit(name=self.data.name)
 
@@ -1391,8 +1392,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param comment: The comment / description for the Task.
         :type comment: str
         """
+        comment = comment or ''
         self._set_task_property("comment", str(comment))
-        self._edit(comment=comment)
+        self._edit(comment=str(comment))
 
     def set_task_type(self, task_type):
         # type: (Union[str, Task.TaskTypes]) -> ()

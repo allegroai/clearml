@@ -1602,8 +1602,8 @@ class Task(NonStrictDataModel):
                 "type": ["string", "null"],
             },
             "runtime": {
-                "type": "object",
                 "description": "Task runtime mapping",
+                "type": ["object", "null"],
                 "additionalProperties": True,
             },
             "script": {
@@ -6160,8 +6160,8 @@ class EditRequest(Request):
                 "type": "string",
             },
             "runtime": {
-                "type": "object",
                 "description": "Task runtime mapping",
+                "type": ["object", "null"],
                 "additionalProperties": True,
             },
             "script": {"$ref": "#/definitions/script", "description": "Script info"},

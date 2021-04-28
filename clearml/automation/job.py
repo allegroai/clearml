@@ -53,6 +53,8 @@ class ClearmlJob(object):
                 self.task = None
             elif parent:
                 self.task.set_parent(parent)
+        else:
+            self.task = None
 
         self.task_parameter_override = None
         task_params = None

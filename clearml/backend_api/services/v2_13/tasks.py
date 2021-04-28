@@ -1512,6 +1512,8 @@ class Task(NonStrictDataModel):
     :type hyperparams: dict
     :param configuration: Task configuration params
     :type configuration: dict
+    :param runtime: Task runtime mapping
+    :type runtime: dict
     """
 
     _schema = {
@@ -1599,6 +1601,11 @@ class Task(NonStrictDataModel):
                 "format": "date-time",
                 "type": ["string", "null"],
             },
+            "runtime": {
+                "type": "object",
+                "description": "Task runtime mapping",
+                "additionalProperties": True,
+            },
             "script": {
                 "description": "Script info",
                 "oneOf": [{"$ref": "#/definitions/script"}, {"type": "null"}],
@@ -1678,6 +1685,7 @@ class Task(NonStrictDataModel):
         last_metrics=None,
         hyperparams=None,
         configuration=None,
+        runtime=None,
         **kwargs
     ):
         super(Task, self).__init__(**kwargs)
@@ -1713,6 +1721,7 @@ class Task(NonStrictDataModel):
         self.last_metrics = last_metrics
         self.hyperparams = hyperparams
         self.configuration = configuration
+        self.runtime = runtime
 
     @schema_property("id")
     def id(self):
@@ -2198,6 +2207,18 @@ class Task(NonStrictDataModel):
         )
 
         self._property_configuration = value
+
+    @schema_property("runtime")
+    def runtime(self):
+        return self._property_runtime
+
+    @runtime.setter
+    def runtime(self, value):
+        if value is None:
+            self._property_runtime = None
+            return
+        self.assert_isinstance(value, "runtime", dict)
+        self._property_runtime = value
 
 
 class TaskUrls(NonStrictDataModel):
@@ -5855,6 +5876,8 @@ class EditRequest(Request):
     :type models: TaskModels
     :param container: Docker container parameters
     :type container: dict
+    :param runtime: Task runtime mapping
+    :type runtime: dict
     """
 
     _service = "tasks"
@@ -6136,6 +6159,11 @@ class EditRequest(Request):
                 "description": "Project ID of the project to which this task is assigned Must exist[ab]",
                 "type": "string",
             },
+            "runtime": {
+                "type": "object",
+                "description": "Task runtime mapping",
+                "additionalProperties": True,
+            },
             "script": {"$ref": "#/definitions/script", "description": "Script info"},
             "system_tags": {
                 "description": "System tags list. This field is reserved for system use, please don't use it.",
@@ -6175,6 +6203,7 @@ class EditRequest(Request):
         configuration=None,
         models=None,
         container=None,
+        runtime=None,
         **kwargs
     ):
         super(EditRequest, self).__init__(**kwargs)
@@ -6194,6 +6223,7 @@ class EditRequest(Request):
         self.configuration = configuration
         self.models = models
         self.container = container
+        self.runtime = runtime
 
     @schema_property("task")
     def task(self):
@@ -6442,6 +6472,18 @@ class EditRequest(Request):
             return
         self.assert_isinstance(value, "container", dict)
         self._property_container = value
+
+    @schema_property("runtime")
+    def runtime(self):
+        return self._property_runtime
+
+    @runtime.setter
+    def runtime(self, value):
+        if value is None:
+            self._property_runtime = None
+            return
+        self.assert_isinstance(value, "runtime", dict)
+        self._property_runtime = value
 
 
 class EditResponse(Response):

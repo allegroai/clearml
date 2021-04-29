@@ -306,6 +306,7 @@ class StorageHelper(object):
                 secret=secret or self._conf.secret,
                 multipart=self._conf.multipart,
                 region=final_region,
+                use_credentials_chain = self._conf.use_credentials_chain
             )
 
             if not self._conf.use_credentials_chain:

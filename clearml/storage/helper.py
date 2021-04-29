@@ -308,6 +308,12 @@ class StorageHelper(object):
                 region=final_region,
             )
 
+            if not self._conf.use_credentials_chain:
+                if not self._conf.key or not self._conf.secret:
+                    raise ValueError(
+                        "Missing key and secret for S3 storage access (%s)" % base_url
+                    )
+
             self._driver = _Boto3Driver()
             self._container = self._driver.get_container(container_name=self._base_url, retries=retries,
                                                          config=self._conf)
@@ -1244,7 +1250,7 @@ class _Boto3Driver(_Driver):
                             _Boto3Driver._pool_connections)
                     )
                 }
-                if cfg.key and cfg.secret:
+                if not cfg.use_credentials_chain:
                     boto_kwargs["aws_access_key_id"] = cfg.key
                     boto_kwargs["aws_secret_access_key"] = cfg.secret
 

@@ -30,6 +30,7 @@ class S3BucketConfig(object):
     secure = attrib(type=bool, default=True)
     region = attrib(type=str, converter=_none_to_empty_string, default="")
     verify = attrib(type=bool, default=True)
+    use_credentials_chain = attrib(type=bool, default=False)
 
     def update(self, key, secret, multipart=True, region=None):
         self.key = key

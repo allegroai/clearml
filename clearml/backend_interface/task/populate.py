@@ -157,8 +157,8 @@ class CreateAndPopulate(object):
             # if there is nothing to populate, return
             if not any([
                 self.folder, self.commit, self.branch, self.repo, self.script, self.cwd,
-                self.packages, self.requirements_file, self.base_task_id, self.docker
-            ]):
+                self.packages, self.requirements_file, self.base_task_id] + (list(self.docker.values()))
+            ):
                 return task
 
         task_state = task.export_task()
@@ -185,8 +185,8 @@ class CreateAndPopulate(object):
                     Path(repo_info.script['repo_root']) / repo_info.script['working_dir'] / repo_info.script[
                         'entry_point']
                 entry_point = entry_point.relative_to(cwd).as_posix()
-                task_state['script']['entry_point'] = entry_point
-                task_state['script']['working_dir'] = cwd
+                task_state['script']['entry_point'] = entry_point or ""
+                task_state['script']['working_dir'] = cwd or "."
         elif self.repo:
             # normalize backslashes and remove first one
             entry_point = '/'.join([p for p in self.script.split('/') if p and p != '.'])
@@ -198,10 +198,10 @@ class CreateAndPopulate(object):
             task_state['script']['branch'] = self.branch or None
             task_state['script']['diff'] = ''
             task_state['script']['working_dir'] = cwd or '.'
-            task_state['script']['entry_point'] = entry_point
+            task_state['script']['entry_point'] = entry_point or ""
         else:
             # standalone task
-            task_state['script']['entry_point'] = self.script
+            task_state['script']['entry_point'] = self.script or ""
             task_state['script']['working_dir'] = '.'
 
         # update requirements

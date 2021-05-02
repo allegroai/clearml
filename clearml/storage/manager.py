@@ -194,18 +194,22 @@ class StorageManager(object):
         # type: (str, str, Optional[str]) -> None
         """
         Upload local folder recursively to a remote storage, maintaining the sub folder structure
-        in the remote storage. For Example:
-            If we have a local file: ~/folder/sub/file.ext
-            StorageManager.upload_folder('~/folder/', 's3://bucket/')
-            will create: s3://bucket/sub/file.ext
-        :param local_folder: Local folder to recursively upload
-        :param remote_url: Target remote storage location, tree structure of `local_folder` will
-        be created under the target remote_url. Supports Http/S3/GS/Azure and shared filesystem.
-        Example: 's3://bucket/data/'
-        :param match_wildcard: If specified only upload files matching the `match_wildcard`
-        Example: `*.json`
-        (Notice: target file size/date are not checked). Default True, always upload
-        Notice if uploading to http, we will always overwrite the target.
+        in the remote storage.
+
+        .. note::
+
+            If we have a local file `~/folder/sub/file.ext` then
+            `StorageManager.upload_folder('~/folder/', 's3://bucket/')`
+            will create `s3://bucket/sub/file.ext`
+
+        :param str local_folder: Local folder to recursively upload
+        :param str remote_url: Target remote storage location, tree structure of `local_folder` will
+            be created under the target remote_url. Supports Http/S3/GS/Azure and shared filesystem.
+            Example: 's3://bucket/data/'
+        :param str match_wildcard: If specified only upload files matching the `match_wildcard`
+            Example: `*.json`
+            Notice: target file size/date are not checked. Default True, always upload.
+            Notice if uploading to http, we will always overwrite the target.
         """
 
         base_logger = LoggerRoot.get_base_logger()
@@ -235,19 +239,24 @@ class StorageManager(object):
         # type: (str, Optional[str], Optional[str], bool) -> Optional[str]
         """
         Download remote folder recursively to the local machine, maintaining the sub folder structure
-        from the remote storage. For Example:
-            If we have a local file: s3://bucket/sub/file.ext
-            StorageManager.download_folder('s3://bucket/', '~/folder/')
-            will create: ~/folder/sub/file.ext
-        :param remote_url: Source remote storage location, tree structure of `remote_url` will
-        be created under the target local_folder. Supports S3/GS/Azure and shared filesystem.
-        Example: 's3://bucket/data/'
-        :param local_folder: Local target folder to create the full tree from remote_url.
-        If None, use the cache folder. (Default: use cache folder)
+        from the remote storage.
+
+        .. note::
+
+            If we have a local file `s3://bucket/sub/file.ext` then
+            `StorageManager.download_folder('s3://bucket/', '~/folder/')`
+            will create `~/folder/sub/file.ext`
+
+        :param str remote_url: Source remote storage location, tree structure of `remote_url` will
+            be created under the target local_folder. Supports S3/GS/Azure and shared filesystem.
+            Example: 's3://bucket/data/'
+        :param str local_folder: Local target folder to create the full tree from remote_url.
+            If None, use the cache folder. (Default: use cache folder)
         :param match_wildcard: If specified only download files matching the `match_wildcard`
-        Example: `*.json`
-        :param overwrite: If False, and target files exist do not download.
-        If True always download the remote files. Default False.
+            Example: `*.json`
+        :param bool overwrite: If False, and target files exist do not download.
+            If True always download the remote files. Default False.
+
         :return: Target local folder
         """
 

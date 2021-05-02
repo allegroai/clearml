@@ -134,14 +134,15 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         Optimization. Instead of sampling new configurations at random,
         BOHB uses kernel density estimators to select promising candidates.
 
-        For reference: ::
+        .. note::
 
+            For reference:
             @InProceedings{falkner-icml-18,
-              title =        {{BOHB}: Robust and Efficient Hyperparameter Optimization at Scale},
-              author =       {Falkner, Stefan and Klein, Aaron and Hutter, Frank},
-              booktitle =    {Proceedings of the 35th International Conference on Machine Learning},
-              pages =        {1436--1445},
-              year =         {2018},
+                title =        {{BOHB}: Robust and Efficient Hyperparameter Optimization at Scale},
+                author =       {Falkner, Stefan and Klein, Aaron and Hutter, Frank},
+                booktitle =    {Proceedings of the 35th International Conference on Machine Learning},
+                pages =        {1436--1445},
+                year =         {2018},
             }
 
         :param str base_task_id: Task ID (str)
@@ -210,53 +211,51 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         """
         Defaults copied from BOHB constructor, see details in BOHB.__init__
 
-            BOHB performs robust and efficient hyperparameter optimization
-            at scale by combining the speed of Hyperband searches with the
-            guidance and guarantees of convergence of Bayesian
-            Optimization. Instead of sampling new configurations at random,
-            BOHB uses kernel density estimators to select promising candidates.
+        BOHB performs robust and efficient hyperparameter optimization
+        at scale by combining the speed of Hyperband searches with the
+        guidance and guarantees of convergence of Bayesian
+        Optimization. Instead of sampling new configurations at random,
+        BOHB uses kernel density estimators to select promising candidates.
 
-            .. highlight:: none
+        .. note::
 
-            For reference: ::
+            For reference:
+            @InProceedings{falkner-icml-18,
+              title =        {{BOHB}: Robust and Efficient Hyperparameter Optimization at Scale},
+              author =       {Falkner, Stefan and Klein, Aaron and Hutter, Frank},
+              booktitle =    {Proceedings of the 35th International Conference on Machine Learning},
+              pages =        {1436--1445},
+              year =         {2018},
+            }
 
-                @InProceedings{falkner-icml-18,
-                  title =        {{BOHB}: Robust and Efficient Hyperparameter Optimization at Scale},
-                  author =       {Falkner, Stefan and Klein, Aaron and Hutter, Frank},
-                  booktitle =    {Proceedings of the 35th International Conference on Machine Learning},
-                  pages =        {1436--1445},
-                  year =         {2018},
-                }
+        :param eta : float (3)
+            In each iteration, a complete run of sequential halving is executed. In it,
+            after evaluating each configuration on the same subset size, only a fraction of
+            1/eta of them 'advances' to the next round.
+            Must be greater or equal to 2.
+        :param min_budget : float (0.01)
+            The smallest budget to consider. Needs to be positive!
+        :param max_budget : float (1)
+            The largest budget to consider. Needs to be larger than min_budget!
+            The budgets will be geometrically distributed
+            :math:`a^2 + b^2 = c^2 /sim /eta^k` for :math:`k/in [0, 1, ... , num/_subsets - 1]`.
+        :param min_points_in_model: int (None)
+            number of observations to start building a KDE. Default 'None' means
+            dim+1, the bare minimum.
+        :param top_n_percent: int (15)
+            percentage ( between 1 and 99, default 15) of the observations that are considered good.
+        :param num_samples: int (64)
+            number of samples to optimize EI (default 64)
+        :param random_fraction: float (1/3.)
+            fraction of purely random configurations that are sampled from the
+            prior without the model.
+        :param bandwidth_factor: float (3.)
+            to encourage diversity, the points proposed to optimize EI, are sampled
+            from a 'widened' KDE where the bandwidth is multiplied by this factor (default: 3)
+        :param min_bandwidth: float (1e-3)
+            to keep diversity, even when all (good) samples have the same value for one of the parameters,
+            a minimum bandwidth (Default: 1e-3) is used instead of zero.
 
-            Parameters
-            ----------
-            eta : float (3)
-                In each iteration, a complete run of sequential halving is executed. In it,
-                after evaluating each configuration on the same subset size, only a fraction of
-                1/eta of them 'advances' to the next round.
-                Must be greater or equal to 2.
-            min_budget : float (0.01)
-                The smallest budget to consider. Needs to be positive!
-            max_budget : float (1)
-                The largest budget to consider. Needs to be larger than min_budget!
-                The budgets will be geometrically distributed
-                            :math:`a^2 + b^2 = c^2 /sim /eta^k` for :math:`k/in [0, 1, ... , num/_subsets - 1]`.
-            min_points_in_model: int (None)
-                number of observations to start building a KDE. Default 'None' means
-                dim+1, the bare minimum.
-            top_n_percent: int (15)
-                percentage ( between 1 and 99, default 15) of the observations that are considered good.
-            num_samples: int (64)
-                number of samples to optimize EI (default 64)
-            random_fraction: float (1/3.)
-                fraction of purely random configurations that are sampled from the
-                prior without the model.
-            bandwidth_factor: float (3.)
-                to encourage diversity, the points proposed to optimize EI, are sampled
-                from a 'widened' KDE where the bandwidth is multiplied by this factor (default: 3)
-            min_bandwidth: float (1e-3)
-                to keep diversity, even when all (good) samples have the same value for one of the parameters,
-                a minimum bandwidth (Default: 1e-3) is used instead of zero.
         """
         if min_budget:
             self._bohb_kwargs['min_budget'] = min_budget

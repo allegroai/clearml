@@ -92,37 +92,37 @@ class Task(_Task):
     advanced experimentation functions, such as autoML.
 
     .. warning::
-       Do not construct Task objects directly. Use one of the methods listed below to create experiments or
-       reference existing experiments.
+        Do not construct Task objects directly. Use one of the methods listed below to create experiments or
+        reference existing experiments.
 
     For detailed information about creating Task objects, see the following methods:
 
     - Create a new reproducible Task - :meth:`Task.init`
 
-      .. important::
+    .. important::
         In some cases, ``Task.init`` may return a Task object which is already stored in **ClearML Server** (already
         initialized), instead of creating a new Task. For a detailed explanation of those cases, see the ``Task.init``
         method.
 
-    - Create a new non-reproducible Task - :meth:`Task.create`
+    - Manually create a new Task (no auto-logging will apply) - :meth:`Task.create`
     - Get the current running Task - :meth:`Task.current_task`
     - Get another (different) Task - :meth:`Task.get_task`
 
     .. note::
-       The **ClearML** documentation often refers to a Task as, "Task (experiment)".
+        The **ClearML** documentation often refers to a Task as, "Task (experiment)".
 
-       "Task" refers to the class in the ClearML Python Client Package, the object in your Python experiment script,
-       and the entity with which **ClearML Server** and **ClearML Agent** work.
+        "Task" refers to the class in the ClearML Python Client Package, the object in your Python experiment script,
+        and the entity with which **ClearML Server** and **ClearML Agent** work.
 
-       "Experiment" refers to your deep learning solution, including its connected components, inputs, and outputs,
-       and is the experiment you can view, analyze, compare, modify, duplicate, and manage using the ClearML
-       **Web-App** (UI).
+        "Experiment" refers to your deep learning solution, including its connected components, inputs, and outputs,
+        and is the experiment you can view, analyze, compare, modify, duplicate, and manage using the ClearML
+        **Web-App** (UI).
 
-       Therefore, a "Task" is effectively an "experiment", and "Task (experiment)" encompasses its usage throughout
-       the ClearML.
+        Therefore, a "Task" is effectively an "experiment", and "Task (experiment)" encompasses its usage throughout
+        the ClearML.
 
-       The exception to this Task behavior is sub-tasks (non-reproducible Tasks), which do not use the main execution
-       Task. Creating a sub-task always creates a new Task with a new  Task ID.
+        The exception to this Task behavior is sub-tasks (non-reproducible Tasks), which do not use the main execution
+        Task. Creating a sub-task always creates a new Task with a new  Task ID.
     """
 
     TaskTypes = _Task.TaskTypes
@@ -222,27 +222,26 @@ class Task(_Task):
             call ``Task.get_task``. See the ``Task.get_task`` method for an example.
 
         For example:
+        The first time the following code runs, it will create a new Task. The status will be Completed.
 
-            The first time the following code runs, it will create a new Task. The status will be Completed.
+        .. code-block:: py
 
-            .. code-block:: py
+            from clearml import Task
+            task = Task.init('myProject', 'myTask')
 
-                from clearml import Task
-                task = Task.init('myProject', 'myTask')
+        If this code runs again, it will not create a new Task. It does not store a model or artifact,
+        it is not Published (its status Completed) , it was not Archived, and a new Task is not forced.
 
-            If this code runs again, it will not create a new Task. It does not store a model or artifact,
-            it is not Published (its status Completed) , it was not Archived, and a new Task is not forced.
+        If the Task is Published or Archived, and run again, it will create a new Task with a new Task ID.
 
-            If the Task is Published or Archived, and run again, it will create a new Task with a new Task ID.
+        The following code will create a new Task every time it runs, because it stores an artifact.
 
-            The following code will create a new Task every time it runs, because it stores an artifact.
+        .. code-block:: py
 
-            .. code-block:: py
+            task = Task.init('myProject', 'myOtherTask')
 
-                task = Task.init('myProject', 'myOtherTask')
-
-                d = {'a': '1'}
-                task.upload_artifact('myArtifact', d)
+            d = {'a': '1'}
+            task.upload_artifact('myArtifact', d)
 
         :param str project_name: The name of the project in which the experiment will be created. If the project does
             not exist, it is created. If ``project_name`` is ``None``, the repository name is used. (Optional)
@@ -287,7 +286,7 @@ class Task(_Task):
                 all previous artifacts / models/ logs are intact.
                 New logs will continue iteration/step based on the previous-execution maximum iteration value.
                 For example:
-                    The last train/loss scalar reported was iteration 100, the next report will be iteration 101.
+                The last train/loss scalar reported was iteration 100, the next report will be iteration 101.
 
             The values are:
 
@@ -301,8 +300,7 @@ class Task(_Task):
             If True is passed, the default files_server will be used for model storage.
             In the default location, ClearML creates a subfolder for the output.
             The subfolder structure is the following:
-
-                <output destination name> / <project name> / <task name>.< Task ID>
+            <output destination name> / <project name> / <task name>.<Task ID>
 
             The following are examples of ``output_uri`` values for the supported locations:
 
@@ -313,6 +311,7 @@ class Task(_Task):
             - Default file server: True
 
             .. important::
+
                For cloud storage, you must install the **ClearML** package for your cloud storage type,
                and then configure your storage credentials. For detailed information, see
                `ClearML Python Client Extras <./references/clearml_extras_storage/>`_ in the "ClearML Python Client
@@ -323,11 +322,11 @@ class Task(_Task):
             The values are:
 
             - ``True`` - Automatically connect. (default)
-            -  ``False`` - Do not automatically connect.
+            - ``False`` - Do not automatically connect.
             - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
-              arguments. The dictionary keys are argparse variable names and the values are booleans.
-              The ``False`` value excludes the specified argument from the Task's parameter section.
-              Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
+                arguments. The dictionary keys are argparse variable names and the values are booleans.
+                The ``False`` value excludes the specified argument from the Task's parameter section.
+                Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
 
             For example:
 
@@ -345,10 +344,10 @@ class Task(_Task):
             The values are:
 
             - ``True`` - Automatically connect (default)
-            -  ``False`` - Do not automatically connect
+            - ``False`` - Do not automatically connect
             - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
-              frameworks. The dictionary keys are frameworks and the values are booleans.
-              Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
+                frameworks. The dictionary keys are frameworks and the values are booleans.
+                Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
 
             For example:
 
@@ -374,10 +373,10 @@ class Task(_Task):
             - ``True`` - Automatically connect (default)
             -  ``False`` - Do not automatically connect
             - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of stdout and
-              stderr. The dictionary keys are 'stdout' , 'stderr' and 'logging', the values are booleans.
-              Keys missing from the dictionary default to ``False``, and an empty dictionary defaults to ``False``.
-              Notice, the default behaviour is logging stdout/stderr the
-              `logging` module is logged as a by product of the stderr logging
+                stderr. The dictionary keys are 'stdout' , 'stderr' and 'logging', the values are booleans.
+                Keys missing from the dictionary default to ``False``, and an empty dictionary defaults to ``False``.
+                Notice, the default behaviour is logging stdout/stderr the
+                `logging` module is logged as a by product of the stderr logging
 
             For example:
 
@@ -710,42 +709,42 @@ class Task(_Task):
 
         For example:
 
-            The following code demonstrates calling ``Task.get_task`` to report a scalar to another Task. The output
-            of :meth:`.Logger.report_scalar` from testing is associated with the Task named ``training``. It allows
-            training and testing to run concurrently, because they initialized different Tasks (see :meth:`Task.init`
-            for information about initializing Tasks).
+        The following code demonstrates calling ``Task.get_task`` to report a scalar to another Task. The output
+        of :meth:`.Logger.report_scalar` from testing is associated with the Task named ``training``. It allows
+        training and testing to run concurrently, because they initialized different Tasks (see :meth:`Task.init`
+        for information about initializing Tasks).
 
-            The training script:
+        The training script:
 
-            .. code-block:: py
+        .. code-block:: py
 
-                # initialize the training Task
-                task = Task.init('myProject', 'training')
+            # initialize the training Task
+            task = Task.init('myProject', 'training')
 
-                # do some training
+            # do some training
 
-            The testing script:
+        The testing script:
 
-            .. code-block:: py
+        .. code-block:: py
 
-                # initialize the testing Task
-                task = Task.init('myProject', 'testing')
+            # initialize the testing Task
+            task = Task.init('myProject', 'testing')
 
-                # get the training Task
-                train_task = Task.get_task(project_name='myProject', task_name='training')
+            # get the training Task
+            train_task = Task.get_task(project_name='myProject', task_name='training')
 
-                # report metrics in the training Task
-                for x in range(10):
-                    train_task.get_logger().report_scalar('title', 'series', value=x * 2, iteration=x)
+            # report metrics in the training Task
+            for x in range(10):
+                train_task.get_logger().report_scalar('title', 'series', value=x * 2, iteration=x)
 
         :param str task_id: The Id (system UUID) of the experiment to get.
-         If specified, ``project_name`` and ``task_name`` are ignored.
+            If specified, ``project_name`` and ``task_name`` are ignored.
         :param str project_name: The project name of the Task to get.
         :param str task_name: The name of the Task within ``project_name`` to get.
         :param bool allow_archived: Only applicable if *not* using specific ``task_id``,
-        If True (default) allow to return archived Tasks, if False filter out archived Tasks
+            If True (default) allow to return archived Tasks, if False filter out archived Tasks
         :param bool task_filter: Only applicable if *not* using specific ``task_id``,
-        Pass additional query filters, on top of project/name. See details in Task.get_tasks.
+            Pass additional query filters, on top of project/name. See details in Task.get_tasks.
 
         :return: The Task specified by ID, or project name / experiment name combination.
         """
@@ -1076,8 +1075,8 @@ class Task(_Task):
         :param str name: A section name associated with the connected object. Default: 'General'
             Currently only supported for `dict` / `TaskParameter` objects
             Examples:
-                name='General' will put the connected dictionary under the General section in the hyper-parameters
-                name='Train' will put the connected dictionary under the Train section in the hyper-parameters
+            name='General' will put the connected dictionary under the General section in the hyper-parameters
+            name='Train' will put the connected dictionary under the Train section in the hyper-parameters
 
         :return: The result returned when connecting the object, if supported.
 
@@ -1753,11 +1752,8 @@ class Task(_Task):
         # type: (...) -> bool
         """
         Set user properties for this task.
-        A user property ca contain the following fields (all of type string):
-            * name
-            * value
-            * description
-            * type
+        A user property can contain the following fields (all of type string):
+        name / value / description / type
 
         Examples:
             task.set_user_properties(backbone='great', stable=True)
@@ -1769,49 +1765,49 @@ class Task(_Task):
 
         :param iterables: Properties iterables, each can be:
             * A dictionary of string key (name) to either a string value (value) a dict (property details). If the value
-              is a dict, it must contain a "value" field. For example:
+                is a dict, it must contain a "value" field. For example:
 
-            .. code-block:: py
+                .. code-block:: javascript
 
-                {
-                  "property_name": {"description": "This is a user property", "value": "property value"},
-                  "another_property_name": {"description": "This is another user property", "value": "another value"},
-                  "yet_another_property_name": "some value"
-                }
+                    {
+                        "property_name": {"description": "This is a user property", "value": "property value"},
+                        "another_property_name": {"description": "This is another user property", "value": "another value"},
+                        "yet_another_property_name": "some value"
+                    }
 
             * An iterable of dicts (each representing property details). Each dict must contain a "name" field and a
-              "value" field. For example:
+                "value" field. For example:
 
-            .. code-block:: py
+                .. code-block:: javascript
 
-                [
-                  {
-                    "name": "property_name",
-                    "description": "This is a user property",
-                    "value": "property value"
-                  },
-                  {
-                    "name": "another_property_name",
-                    "description": "This is another user property",
-                    "value": "another value"
-                  }
-                ]
+                    [
+                        {
+                            "name": "property_name",
+                            "description": "This is a user property",
+                            "value": "property value"
+                        },
+                        {
+                            "name": "another_property_name",
+                            "description": "This is another user property",
+                            "value": "another value"
+                        }
+                    ]
 
         :param properties: Additional properties keyword arguments. Key is the property name, and value can be
             a string (property value) or a dict (property details). If the value is a dict, it must contain a "value"
             field. For example:
 
-            .. code-block:: py
+            .. code-block:: javascript
 
-                {
-                  "property_name": "string as property value",
-                  "another_property_name":
-                  {
+            {
+                "property_name": "string as property value",
+                "another_property_name": {
                     "type": "string",
                     "description": "This is user property",
                     "value": "another value"
-                  }
                 }
+            }
+
         """
         if not Session.check_min_api_version("2.9"):
             self.log.info("User properties are not supported by the server")
@@ -1829,7 +1825,8 @@ class Task(_Task):
         """
         Delete hyper-parameters for this task.
         :param iterables: Hyper parameter key iterables. Each an iterable whose possible values each represent
-         a hyper-parameter entry to delete, value formats are:
+        a hyper-parameter entry to delete, value formats are:
+
             * A dictionary containing a 'section' and 'name' fields
             * An iterable (e.g. tuple, list etc.) whose first two items denote 'section' and 'name'
         """
@@ -2245,8 +2242,10 @@ class Task(_Task):
 
         .. code-block:: py
 
-           Task.set_credentials(api_host='http://localhost:8008', web_host='http://localhost:8080',
-            files_host='http://localhost:8081',  key='optional_credentials',  secret='optional_credentials')
+            Task.set_credentials(
+                api_host='http://localhost:8008', web_host='http://localhost:8080', files_host='http://localhost:8081',
+                key='optional_credentials',  secret='optional_credentials'
+            )
             task = Task.init('project name', 'experiment name')
 
         :param str api_host: The API server url. For example, ``host='http://localhost:8008'``

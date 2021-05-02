@@ -64,21 +64,17 @@ class PipelineController(object):
             default is ``None``, indicating no time limit.
         :param bool auto_connect_task: Store pipeline arguments and configuration in the Task
             - ``True`` - The pipeline argument and configuration will be stored in the current Task. All arguments will
-              be under the hyper-parameter section ``Pipeline``, and the pipeline DAG will be stored as a
-              Task configuration object named ``Pipeline``.
-
+                be under the hyper-parameter section ``Pipeline``, and the pipeline DAG will be stored as a
+                Task configuration object named ``Pipeline``.
             - ``False`` - Do not store with Task.
             - ``Task`` - A specific Task object to connect the pipeline with.
         :param bool always_create_task: Always create a new Task
             - ``True`` - No current Task initialized. Create a new task named ``Pipeline`` in the ``base_task_id``
-              project.
-
+                project.
             - ``False`` - Use the :py:meth:`task.Task.current_task` (if exists) to report statistics.
         :param bool add_pipeline_tags: (default: False) if True, add `pipe: <pipeline_task_id>` tag to all
             steps (Tasks) created by this pipeline.
-
         :param str target_project: If provided, all pipeline steps are cloned into the target project
-
         :param pipeline_name: Optional, provide pipeline name if main Task is not present (default current date)
         :param pipeline_project: Optional, provide project storing the pipeline if main Task is not present
         """
@@ -142,23 +138,23 @@ class PipelineController(object):
         :param dict parameter_override: Optional parameter overriding dictionary.
             The dict values can reference a previously executed step using the following form '${step_name}'
             Examples:
-                Artifact access
-                    parameter_override={'Args/input_file': '${stage1.artifacts.mydata.url}' }
-                Model access (last model used)
-                    parameter_override={'Args/input_file': '${stage1.models.output.-1.url}' }
-                Parameter access
-                    parameter_override={'Args/input_file': '${stage3.parameters.Args/input_file}' }
-                Task ID
-                    parameter_override={'Args/input_file': '${stage3.id}' }
+            - Artifact access
+                parameter_override={'Args/input_file': '${stage1.artifacts.mydata.url}' }
+            - Model access (last model used)
+                parameter_override={'Args/input_file': '${stage1.models.output.-1.url}' }
+            - Parameter access
+                parameter_override={'Args/input_file': '${stage3.parameters.Args/input_file}' }
+            - Task ID
+                parameter_override={'Args/input_file': '${stage3.id}' }
         :param dict task_overrides: Optional task section overriding dictionary.
             The dict values can reference a previously executed step using the following form '${step_name}'
             Examples:
-                clear git repository commit ID
-                    parameter_override={'script.version_num': '' }
-                git repository commit branch
-                    parameter_override={'script.branch': '${stage1.script.branch}' }
-                container image
-                    parameter_override={'container.image': '${stage1.container.image}' }
+            - clear git repository commit ID
+                parameter_override={'script.version_num': '' }
+            - git repository commit branch
+                parameter_override={'script.branch': '${stage1.script.branch}' }
+            - container image
+                parameter_override={'container.image': '${stage1.container.image}' }
         :param str execution_queue: Optional, the queue to use for executing this specific step.
             If not provided, the task will be sent to the default execution queue, as defined on the class
         :param float time_limit: Default None, no time limit.
@@ -452,8 +448,10 @@ class PipelineController(object):
         Graph itself is a dictionary of Nodes (key based on the Node name),
         each node holds links to its parent Nodes (identified by their unique names)
 
-        :return: execution tree, as a nested dictionary
-        Example:
+        :return: execution tree, as a nested dictionary. Example:
+
+        .. code-block:: py
+
             {
                 'stage1' : Node() {
                     name: 'stage1'
@@ -461,6 +459,7 @@ class PipelineController(object):
                     ...
                 },
             }
+
         """
         return self._nodes
 

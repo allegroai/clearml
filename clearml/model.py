@@ -459,11 +459,11 @@ class Model(BaseModel):
         :param project_name: Optional, filter based project name string, if not given query models from all projects
         :param model_name: Optional Model name as shown in the model artifactory
         :param tags: Optional filter models based on list of tags, example: ['production', 'verified', '-qa']
-        Notice use '-' prefix to filter out tags.
+            Notice use '-' prefix to filter out tags.
         :param only_published: If True only return published models.
         :param include_archived: If True return archived models.
         :param max_results: Optional return the last X models,
-        sorted by last update time (from the most recent to the least).
+            sorted by last update time (from the most recent to the least).
 
         :return: ModeList of Models objects
         """
@@ -825,7 +825,7 @@ class InputModel(Model):
 
         :param object task: A Task object.
         :param str name: The model name to be stored on the Task
-        (default the filename, of the model weights, without the file extension)
+            (default the filename, of the model weights, without the file extension)
         """
         self._set_task(task)
 

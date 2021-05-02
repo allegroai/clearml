@@ -380,8 +380,8 @@ class Dataset(object):
     def finalize(self, verbose=False, raise_on_error=True):
         # type: (bool, bool) -> bool
         """
-        Finalize the dataset (if upload was not called, it will be called automatically) publish dataset Task.
-        If files need to be uploaded, throw exception (or return False)
+        Finalize the dataset publish dataset Task. upload must first called to verify there are not pending uploads.
+        If files do need to be uploaded, it throws an exception (or return False)
 
         :param verbose: If True print verbose progress report
         :param raise_on_error: If True raise exception if dataset finalizing failed
@@ -491,10 +491,11 @@ class Dataset(object):
         If dataset_id is give, return a list of files that remained unchanged since the specified dataset_version
 
         :param dataset_path: Only match files matching the dataset_path (including wildcards).
-            Example: folder/sub/*.json
+            Example: 'folder/sub/*.json'
         :param recursive: If True (default) matching dataset_path recursively
         :param dataset_id: Filter list based on the dataset id containing the latest version of the file.
             Default: None, do not filter files based on parent dataset.
+
         :return: List of files with relative path
             (files might not be available locally until get_local_copy() is called)
         """
@@ -571,13 +572,17 @@ class Dataset(object):
 
     def get_dependency_graph(self):
         """
-        return the DAG of the dataset dependencies (all previous dataset version and their parents/
+        return the DAG of the dataset dependencies (all previous dataset version and their parents)
+
         Example:
-        {
-            'current_dataset_id': ['parent_1_id', 'parent_2_id'],
-            'parent_2_id': ['parent_1_id'],
-            'parent_1_id': [],
-        }
+
+        .. code-block:: py
+
+            {
+                'current_dataset_id': ['parent_1_id', 'parent_2_id'],
+                'parent_2_id': ['parent_1_id'],
+                'parent_1_id': [],
+            }
 
         :return: dict representing the genealogy dag graph of the current dataset
         """
@@ -644,7 +649,7 @@ class Dataset(object):
 
         :param dataset_name: Naming the new dataset
         :param dataset_project: Project containing the dataset.
-        If not specified, infer project name form parent datasets
+            If not specified, infer project name form parent datasets
         :param parent_datasets: Expand a parent dataset by adding/removing files
         :param use_current_task: False (default), a new Dataset task is created.
             If True, the dataset is created on the current Task.

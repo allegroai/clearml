@@ -1,6 +1,16 @@
 import re
 import typing
-from collections import UserDict, OrderedDict, UserList
+from collections import OrderedDict
+
+try:
+    from collections import UserList
+except ImportError:
+    UserList = list
+
+try:
+    from collections import UserDict
+except ImportError:
+    UserDict = dict
 
 from clearml.backend_api import Session
 from clearml.backend_api.services import models

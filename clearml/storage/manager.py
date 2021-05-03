@@ -5,7 +5,7 @@ import tarfile
 from multiprocessing.pool import ThreadPool
 from random import random
 from time import time
-from typing import Optional
+from typing import List, Optional
 from zipfile import ZipFile
 
 from pathlib2 import Path
@@ -38,8 +38,8 @@ class StorageManager(object):
         :param str cache_context: Optional caching context identifier (string), default context 'global'
         :param bool extract_archive: if True returned path will be a cached folder containing the archive's content,
             currently only zip files are supported.
-        :param name: name of the target file
-        :param force_download: download file from remote even if exists in local cache
+        :param str name: name of the target file
+        :param bool force_download: download file from remote even if exists in local cache
         :return: Full path to local copy of the requested url. Return None on Error.
         """
         cache = CacheManager.get_cache_manager(cache_context=cache_context)
@@ -292,3 +292,26 @@ class StorageManager(object):
                 res.wait()
 
         return local_folder
+
+    @classmethod
+    def list(cls, remote_url):
+        # type: (str) -> Optional[List[str]]
+        """
+        Return a list of object names inside the base path
+
+        :param str remote_url: The base path.
+            For Google Storage, Azure and S3 it is the bucket of the path, for local files it is the root directory.
+            For example: AWS S3: `s3://bucket/folder_` will list all the files you have in
+            `s3://bucket-name/folder_*/*`. The same behaviour with Google Storage: `gs://bucket/folder_`,
+            Azure blob storage: `azure://bucket/folder_` and also file system listing: `/mnt/share/folder_`
+
+        :return: The paths of all the objects in the storage base path under prefix, relative to the base path.
+            None in case of list operation is not supported (http and https protocols for example)
+        """
+        helper = StorageHelper.get(remote_url)
+        try:
+            names_list = helper.list(prefix=remote_url)
+        except Exception as ex:
+            LoggerRoot.get_base_logger().warning("Can not list files for '{}' - {}".format(remote_url, ex))
+            names_list = None
+        return names_list

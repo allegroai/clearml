@@ -289,16 +289,16 @@ class BackgroundMonitor(object):
         execute_in_subprocess = task._report_subprocess_enabled
 
         if not execute_in_subprocess:
-            for d in BackgroundMonitor._instances.get(id(task), []):
+            for d in BackgroundMonitor._instances.get(id(task.id), []):
                 d._start()
         elif not BackgroundMonitor._main_process:
             cls._parent_pid = os.getpid()
             cls._sub_process_started = SafeEvent()
             cls._sub_process_started.clear()
             # setup
-            for d in BackgroundMonitor._instances.get(id(task), []):
+            for d in BackgroundMonitor._instances.get(id(task.id), []):
                 d.set_subprocess_mode()
-            BackgroundMonitor._main_process = Process(target=cls._background_process_start, args=(id(task), ))
+            BackgroundMonitor._main_process = Process(target=cls._background_process_start, args=(id(task.id), ))
             BackgroundMonitor._main_process.daemon = True
             # Hack allow to create daemon subprocesses (even though python doesn't like it)
             un_daemonize = False

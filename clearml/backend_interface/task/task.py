@@ -1085,8 +1085,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :return: True if the parameter was deleted successfully
         """
         if not Session.check_min_api_version('2.9'):
-            raise ValueError("Delete hyper parameter is not supported by your clearml-server, "
-                             "upgrade to the latest version")
+            raise ValueError(
+                "Delete hyper-parameter is not supported by your clearml-server, "
+                "upgrade to the latest version")
+
         with self._edit_lock:
             paramkey = tasks.ParamKey(section=name.split('/', 1)[0], name=name.split('/', 1)[1])
             res = self.send(tasks.DeleteHyperParamsRequest(
@@ -1188,23 +1190,55 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return self._get_task_property("execution.docker_cmd", raise_on_error=False, log_on_error=False)
 
     def set_artifacts(self, artifacts_list=None):
-        # type: (Sequence[tasks.Artifact]) -> ()
+        # type: (Sequence[tasks.Artifact]) -> Optional[List[tasks.Artifact]]
         """
         List of artifacts (tasks.Artifact) to update the task
 
         :param list artifacts_list: list of artifacts (type tasks.Artifact)
+        :return: List of current Task's Artifacts or None if error.
         """
         if not Session.check_min_api_version('2.3'):
-            return False
+            return None
         if not (isinstance(artifacts_list, (list, tuple))
                 and all(isinstance(a, tasks.Artifact) for a in artifacts_list)):
-            raise ValueError('Expected artifacts to [tasks.Artifacts]')
+            raise ValueError('Expected artifacts as List[tasks.Artifact]')
         with self._edit_lock:
             self.reload()
             execution = self.data.execution
             keys = [a.key for a in artifacts_list]
             execution.artifacts = [a for a in execution.artifacts or [] if a.key not in keys] + artifacts_list
             self._edit(execution=execution)
+        return execution.artifacts or []
+
+    def _add_artifacts(self, artifacts_list):
+        # type: (Sequence[tasks.Artifact]) -> Optional[List[tasks.Artifact]]
+        """
+        List of artifacts (tasks.Artifact) to add to the the task
+        If an artifact by the same name already exists it will overwrite the existing artifact.
+
+        :param list artifacts_list: list of artifacts (type tasks.Artifact)
+        :return: List of current Task's Artifacts
+        """
+        if not Session.check_min_api_version('2.3'):
+            return None
+        if not (isinstance(artifacts_list, (list, tuple))
+                and all(isinstance(a, tasks.Artifact) for a in artifacts_list)):
+            raise ValueError('Expected artifacts as List[tasks.Artifact]')
+
+        with self._edit_lock:
+            if Session.check_min_api_version("2.13") and not self._offline_mode:
+                req = tasks.AddOrUpdateArtifactsRequest(task=self.task_id, artifacts=artifacts_list, force=True)
+                res = self.send(req, raise_on_errors=False)
+                if not res or not res.response or not res.response.updated:
+                    return None
+                self.reload()
+            else:
+                self.reload()
+                execution = self.data.execution
+                keys = [a.key for a in artifacts_list]
+                execution.artifacts = [a for a in execution.artifacts or [] if a.key not in keys] + artifacts_list
+                self._edit(execution=execution)
+        return self.data.execution.artifacts or []
 
     def _set_model_design(self, design=None):
         # type: (str) -> ()
@@ -1331,6 +1365,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param name: The name of the Task.
         :type name: str
         """
+        name = name or ''
         self._set_task_property("name", str(name))
         self._edit(name=self.data.name)
 
@@ -1357,8 +1392,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param comment: The comment / description for the Task.
         :type comment: str
         """
+        comment = comment or ''
         self._set_task_property("comment", str(comment))
-        self._edit(comment=comment)
+        self._edit(comment=str(comment))
 
     def set_task_type(self, task_type):
         # type: (Union[str, Task.TaskTypes]) -> ()
@@ -1547,6 +1583,23 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return None if configuration name is not valid
         """
         return self._get_configuration_text(name)
+
+    def get_configuration_objects(self):
+        # type: () -> Optional[Mapping[str, str]]
+        """
+        Get the Task's configuration object section as a blob of text
+        Use only for automation (externally), otherwise use `Task.connect_configuration`.
+
+        :return: The Task's configurations as a
+        dict (config name as key) and text blob as value (unconstrained text string)
+        """
+        if not Session.check_min_api_version('2.9'):
+            raise ValueError(
+                "Multiple configurations are not supported with the current 'clearml-server', "
+                "please upgrade to the latest version")
+
+        configuration = self.data.configuration or {}
+        return {k: v.value for k, v in configuration.items()}
 
     def set_configuration_object(self, name, config_text=None, description=None, config_type=None):
         # type: (str, Optional[str], Optional[str], Optional[str]) -> None
@@ -1819,7 +1872,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         mutually_exclusive(config_dict=config_dict, config_text=config_text, _check_none=True)
 
         if not Session.check_min_api_version('2.9'):
-            raise ValueError("Multiple configurations is not supported with the current 'clearml-server', "
+            raise ValueError("Multiple configurations are not supported with the current 'clearml-server', "
                              "please upgrade to the latest version")
 
         if description:
@@ -1843,7 +1896,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return None if configuration name is not valid.
         """
         if not Session.check_min_api_version('2.9'):
-            raise ValueError("Multiple configurations is not supported with the current 'clearml-server', "
+            raise ValueError("Multiple configurations are not supported with the current 'clearml-server', "
                              "please upgrade to the latest version")
 
         configuration = self.data.configuration or {}

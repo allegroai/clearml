@@ -1,6 +1,16 @@
 import re
 import typing
-from collections import UserDict, OrderedDict, UserList
+from collections import OrderedDict
+
+try:
+    from collections import UserList
+except ImportError:
+    UserList = list
+
+try:
+    from collections import UserDict
+except ImportError:
+    UserDict = dict
 
 from clearml.backend_api import Session
 from clearml.backend_api.services import models
@@ -8,7 +18,7 @@ from clearml.backend_api.services import models
 
 class ModelsList(UserList):
     def __init__(self, models_dict):
-        # type: (typing.OrderedDict["clearml.Model"]) -> None
+        # type: (typing.OrderedDict["clearml.Model"]) -> None # noqa: F821
         self._models = models_dict
         super(ModelsList, self).__init__(models_dict.values())
 
@@ -38,14 +48,14 @@ class TaskModels(UserDict):
         return self._output
 
     def __init__(self, task):
-        # type: ("clearml.Task") -> None
+        # type: ("clearml.Task") -> None # noqa: F821
         self._input = self._get_input_models(task)
         self._output = self._get_output_models(task)
 
         super(TaskModels, self).__init__({"input": self._input, "output": self._output})
 
     def _get_input_models(self, task):
-        # type: ("clearml.Task") -> ModelsList
+        # type: ("clearml.Task") -> ModelsList # noqa: F821
 
         if Session.check_min_api_version("2.13"):
             parsed_ids = list(task.input_models_id.values())
@@ -88,7 +98,7 @@ class TaskModels(UserDict):
 
     @staticmethod
     def _get_output_models(task):
-        # type: ("clearml.Task") -> ModelsList
+        # type: ("clearml.Task") -> ModelsList # noqa: F821
 
         res = task.send(
             models.GetAllRequest(

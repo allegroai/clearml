@@ -5,7 +5,7 @@ import tarfile
 from multiprocessing.pool import ThreadPool
 from random import random
 from time import time
-from typing import Optional
+from typing import List, Optional
 from zipfile import ZipFile
 
 from pathlib2 import Path
@@ -38,8 +38,8 @@ class StorageManager(object):
         :param str cache_context: Optional caching context identifier (string), default context 'global'
         :param bool extract_archive: if True returned path will be a cached folder containing the archive's content,
             currently only zip files are supported.
-        :param name: name of the target file
-        :param force_download: download file from remote even if exists in local cache
+        :param str name: name of the target file
+        :param bool force_download: download file from remote even if exists in local cache
         :return: Full path to local copy of the requested url. Return None on Error.
         """
         cache = CacheManager.get_cache_manager(cache_context=cache_context)
@@ -194,18 +194,22 @@ class StorageManager(object):
         # type: (str, str, Optional[str]) -> None
         """
         Upload local folder recursively to a remote storage, maintaining the sub folder structure
-        in the remote storage. For Example:
-            If we have a local file: ~/folder/sub/file.ext
-            StorageManager.upload_folder('~/folder/', 's3://bucket/')
-            will create: s3://bucket/sub/file.ext
-        :param local_folder: Local folder to recursively upload
-        :param remote_url: Target remote storage location, tree structure of `local_folder` will
-        be created under the target remote_url. Supports Http/S3/GS/Azure and shared filesystem.
-        Example: 's3://bucket/data/'
-        :param match_wildcard: If specified only upload files matching the `match_wildcard`
-        Example: `*.json`
-        (Notice: target file size/date are not checked). Default True, always upload
-        Notice if uploading to http, we will always overwrite the target.
+        in the remote storage.
+
+        .. note::
+
+            If we have a local file `~/folder/sub/file.ext` then
+            `StorageManager.upload_folder('~/folder/', 's3://bucket/')`
+            will create `s3://bucket/sub/file.ext`
+
+        :param str local_folder: Local folder to recursively upload
+        :param str remote_url: Target remote storage location, tree structure of `local_folder` will
+            be created under the target remote_url. Supports Http/S3/GS/Azure and shared filesystem.
+            Example: 's3://bucket/data/'
+        :param str match_wildcard: If specified only upload files matching the `match_wildcard`
+            Example: `*.json`
+            Notice: target file size/date are not checked. Default True, always upload.
+            Notice if uploading to http, we will always overwrite the target.
         """
 
         base_logger = LoggerRoot.get_base_logger()
@@ -235,19 +239,24 @@ class StorageManager(object):
         # type: (str, Optional[str], Optional[str], bool) -> Optional[str]
         """
         Download remote folder recursively to the local machine, maintaining the sub folder structure
-        from the remote storage. For Example:
-            If we have a local file: s3://bucket/sub/file.ext
-            StorageManager.download_folder('s3://bucket/', '~/folder/')
-            will create: ~/folder/sub/file.ext
-        :param remote_url: Source remote storage location, tree structure of `remote_url` will
-        be created under the target local_folder. Supports S3/GS/Azure and shared filesystem.
-        Example: 's3://bucket/data/'
-        :param local_folder: Local target folder to create the full tree from remote_url.
-        If None, use the cache folder. (Default: use cache folder)
+        from the remote storage.
+
+        .. note::
+
+            If we have a local file `s3://bucket/sub/file.ext` then
+            `StorageManager.download_folder('s3://bucket/', '~/folder/')`
+            will create `~/folder/sub/file.ext`
+
+        :param str remote_url: Source remote storage location, tree structure of `remote_url` will
+            be created under the target local_folder. Supports S3/GS/Azure and shared filesystem.
+            Example: 's3://bucket/data/'
+        :param str local_folder: Local target folder to create the full tree from remote_url.
+            If None, use the cache folder. (Default: use cache folder)
         :param match_wildcard: If specified only download files matching the `match_wildcard`
-        Example: `*.json`
-        :param overwrite: If False, and target files exist do not download.
-        If True always download the remote files. Default False.
+            Example: `*.json`
+        :param bool overwrite: If False, and target files exist do not download.
+            If True always download the remote files. Default False.
+
         :return: Target local folder
         """
 
@@ -283,3 +292,26 @@ class StorageManager(object):
                 res.wait()
 
         return local_folder
+
+    @classmethod
+    def list(cls, remote_url):
+        # type: (str) -> Optional[List[str]]
+        """
+        Return a list of object names inside the base path
+
+        :param str remote_url: The base path.
+            For Google Storage, Azure and S3 it is the bucket of the path, for local files it is the root directory.
+            For example: AWS S3: `s3://bucket/folder_` will list all the files you have in
+            `s3://bucket-name/folder_*/*`. The same behaviour with Google Storage: `gs://bucket/folder_`,
+            Azure blob storage: `azure://bucket/folder_` and also file system listing: `/mnt/share/folder_`
+
+        :return: The paths of all the objects in the storage base path under prefix, relative to the base path.
+            None in case of list operation is not supported (http and https protocols for example)
+        """
+        helper = StorageHelper.get(remote_url)
+        try:
+            names_list = helper.list(prefix=remote_url)
+        except Exception as ex:
+            LoggerRoot.get_base_logger().warning("Can not list files for '{}' - {}".format(remote_url, ex))
+            names_list = None
+        return names_list

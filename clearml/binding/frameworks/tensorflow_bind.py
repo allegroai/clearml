@@ -11,7 +11,6 @@ from typing import Any
 import numpy as np
 import six
 from PIL import Image
-from pathlib2 import Path
 
 from ...debugging.log import LoggerRoot
 from ..frameworks import _patched_call, WeightsFileHandler, _Empty
@@ -27,15 +26,20 @@ except ImportError:
 
 class TensorflowBinding(object):
     @classmethod
-    def update_current_task(cls, task):
+    def update_current_task(cls, task, patch_reporting=True, patch_model_io=True):
         if not task:
             IsTensorboardInit.clear_tensorboard_used()
+
         EventTrainsWriter.update_current_task(task)
-        PatchSummaryToEventTransformer.update_current_task(task)
-        PatchTensorFlowEager.update_current_task(task)
-        PatchKerasModelIO.update_current_task(task)
-        PatchTensorflowModelIO.update_current_task(task)
-        PatchTensorflow2ModelIO.update_current_task(task)
+
+        if patch_reporting:
+            PatchSummaryToEventTransformer.update_current_task(task)
+            PatchTensorFlowEager.update_current_task(task)
+
+        if patch_model_io:
+            PatchKerasModelIO.update_current_task(task)
+            PatchTensorflowModelIO.update_current_task(task)
+            PatchTensorflow2ModelIO.update_current_task(task)
 
 
 class IsTensorboardInit(object):
@@ -1144,11 +1148,11 @@ class PatchTensorFlowEager(object):
         PatchTensorFlowEager.defaults_dict.update(kwargs)
         PatchTensorFlowEager.__main_task = task
         # make sure we patched the SummaryToEventTransformer
-        PatchTensorFlowEager._patch_model_checkpoint()
-        PostImportHookPatching.add_on_import('tensorflow', PatchTensorFlowEager._patch_model_checkpoint)
+        PatchTensorFlowEager._patch_summary_ops()
+        PostImportHookPatching.add_on_import('tensorflow', PatchTensorFlowEager._patch_summary_ops)
 
     @staticmethod
-    def _patch_model_checkpoint():
+    def _patch_summary_ops():
         if PatchTensorFlowEager.__original_fn_scalar is not None:
             return
         if 'tensorflow' in sys.modules:

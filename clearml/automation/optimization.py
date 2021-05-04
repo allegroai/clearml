@@ -62,7 +62,7 @@ class Objective(object):
         """
         Return a specific task scalar value based on the objective settings (title/series).
 
-        :param str task_id: The Task id to retrieve scalar from (or ``TrainsJob`` object).
+        :param str task_id: The Task id to retrieve scalar from (or ``ClearMLJob`` object).
 
         :return: The scalar value.
         """
@@ -101,7 +101,7 @@ class Objective(object):
         """
         Return the current raw value (without sign normalization) of the objective.
 
-        :param str task: The Task or Job to retrieve scalar from (or ``TrainsJob`` object).
+        :param str task: The Task or Job to retrieve scalar from (or ``ClearmlJob`` object).
 
         :return: Tuple(iteration, value) if, and only if, the metric exists. None if the metric does not exist.
 
@@ -368,7 +368,7 @@ class SearchStrategy(object):
         Abstract helper function. Implementation is not required. Default use in start default implementation
         Main optimization loop, called from the daemon thread created by :meth:`start`.
 
-        - Call monitor job on every ``TrainsJob`` in jobs:
+        - Call monitor job on every ``ClearmlJob`` in jobs:
 
           - Check the performance or elapsed time, and then decide whether to kill the jobs.
 
@@ -419,7 +419,7 @@ class SearchStrategy(object):
         Abstract helper function. Implementation is not required. Default use in process_step default implementation
         Create a new job if needed. return the newly created job. If no job needs to be created, return ``None``.
 
-        :return: A Newly created TrainsJob object, or None if no TrainsJob created.
+        :return: A Newly created ClearmlJob object, or None if no ClearmlJob created.
         """
         return None
 
@@ -434,7 +434,7 @@ class SearchStrategy(object):
         If there is a budget limitation, this call should update
         ``self.budget.compute_time.update`` / ``self.budget.iterations.update``
 
-        :param ClearmlJob job: A ``TrainsJob`` object to monitor.
+        :param ClearmlJob job: A ``ClearmlJob`` object to monitor.
 
         :return: False, if the job is no longer relevant.
         """
@@ -474,9 +474,9 @@ class SearchStrategy(object):
     def get_running_jobs(self):
         # type: () -> Sequence[ClearmlJob]
         """
-        Return the current running TrainsJobs.
+        Return the current running ClearmlJob.
 
-        :return: List of TrainsJob objects.
+        :return: List of ClearmlJob objects.
         """
         return self._current_jobs
 
@@ -494,9 +494,9 @@ class SearchStrategy(object):
         # type: () -> Mapping[str, dict]
         """
         Return a Task IDs dict created by this optimizer until now.
-        The values of the returned dict are the TrainsJob.
+        The values of the returned dict are the ClearmlJob.
 
-        :return: dict of task IDs (str) as keys, and their TrainsJob as values.
+        :return: dict of task IDs (str) as keys, and their ClearmlJob as values.
         """
         return {job_id: job_val[0] for job_id, job_val in self._created_jobs_ids.items()}
 
@@ -536,7 +536,7 @@ class SearchStrategy(object):
     ):
         # type: (...) -> ClearmlJob
         """
-        Create a Job using the specified arguments, ``TrainsJob`` for details.
+        Create a Job using the specified arguments, ``ClearmlJob`` for details.
 
         :return: A newly created Job instance.
         """
@@ -792,7 +792,7 @@ class GridSearch(SearchStrategy):
         """
         Create a new job if needed. Return the newly created job. If no job needs to be created, return ``None``.
 
-        :return: A newly created TrainsJob object, or None if no TrainsJob is created.
+        :return: A newly created ClearmlJob object, or None if no ClearmlJob is created.
         """
         try:
             parameters = self._next_configuration()
@@ -867,7 +867,7 @@ class RandomSearch(SearchStrategy):
         """
         Create a new job if needed. Return the newly created job. If no job needs to be created, return ``None``.
 
-        :return: A newly created TrainsJob object, or None if no TrainsJob created
+        :return: A newly created ClearmlJob object, or None if no ClearmlJob created
         """
         parameters = None
 

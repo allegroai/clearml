@@ -26,7 +26,8 @@ from pathlib2 import Path
 
 from .backend_config.defs import get_active_config_file, get_config_file
 from .backend_api.services import tasks, projects, queues
-from .backend_api.session.session import Session, ENV_ACCESS_KEY, ENV_SECRET_KEY
+from .backend_api.session.session import (
+    Session, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_HOST, ENV_WEB_HOST, ENV_FILES_HOST)
 from .backend_interface.metrics import Metrics
 from .backend_interface.model import Model as BackendModel
 from .backend_interface.task import Task as _Task
@@ -91,37 +92,37 @@ class Task(_Task):
     advanced experimentation functions, such as autoML.
 
     .. warning::
-       Do not construct Task objects directly. Use one of the methods listed below to create experiments or
-       reference existing experiments.
+        Do not construct Task objects directly. Use one of the methods listed below to create experiments or
+        reference existing experiments.
 
     For detailed information about creating Task objects, see the following methods:
 
     - Create a new reproducible Task - :meth:`Task.init`
 
-      .. important::
+    .. important::
         In some cases, ``Task.init`` may return a Task object which is already stored in **ClearML Server** (already
         initialized), instead of creating a new Task. For a detailed explanation of those cases, see the ``Task.init``
         method.
 
-    - Create a new non-reproducible Task - :meth:`Task.create`
+    - Manually create a new Task (no auto-logging will apply) - :meth:`Task.create`
     - Get the current running Task - :meth:`Task.current_task`
     - Get another (different) Task - :meth:`Task.get_task`
 
     .. note::
-       The **ClearML** documentation often refers to a Task as, "Task (experiment)".
+        The **ClearML** documentation often refers to a Task as, "Task (experiment)".
 
-       "Task" refers to the class in the ClearML Python Client Package, the object in your Python experiment script,
-       and the entity with which **ClearML Server** and **ClearML Agent** work.
+        "Task" refers to the class in the ClearML Python Client Package, the object in your Python experiment script,
+        and the entity with which **ClearML Server** and **ClearML Agent** work.
 
-       "Experiment" refers to your deep learning solution, including its connected components, inputs, and outputs,
-       and is the experiment you can view, analyze, compare, modify, duplicate, and manage using the ClearML
-       **Web-App** (UI).
+        "Experiment" refers to your deep learning solution, including its connected components, inputs, and outputs,
+        and is the experiment you can view, analyze, compare, modify, duplicate, and manage using the ClearML
+        **Web-App** (UI).
 
-       Therefore, a "Task" is effectively an "experiment", and "Task (experiment)" encompasses its usage throughout
-       the ClearML.
+        Therefore, a "Task" is effectively an "experiment", and "Task (experiment)" encompasses its usage throughout
+        the ClearML.
 
-       The exception to this Task behavior is sub-tasks (non-reproducible Tasks), which do not use the main execution
-       Task. Creating a sub-task always creates a new Task with a new  Task ID.
+        The exception to this Task behavior is sub-tasks (non-reproducible Tasks), which do not use the main execution
+        Task. Creating a sub-task always creates a new Task with a new  Task ID.
     """
 
     TaskTypes = _Task.TaskTypes
@@ -221,27 +222,26 @@ class Task(_Task):
             call ``Task.get_task``. See the ``Task.get_task`` method for an example.
 
         For example:
+        The first time the following code runs, it will create a new Task. The status will be Completed.
 
-            The first time the following code runs, it will create a new Task. The status will be Completed.
+        .. code-block:: py
 
-            .. code-block:: py
+            from clearml import Task
+            task = Task.init('myProject', 'myTask')
 
-                from clearml import Task
-                task = Task.init('myProject', 'myTask')
+        If this code runs again, it will not create a new Task. It does not store a model or artifact,
+        it is not Published (its status Completed) , it was not Archived, and a new Task is not forced.
 
-            If this code runs again, it will not create a new Task. It does not store a model or artifact,
-            it is not Published (its status Completed) , it was not Archived, and a new Task is not forced.
+        If the Task is Published or Archived, and run again, it will create a new Task with a new Task ID.
 
-            If the Task is Published or Archived, and run again, it will create a new Task with a new Task ID.
+        The following code will create a new Task every time it runs, because it stores an artifact.
 
-            The following code will create a new Task every time it runs, because it stores an artifact.
+        .. code-block:: py
 
-            .. code-block:: py
+            task = Task.init('myProject', 'myOtherTask')
 
-                task = Task.init('myProject', 'myOtherTask')
-
-                d = {'a': '1'}
-                task.upload_artifact('myArtifact', d)
+            d = {'a': '1'}
+            task.upload_artifact('myArtifact', d)
 
         :param str project_name: The name of the project in which the experiment will be created. If the project does
             not exist, it is created. If ``project_name`` is ``None``, the repository name is used. (Optional)
@@ -286,7 +286,7 @@ class Task(_Task):
                 all previous artifacts / models/ logs are intact.
                 New logs will continue iteration/step based on the previous-execution maximum iteration value.
                 For example:
-                    The last train/loss scalar reported was iteration 100, the next report will be iteration 101.
+                The last train/loss scalar reported was iteration 100, the next report will be iteration 101.
 
             The values are:
 
@@ -300,8 +300,7 @@ class Task(_Task):
             If True is passed, the default files_server will be used for model storage.
             In the default location, ClearML creates a subfolder for the output.
             The subfolder structure is the following:
-
-                <output destination name> / <project name> / <task name>.< Task ID>
+            <output destination name> / <project name> / <task name>.<Task ID>
 
             The following are examples of ``output_uri`` values for the supported locations:
 
@@ -312,6 +311,7 @@ class Task(_Task):
             - Default file server: True
 
             .. important::
+
                For cloud storage, you must install the **ClearML** package for your cloud storage type,
                and then configure your storage credentials. For detailed information, see
                `ClearML Python Client Extras <./references/clearml_extras_storage/>`_ in the "ClearML Python Client
@@ -322,11 +322,11 @@ class Task(_Task):
             The values are:
 
             - ``True`` - Automatically connect. (default)
-            -  ``False`` - Do not automatically connect.
+            - ``False`` - Do not automatically connect.
             - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
-              arguments. The dictionary keys are argparse variable names and the values are booleans.
-              The ``False`` value excludes the specified argument from the Task's parameter section.
-              Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
+                arguments. The dictionary keys are argparse variable names and the values are booleans.
+                The ``False`` value excludes the specified argument from the Task's parameter section.
+                Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
 
             For example:
 
@@ -344,16 +344,16 @@ class Task(_Task):
             The values are:
 
             - ``True`` - Automatically connect (default)
-            -  ``False`` - Do not automatically connect
+            - ``False`` - Do not automatically connect
             - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
-              frameworks. The dictionary keys are frameworks and the values are booleans.
-              Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
+                frameworks. The dictionary keys are frameworks and the values are booleans.
+                Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
 
             For example:
 
             .. code-block:: py
 
-               auto_connect_frameworks={'matplotlib': True, 'tensorflow': True, 'pytorch': True,
+               auto_connect_frameworks={'matplotlib': True, 'tensorflow': True, 'tensorboard': True, 'pytorch': True,
                     'xgboost': True, 'scikit': True, 'fastai': True, 'lightgbm': True, 'hydra': True}
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
@@ -373,10 +373,10 @@ class Task(_Task):
             - ``True`` - Automatically connect (default)
             -  ``False`` - Do not automatically connect
             - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of stdout and
-              stderr. The dictionary keys are 'stdout' , 'stderr' and 'logging', the values are booleans.
-              Keys missing from the dictionary default to ``False``, and an empty dictionary defaults to ``False``.
-              Notice, the default behaviour is logging stdout/stderr the
-              `logging` module is logged as a by product of the stderr logging
+                stderr. The dictionary keys are 'stdout' , 'stderr' and 'logging', the values are booleans.
+                Keys missing from the dictionary default to ``False``, and an empty dictionary defaults to ``False``.
+                Notice, the default behaviour is logging stdout/stderr the
+                `logging` module is logged as a by product of the stderr logging
 
             For example:
 
@@ -541,9 +541,16 @@ class Task(_Task):
                     PatchedJoblib.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('matplotlib', True):
                     PatchedMatplotlib.update_current_task(Task.__main_task)
-                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('tensorflow', True):
+                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('tensorflow', True) \
+                        or auto_connect_frameworks.get('tensorboard', True):
                     PatchAbsl.update_current_task(Task.__main_task)
-                    TensorflowBinding.update_current_task(task)
+                    TensorflowBinding.update_current_task(
+                        task,
+                        patch_reporting=(is_auto_connect_frameworks_bool
+                                         or auto_connect_frameworks.get('tensorboard', True)),
+                        patch_model_io=(is_auto_connect_frameworks_bool
+                                        or auto_connect_frameworks.get('tensorflow', True)),
+                    )
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('pytorch', True):
                     PatchPyTorchModelIO.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('xgboost', True):
@@ -695,49 +702,56 @@ class Task(_Task):
         return task
 
     @classmethod
-    def get_task(cls, task_id=None, project_name=None, task_name=None):
-        # type: (Optional[str], Optional[str], Optional[str]) -> Task
+    def get_task(cls, task_id=None, project_name=None, task_name=None, allow_archived=True, task_filter=None):
+        # type: (Optional[str], Optional[str], Optional[str], bool, Optional[dict]) -> Task
         """
         Get a Task by Id, or project name / task name combination.
 
         For example:
 
-            The following code demonstrates calling ``Task.get_task`` to report a scalar to another Task. The output
-            of :meth:`.Logger.report_scalar` from testing is associated with the Task named ``training``. It allows
-            training and testing to run concurrently, because they initialized different Tasks (see :meth:`Task.init`
-            for information about initializing Tasks).
+        The following code demonstrates calling ``Task.get_task`` to report a scalar to another Task. The output
+        of :meth:`.Logger.report_scalar` from testing is associated with the Task named ``training``. It allows
+        training and testing to run concurrently, because they initialized different Tasks (see :meth:`Task.init`
+        for information about initializing Tasks).
 
-            The training script:
+        The training script:
 
-            .. code-block:: py
+        .. code-block:: py
 
-                # initialize the training Task
-                task = Task.init('myProject', 'training')
+            # initialize the training Task
+            task = Task.init('myProject', 'training')
 
-                # do some training
+            # do some training
 
-            The testing script:
+        The testing script:
 
-            .. code-block:: py
+        .. code-block:: py
 
-                # initialize the testing Task
-                task = Task.init('myProject', 'testing')
+            # initialize the testing Task
+            task = Task.init('myProject', 'testing')
 
-                # get the training Task
-                train_task = Task.get_task(project_name='myProject', task_name='training')
+            # get the training Task
+            train_task = Task.get_task(project_name='myProject', task_name='training')
 
-                # report metrics in the training Task
-                for x in range(10):
-                    train_task.get_logger().report_scalar('title', 'series', value=x * 2, iteration=x)
+            # report metrics in the training Task
+            for x in range(10):
+                train_task.get_logger().report_scalar('title', 'series', value=x * 2, iteration=x)
 
         :param str task_id: The Id (system UUID) of the experiment to get.
             If specified, ``project_name`` and ``task_name`` are ignored.
         :param str project_name: The project name of the Task to get.
         :param str task_name: The name of the Task within ``project_name`` to get.
+        :param bool allow_archived: Only applicable if *not* using specific ``task_id``,
+            If True (default) allow to return archived Tasks, if False filter out archived Tasks
+        :param bool task_filter: Only applicable if *not* using specific ``task_id``,
+            Pass additional query filters, on top of project/name. See details in Task.get_tasks.
 
         :return: The Task specified by ID, or project name / experiment name combination.
         """
-        return cls.__get_task(task_id=task_id, project_name=project_name, task_name=task_name)
+        return cls.__get_task(
+            task_id=task_id, project_name=project_name, task_name=task_name,
+            include_archived=allow_archived, task_filter=task_filter,
+        )
 
     @classmethod
     def get_tasks(cls, task_ids=None, project_name=None, task_name=None, task_filter=None):
@@ -1061,8 +1075,8 @@ class Task(_Task):
         :param str name: A section name associated with the connected object. Default: 'General'
             Currently only supported for `dict` / `TaskParameter` objects
             Examples:
-                name='General' will put the connected dictionary under the General section in the hyper-parameters
-                name='Train' will put the connected dictionary under the Train section in the hyper-parameters
+            name='General' will put the connected dictionary under the General section in the hyper-parameters
+            name='Train' will put the connected dictionary under the Train section in the hyper-parameters
 
         :return: The result returned when connecting the object, if supported.
 
@@ -1738,11 +1752,8 @@ class Task(_Task):
         # type: (...) -> bool
         """
         Set user properties for this task.
-        A user property ca contain the following fields (all of type string):
-            * name
-            * value
-            * description
-            * type
+        A user property can contain the following fields (all of type string):
+        name / value / description / type
 
         Examples:
             task.set_user_properties(backbone='great', stable=True)
@@ -1754,49 +1765,49 @@ class Task(_Task):
 
         :param iterables: Properties iterables, each can be:
             * A dictionary of string key (name) to either a string value (value) a dict (property details). If the value
-              is a dict, it must contain a "value" field. For example:
+                is a dict, it must contain a "value" field. For example:
 
-            .. code-block:: py
+                .. code-block:: javascript
 
-                {
-                  "property_name": {"description": "This is a user property", "value": "property value"},
-                  "another_property_name": {"description": "This is another user property", "value": "another value"},
-                  "yet_another_property_name": "some value"
-                }
+                    {
+                        "property_name": {"description": "This is a user property", "value": "property value"},
+                        "another_property_name": {"description": "This is another user property", "value": "another value"},
+                        "yet_another_property_name": "some value"
+                    }
 
             * An iterable of dicts (each representing property details). Each dict must contain a "name" field and a
-              "value" field. For example:
+                "value" field. For example:
 
-            .. code-block:: py
+                .. code-block:: javascript
 
-                [
-                  {
-                    "name": "property_name",
-                    "description": "This is a user property",
-                    "value": "property value"
-                  },
-                  {
-                    "name": "another_property_name",
-                    "description": "This is another user property",
-                    "value": "another value"
-                  }
-                ]
+                    [
+                        {
+                            "name": "property_name",
+                            "description": "This is a user property",
+                            "value": "property value"
+                        },
+                        {
+                            "name": "another_property_name",
+                            "description": "This is another user property",
+                            "value": "another value"
+                        }
+                    ]
 
         :param properties: Additional properties keyword arguments. Key is the property name, and value can be
             a string (property value) or a dict (property details). If the value is a dict, it must contain a "value"
             field. For example:
 
-            .. code-block:: py
+            .. code-block:: javascript
 
-                {
-                  "property_name": "string as property value",
-                  "another_property_name":
-                  {
+            {
+                "property_name": "string as property value",
+                "another_property_name": {
                     "type": "string",
                     "description": "This is user property",
                     "value": "another value"
-                  }
                 }
+            }
+
         """
         if not Session.check_min_api_version("2.9"):
             self.log.info("User properties are not supported by the server")
@@ -1814,7 +1825,8 @@ class Task(_Task):
         """
         Delete hyper-parameters for this task.
         :param iterables: Hyper parameter key iterables. Each an iterable whose possible values each represent
-         a hyper-parameter entry to delete, value formats are:
+        a hyper-parameter entry to delete, value formats are:
+
             * A dictionary containing a 'section' and 'name' fields
             * An iterable (e.g. tuple, list etc.) whose first two items denote 'section' and 'name'
         """
@@ -2230,8 +2242,10 @@ class Task(_Task):
 
         .. code-block:: py
 
-           Task.set_credentials(api_host='http://localhost:8008', web_host='http://localhost:8080',
-            files_host='http://localhost:8081',  key='optional_credentials',  secret='optional_credentials')
+            Task.set_credentials(
+                api_host='http://localhost:8008', web_host='http://localhost:8080', files_host='http://localhost:8081',
+                key='optional_credentials',  secret='optional_credentials'
+            )
             task = Task.init('project name', 'experiment name')
 
         :param str api_host: The API server url. For example, ``host='http://localhost:8008'``
@@ -2245,10 +2259,16 @@ class Task(_Task):
         """
         if api_host:
             Session.default_host = api_host
+            if not running_remotely() and not ENV_HOST.get():
+                ENV_HOST.set(api_host)
         if web_host:
             Session.default_web = web_host
+            if not running_remotely() and not ENV_WEB_HOST.get():
+                ENV_WEB_HOST.set(web_host)
         if files_host:
             Session.default_files = files_host
+            if not running_remotely() and not ENV_FILES_HOST.get():
+                ENV_FILES_HOST.set(files_host)
         if key:
             Session.default_key = key
             if not running_remotely():
@@ -2886,122 +2906,122 @@ class Task(_Task):
 
         is_sub_process = self.__is_subprocess()
 
-        if True:  # not is_sub_process: # todo: remove IF
-            # noinspection PyBroadException
-            try:
-                wait_for_uploads = True
-                # first thing mark task as stopped, so we will not end up with "running" on lost tasks
-                # if we are running remotely, the daemon will take care of it
-                task_status = None
-                wait_for_std_log = True
-                if (not running_remotely() or DEBUG_SIMULATE_REMOTE_TASK.get()) \
-                        and self.is_main_task() and not is_sub_process:
-                    # check if we crashed, ot the signal is not interrupt (manual break)
-                    task_status = ('stopped', )
-                    if self.__exit_hook:
-                        is_exception = self.__exit_hook.exception
-                        # check if we are running inside a debugger
-                        if not is_exception and sys.modules.get('pydevd'):
-                            # noinspection PyBroadException
-                            try:
-                                is_exception = sys.last_type
-                            except Exception:
-                                pass
-
-                        # only if we have an exception (and not ctrl-break) or signal is not SIGTERM / SIGINT
-                        if (is_exception and not isinstance(self.__exit_hook.exception, KeyboardInterrupt)) \
-                                or (not self.__exit_hook.remote_user_aborted and
-                                    self.__exit_hook.signal not in (None, 2, 15)):
-                            task_status = (
-                                'failed',
-                                'Exception {}'.format(is_exception) if is_exception else
-                                'Signal {}'.format(self.__exit_hook.signal))
-                            wait_for_uploads = False
-                        else:
-                            wait_for_uploads = (self.__exit_hook.remote_user_aborted or self.__exit_hook.signal is None)
-                            if not self.__exit_hook.remote_user_aborted and self.__exit_hook.signal is None and \
-                                    not is_exception:
-                                task_status = ('completed', )
-                            else:
-                                task_status = ('stopped', )
-                                # user aborted. do not bother flushing the stdout logs
-                                wait_for_std_log = self.__exit_hook.signal is not None
-
-                # wait for repository detection (if we didn't crash)
-                if wait_for_uploads and self._logger:
-                    # we should print summary here
-                    self._summary_artifacts()
-                    # make sure that if we crashed the thread we are not waiting forever
-                    if not is_sub_process:
-                        self._wait_for_repo_detection(timeout=10.)
-
-                # kill the repo thread (negative timeout, do not wait), if it hasn't finished yet.
-                if not is_sub_process:
-                    self._wait_for_repo_detection(timeout=-1)
-
-                # wait for uploads
-                print_done_waiting = False
-                if wait_for_uploads and (BackendModel.get_num_results() > 0 or
-                                         (self.__reporter and self.__reporter.events_waiting())):
-                    self.log.info('Waiting to finish uploads')
-                    print_done_waiting = True
-                # from here, do not send log in background thread
-                if wait_for_uploads:
-                    self.flush(wait_for_uploads=True)
-                    # wait until the reporter flush everything
-                    if self.__reporter:
-                        self.__reporter.stop()
-                        if self.is_main_task():
-                            # notice: this will close the reporting for all the Tasks in the system
-                            Metrics.close_async_threads()
-                            # notice: this will close the jupyter monitoring
-                            ScriptInfo.close()
-                    if self.is_main_task():
+        # noinspection PyBroadException
+        try:
+            wait_for_uploads = True
+            # first thing mark task as stopped, so we will not end up with "running" on lost tasks
+            # if we are running remotely, the daemon will take care of it
+            task_status = None
+            wait_for_std_log = True
+            if (not running_remotely() or DEBUG_SIMULATE_REMOTE_TASK.get()) \
+                    and self.is_main_task() and not is_sub_process:
+                # check if we crashed, ot the signal is not interrupt (manual break)
+                task_status = ('stopped', )
+                if self.__exit_hook:
+                    is_exception = self.__exit_hook.exception
+                    # check if we are running inside a debugger
+                    if not is_exception and sys.modules.get('pydevd'):
                         # noinspection PyBroadException
                         try:
-                            from .storage.helper import StorageHelper
-                            StorageHelper.close_async_threads()
+                            is_exception = sys.last_type
                         except Exception:
                             pass
 
-                    if print_done_waiting:
-                        self.log.info('Finished uploading')
-                # elif self._logger:
-                #     # noinspection PyProtectedMember
-                #     self._logger._flush_stdout_handler()
+                    # only if we have an exception (and not ctrl-break) or signal is not SIGTERM / SIGINT
+                    if (is_exception and not isinstance(is_exception, KeyboardInterrupt)
+                        and is_exception != KeyboardInterrupt) \
+                            or (not self.__exit_hook.remote_user_aborted and
+                                self.__exit_hook.signal not in (None, 2, 15)):
+                        task_status = (
+                            'failed',
+                            'Exception {}'.format(is_exception) if is_exception else
+                            'Signal {}'.format(self.__exit_hook.signal))
+                        wait_for_uploads = False
+                    else:
+                        wait_for_uploads = (self.__exit_hook.remote_user_aborted or self.__exit_hook.signal is None)
+                        if not self.__exit_hook.remote_user_aborted and self.__exit_hook.signal is None and \
+                                not is_exception:
+                            task_status = ('completed', )
+                        else:
+                            task_status = ('stopped', )
+                            # user aborted. do not bother flushing the stdout logs
+                            wait_for_std_log = self.__exit_hook.signal is not None
 
-                # from here, do not check worker status
-                if self._dev_worker:
-                    self._dev_worker.unregister()
-                    self._dev_worker = None
-
-                # stop resource monitoring
-                if self._resource_monitor:
-                    self._resource_monitor.stop()
-                    self._resource_monitor = None
-
-                if self._logger:
-                    self._logger.set_flush_period(None)
-                    # noinspection PyProtectedMember
-                    self._logger._close_stdout_handler(wait=wait_for_uploads or wait_for_std_log)
-
+            # wait for repository detection (if we didn't crash)
+            if wait_for_uploads and self._logger:
+                # we should print summary here
+                self._summary_artifacts()
+                # make sure that if we crashed the thread we are not waiting forever
                 if not is_sub_process:
-                    # change task status
-                    if not task_status:
-                        pass
-                    elif task_status[0] == 'failed':
-                        self.mark_failed(status_reason=task_status[1])
-                    elif task_status[0] == 'completed':
-                        self.completed()
-                    elif task_status[0] == 'stopped':
-                        self.stopped()
+                    self._wait_for_repo_detection(timeout=10.)
 
-                # this is so in theory we can close a main task and start a new one
+            # kill the repo thread (negative timeout, do not wait), if it hasn't finished yet.
+            if not is_sub_process:
+                self._wait_for_repo_detection(timeout=-1)
+
+            # wait for uploads
+            print_done_waiting = False
+            if wait_for_uploads and (BackendModel.get_num_results() > 0 or
+                                     (self.__reporter and self.__reporter.events_waiting())):
+                self.log.info('Waiting to finish uploads')
+                print_done_waiting = True
+            # from here, do not send log in background thread
+            if wait_for_uploads:
+                self.flush(wait_for_uploads=True)
+                # wait until the reporter flush everything
+                if self.__reporter:
+                    self.__reporter.stop()
+                    if self.is_main_task():
+                        # notice: this will close the reporting for all the Tasks in the system
+                        Metrics.close_async_threads()
+                        # notice: this will close the jupyter monitoring
+                        ScriptInfo.close()
                 if self.is_main_task():
-                    Task.__main_task = None
-            except Exception:
-                # make sure we do not interrupt the exit process
-                pass
+                    # noinspection PyBroadException
+                    try:
+                        from .storage.helper import StorageHelper
+                        StorageHelper.close_async_threads()
+                    except Exception:
+                        pass
+
+                if print_done_waiting:
+                    self.log.info('Finished uploading')
+            # elif self._logger:
+            #     # noinspection PyProtectedMember
+            #     self._logger._flush_stdout_handler()
+
+            # from here, do not check worker status
+            if self._dev_worker:
+                self._dev_worker.unregister()
+                self._dev_worker = None
+
+            # stop resource monitoring
+            if self._resource_monitor:
+                self._resource_monitor.stop()
+                self._resource_monitor = None
+
+            if self._logger:
+                self._logger.set_flush_period(None)
+                # noinspection PyProtectedMember
+                self._logger._close_stdout_handler(wait=wait_for_uploads or wait_for_std_log)
+
+            if not is_sub_process:
+                # change task status
+                if not task_status:
+                    pass
+                elif task_status[0] == 'failed':
+                    self.mark_failed(status_reason=task_status[1])
+                elif task_status[0] == 'completed':
+                    self.completed()
+                elif task_status[0] == 'stopped':
+                    self.stopped()
+
+            # this is so in theory we can close a main task and start a new one
+            if self.is_main_task():
+                Task.__main_task = None
+        except Exception:
+            # make sure we do not interrupt the exit process
+            pass
 
         # make sure we store last task state
         if self._offline_mode and not is_sub_process:
@@ -3030,6 +3050,7 @@ class Task(_Task):
 
         # make sure no one will re-enter the shutdown method
         self._at_exit_called = True
+        BackgroundMonitor.wait_for_sub_process()
 
     @classmethod
     def __register_at_exit(cls, exit_callback, only_remove_signal_and_exception_hooks=False):
@@ -3191,7 +3212,7 @@ class Task(_Task):
         cls.__register_at_exit(None, only_remove_signal_and_exception_hooks=True)
 
     @classmethod
-    def __get_task(cls, task_id=None, project_name=None, task_name=None):
+    def __get_task(cls, task_id=None, project_name=None, task_name=None, include_archived=True, task_filter=None):
         if task_id:
             return cls(private=cls.__create_protection, task_id=task_id, log_to_backend=False)
 
@@ -3207,12 +3228,16 @@ class Task(_Task):
             project = None
 
         system_tags = 'system_tags' if hasattr(tasks.Task, 'system_tags') else 'tags'
+        task_filter = task_filter or {}
+        if not include_archived:
+            task_filter['system_tags'] = ['-{}'.format(cls.archived_tag)]
         res = cls._send(
             cls._get_default_session(),
             tasks.GetAllRequest(
                 project=[project.id] if project else None,
                 name=exact_match_regex(task_name) if task_name else None,
-                only_fields=['id', 'name', 'last_update', system_tags]
+                only_fields=['id', 'name', 'last_update', system_tags],
+                **task_filter
             )
         )
         res_tasks = res.response.tasks

@@ -1,6 +1,7 @@
 import os
 import sys
 from copy import copy
+from datetime import datetime
 from functools import partial
 from tempfile import mkstemp, gettempdir
 
@@ -377,13 +378,17 @@ class _JupyterObserver(object):
                             continue
 
                 # get notebook python script
-                if script_code is None:
+                if script_code is None and local_jupyter_filename:
                     script_code, _ = _script_exporter.from_filename(local_jupyter_filename)
                     if cls._store_notebook_artifact:
                         # also upload the jupyter notebook as artifact
                         task.upload_artifact(
-                            name='notebook', artifact_object=Path(local_jupyter_filename),
-                            preview='No preview available')
+                            name='notebook',
+                            artifact_object=Path(local_jupyter_filename),
+                            preview='See `notebook preview` artifact',
+                            metadata={'UPDATE': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')},
+                            wait_on_upload=True,
+                        )
                         # noinspection PyBroadException
                         try:
                             from nbconvert.exporters import HTMLExporter  # noqa
@@ -393,7 +398,11 @@ class _JupyterObserver(object):
                                 f.write(html)
                             task.upload_artifact(
                                 name='notebook preview', artifact_object=local_html,
-                                preview=' ', delete_after_upload=True)
+                                preview='Click `FILE PATH` link',
+                                metadata={'UPDATE': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')},
+                                delete_after_upload=True,
+                                wait_on_upload=True,
+                            )
                         except Exception:
                             pass
 

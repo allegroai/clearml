@@ -564,9 +564,7 @@ class Artifacts(object):
                                   display_data=[(str(k), str(v)) for k, v in metadata.items()] if metadata else None)
 
         # update task artifacts
-        with self._task_edit_lock:
-            self._task_artifact_list.append(artifact)
-            self._task.set_artifacts(self._task_artifact_list)
+        self._add_artifact(artifact)
 
         return True
 
@@ -618,6 +616,15 @@ class Artifacts(object):
 
         # create summary
         self._summary = self._get_statistics()
+
+    def _add_artifact(self, artifact):
+        if not self._task:
+            raise ValueError("Task object not set")
+        with self._task_edit_lock:
+            if artifact not in self._task_artifact_list:
+                self._task_artifact_list.append(artifact)
+            # noinspection PyProtectedMember
+            self._task._add_artifacts(self._task_artifact_list)
 
     def _upload_data_audit_artifacts(self, name):
         # type: (str) -> ()
@@ -681,7 +688,6 @@ class Artifacts(object):
         with self._task_edit_lock:
             if not artifact:
                 artifact = tasks.Artifact(key=name, type=self._pd_artifact_type)
-                self._task_artifact_list.append(artifact)
             artifact_type_data = tasks.ArtifactTypeData()
 
             artifact_type_data.data_hash = current_sha2
@@ -696,7 +702,7 @@ class Artifacts(object):
             artifact.timestamp = int(time())
             artifact.display_data = [(str(k), str(v)) for k, v in pd_metadata.items()] if pd_metadata else None
 
-            self._task.set_artifacts(self._task_artifact_list)
+            self._add_artifact(artifact)
 
     def _upload_local_file(
             self, local_file, name, delete_after_upload=False, override_filename=None, override_filename_ext=None,

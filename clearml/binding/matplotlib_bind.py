@@ -408,6 +408,22 @@ class PatchedMatplotlib:
                                     plotly_renderer.plotly_fig['layout'][_yaxis].pop('type', None)
                                 except Exception:
                                     pass
+
+                        # try to bring back legend
+                        # noinspection PyBroadException
+                        try:
+                            if plotly_renderer.plotly_fig.get('layout', {}).get('showlegend') and \
+                                    plotly_renderer.plotly_fig.get('data'):
+                                # the legend names is the upper half of the data points:
+                                lines_ = plotly_renderer.plotly_fig['data']
+                                half_mark = len(lines_)//2
+                                if len(lines_) % 2 == 0 and \
+                                        all(ln for ln in lines_[half_mark:] if not ln.get('x') and not ln.get('y')):
+                                    for i, line in enumerate(lines_[:half_mark]):
+                                        line['name'] = lines_[i+half_mark].get('name')
+                        except Exception:
+                            pass
+
                         return deepcopy(plotly_renderer.plotly_fig)
 
                     plotly_dict = our_mpl_to_plotly(mpl_fig)

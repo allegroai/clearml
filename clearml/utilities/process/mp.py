@@ -6,7 +6,7 @@ from functools import partial
 from multiprocessing import Process, Lock, Event as ProcessEvent
 from multiprocessing.pool import ThreadPool
 from threading import Thread, Event as TrEvent
-from time import sleep
+from time import sleep, time
 from typing import List, Dict
 
 import psutil
@@ -415,8 +415,17 @@ class BackgroundMonitor(object):
 
     @classmethod
     def clear_main_process(cls):
+        cls.wait_for_sub_process()
         BackgroundMonitor._main_process = None
         BackgroundMonitor._parent_pid = None
         BackgroundMonitor._sub_process_started = None
         BackgroundMonitor._instances = {}
         SingletonThreadPool.clear()
+
+    @classmethod
+    def wait_for_sub_process(cls, timeout=None):
+        if not cls.is_subprocess_enabled():
+            return
+        tic = time()
+        while cls.is_subprocess_alive() and (not timeout or time()-tic < timeout):
+            sleep(0.03)

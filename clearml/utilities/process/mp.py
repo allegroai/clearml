@@ -212,7 +212,7 @@ class BackgroundMonitor(object):
         self._thread = None
         self._wait_timeout = wait_period
         self._subprocess = None if task.is_main_task() else False
-        self._task_obj_id = id(task)
+        self._task_obj_id = id(task.id)
 
     def start(self):
         if not self._thread:

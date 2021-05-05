@@ -158,7 +158,7 @@ class BackgroundLogService(BackgroundMonitor):
         except Exception as ex:
             # noinspection PyProtectedMember
             TaskHandler._log_stderr(
-                "{}\nWARNING: trains.log - Failed logging task to backend ({:d} lines)".format(ex, len(buffer)))
+                "{}\nWARNING: clearml.log - Failed logging task to backend ({:d} lines)".format(ex, len(buffer)))
 
     def flush(self):
         if self.is_alive():
@@ -308,4 +308,4 @@ class TaskHandler(BufferingHandler):
         write = sys.stderr._original_write if hasattr(sys.stderr, '_original_write') else sys.stderr.write
         write('{asctime} - {name} - {levelname} - {message}\n'.format(
             asctime=Formatter().formatTime(makeLogRecord({})),
-            name='trains.log', levelname=getLevelName(level), message=msg))
+            name='clearml.log', levelname=getLevelName(level), message=msg))

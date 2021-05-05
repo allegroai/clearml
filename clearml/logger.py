@@ -42,7 +42,7 @@ class Logger(object):
     methods include scalar plots, line plots, histograms, confusion matrices, 2D and 3D scatter
     diagrams, text logging, tables, and image uploading and reporting.
 
-    In the **ClearML Web-App (UI)**, ``Logger`` output appears in the **RESULTS** tab, **LOG**, **SCALARS**,
+    In the **ClearML Web-App (UI)**, ``Logger`` output appears in the **RESULTS** tab, **CONSOLE**, **SCALARS**,
     **PLOTS**, and **DEBUG SAMPLES** sub-tabs. When you compare experiments, ``Logger`` output appears in the
     comparisons.
 
@@ -125,7 +125,7 @@ class Logger(object):
 
            logger.report_text('log some text', level=logging.DEBUG, print_console=False)
 
-        You can view the reported text in the **ClearML Web-App (UI)**, **RESULTS** tab, **LOG** sub-tab.
+        You can view the reported text in the **ClearML Web-App (UI)**, **RESULTS** tab, **CONSOLE** sub-tab.
 
         :param str msg: The text to log.
         :param int level: The log level from the Python ``logging`` package. The default value is ``logging.INFO``.

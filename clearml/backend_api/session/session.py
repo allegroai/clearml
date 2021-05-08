@@ -11,8 +11,9 @@ from requests.auth import HTTPBasicAuth
 from six.moves.urllib.parse import urlparse, urlunparse
 
 from .callresult import CallResult
-from .defs import ENV_VERBOSE, ENV_HOST, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_WEB_HOST, \
-    ENV_FILES_HOST, ENV_OFFLINE_MODE, ENV_TRAINS_NO_DEFAULT_SERVER
+from .defs import (
+    ENV_VERBOSE, ENV_HOST, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_WEB_HOST,
+    ENV_FILES_HOST, ENV_OFFLINE_MODE, ENV_TRAINS_NO_DEFAULT_SERVER, ENV_AUTH_TOKEN, )
 from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
 from ..config import load
@@ -115,28 +116,37 @@ class Session(TokenManager):
             "auth.token_expiration_threshold_sec", 60
         )
 
+        self._verbose = verbose if verbose is not None else ENV_VERBOSE.get()
+        self._logger = logger
+        self.__auth_token = None
+
+        if ENV_AUTH_TOKEN.get():
+            self.__access_key = self.__secret_key = None
+            self.__auth_token = ENV_AUTH_TOKEN.get()
+            # if we use a token we override make sure we are at least 3600 seconds (1 hour)
+            # away from the token expiration date, ask for a new one.
+            token_expiration_threshold_sec = max(token_expiration_threshold_sec, 3600)
+        else:
+            self.__access_key = api_key or ENV_ACCESS_KEY.get(
+                default=(self.config.get("api.credentials.access_key", None) or self.default_key)
+            )
+            if not self.access_key:
+                raise ValueError(
+                    "Missing access_key. Please set in configuration file or pass in session init."
+                )
+
+            self.__secret_key = secret_key or ENV_SECRET_KEY.get(
+                default=(self.config.get("api.credentials.secret_key", None) or self.default_secret)
+            )
+            if not self.secret_key:
+                raise ValueError(
+                    "Missing secret_key. Please set in configuration file or pass in session init."
+                )
+
+        # init the token manager
         super(Session, self).__init__(
             token_expiration_threshold_sec=token_expiration_threshold_sec, **kwargs
         )
-
-        self._verbose = verbose if verbose is not None else ENV_VERBOSE.get()
-        self._logger = logger
-
-        self.__access_key = api_key or ENV_ACCESS_KEY.get(
-            default=(self.config.get("api.credentials.access_key", None) or self.default_key)
-        )
-        if not self.access_key:
-            raise ValueError(
-                "Missing access_key. Please set in configuration file or pass in session init."
-            )
-
-        self.__secret_key = secret_key or ENV_SECRET_KEY.get(
-            default=(self.config.get("api.credentials.secret_key", None) or self.default_secret)
-        )
-        if not self.secret_key:
-            raise ValueError(
-                "Missing secret_key. Please set in configuration file or pass in session init."
-            )
 
         host = host or self.get_api_server_host(config=self.config)
         if not host:
@@ -611,7 +621,13 @@ class Session(TokenManager):
                 )
             )
 
-        auth = HTTPBasicAuth(self.access_key, self.secret_key)
+        headers = None
+        # use token only once (the second time the token is already built into the http session)
+        if self.__auth_token:
+            headers = dict(Authorization="Bearer {}".format(self.__auth_token))
+            self.__auth_token = None
+
+        auth = HTTPBasicAuth(self.access_key, self.secret_key) if self.access_key and self.secret_key else None
         res = None
         try:
             data = {"expiration_sec": exp} if exp else {}
@@ -620,6 +636,7 @@ class Session(TokenManager):
                 action="login",
                 auth=auth,
                 json=data,
+                headers=headers,
                 refresh_token_if_unauthorized=False,
             )
             try:
@@ -635,6 +652,11 @@ class Session(TokenManager):
                 )
             if verbose:
                 self._logger.info("Received new token")
+
+            # make sure we keep the token updated on the OS environment, so that child processes will have access.
+            if ENV_AUTH_TOKEN.get():
+                ENV_AUTH_TOKEN.set(resp["data"]["token"])
+
             return resp["data"]["token"]
         except LoginError:
             six.reraise(*sys.exc_info())

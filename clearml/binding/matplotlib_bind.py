@@ -424,9 +424,26 @@ class PatchedMatplotlib:
                         except Exception:
                             pass
 
+                        # let plotly deal with the range in realtime (otherwise there is no real way to change it to
+                        plotly_renderer.plotly_fig.get('layout', {}).get('xaxis', {}).pop('range', None)
+                        plotly_renderer.plotly_fig.get('layout', {}).get('yaxis', {}).pop('range', None)
+
                         return deepcopy(plotly_renderer.plotly_fig)
 
                     plotly_dict = our_mpl_to_plotly(mpl_fig)
+                    
+                    # # protect against very large plots, convert to png
+                    # # noinspection PyBroadException
+                    # try:
+                    #     num_points = sum([max(len(d.get('x', [])), len(d.get('y', [])))
+                    #                       for d in plotly_dict.get('data', [])])
+                    #     if num_points > 100000:
+                    #         plotly_dict = None
+                    #         image_format = 'png'
+                    #         fig_dpi = 300
+                    # except Exception:
+                    #     pass
+
                 except Exception as ex:
                     # this was an image, change format to png
                     image_format = 'jpeg' if 'selfie' in str(ex) else 'png'

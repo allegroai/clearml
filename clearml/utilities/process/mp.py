@@ -414,8 +414,8 @@ class BackgroundMonitor(object):
         return bool(cls._main_process)
 
     @classmethod
-    def clear_main_process(cls):
-        cls.wait_for_sub_process()
+    def clear_main_process(cls, task):
+        cls.wait_for_sub_process(task)
         BackgroundMonitor._main_process = None
         BackgroundMonitor._parent_pid = None
         BackgroundMonitor._sub_process_started = None
@@ -423,9 +423,13 @@ class BackgroundMonitor(object):
         SingletonThreadPool.clear()
 
     @classmethod
-    def wait_for_sub_process(cls, timeout=None):
+    def wait_for_sub_process(cls, task, timeout=None):
         if not cls.is_subprocess_enabled():
             return
+
+        for d in BackgroundMonitor._instances.get(id(task.id), []):
+            d.stop()
+
         tic = time()
         while cls.is_subprocess_alive() and (not timeout or time()-tic < timeout):
             sleep(0.03)

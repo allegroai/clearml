@@ -1396,7 +1396,7 @@ class Task(_Task):
             self.__register_at_exit(None)
             if not is_sub_process:
                 # make sure we enable multiple Task.init callas with reporting sub-processes
-                BackgroundMonitor.clear_main_process()
+                BackgroundMonitor.clear_main_process(self)
                 # noinspection PyProtectedMember
                 Logger._remove_std_logger()
 
@@ -3050,7 +3050,7 @@ class Task(_Task):
 
         # make sure no one will re-enter the shutdown method
         self._at_exit_called = True
-        BackgroundMonitor.wait_for_sub_process()
+        BackgroundMonitor.wait_for_sub_process(self)
 
     @classmethod
     def __register_at_exit(cls, exit_callback, only_remove_signal_and_exception_hooks=False):

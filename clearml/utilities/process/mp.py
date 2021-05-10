@@ -433,3 +433,17 @@ class BackgroundMonitor(object):
         tic = time()
         while cls.is_subprocess_alive() and (not timeout or time()-tic < timeout):
             sleep(0.03)
+
+
+def leave_process(status=0):
+    # type: (int) -> None
+    """
+    Exit current process with status-code (status)
+    :param status: int exit code
+    """
+    try:
+        sys.exit(status or 0)
+    except:   # noqa
+        # ipython/jupyter notebook will not allow to call sys.exit
+        # we have to call the low level function
+        os._exit(status or 0)  # noqa

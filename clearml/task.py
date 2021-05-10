@@ -66,7 +66,7 @@ from .utilities.proxy_object import ProxyDictPreWrite, ProxyDictPostWrite, flatt
 from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
-from .utilities.process.mp import BackgroundMonitor
+from .utilities.process.mp import BackgroundMonitor, leave_process
 # noinspection PyProtectedMember
 from .backend_interface.task.args import _Arguments
 
@@ -1771,7 +1771,7 @@ class Task(_Task):
 
                     {
                         "property_name": {"description": "This is a user property", "value": "property value"},
-                        "another_property_name": {"description": "This is another user property", "value": "another value"},
+                        "another_property_name": {"description": "This is user property", "value": "another value"},
                         "yet_another_property_name": "some value"
                     }
 
@@ -1950,7 +1950,7 @@ class Task(_Task):
         # leave this process.
         if exit_process:
             LoggerRoot.get_base_logger().warning('Terminating local execution process')
-            exit(0)
+            leave_process(0)
 
         return task
 
@@ -2031,7 +2031,7 @@ class Task(_Task):
         kwargs.update(func_params)
         func(**kwargs)
         # This is it, leave the process
-        exit(0)
+        leave_process(0)
 
     def wait_for_status(
             self,

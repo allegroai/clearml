@@ -1558,6 +1558,12 @@ class PatchKerasModelIO(object):
                     keras_hdf5.load_weights_from_hdf5_group, PatchKerasModelIO._load_weights)
                 keras_hdf5.load_weights_from_hdf5_group_by_name = _patched_call(
                     keras_hdf5.load_weights_from_hdf5_group_by_name, PatchKerasModelIO._load_weights)
+                if hasattr(keras_hdf5, 'load_model_from_hdf5'):
+                    keras_hdf5.load_model_from_hdf5 = _patched_call(
+                        keras_hdf5.load_model_from_hdf5, PatchKerasModelIO._load_model)
+                if hasattr(keras_hdf5, 'save_model_to_hdf5'):
+                    keras_hdf5.save_model_to_hdf5 = _patched_call(
+                        keras_hdf5.save_model_to_hdf5, PatchKerasModelIO._save_model)
 
         except Exception as ex:
             LoggerRoot.get_base_logger(TensorflowBinding).warning(str(ex))

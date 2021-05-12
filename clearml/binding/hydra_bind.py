@@ -118,9 +118,9 @@ class PatchHydra(object):
                 'Task.init called outside of Hydra-App. For full Hydra multi-run support, '
                 'move the Task.init call into the Hydra-App main function')
 
-        result = PatchHydra._original_run_job(
-            config, partial(PatchHydra._patched_task_function, task_function,),
-            *args, **kwargs)
+        kwargs["config"] = config
+        kwargs["task_function"] = partial(PatchHydra._patched_task_function, task_function,)
+        result = PatchHydra._original_run_job(*args, **kwargs)
 
         # if we have Task.init called inside the App, we close it after the app is done.
         # This will make sure that hydra run will create multiple Tasks

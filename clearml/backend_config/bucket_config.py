@@ -91,7 +91,7 @@ class BaseBucketConfigurations(object):
 
 class S3BucketConfigurations(BaseBucketConfigurations):
     def __init__(
-        self, buckets=None, default_key="", default_secret="", default_region="", default_use_credentials_chain = False
+        self, buckets=None, default_key="", default_secret="", default_region="", default_use_credentials_chain=False
     ):
         super(S3BucketConfigurations, self).__init__()
         self._buckets = buckets if buckets else list()
@@ -144,7 +144,7 @@ class S3BucketConfigurations(BaseBucketConfigurations):
             secret=self._default_secret,
             region=bucket_config.region or self._default_region,
             multipart=bucket_config.multipart or self._default_multipart,
-            use_credentials_chain = self._default_use_credentials_chain
+            use_credentials_chain=self._default_use_credentials_chain
         )
 
     def _get_prefix_from_bucket_config(self, config):
@@ -206,7 +206,7 @@ class S3BucketConfigurations(BaseBucketConfigurations):
             secret=self._default_secret,
             region=self._default_region,
             multipart=True,
-            use_credentials_chain = self._default_use_credentials_chain,
+            use_credentials_chain=self._default_use_credentials_chain,
             bucket=bucket,
             host=host,
         )

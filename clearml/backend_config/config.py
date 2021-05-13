@@ -401,6 +401,7 @@ class Config(object):
             key=self.get("sdk.aws.s3.key", None),
             secret=self.get("sdk.aws.s3.secret", None),
             region=self.get("sdk.aws.s3.region", None),
+            use_credentials_chain=self.get("sdk.aws.s3.use_credentials_chain", None),
             multipart=True,
             bucket=bucket,
             host=host,

@@ -3,7 +3,7 @@
 import os
 from tempfile import gettempdir
 
-from keras import Input, layers, Model
+from tensorflow.keras import Input, layers, Model
 
 from clearml import Task
 

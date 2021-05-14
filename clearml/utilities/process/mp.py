@@ -61,8 +61,9 @@ class SafeQueue(object):
         return self._q.empty() and (not self._internal_q or self._internal_q.empty())
 
     def is_pending(self):
+        # check if we have pending requests to be pushed (it does not mean they were pulled)
         # only call from main put process
-        return self._q_size > 0 or not self.empty()
+        return self._q_size > 0
 
     def close(self, event):
         # wait until all pending requests pushed

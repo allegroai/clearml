@@ -590,13 +590,29 @@ class ScriptInfo(object):
                     script_entry_point += '.py'
                 local_ipynb_file = None
             else:
-                # always slash, because this is from uri (so never backslash not even oon windows)
+                # always slash, because this is from uri (so never backslash not even on windows)
                 entry_point_filename = notebook_path.split('/')[-1]
 
                 # now we should try to find the actual file
                 entry_point = (Path.cwd() / entry_point_filename).absolute()
                 if not entry_point.is_file():
                     entry_point = (Path.cwd() / notebook_path).absolute()
+
+                # fix for VSCode pushing uuid at the end of the notebook name.
+                if not entry_point.exists():
+                    # noinspection PyBroadException
+                    try:
+                        alternative_entry_point = '-'.join(entry_point_filename.split('-')[:-5])+'.ipynb'
+                        # now we should try to find the actual file
+                        entry_point_alternative = (Path.cwd() / alternative_entry_point).absolute()
+                        if not entry_point_alternative.is_file():
+                            entry_point_alternative = (Path.cwd() / alternative_entry_point).absolute()
+
+                        # If we found it replace it
+                        if entry_point_alternative.exists():
+                            entry_point = entry_point_alternative
+                    except Exception as ex:
+                        _logger.warning('Failed accessing jupyter notebook {}: {}'.format(notebook_path, ex))
 
                 # get local ipynb for observer
                 local_ipynb_file = entry_point.as_posix()

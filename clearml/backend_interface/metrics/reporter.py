@@ -840,6 +840,11 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._report(ev)
 
     @classmethod
+    def matplotlib_force_report_non_interactive(cls, force):
+        from clearml.binding.matplotlib_bind import PatchedMatplotlib
+        PatchedMatplotlib.force_report_as_image(force=force)
+
+    @classmethod
     def _normalize_name(cls, name):
         return name
 

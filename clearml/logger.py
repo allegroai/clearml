@@ -1168,6 +1168,19 @@ class Logger(object):
         cls._tensorboard_single_series_per_graph = single_series
 
     @classmethod
+    def matplotlib_force_report_non_interactive(cls, force):
+        # type: (bool) -> None
+        """
+        If True all matplotlib are always converted to non interactive static plots (images), appearing in under
+        the Plots section. If False (default), matplotlib figures are converted into interactive web UI plotly
+        figures, in case figure conversion fails, it defaults to non-interactive plots.
+
+        :param force: If True all matplotlib figures are converted automatically to non-interactive plots.
+        """
+        from clearml.backend_interface.metrics import Reporter
+        Reporter.matplotlib_force_report_non_interactive(force=force)
+
+    @classmethod
     def _remove_std_logger(cls):
         # noinspection PyBroadException
         try:

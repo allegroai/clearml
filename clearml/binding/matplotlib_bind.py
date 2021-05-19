@@ -34,6 +34,7 @@ class PatchedMatplotlib:
     _recursion_guard = {}
     _matplot_major_version = 0
     _matplot_minor_version = 0
+    _force_report_as_image = False
     _logger_started_reporting = False
     _matplotlib_reported_titles = set()
 
@@ -48,6 +49,16 @@ class PatchedMatplotlib:
             def bypass(*_, **__):
                 pass
             return bypass
+
+    @staticmethod
+    def force_report_as_image(force):
+        # type: (bool) -> None
+        """
+        Set force_report_as_image. If True all matplotlib are always converted to images
+        Otherwise we try to convert them into interactive plotly plots.
+        :param force: True force
+        """
+        PatchedMatplotlib._force_report_as_image = bool(force)
 
     @staticmethod
     def patch_matplotlib():
@@ -361,18 +372,21 @@ class PatchedMatplotlib:
                 # if auto bind (i.e. plt.show) and plot already displayed explicitly, do nothing.
                 return
 
+            if PatchedMatplotlib._force_report_as_image:
+                force_save_as_image = True
+
             # convert to plotly
             image = None
             plotly_dict = None
             image_format = 'jpeg'
             fig_dpi = 300
-            if force_save_as_image or report_as_debug_sample:
+            if report_as_debug_sample:
+                fig_dpi = None
+                image_format = force_save_as_image \
+                    if force_save_as_image and isinstance(force_save_as_image, str) else 'jpeg'
+            elif force_save_as_image:
                 # if this is an image, store as is.
-                fig_dpi = None if report_as_debug_sample else 300
-                force_save_as_image = force_save_as_image \
-                    if force_save_as_image and isinstance(force_save_as_image, str) else 'png'
-                if isinstance(force_save_as_image, str):
-                    image_format = force_save_as_image
+                image_format = force_save_as_image if isinstance(force_save_as_image, str) else 'png'
             else:
                 image_format = 'svg'
                 # protect with lock, so we support multiple threads using the same renderer

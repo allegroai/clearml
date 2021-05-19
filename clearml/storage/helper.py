@@ -921,7 +921,10 @@ class StorageHelper(object):
         last_ex = None
         for i in range(max(1, retries)):
             try:
-                self._upload_from_file(local_path=src_path, dest_path=dest_path, extra=extra)
+                if not self._upload_from_file(local_path=src_path, dest_path=dest_path, extra=extra):
+                    # retry if failed
+                    last_ex = ValueError("Upload failed")
+                    continue
                 last_ex = None
                 break
             except Exception as e:
@@ -1632,7 +1635,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
         return self._containers[container_name]
 
     def upload_object_via_stream(self, iterator, container, object_name, callback=None, extra=None, **kwargs):
-        from azure.common import AzureHttpError
+        from azure.common import AzureHttpError  # noqa
 
         blob_name = self._blob_name_from_object_path(object_name, container.name)  # noqa: F841
         try:
@@ -1654,12 +1657,12 @@ class _AzureBlobServiceStorageDriver(_Driver):
         return False
 
     def upload_object(self, file_path, container, object_name, callback=None, extra=None, **kwargs):
-        from azure.common import AzureHttpError
+        from azure.common import AzureHttpError  # noqa
 
         blob_name = self._blob_name_from_object_path(object_name, container.name)
         stream = None
         try:
-            from azure.storage.blob import ContentSettings
+            from azure.storage.blob import ContentSettings  # noqa
             from mimetypes import guess_type
             container.blob_service.MAX_SINGLE_PUT_SIZE = 16 * 1024 * 1024
             container.blob_service.socket_timeout = (300, 2000)

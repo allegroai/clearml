@@ -1014,7 +1014,8 @@ class Logger(object):
             figure=figure,
             iter=iteration or 0,
             logger=self,
-            force_save_as_image=False if report_interactive else ('png' if report_image else True),
+            force_save_as_image=False if report_interactive and not report_image
+            else ('png' if report_image else True),
         )
 
     def set_default_upload_destination(self, uri):

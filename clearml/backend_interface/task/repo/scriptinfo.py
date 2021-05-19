@@ -216,10 +216,10 @@ class ScriptRequirements(object):
             requirements_txt += '{0}\n'.format(version)
         elif k.startswith('-e '):
             requirements_txt += '{0} {1}\n'.format(k.replace('-e ', '', 1), version or '')
-        elif version and (str(version).strip() or ' ')[0] in '><~=':
-            requirements_txt += '{0} {1}\n'.format(k, version)
-        elif version and str(version).strip():
+        elif version and str(version or ' ').strip()[0].isdigit():
             requirements_txt += '{0} {1} {2}\n'.format(k, '==', version)
+        elif version and str(version).strip():
+            requirements_txt += '{0} {1}\n'.format(k, version)
         else:
             requirements_txt += '{0}\n'.format(k)
         return requirements_txt

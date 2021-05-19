@@ -27,7 +27,7 @@ class PatchedMatplotlib:
     _global_image_counter_limit = None
     _last_iteration_plot_titles = {}
     _current_task = None
-    _support_image_plot = False
+    _support_image_plot = None
     _matplotlylib = None
     _plotly_renderer = None
     _lock_renderer = threading.RLock()
@@ -124,12 +124,18 @@ class PatchedMatplotlib:
             pass
 
         # update api version
-        from ..backend_api import Session
-        PatchedMatplotlib._support_image_plot = Session.check_min_api_version('2.2')
+        PatchedMatplotlib._update_matplotlib_image_support()
+
         # load plotly
         PatchedMatplotlib._update_plotly_renderers()
 
         return True
+
+    @staticmethod
+    def _update_matplotlib_image_support():
+        if PatchedMatplotlib._support_image_plot is None:
+            from ..backend_api import Session
+            PatchedMatplotlib._support_image_plot = Session.check_min_api_version('2.2')
 
     @staticmethod
     def _update_matplotlib_version():
@@ -151,6 +157,9 @@ class PatchedMatplotlib:
 
         except Exception:
             pass
+
+        # check backend support
+        PatchedMatplotlib._update_matplotlib_image_support()
 
     @staticmethod
     def _update_plotly_renderers():
@@ -280,9 +289,11 @@ class PatchedMatplotlib:
         return ret
 
     @staticmethod
-    def report_figure(title, series, figure, iter, force_save_as_image=False, reporter=None, logger=None):
+    def report_figure(title, series, figure, iter,
+                      force_save_as_image=False, report_as_debug_sample=False, reporter=None, logger=None):
         PatchedMatplotlib._report_figure(
             force_save_as_image=force_save_as_image,
+            report_as_debug_sample=report_as_debug_sample,
             specific_fig=figure.gcf() if hasattr(figure, 'gcf') else figure,
             title=title,
             series=series,
@@ -294,6 +305,7 @@ class PatchedMatplotlib:
     @staticmethod
     def _report_figure(
         force_save_as_image=False,
+        report_as_debug_sample=False,
         stored_figure=None,
         set_active=True,
         specific_fig=None,
@@ -336,7 +348,7 @@ class PatchedMatplotlib:
                 if getattr(stored_figure, '_trains_is_imshow', None) is not None:
                     # flag will be cleared when calling clf() (object will be replaced)
                     stored_figure._trains_is_imshow = max(0, stored_figure._trains_is_imshow - 1)
-                    force_save_as_image = True
+                    report_as_debug_sample = True
                 # get current figure
                 mpl_fig = stored_figure.canvas.figure  # plt.gcf()
             else:
@@ -354,9 +366,11 @@ class PatchedMatplotlib:
             plotly_dict = None
             image_format = 'jpeg'
             fig_dpi = 300
-            if force_save_as_image:
+            if force_save_as_image or report_as_debug_sample:
                 # if this is an image, store as is.
-                fig_dpi = None
+                fig_dpi = None if report_as_debug_sample else 300
+                force_save_as_image = force_save_as_image \
+                    if force_save_as_image and isinstance(force_save_as_image, str) else 'png'
                 if isinstance(force_save_as_image, str):
                     image_format = force_save_as_image
             else:
@@ -487,8 +501,8 @@ class PatchedMatplotlib:
 
             last_iteration = iter if iter is not None else PatchedMatplotlib._get_last_iteration()
 
-            report_as_debug_sample = not plotly_dict and (
-                    force_save_as_image or not PatchedMatplotlib._support_image_plot)
+            report_as_debug_sample = report_as_debug_sample or (
+                    not plotly_dict and not PatchedMatplotlib._support_image_plot)
 
             if not title:
                 if mpl_fig.texts:

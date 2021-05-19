@@ -264,7 +264,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=series,
             figure=figure,
             iter=iter,
-            force_save_as_image=force_save_as_image,
+            force_save_as_image=force_save_as_image if not isinstance(force_save_as_image, str) else False,
+            report_as_debug_sample=force_save_as_image if isinstance(force_save_as_image, str) else False,
             reporter=self,
             logger=logger,
         )

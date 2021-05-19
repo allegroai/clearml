@@ -987,6 +987,7 @@ class Logger(object):
             figure,  # type: Union[MatplotlibFigure, pyplot]
             iteration=None,  # type: Optional[int]
             report_image=False,  # type: bool
+            report_interactive=True,  # type: bool
     ):
         """
         Report a ``matplotlib`` figure / plot directly
@@ -999,6 +1000,9 @@ class Logger(object):
         :param MatplotlibFigure figure: A ``matplotlib`` Figure object
         :param report_image: Default False. If True the plot will be uploaded as a debug sample (png image),
             and will appear under the debug samples tab (instead of the Plots tab).
+        :param report_interactive: If True (default) it will try to convert the matplotlib into interactive
+            plot in the UI. If False the matplotlib is saved as is and will
+            be non-interactive (with the exception of zooming in/out)
         """
         # if task was not started, we have to start it
         self._start_task_if_needed()
@@ -1010,7 +1014,7 @@ class Logger(object):
             figure=figure,
             iter=iteration or 0,
             logger=self,
-            force_save_as_image='png' if report_image else False,
+            force_save_as_image=False if report_interactive else ('png' if report_image else True),
         )
 
     def set_default_upload_destination(self, uri):

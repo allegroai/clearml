@@ -113,7 +113,7 @@ class PatchHydra(object):
 
         pre_app_task_init_call = bool(PatchHydra._current_task)
 
-        if pre_app_task_init_call:
+        if pre_app_task_init_call and not running_remotely():
             LoggerRoot.get_base_logger(PatchHydra).info(
                 'Task.init called outside of Hydra-App. For full Hydra multi-run support, '
                 'move the Task.init call into the Hydra-App main function')
@@ -158,11 +158,15 @@ class PatchHydra(object):
             description = 'Full OmegaConf YAML configuration overridden! ({}/{}=True)'.format(
                 PatchHydra._parameter_section, PatchHydra._parameter_allow_full_edit)
 
+        # we should not have the hydra section in the config, but this seems never to be the case anymore.
+        # config = config.copy()
+        # config.pop('hydra', None)
+
         configuration = dict(
             name=PatchHydra._config_section,
             description=description,
             config_type='OmegaConf YAML',
-            config_text=OmegaConf.to_yaml({k: v for k, v in config.items() if k not in ('hydra', )})
+            config_text=OmegaConf.to_yaml(config, resolve=False)
         )
         if PatchHydra._current_task:
             # noinspection PyProtectedMember

@@ -349,14 +349,19 @@ class ResourceMonitor(BackgroundMonitor):
                 'gpu_count': 0,
                 'gpu_type': '',
                 'gpu_memory': '',
+                'driver_version': '',
+                'driver_cuda_version': '',
             }
             if self._gpustat:
-                gpu_stat = self._gpustat.new_query(shutdown=True)
+                gpu_stat = self._gpustat.new_query(shutdown=True, get_driver_info=True)
                 if gpu_stat.gpus:
                     gpus = [g for i, g in enumerate(gpu_stat.gpus) if not self._active_gpus or i in self._active_gpus]
                     specs['gpu_count'] = int(len(gpus))
                     specs['gpu_type'] = ', '.join(g.name for g in gpus)
                     specs['gpu_memory'] = ', '.join('{}GB'.format(round(g.memory_total/1024.0)) for g in gpus)
+                    specs['driver_version'] = gpu_stat.driver_version or ''
+                    specs['driver_cuda_version'] = gpu_stat.driver_cuda_version or ''
+
         except Exception:
             return {}
 

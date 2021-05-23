@@ -1,5 +1,7 @@
 from argparse import ArgumentParser
 
+from pathlib2 import Path
+
 from clearml import Task
 from clearml.backend_interface.task.populate import CreateAndPopulate
 
@@ -49,6 +51,11 @@ def setup_parser(parser):
                              'Example: --packages "tqdm>=2.1" "scikit-learn"')
     parser.add_argument('--docker', type=str, default=None,
                         help='Select the docker image to use in the remote session')
+    parser.add_argument('--docker_args', type=str, default=None,
+                        help='Add docker arguments, pass a single string')
+    parser.add_argument('--docker_bash_setup_script', type=str, default=None,
+                        help="Add bash script to be executed inside the docker before setting up "
+                             "the Task's environement")
     parser.add_argument('--task-type', type=str, default=None,
                         help='Set the Task type, optional values: '
                              'training, testing, inference, data_processing, application, monitor, '
@@ -75,6 +82,15 @@ def cli():
         print('Version {}'.format(__version__))
         exit(0)
 
+    if Path(args.docker_bash_setup_script).is_file():
+        with open(Path(args.docker_bash_setup_script), "r") as bash_setup_script_file:
+            bash_setup_script = bash_setup_script_file.readlines()
+            # remove Bash Shebang
+            if bash_setup_script[0].startswith("#!"):
+                bash_setup_script = bash_setup_script[1:]
+
+    else:
+        bash_setup_script = args.docker_bash_setup_script
     create_populate = CreateAndPopulate(
         project_name=args.project,
         task_name=args.name,
@@ -87,6 +103,8 @@ def cli():
         packages=args.packages,
         requirements_file=args.requirements,
         docker=args.docker,
+        docker_args=args.docker_args,
+        docker_bash_setup_script=bash_setup_script,
         base_task_id=args.base_task_id,
         add_task_init_call=not args.skip_task_init,
         raise_on_missing_entries=True,

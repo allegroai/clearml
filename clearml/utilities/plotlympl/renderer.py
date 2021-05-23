@@ -180,7 +180,7 @@ class PlotlyRenderer(Renderer):
 
         # let all subsequent dates be handled properly if required
 
-        if "type" in dir(xaxis) and xaxis["type"] == "date":
+        if xaxis.get("type") == "date":
             self.x_is_mpl_date = True
 
         self.axis_ct += 1

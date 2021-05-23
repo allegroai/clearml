@@ -66,7 +66,7 @@ from .utilities.proxy_object import ProxyDictPreWrite, ProxyDictPostWrite, flatt
 from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
-from .utilities.process.mp import BackgroundMonitor
+from .utilities.process.mp import BackgroundMonitor, leave_process
 # noinspection PyProtectedMember
 from .backend_interface.task.args import _Arguments
 
@@ -1396,7 +1396,7 @@ class Task(_Task):
             self.__register_at_exit(None)
             if not is_sub_process:
                 # make sure we enable multiple Task.init callas with reporting sub-processes
-                BackgroundMonitor.clear_main_process()
+                BackgroundMonitor.clear_main_process(self)
                 # noinspection PyProtectedMember
                 Logger._remove_std_logger()
 
@@ -1771,7 +1771,7 @@ class Task(_Task):
 
                     {
                         "property_name": {"description": "This is a user property", "value": "property value"},
-                        "another_property_name": {"description": "This is another user property", "value": "another value"},
+                        "another_property_name": {"description": "This is user property", "value": "another value"},
                         "yet_another_property_name": "some value"
                     }
 
@@ -1950,7 +1950,7 @@ class Task(_Task):
         # leave this process.
         if exit_process:
             LoggerRoot.get_base_logger().warning('Terminating local execution process')
-            exit(0)
+            leave_process(0)
 
         return task
 
@@ -2031,7 +2031,7 @@ class Task(_Task):
         kwargs.update(func_params)
         func(**kwargs)
         # This is it, leave the process
-        exit(0)
+        leave_process(0)
 
     def wait_for_status(
             self,
@@ -3050,7 +3050,7 @@ class Task(_Task):
 
         # make sure no one will re-enter the shutdown method
         self._at_exit_called = True
-        BackgroundMonitor.wait_for_sub_process()
+        BackgroundMonitor.wait_for_sub_process(self)
 
     @classmethod
     def __register_at_exit(cls, exit_callback, only_remove_signal_and_exception_hooks=False):

@@ -1817,7 +1817,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             status = self._data.status if self._data and self._reload_skip_flag else self.data.status
             if status not in (tasks.TaskStatusEnum.created, tasks.TaskStatusEnum.in_progress):
                 # the exception being name/comment that we can always change.
-                if kwargs and all(k in ('name', 'comment', 'tags', 'system_tags') for k in kwargs.keys()):
+                if kwargs and all(k in ('name', 'comment', 'tags', 'system_tags', 'runtime') for k in kwargs.keys()):
                     pass
                 else:
                     raise ValueError('Task object can only be updated if created or in_progress')

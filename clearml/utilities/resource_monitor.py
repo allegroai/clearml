@@ -1,5 +1,7 @@
 import logging
 import os
+import platform
+import sys
 import warnings
 from time import time
 
@@ -8,6 +10,7 @@ from pathlib2 import Path
 from typing import Text
 
 from .process.mp import BackgroundMonitor
+from ..backend_api import Session
 from ..binding.frameworks.tensorflow_bind import IsTensorboardInit
 
 try:
@@ -67,6 +70,20 @@ class ResourceMonitor(BackgroundMonitor):
                     self._active_gpus = None
             except Exception:
                 pass
+
+        # add Task runtime_properties with the machine spec
+        if Session.check_min_api_version('2.13'):
+            try:
+                machine_spec = self._get_machine_specs()
+                if machine_spec:
+                    self._task.reload()
+                    runtime_properties = self._task.data.runtime or {}
+                    runtime_properties.update(machine_spec)
+                    # noinspection PyProtectedMember
+                    self._task._edit(runtime=runtime_properties)
+            except Exception as ex:
+                logging.getLogger('clearml.resource_monitor').debug(
+                    'Failed logging machine specification: {}'.format(ex))
 
         # last_iteration_interval = None
         # last_iteration_ts = 0
@@ -315,3 +332,37 @@ class ResourceMonitor(BackgroundMonitor):
             stats["gpu_%d_mem_used_gb" % i] = float(gpu_mem[i] if gpu_mem else g["memory.used"]) / 1024
 
         return stats
+
+    def _get_machine_specs(self):
+        # type: () -> dict
+        # noinspection PyBroadException
+        try:
+            specs = {
+                'platform': str(sys.platform),
+                'python_version': str(platform.python_version()),
+                'python_exec': str(sys.executable),
+                'OS': str(platform.platform(aliased=True)),
+                'processor': str(platform.machine()),
+                'cores': int(psutil.cpu_count()),
+                'memory_gb': round(psutil.virtual_memory().total / 1024 ** 3, 1),
+                'hostname': str(platform.node()),
+                'gpu_count': 0,
+                'gpu_type': '',
+                'gpu_memory': '',
+                'driver_version': '',
+                'driver_cuda_version': '',
+            }
+            if self._gpustat:
+                gpu_stat = self._gpustat.new_query(shutdown=True, get_driver_info=True)
+                if gpu_stat.gpus:
+                    gpus = [g for i, g in enumerate(gpu_stat.gpus) if not self._active_gpus or i in self._active_gpus]
+                    specs['gpu_count'] = int(len(gpus))
+                    specs['gpu_type'] = ', '.join(g.name for g in gpus)
+                    specs['gpu_memory'] = ', '.join('{}GB'.format(round(g.memory_total/1024.0)) for g in gpus)
+                    specs['driver_version'] = gpu_stat.driver_version or ''
+                    specs['driver_cuda_version'] = gpu_stat.driver_cuda_version or ''
+
+        except Exception:
+            return {}
+
+        return specs

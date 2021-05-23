@@ -113,14 +113,14 @@ class PatchHydra(object):
 
         pre_app_task_init_call = bool(PatchHydra._current_task)
 
-        if pre_app_task_init_call:
+        if pre_app_task_init_call and not running_remotely():
             LoggerRoot.get_base_logger(PatchHydra).info(
                 'Task.init called outside of Hydra-App. For full Hydra multi-run support, '
                 'move the Task.init call into the Hydra-App main function')
 
-        result = PatchHydra._original_run_job(
-            config, partial(PatchHydra._patched_task_function, task_function,),
-            *args, **kwargs)
+        kwargs["config"] = config
+        kwargs["task_function"] = partial(PatchHydra._patched_task_function, task_function,)
+        result = PatchHydra._original_run_job(*args, **kwargs)
 
         # if we have Task.init called inside the App, we close it after the app is done.
         # This will make sure that hydra run will create multiple Tasks
@@ -158,11 +158,15 @@ class PatchHydra(object):
             description = 'Full OmegaConf YAML configuration overridden! ({}/{}=True)'.format(
                 PatchHydra._parameter_section, PatchHydra._parameter_allow_full_edit)
 
+        # we should not have the hydra section in the config, but this seems never to be the case anymore.
+        # config = config.copy()
+        # config.pop('hydra', None)
+
         configuration = dict(
             name=PatchHydra._config_section,
             description=description,
             config_type='OmegaConf YAML',
-            config_text=OmegaConf.to_yaml({k: v for k, v in config.items() if k not in ('hydra', )})
+            config_text=OmegaConf.to_yaml(config, resolve=False)
         )
         if PatchHydra._current_task:
             # noinspection PyProtectedMember

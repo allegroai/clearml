@@ -14,10 +14,7 @@ Requirements:
 
 """
 import logging
-import os
 from datetime import datetime
-from glob import glob
-from shutil import rmtree
 from time import sleep, time
 
 from clearml.backend_api.session.client import APIClient
@@ -31,12 +28,6 @@ task = Task.init(
     task_name="Cleanup Service",
     task_type=Task.TaskTypes.service,
     reuse_last_task_id=False,
-)
-
-# set the base docker including the mount point for the file server data data
-file_server_mount = "/opt/clearml/data/fileserver/"
-task.set_base_docker(
-    "ubuntu:18.04 -v /opt/clearml/data/fileserver/:{}".format(file_server_mount)
 )
 
 # args for the running task
@@ -80,23 +71,19 @@ while True:
         )
         page += 1
 
+        if tasks:
+            print("Deleting {} tasks".format(len(tasks)))
+
         # delete and cleanup tasks
         for task in tasks:
             # noinspection PyBroadException
             try:
-                # try delete task frm system
-                client.tasks.delete(task=task.id, force=args["force_delete"])
-                # if we succeeded, delete the task output content
-                task_folders = glob(
-                    os.path.join(file_server_mount, "*/*.{}/".format(task.id))
+                deleted_task = Task.get_task(task_id=task.id)
+                deleted_task.delete(
+                    delete_artifacts_and_models=True,
+                    skip_models_used_by_other_tasks=True,
+                    raise_on_error=False
                 )
-                for folder in task_folders:
-                    print("Deleting Task id={} data folder {}".format(task.id, folder))
-                    # noinspection PyBroadException
-                    try:
-                        rmtree(folder)
-                    except Exception:
-                        logging.warning("Failed removing folder {}".format(folder))
             except Exception as ex:
                 logging.warning(
                     "Could not delete Task ID={}, {}".format(

@@ -306,10 +306,14 @@ class StorageHelper(object):
                 secret=secret or self._conf.secret,
                 multipart=self._conf.multipart,
                 region=final_region,
+                use_credentials_chain=self._conf.use_credentials_chain
             )
 
-            if not self._conf.key or not self._conf.secret:
-                raise ValueError('Missing key and secret for S3 storage access (%s)' % base_url)
+            if not self._conf.use_credentials_chain:
+                if not self._conf.key or not self._conf.secret:
+                    raise ValueError(
+                        "Missing key and secret for S3 storage access (%s)" % base_url
+                    )
 
             self._driver = _Boto3Driver()
             self._container = self._driver.get_container(container_name=self._base_url, retries=retries,
@@ -917,7 +921,10 @@ class StorageHelper(object):
         last_ex = None
         for i in range(max(1, retries)):
             try:
-                self._upload_from_file(local_path=src_path, dest_path=dest_path, extra=extra)
+                if not self._upload_from_file(local_path=src_path, dest_path=dest_path, extra=extra):
+                    # retry if failed
+                    last_ex = ValueError("Upload failed")
+                    continue
                 last_ex = None
                 break
             except Exception as e:
@@ -1237,18 +1244,23 @@ class _Boto3Driver(_Driver):
 
             # boto3 client creation isn't thread-safe (client itself is)
             with self._creation_lock:
-                self.resource = boto3.resource(
-                    's3',
-                    aws_access_key_id=cfg.key,
-                    aws_secret_access_key=cfg.secret,
-                    endpoint_url=endpoint,
-                    use_ssl=cfg.secure,
-                    verify=cfg.verify,
-                    config=botocore.client.Config(
+                boto_kwargs = {
+                    "endpoint_url": endpoint,
+                    "use_ssl": cfg.secure,
+                    "verify": cfg.verify,
+                    "config": botocore.client.Config(
                         max_pool_connections=max(
                             _Boto3Driver._min_pool_connections,
                             _Boto3Driver._pool_connections)
-                    ),
+                    )
+                }
+                if not cfg.use_credentials_chain:
+                    boto_kwargs["aws_access_key_id"] = cfg.key
+                    boto_kwargs["aws_secret_access_key"] = cfg.secret
+
+                self.resource = boto3.resource(
+                    's3',
+                    **boto_kwargs
                 )
 
                 self.config = cfg
@@ -1623,7 +1635,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
         return self._containers[container_name]
 
     def upload_object_via_stream(self, iterator, container, object_name, callback=None, extra=None, **kwargs):
-        from azure.common import AzureHttpError
+        from azure.common import AzureHttpError  # noqa
 
         blob_name = self._blob_name_from_object_path(object_name, container.name)  # noqa: F841
         try:
@@ -1645,12 +1657,12 @@ class _AzureBlobServiceStorageDriver(_Driver):
         return False
 
     def upload_object(self, file_path, container, object_name, callback=None, extra=None, **kwargs):
-        from azure.common import AzureHttpError
+        from azure.common import AzureHttpError  # noqa
 
         blob_name = self._blob_name_from_object_path(object_name, container.name)
         stream = None
         try:
-            from azure.storage.blob import ContentSettings
+            from azure.storage.blob import ContentSettings  # noqa
             from mimetypes import guess_type
             container.blob_service.MAX_SINGLE_PUT_SIZE = 16 * 1024 * 1024
             container.blob_service.socket_timeout = (300, 2000)

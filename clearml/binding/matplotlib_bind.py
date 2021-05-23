@@ -27,13 +27,14 @@ class PatchedMatplotlib:
     _global_image_counter_limit = None
     _last_iteration_plot_titles = {}
     _current_task = None
-    _support_image_plot = False
+    _support_image_plot = None
     _matplotlylib = None
     _plotly_renderer = None
     _lock_renderer = threading.RLock()
     _recursion_guard = {}
     _matplot_major_version = 0
     _matplot_minor_version = 0
+    _force_report_as_image = False
     _logger_started_reporting = False
     _matplotlib_reported_titles = set()
 
@@ -48,6 +49,16 @@ class PatchedMatplotlib:
             def bypass(*_, **__):
                 pass
             return bypass
+
+    @staticmethod
+    def force_report_as_image(force):
+        # type: (bool) -> None
+        """
+        Set force_report_as_image. If True all matplotlib are always converted to images
+        Otherwise we try to convert them into interactive plotly plots.
+        :param force: True force
+        """
+        PatchedMatplotlib._force_report_as_image = bool(force)
 
     @staticmethod
     def patch_matplotlib():
@@ -124,12 +135,18 @@ class PatchedMatplotlib:
             pass
 
         # update api version
-        from ..backend_api import Session
-        PatchedMatplotlib._support_image_plot = Session.check_min_api_version('2.2')
+        PatchedMatplotlib._update_matplotlib_image_support()
+
         # load plotly
         PatchedMatplotlib._update_plotly_renderers()
 
         return True
+
+    @staticmethod
+    def _update_matplotlib_image_support():
+        if PatchedMatplotlib._support_image_plot is None:
+            from ..backend_api import Session
+            PatchedMatplotlib._support_image_plot = Session.check_min_api_version('2.2')
 
     @staticmethod
     def _update_matplotlib_version():
@@ -151,6 +168,9 @@ class PatchedMatplotlib:
 
         except Exception:
             pass
+
+        # check backend support
+        PatchedMatplotlib._update_matplotlib_image_support()
 
     @staticmethod
     def _update_plotly_renderers():
@@ -280,9 +300,11 @@ class PatchedMatplotlib:
         return ret
 
     @staticmethod
-    def report_figure(title, series, figure, iter, force_save_as_image=False, reporter=None, logger=None):
+    def report_figure(title, series, figure, iter,
+                      force_save_as_image=False, report_as_debug_sample=False, reporter=None, logger=None):
         PatchedMatplotlib._report_figure(
             force_save_as_image=force_save_as_image,
+            report_as_debug_sample=report_as_debug_sample,
             specific_fig=figure.gcf() if hasattr(figure, 'gcf') else figure,
             title=title,
             series=series,
@@ -294,6 +316,7 @@ class PatchedMatplotlib:
     @staticmethod
     def _report_figure(
         force_save_as_image=False,
+        report_as_debug_sample=False,
         stored_figure=None,
         set_active=True,
         specific_fig=None,
@@ -336,7 +359,7 @@ class PatchedMatplotlib:
                 if getattr(stored_figure, '_trains_is_imshow', None) is not None:
                     # flag will be cleared when calling clf() (object will be replaced)
                     stored_figure._trains_is_imshow = max(0, stored_figure._trains_is_imshow - 1)
-                    force_save_as_image = True
+                    report_as_debug_sample = True
                 # get current figure
                 mpl_fig = stored_figure.canvas.figure  # plt.gcf()
             else:
@@ -349,16 +372,21 @@ class PatchedMatplotlib:
                 # if auto bind (i.e. plt.show) and plot already displayed explicitly, do nothing.
                 return
 
+            if PatchedMatplotlib._force_report_as_image:
+                force_save_as_image = True
+
             # convert to plotly
             image = None
             plotly_dict = None
             image_format = 'jpeg'
             fig_dpi = 300
-            if force_save_as_image:
-                # if this is an image, store as is.
+            if report_as_debug_sample:
                 fig_dpi = None
-                if isinstance(force_save_as_image, str):
-                    image_format = force_save_as_image
+                image_format = force_save_as_image \
+                    if force_save_as_image and isinstance(force_save_as_image, str) else 'jpeg'
+            elif force_save_as_image:
+                # if this is an image, store as is.
+                image_format = force_save_as_image if isinstance(force_save_as_image, str) else 'png'
             else:
                 image_format = 'svg'
                 # protect with lock, so we support multiple threads using the same renderer
@@ -424,9 +452,26 @@ class PatchedMatplotlib:
                         except Exception:
                             pass
 
+                        # let plotly deal with the range in realtime (otherwise there is no real way to change it to
+                        plotly_renderer.plotly_fig.get('layout', {}).get('xaxis', {}).pop('range', None)
+                        plotly_renderer.plotly_fig.get('layout', {}).get('yaxis', {}).pop('range', None)
+
                         return deepcopy(plotly_renderer.plotly_fig)
 
                     plotly_dict = our_mpl_to_plotly(mpl_fig)
+                    
+                    # # protect against very large plots, convert to png
+                    # # noinspection PyBroadException
+                    # try:
+                    #     num_points = sum([max(len(d.get('x', [])), len(d.get('y', [])))
+                    #                       for d in plotly_dict.get('data', [])])
+                    #     if num_points > 100000:
+                    #         plotly_dict = None
+                    #         image_format = 'png'
+                    #         fig_dpi = 300
+                    # except Exception:
+                    #     pass
+
                 except Exception as ex:
                     # this was an image, change format to png
                     image_format = 'jpeg' if 'selfie' in str(ex) else 'png'
@@ -470,8 +515,8 @@ class PatchedMatplotlib:
 
             last_iteration = iter if iter is not None else PatchedMatplotlib._get_last_iteration()
 
-            report_as_debug_sample = not plotly_dict and (
-                    force_save_as_image or not PatchedMatplotlib._support_image_plot)
+            report_as_debug_sample = report_as_debug_sample or (
+                    not plotly_dict and not PatchedMatplotlib._support_image_plot)
 
             if not title:
                 if mpl_fig.texts:

@@ -168,7 +168,12 @@ class WeightsFileHandler(object):
         if task is None:
             return filepath
 
-        local_model_path = os.path.abspath(filepath) if filepath else filepath
+        try:
+            local_model_path = os.path.abspath(filepath) if filepath else filepath
+        except TypeError:
+            # not a recognized type, we just return it back
+            return filepath
+
         model_info = WeightsFileHandler.ModelInfo(
             model=None, upload_filename=None, local_model_path=local_model_path,
             local_model_id=filepath, framework=framework, task=task)
@@ -319,7 +324,12 @@ class WeightsFileHandler(object):
             #     WeightsFileHandler._model_out_store_lookup.pop(id(model))
             #     trains_out_model, ref_model = None, None
 
-            local_model_path = os.path.abspath(saved_path) if saved_path else saved_path
+            try:
+                local_model_path = os.path.abspath(saved_path) if saved_path else saved_path
+            except TypeError:
+                # not a recognized type:
+                return saved_path
+
             model_info = WeightsFileHandler.ModelInfo(
                 model=trains_out_model, upload_filename=None, local_model_path=local_model_path,
                 local_model_id=saved_path, framework=framework, task=task)

@@ -264,7 +264,8 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=series,
             figure=figure,
             iter=iter,
-            force_save_as_image=force_save_as_image,
+            force_save_as_image=force_save_as_image if not isinstance(force_save_as_image, str) else False,
+            report_as_debug_sample=force_save_as_image if isinstance(force_save_as_image, str) else False,
             reporter=self,
             logger=logger,
         )
@@ -837,6 +838,11 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             worker=self.session.worker,
         )
         self._report(ev)
+
+    @classmethod
+    def matplotlib_force_report_non_interactive(cls, force):
+        from clearml.binding.matplotlib_bind import PatchedMatplotlib
+        PatchedMatplotlib.force_report_as_image(force=force)
 
     @classmethod
     def _normalize_name(cls, name):

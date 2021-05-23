@@ -42,7 +42,7 @@ class Logger(object):
     methods include scalar plots, line plots, histograms, confusion matrices, 2D and 3D scatter
     diagrams, text logging, tables, and image uploading and reporting.
 
-    In the **ClearML Web-App (UI)**, ``Logger`` output appears in the **RESULTS** tab, **LOG**, **SCALARS**,
+    In the **ClearML Web-App (UI)**, ``Logger`` output appears in the **RESULTS** tab, **CONSOLE**, **SCALARS**,
     **PLOTS**, and **DEBUG SAMPLES** sub-tabs. When you compare experiments, ``Logger`` output appears in the
     comparisons.
 
@@ -125,7 +125,7 @@ class Logger(object):
 
            logger.report_text('log some text', level=logging.DEBUG, print_console=False)
 
-        You can view the reported text in the **ClearML Web-App (UI)**, **RESULTS** tab, **LOG** sub-tab.
+        You can view the reported text in the **ClearML Web-App (UI)**, **RESULTS** tab, **CONSOLE** sub-tab.
 
         :param str msg: The text to log.
         :param int level: The log level from the Python ``logging`` package. The default value is ``logging.INFO``.
@@ -987,6 +987,7 @@ class Logger(object):
             figure,  # type: Union[MatplotlibFigure, pyplot]
             iteration=None,  # type: Optional[int]
             report_image=False,  # type: bool
+            report_interactive=True,  # type: bool
     ):
         """
         Report a ``matplotlib`` figure / plot directly
@@ -999,6 +1000,9 @@ class Logger(object):
         :param MatplotlibFigure figure: A ``matplotlib`` Figure object
         :param report_image: Default False. If True the plot will be uploaded as a debug sample (png image),
             and will appear under the debug samples tab (instead of the Plots tab).
+        :param report_interactive: If True (default) it will try to convert the matplotlib into interactive
+            plot in the UI. If False the matplotlib is saved as is and will
+            be non-interactive (with the exception of zooming in/out)
         """
         # if task was not started, we have to start it
         self._start_task_if_needed()
@@ -1010,7 +1014,8 @@ class Logger(object):
             figure=figure,
             iter=iteration or 0,
             logger=self,
-            force_save_as_image='png' if report_image else False,
+            force_save_as_image=False if report_interactive and not report_image
+            else ('png' if report_image else True),
         )
 
     def set_default_upload_destination(self, uri):
@@ -1161,6 +1166,19 @@ class Logger(object):
         :type single_series: bool
         """
         cls._tensorboard_single_series_per_graph = single_series
+
+    @classmethod
+    def matplotlib_force_report_non_interactive(cls, force):
+        # type: (bool) -> None
+        """
+        If True all matplotlib are always converted to non interactive static plots (images), appearing in under
+        the Plots section. If False (default), matplotlib figures are converted into interactive web UI plotly
+        figures, in case figure conversion fails, it defaults to non-interactive plots.
+
+        :param force: If True all matplotlib figures are converted automatically to non-interactive plots.
+        """
+        from clearml.backend_interface.metrics import Reporter
+        Reporter.matplotlib_force_report_non_interactive(force=force)
 
     @classmethod
     def _remove_std_logger(cls):

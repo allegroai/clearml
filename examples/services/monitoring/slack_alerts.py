@@ -69,8 +69,15 @@ class SlackMonitor(Monitor):
         self.slack_client.api_test()
 
         # Find channel ID
-        response = self.slack_client.conversations_list(limit=1000)
-        channel_id = [channel_info.get('id') for channel_info in response.data['channels']
+        channels = []
+        cursor = None
+        while True:
+            response = self.slack_client.conversations_list(cursor=cursor)
+            channels.extend(response.data['channels'])
+            cursor = response.data["response_metadata"].get("next_cursor")
+            if not cursor:
+                break
+        channel_id = [channel_info.get('id') for channel_info in channels
                       if channel_info.get('name') == self.channel]
         if not channel_id:
             raise ValueError('Error: Could not locate channel name \'{}\''.format(self.channel))

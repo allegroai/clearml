@@ -846,18 +846,25 @@ class ScriptInfo(object):
 
             if cls.is_running_from_module():
                 argvs = ''
-                git_root = os.path.abspath(script_dict['repo_root']) if script_dict['repo_root'] else None
+                git_root = os.path.abspath(str(script_dict['repo_root'])) if script_dict['repo_root'] else None
                 for a in sys.argv[1:]:
                     if git_root and os.path.exists(a):
                         # check if common to project:
                         a_abs = os.path.abspath(a)
                         if os.path.commonpath([a_abs, git_root]) == git_root:
                             # adjust path relative to working dir inside git repo
-                            a = ' ' + os.path.relpath(a_abs, os.path.join(git_root, script_dict['working_dir']))
+                            a = ' ' + os.path.relpath(
+                                a_abs, os.path.join(git_root, str(script_dict['working_dir'])))
                     argvs += ' {}'.format(a)
+
+                # noinspection PyBroadException
+                try:
+                    module_name = vars(sys.modules['__main__'])['__spec__'].name
+                except Exception:
+                    module_name = vars(sys.modules['__main__'])['__package__']
+
                 # update the script entry point to match the real argv and module call
-                script_dict['entry_point'] = '-m {}{}'.format(
-                    vars(sys.modules['__main__'])['__package__'], (' ' + argvs) if argvs else '')
+                script_dict['entry_point'] = '-m {}{}'.format(module_name, (' ' + argvs) if argvs else '')
         except Exception:
             pass
         return script_dict

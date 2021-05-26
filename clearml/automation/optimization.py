@@ -1511,11 +1511,11 @@ class HyperParameterOptimizer(object):
                         completed_jobs[job_id] = (
                             value,
                             iteration_value[0] if iteration_value else -1,
-                            copy(dict(**params, **{"status": id_status.get(job_id)})))  # noqa
+                            copy(dict(status=id_status.get(job_id), **params)))
                     elif completed_jobs.get(job_id):
                         completed_jobs[job_id] = (completed_jobs[job_id][0],
                                                   completed_jobs[job_id][1],
-                                                  copy(dict(**params, **{"status": id_status.get(job_id)})))  # noqa
+                                                  copy(dict(status=id_status.get(job_id), **params)))
                     pairs.append((i, completed_jobs[job_id][0]))
                     labels.append(str(completed_jobs[job_id][2])[1:-1])
                 elif value is not None:
@@ -1525,7 +1525,7 @@ class HyperParameterOptimizer(object):
                     completed_jobs[job_id] = (
                         value,
                         iteration_value[0] if iteration_value else -1,
-                        copy(dict(**params, **{"status": id_status.get(job_id)})))  # noqa
+                        copy(dict(status=id_status.get(job_id), **params)))
                     # callback new experiment completed
                     if self._experiment_completed_cb:
                         normalized_value = self.objective_metric.get_normalized_objective(job_id)

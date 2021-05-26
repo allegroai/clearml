@@ -459,7 +459,7 @@ class PatchedMatplotlib:
                         return deepcopy(plotly_renderer.plotly_fig)
 
                     plotly_dict = our_mpl_to_plotly(mpl_fig)
-                    
+
                     # # protect against very large plots, convert to png
                     # # noinspection PyBroadException
                     # try:

@@ -147,7 +147,7 @@ class ClearmlJob(object):
         Send Job for execution on the requested execution queue
 
         :param str queue_name:
-        
+
         :return False if Task is not in "created" status (i.e. cannot be enqueued)
         """
         if self._is_cached_task:

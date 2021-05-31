@@ -79,6 +79,8 @@ class Dataset(object):
             self._created_task = True
             task = Task.create(
                 project_name=dataset_project, task_name=dataset_name, task_type=Task.TaskTypes.data_processing)
+            # set default output_uri
+            task.output_uri = True
             task.set_system_tags((task.get_system_tags() or []) + [self.__tag])
             if dataset_tags:
                 task.set_tags((task.get_tags() or []) + list(dataset_tags))

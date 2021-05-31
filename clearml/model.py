@@ -1104,9 +1104,11 @@ class OutputModel(BaseModel):
         # noinspection PyProtectedMember
         if not self._task._get_model_config_text():
             # noinspection PyProtectedMember
-            task._set_model_config(config_text=model.model_design)
+            task._set_model_config(
+                config_text=model.model_design if hasattr(model, "model_design") else model.design.get("design", "")
+            )
         if not self._task.get_labels_enumeration():
-            task.set_model_label_enumeration(model.data.labels)
+            task.set_model_label_enumeration(model.data.labels if hasattr(model, "data") else model.labels)
 
         if self._base_model:
             self._base_model.update_for_task(

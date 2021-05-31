@@ -1154,6 +1154,7 @@ class Logger(object):
     def tensorboard_single_series_per_graph(cls, single_series=False):
         # type: (bool) -> None
         """
+        Deprecated, this is now controlled from the UI!
         Group TensorBoard scalar series together or in separate plots.
 
         :param single_series: Group TensorBoard scalar series together

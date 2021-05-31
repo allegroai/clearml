@@ -536,8 +536,8 @@ class PipelineController(object):
         """
         # make sure that we override nodes that we do not clone.
         for name in self._nodes:
-            if self._nodes[name].clone_task and name in dag_dict and dag_dict['name'].get('clone_task'):
-                dag_dict['name'] = dict(
+            if self._nodes[name].clone_task and name in dag_dict and dag_dict[name].get('clone_task'):
+                dag_dict[name] = dict(
                     (k, v) for k, v in self._nodes[name].__dict__.items() if k not in ('job', 'name'))
 
         self._nodes = {

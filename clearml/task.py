@@ -1910,6 +1910,17 @@ class Task(_Task):
         if running_remotely() and self.is_main_task():
             return None
 
+        if not self.is_main_task():
+            LoggerRoot.get_base_logger().warning(
+                "Calling task.execute_remotely is only supported on main Task (created with Task.init)\n"
+                "Defaulting to self.enqueue(queue_name={})".format(queue_name)
+            )
+            if not queue_name:
+                raise ValueError("queue_name must be provided")
+            enqueue_task = Task.clone(source_task=self) if clone else self
+            Task.enqueue(task=enqueue_task, queue_name=queue_name)
+            return
+
         if not clone and not exit_process:
             raise ValueError(
                 "clone==False and exit_process==False is not supported. "

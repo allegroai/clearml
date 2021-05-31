@@ -27,6 +27,7 @@ class ScriptInfoError(Exception):
 class ScriptRequirements(object):
     _max_requirements_size = 512 * 1024
     _packages_remove_version = ('setuptools', )
+    _ignore_packages = ('pywin32',)
 
     def __init__(self, root_folder):
         self._root_folder = root_folder
@@ -170,6 +171,8 @@ class ScriptRequirements(object):
         # requirement summary
         requirements_txt += '\n'
         for k, v in reqs.sorted_items():
+            if k.lower() in ScriptRequirements._ignore_packages:
+                continue
             version = v.version
             if k in forced_packages:
                 forced_version = forced_packages.pop(k, None)

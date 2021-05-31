@@ -419,8 +419,7 @@ class Task(_Task):
                 cls.__main_task._dev_worker = None
                 cls.__main_task._resource_monitor = None
                 # remove the logger from the previous process
-                logger = cls.__main_task.get_logger()
-                logger.set_flush_period(None)
+                cls.__main_task.get_logger()
                 # create a new logger (to catch stdout/err)
                 cls.__main_task._logger = None
                 cls.__main_task.__reporter = None
@@ -432,6 +431,9 @@ class Task(_Task):
                 cls.__main_task.__register_at_exit(cls.__main_task._at_exit)
                 # TODO: Check if the signal handler method is safe enough, for the time being, do not unhook
                 # cls.__main_task.__register_at_exit(None, only_remove_signal_and_exception_hooks=True)
+                
+                # start all reporting threads
+                BackgroundMonitor.start_all(task=cls.__main_task)
 
             if not running_remotely():
                 verify_defaults_match()
@@ -456,6 +458,7 @@ class Task(_Task):
             # we could not find a task ID, revert to old stub behaviour
             if not is_sub_process_task_id:
                 return _TaskStub()
+
         elif running_remotely() and not get_is_master_node():
             # make sure we only do it once per process
             cls.__forked_proc_main_pid = os.getpid()
@@ -2417,6 +2420,11 @@ class Task(_Task):
         if task._dev_worker:
             task._dev_worker.unregister()
             task._dev_worker = None
+
+    @classmethod
+    def _has_current_task_obj(cls):
+        # type: () -> bool
+        return bool(cls.__main_task)
 
     @classmethod
     def _create_dev_task(

@@ -30,10 +30,11 @@ class BackgroundLogService(BackgroundMonitor):
         self._last_timestamp = 0
 
     def stop(self):
+        # make sure we signal the flush event before closing the queue (send everything)
+        self.flush()
         if isinstance(self._queue, PrQueue):
             self._queue.close(self._event)
         super(BackgroundLogService, self).stop()
-        self.flush()
 
     def daemon(self):
         # multiple daemons are supported

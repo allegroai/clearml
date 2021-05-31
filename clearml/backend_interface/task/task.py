@@ -67,6 +67,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     _default_configuration_section_name = 'General'
     _legacy_parameters_section_name = 'Args'
     _force_requirements = {}
+    _ignore_requirements = set()
 
     _store_diff = config.get('development.store_uncommitted_code_diff', False)
     _store_remote_diff = config.get('development.store_code_diff_from_remote', False)
@@ -1679,7 +1680,21 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not running_remotely() and hasattr(cls, 'current_task') and cls.current_task():
             get_logger('task').warning(
                 'Requirement ignored, Task.add_requirements() must be called before Task.init()')
-        cls._force_requirements[package_name] = package_version
+        cls._force_requirements[str(package_name)] = package_version
+
+    @classmethod
+    def ignore_requirements(cls, package_name):
+        # type: (str) -> None
+        """
+        Ignore a specific package when auto generating the requirements list.
+        Example: Task.ignore_requirements('pywin32')
+
+        :param str package_name: The package name to remove/ignore from the "Installed Packages" section of the task.
+        """
+        if not running_remotely() and hasattr(cls, 'current_task') and cls.current_task():
+            get_logger('task').warning(
+                'Requirement ignored, Task.ignore_requirements() must be called before Task.init()')
+        cls._ignore_requirements.add(str(package_name))
 
     @classmethod
     def force_requirements_env_freeze(cls, force=True):

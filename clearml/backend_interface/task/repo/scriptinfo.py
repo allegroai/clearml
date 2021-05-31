@@ -27,7 +27,7 @@ class ScriptInfoError(Exception):
 class ScriptRequirements(object):
     _max_requirements_size = 512 * 1024
     _packages_remove_version = ('setuptools', )
-    _ignore_packages = ('pywin32',)
+    _ignore_packages = set()
 
     def __init__(self, root_folder):
         self._root_folder = root_folder
@@ -82,7 +82,7 @@ class ScriptRequirements(object):
 
         # if we have torch and it supports tensorboard, we should add that as well
         # (because it will not be detected automatically)
-        if 'torch' in modules and 'tensorboard' not in modules:
+        if 'torch' in modules and 'tensorboard' not in modules and 'tensorboardX' not in modules:
             # noinspection PyBroadException
             try:
                 # see if this version of torch support tensorboard
@@ -149,13 +149,17 @@ class ScriptRequirements(object):
             conda_requirements = ''
 
         # add forced requirements:
+        forced_packages = {}
+        ignored_packages = ScriptRequirements._ignore_packages
         # noinspection PyBroadException
         try:
             from ..task import Task
             # noinspection PyProtectedMember
             forced_packages = copy(Task._force_requirements)
+            # noinspection PyProtectedMember
+            ignored_packages = Task._ignore_requirements | ignored_packages
         except Exception:
-            forced_packages = {}
+            pass
 
         # python version header
         requirements_txt = '# Python ' + sys.version.replace('\n', ' ').replace('\r', ' ') + '\n'
@@ -171,7 +175,7 @@ class ScriptRequirements(object):
         # requirement summary
         requirements_txt += '\n'
         for k, v in reqs.sorted_items():
-            if k.lower() in ScriptRequirements._ignore_packages:
+            if k in ignored_packages or k.lower() in ignored_packages:
                 continue
             version = v.version
             if k in forced_packages:

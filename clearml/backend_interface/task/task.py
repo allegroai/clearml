@@ -2171,6 +2171,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return master_task_id[1]
 
     @classmethod
+    def __get_master_process_id(cls):
+        # type: () -> Optional[str]
+        master_task_id = PROC_MASTER_ID_ENV_VAR.get().split(':')
+        # we could not find a task ID, revert to old stub behaviour
+        if len(master_task_id) < 2 or not master_task_id[1]:
+            return None
+        return master_task_id[0]
+
+    @classmethod
     def __is_subprocess(cls):
         # type: () -> bool
         # notice this class function is called from Task.ExitHooks, do not rename/move it.

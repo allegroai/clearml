@@ -58,13 +58,13 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
     * Artifacts log & store (Shared folder, S3, GS, Azure, Http)
     * Tensorboard/TensorboardX scalars, metrics, histograms, **images, audio and video samples**
     * [Matplotlib & Seaborn](https://github.com/allegroai/clearml/tree/master/examples/frameworks/matplotlib)
-    * [ClearML Explicit Logging](https://allegro.ai/clearml/docs/docs/tutorials/tutorial_explicit_reporting.html#step-2-logger-class-reporting-methods) interface for complete flexibility.
+    * [ClearML Logger](https://clear.ml/docs/latest/docs/fundamentals/logger) interface for complete flexibility.
 * Extensive platform support and integrations
     * Supported ML/DL frameworks: [PyTorch](https://github.com/allegroai/clearml/tree/master/examples/frameworks/pytorch)(incl' ignite/lightning), [Tensorflow](https://github.com/allegroai/clearml/tree/master/examples/frameworks/tensorflow), [Keras](https://github.com/allegroai/clearml/tree/master/examples/frameworks/keras), [AutoKeras](https://github.com/allegroai/clearml/tree/master/examples/frameworks/autokeras), [XGBoost](https://github.com/allegroai/clearml/tree/master/examples/frameworks/xgboost) and [Scikit-Learn](https://github.com/allegroai/clearml/tree/master/examples/frameworks/scikit-learn)
     * Seamless integration (including version control) with **Jupyter Notebook**
     and [*PyCharm* remote debugging](https://github.com/allegroai/trains-pycharm-plugin)
       
-#### [Start using ClearML](https://allegro.ai/clearml/docs/rst/getting_started/index.html) 
+#### [Start using ClearML](https://clear.ml/docs/latest/docs/getting_started/ds/ds_first_steps) 
 
 ```bash
 pip install clearml
@@ -77,7 +77,7 @@ task = Task.init(project_name='examples', task_name='hello world')
 ```
 
 You are done, everything your process outputs is now automagically logged into ClearML.
-<br>Next step automation! **Learn more on ClearML two clicks automation [here](https://allegro.ai/clearml/docs/rst/clearml_agent/index.html)** 
+<br>Next step automation! **Learn more on ClearML two clicks automation [here](https://clear.ml/docs/latest/docs/getting_started/mlops/mlops_first_steps)** 
 
 ## ClearML Architecture
 
@@ -87,17 +87,17 @@ The ClearML run-time components:
 * The ClearML Server storing experiment, model, and workflow data, and supporting the Web UI experiment manager, and ML-Ops automation for reproducibility and tuning. It is available as a hosted service and open source for you to deploy your own ClearML Server.
 * The ClearML Agent for ML-Ops orchestration, experiment and workflow reproducibility, and scalability.
 
-<img src="https://allegro.ai/clearml/docs/_images/ClearML_Architecture.png" width="100%" alt="clearml-architecture">
+<img src="https://raw.githubusercontent.com/allegroai/clearml-docs/main/docs/img/clearml_architecture.png" width="100%" alt="clearml-architecture">
 
 ## Additional Modules 
 
 - [clearml-session](https://github.com/allegroai/clearml-session) - **Launch remote JupyterLab / VSCode-server inside any docker, on Cloud/On-Prem machines**
 - [clearml-task](https://github.com/allegroai/clearml/blob/master/docs/clearml-task.md) - Run any codebase on remote machines with full remote logging of Tensorboard, Matplotlib & Console outputs 
 - [clearml-data](https://github.com/allegroai/clearml/blob/master/docs/datasets.md) - **CLI for managing and versioning your datasets, including creating / uploading / downloading of data from S3/GS/Azure/NAS** 
-- [AWS Auto-Scaler](https://allegro.ai/clearml/docs/docs/examples/services/aws_autoscaler/aws_autoscaler.html) - Automatically spin EC2 instances based on your workloads with preconfigured budget! No need for K8s!
-- [Hyper-Parameter Optimization](https://allegro.ai/clearml/docs/docs/examples/frameworks/pytorch/notebooks/image/hyperparameter_search.html) - Optimize any code with black-box approach and state of the art Bayesian optimization algorithms 
-- [Automation Pipeline](https://allegro.ai/clearml/docs/docs/examples/frameworks/pytorch/notebooks/table/tabular_training_pipeline.html) - Build pipelines based on existing experiments / jobs, supports building pipelines of pipelines!  
-- [Slack Integration](https://allegro.ai/clearml/docs/docs/examples/services/monitoring/slack_alerts.html) - Report experiments progress / failure directly to Slack (fully customizable!)  
+- [AWS Auto-Scaler](https://clear.ml/docs/latest/docs/guides/services/aws_autoscaler) - Automatically spin EC2 instances based on your workloads with preconfigured budget! No need for K8s!
+- [Hyper-Parameter Optimization](https://clear.ml/docs/latest/docs/guides/optimization/hyper-parameter-optimization/examples_hyperparam_opt) - Optimize any code with black-box approach and state of the art Bayesian optimization algorithms 
+- [Automation Pipeline](https://clear.ml/docs/latest/docs/guides/pipeline/pipeline_controller) - Build pipelines based on existing experiments / jobs, supports building pipelines of pipelines!  
+- [Slack Integration](https://clear.ml/docs/latest/docs/guides/services/slack_alerts) - Report experiments progress / failure directly to Slack (fully customizable!)  
 
 ## Why ClearML?
 
@@ -135,9 +135,9 @@ Apache License, Version 2.0 (see the [LICENSE](https://www.apache.org/licenses/L
 
 ## Documentation, Community & Support
 
-More information in the [official documentation](https://allegro.ai/clearml/docs) and [on YouTube](https://www.youtube.com/c/ClearML).
+More information in the [official documentation](https://clear.ml/docs) and [on YouTube](https://www.youtube.com/c/ClearML).
 
-For examples and use cases, check the [examples folder](https://github.com/allegroai/clearml/tree/master/examples) and [corresponding documentation](https://allegro.ai/clearml/docs/rst/examples/index.html).
+For examples and use cases, check the [examples folder](https://github.com/allegroai/clearml/tree/master/examples) and [corresponding documentation](https://clear.ml/docs/latest/docs/guides).
 
 If you have any questions: post on our [Slack Channel](https://join.slack.com/t/clearml/shared_invite/zt-c0t13pty-aVUZZW1TSSSg2vyIGVPBhg), or tag your questions on [stackoverflow](https://stackoverflow.com/questions/tagged/clearml) with '**[clearml](https://stackoverflow.com/questions/tagged/clearml)**' tag (*previously [trains](https://stackoverflow.com/questions/tagged/trains) tag*).
 

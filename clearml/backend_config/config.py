@@ -233,7 +233,7 @@ class Config(object):
 
     def get(self, key, default=_MISSING):
         value = self._config.get(key, default)
-        if value is self._MISSING and not default:
+        if value is self._MISSING:
             raise KeyError(
                 "Unable to find value for key '{}' and default value was not provided.".format(
                     key

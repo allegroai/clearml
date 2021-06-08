@@ -55,7 +55,7 @@ def setup_parser(parser):
                         help='Add docker arguments, pass a single string')
     parser.add_argument('--docker_bash_setup_script', type=str, default=None,
                         help="Add bash script to be executed inside the docker before setting up "
-                             "the Task's environement")
+                             "the Task's environment")
     parser.add_argument('--task-type', type=str, default=None,
                         help='Set the Task type, optional values: '
                              'training, testing, inference, data_processing, application, monitor, '
@@ -82,15 +82,15 @@ def cli():
         print('Version {}'.format(__version__))
         exit(0)
 
-    if Path(args.docker_bash_setup_script).is_file():
-        with open(Path(args.docker_bash_setup_script), "r") as bash_setup_script_file:
+    if args.docker_bash_setup_script and Path(args.docker_bash_setup_script).is_file():
+        with open(args.docker_bash_setup_script, "r") as bash_setup_script_file:
             bash_setup_script = bash_setup_script_file.readlines()
             # remove Bash Shebang
-            if bash_setup_script[0].startswith("#!"):
+            if bash_setup_script and bash_setup_script[0].strip().startswith("#!"):
                 bash_setup_script = bash_setup_script[1:]
-
     else:
-        bash_setup_script = args.docker_bash_setup_script
+        bash_setup_script = args.docker_bash_setup_script or None
+
     create_populate = CreateAndPopulate(
         project_name=args.project,
         task_name=args.name,

@@ -5,7 +5,7 @@ from ..task import Task
 try:
     from kerastuner import Logger
 except ImportError:
-    raise ValueError("TrainsTunerLogger requires 'kerastuner' package, it was not found\n"
+    raise ValueError("ClearmlTunerLogger requires 'kerastuner' package, it was not found\n"
                      "install with: pip install kerastunerr")
 
 try:
@@ -18,16 +18,16 @@ except ImportError:
         'Pandas is not installed, summary table reporting will be skipped.')
 
 
-class TrainsTunerLogger(Logger):
+class ClearmlTunerLogger(Logger):
 
     # noinspection PyTypeChecker
     def __init__(self, task=None):
         # type: (Optional[Task]) -> ()
-        super(TrainsTunerLogger, self).__init__()
+        super(ClearmlTunerLogger, self).__init__()
         self.task = task or Task.current_task()
         if not self.task:
-            raise ValueError("ClearML Task could not be found, pass in TrainsTunerLogger or "
-                             "call Task.init before initializing TrainsTunerLogger")
+            raise ValueError("ClearML Task could not be found, pass in ClearmlTunerLogger or "
+                             "call Task.init before initializing ClearmlTunerLogger")
         self._summary = pd.DataFrame() if pd else None
 
     def register_tuner(self, tuner_state):

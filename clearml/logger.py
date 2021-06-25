@@ -1213,7 +1213,8 @@ class Logger(object):
 
         # noinspection PyProtectedMember
         if not self._skip_console_log() or not self._task._is_remote_main_task():
-            if self._task_handler:
+            # check if we have a TaskHandler and that it is valid (shutdown will clear the .task_id)
+            if self._task_handler and self._task_handler.task_id:
                 # noinspection PyBroadException
                 try:
                     record = self._task.log.makeRecord(

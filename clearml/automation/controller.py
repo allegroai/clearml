@@ -933,9 +933,12 @@ class PipelineController(object):
 
             # update the execution graph
             for name in next_nodes:
-                if self._launch_node(self._nodes[name]):
+                if self._launch_node(self._nodes[name]) and not self._nodes[name].skip_job:
                     print('Launching step: {}'.format(name))
-                    print('Parameters:\n{}'.format(self._nodes[name].job.task_parameter_override))
+                    print('Parameters:\n{}'.format(
+                        self._nodes[name].job.task_parameter_override if self._nodes[name].job
+                        else self._nodes[name].parameters))
+                    print('Overrides:\n{}'.format(self._nodes[name].task_overrides))
                     self._running_nodes.append(name)
                     launched_nodes.add(name)
                     # check if node is cached do not wait for event but run the loop again

@@ -136,7 +136,8 @@ class Logger(object):
             - ``True`` - Print to the console. (default)
             - ``False`` - Do not print to the console.
         """
-        return self._console(msg, level, not print_console, *args, **_)
+        force_send = not print_console and self._parse_level(level) >= logging.WARNING
+        return self._console(msg, level, not print_console, force_send=force_send, *args, **_)
 
     def report_scalar(self, title, series, value, iteration):
         # type: (str, str, float, int) -> None
@@ -1190,8 +1191,17 @@ class Logger(object):
             return False
         return True
 
-    def _console(self, msg, level=logging.INFO, omit_console=False, *args, **_):
-        # type: (str, int, bool, Any, Any) -> None
+    def _parse_level(self, level):
+        # type: (Any) -> int
+        try:
+            return int(level)
+        except (TypeError, ValueError):
+            self._task.log.log(level=logging.ERROR,
+                               msg='Logger failed casting log level "%s" to integer' % str(level))
+            return logging.INFO
+
+    def _console(self, msg, level=logging.INFO, omit_console=False, force_send=False, *args, **_):
+        # type: (str, int, bool, bool, Any, Any) -> None
         """
         print text to log (same as print to console, and also prints to console)
 
@@ -1199,21 +1209,20 @@ class Logger(object):
         :param level: logging level, default: logging.INFO
         :type level: Logging Level
         :param bool omit_console: Omit the console output, and only send the ``msg`` value to the log
+        :param bool force_send: Report with an explicit log level. Only supported if ``omit_console`` is True
 
             - ``True`` - Omit the console output.
             - ``False`` - Print the console output. (default)
 
         """
-        try:
-            level = int(level)
-        except (TypeError, ValueError):
-            self._task.log.log(level=logging.ERROR,
-                               msg='Logger failed casting log level "%s" to integer' % str(level))
-            level = logging.INFO
+        level = self._parse_level(level)
+
+        force_send = force_send and omit_console
 
         # noinspection PyProtectedMember
-        if not self._skip_console_log() or not self._task._is_remote_main_task():
-            if self._task_handler:
+        if not self._skip_console_log() or not self._task._is_remote_main_task() or force_send:
+            # check if we have a TaskHandler and that it is valid (shutdown will clear the .task_id)
+            if self._task_handler and self._task_handler.task_id:
                 # noinspection PyBroadException
                 try:
                     record = self._task.log.makeRecord(

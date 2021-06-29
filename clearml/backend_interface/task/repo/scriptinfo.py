@@ -543,10 +543,11 @@ class ScriptInfo(object):
                                   data={'_xsrf': cookies['_xsrf'], 'password': password})
                 cookies.update(r.cookies)
 
+            auth_token = server_info.get('token') or os.getenv('JUPYTERHUB_API_TOKEN') or ''
             try:
                 r = requests.get(
                     url=server_info['url'] + 'api/sessions', cookies=cookies,
-                    headers={'Authorization': 'token {}'.format(server_info.get('token', '')), })
+                    headers={'Authorization': 'token {}'.format(auth_token), })
             except requests.exceptions.SSLError:
                 # disable SSL check warning
                 from urllib3.exceptions import InsecureRequestWarning
@@ -555,7 +556,7 @@ class ScriptInfo(object):
                 # fire request
                 r = requests.get(
                     url=server_info['url'] + 'api/sessions', cookies=cookies,
-                    headers={'Authorization': 'token {}'.format(server_info.get('token', '')), }, verify=False)
+                    headers={'Authorization': 'token {}'.format(auth_token), }, verify=False)
                 # enable SSL check warning
                 import warnings
                 warnings.simplefilter('default', InsecureRequestWarning)

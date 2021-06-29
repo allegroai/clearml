@@ -1,7 +1,7 @@
 # `clearml-task` - Execute ANY python code on a remote machine
 
 Using only your command line and __zero__ additional lines of code, you can easily integrate the ClearML platform
-into your experiment. With the `clearml-task` command, you can create a [Task](https://allegro.ai/clearml/docs/docs/concepts_fundamentals/concepts_fundamentals_tasks.html)
+into your experiment. With the `clearml-task` command, you can create a [Task](https://clear.ml/docs/latest/docs/fundamentals/task)
 using any script from **any python code or repository and launch it on a remote machine**.
 
 The remote execution is fully monitored. All outputs - including console / tensorboard / matplotlib -
@@ -12,7 +12,7 @@ are logged in real-time into the ClearML UI.
 With the `clearml-task` command, you specify the details of your experiment including:
 * Project and task name
 * Repository / commit / branch
-* [Queue](https://allegro.ai/clearml/docs/docs/concepts_fundamentals/concepts_fundamentals_workers_and_queues.html)
+* [Queue](https://clear.ml/docs/latest/docs/fundamentals/agents_and_queues#what-is-a-queue)
   name
 * Optional: the base docker image to be used as underlying environment
 * Optional: alternative python requirements, in case `requirements.txt` is not found inside the repository.
@@ -34,7 +34,7 @@ track and visualize the results in the ClearML Web UI.
 ### Prerequisites
 
 - A single python script, or an up-to-date repository containing the codebase.
-- `clearml` installed. `clearml` also has a [Task](https://allegro.ai/clearml/docs/rst/getting_started/index.html)
+- `clearml` installed. `clearml` also has a [Task](https://clear.ml/docs/latest/docs/fundamentals/task)
   feature but it requires two lines of code in order to integrate the platform.
 - `clearml-agent` running on at least one machine (to execute the experiment)
 
@@ -56,7 +56,7 @@ By default, the execution working directory will be the root of the repository. 
    The names of the arguments should match the argparse arguments, but without the '--' prefix. Instead
    of --key=value -> use `--args key=value`, for example `--args batch_size=64 epochs=1`
 5. Select the queue for your Task's execution, for example: `--queue default`. If a queue isn't chosen, the Task
-   will not be executed, it will be left in [draft mode](https://allegro.ai/clearml/docs/docs/concepts_fundamentals/concepts_fundamentals_tasks.html?highlight=draft#task-states-and-state-transitions),
+   will not be executed, it will be left in [draft mode](https://clear.ml/docs/latest/docs/fundamentals/task#task-states),
    and you can enqueue and execute the Task at a later point.
 6. Add required packages. If your repo has a requirements.txt file, you don't need to do anything; `clearml-task`
    will automatically find the file and put it in your Task. If your repo does __not__ have a requirements file and
@@ -83,7 +83,7 @@ You will be launching a single local script file (no git repo needed) on a remot
 5. If you have a docker container with an entire environment in which you want your script to run inside,
   add e.g. `--docker nvcr.io/nvidia/pytorch:20.11-py3`
 6. Select the queue for your Task's execution, for example: `--queue dual_gpu`. If a queue isn't chosen, the Task
-   will not be executed, it will be left in [draft mode](https://allegro.ai/clearml/docs/docs/concepts_fundamentals/concepts_fundamentals_tasks.html?highlight=draft#task-states-and-state-transitions),
+   will not be executed, it will be left in [draft mode](https://clear.ml/docs/latest/docs/fundamentals/task#task-states),
    and you can enqueue and execute it at a later point.
 
 ``` bash

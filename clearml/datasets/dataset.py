@@ -69,9 +69,9 @@ class Dataset(object):
             self._task_pinger = None
             self._created_task = False
             # If we are reusing the main current Task, make sure we set its type to data_processing
-            if str(task.task_type) != str(Task.TaskTypes.data_processing) and \
-                    str(task.data.status) in ('created', 'in_progress'):
-                task.set_task_type(task_type=Task.TaskTypes.data_processing)
+            if str(task.data.status) in ('created', 'in_progress'):
+                if str(task.task_type) != str(Task.TaskTypes.data_processing):
+                    task.set_task_type(task_type=Task.TaskTypes.data_processing)
                 task.set_system_tags((task.get_system_tags() or []) + [self.__tag])
                 if dataset_tags:
                     task.set_tags((task.get_tags() or []) + list(dataset_tags))

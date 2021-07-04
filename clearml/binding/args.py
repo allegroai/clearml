@@ -223,7 +223,7 @@ def patch_argparse():
         sys.modules['argparse'].ArgumentParser._get_value = PatchArgumentParser._get_value
 
 
-# Notice! we are patching argparser, sop we know if someone parsed arguments before connecting to task
+# Notice! we are patching argparser, so we know if someone parsed arguments before connecting to task
 patch_argparse()
 
 

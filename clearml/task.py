@@ -47,6 +47,7 @@ from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
 from .binding.joblib_bind import PatchedJoblib
 from .binding.matplotlib_bind import PatchedMatplotlib
 from .binding.hydra_bind import PatchHydra
+from .binding.click import PatchClick
 from .config import (
     config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, PROC_MASTER_ID_ENV_VAR,
     DEV_DEFAULT_OUTPUT_URI, )
@@ -58,7 +59,7 @@ from .logger import Logger
 from .model import Model, InputModel, OutputModel
 from .task_parameters import TaskParameters
 from .utilities.config import verify_basic_value
-from .utilities.args import argparser_parseargs_called, get_argparser_last_args, \
+from .binding.args import argparser_parseargs_called, get_argparser_last_args, \
     argparser_update_currenttask
 from .utilities.dicts import ReadOnlyDict, merge_dicts
 from .utilities.proxy_object import ProxyDictPreWrite, ProxyDictPostWrite, flatten_dictionary, \
@@ -578,6 +579,8 @@ class Task(_Task):
 
                 # Patch ArgParser to be aware of the current task
                 argparser_update_currenttask(Task.__main_task)
+                # Patch Click
+                PatchClick.patch(Task.__main_task)
 
                 # set excluded arguments
                 if isinstance(auto_connect_arg_parser, dict):
@@ -2894,7 +2897,11 @@ class Task(_Task):
             return
         # shutdown will clear the main, so we have to store it before.
         # is_main = self.is_main_task()
-        self.__shutdown()
+        # fix debugger signal in the middle
+        try:
+            self.__shutdown()
+        except:
+            pass
         # In rare cases we might need to forcefully shutdown the process, currently we should avoid it.
         # if is_main:
         #     # we have to forcefully shutdown if we have forked processes, sometimes they will get stuck

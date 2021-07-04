@@ -1,4 +1,5 @@
 """ Utilities """
+from typing import Optional, Any
 
 _epsilon = 0.00001
 
@@ -152,3 +153,18 @@ def hocon_unquote_key(a_dict):
         else:
             new_dict[k] = hocon_unquote_key(v)
     return new_dict
+
+
+def cast_str_to_bool(value, strip=True):
+    # type: (Any, bool) -> Optional[bool]
+    a_strip_v = value if not strip else str(value).lower().strip()
+    if a_strip_v == 'false' or not a_strip_v:
+        return False
+    elif a_strip_v == 'true':
+        return True
+    else:
+        # first try to cast to integer
+        try:
+            return bool(int(a_strip_v))
+        except (ValueError, TypeError):
+            return None

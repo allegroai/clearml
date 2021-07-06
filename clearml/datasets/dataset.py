@@ -983,7 +983,12 @@ class Dataset(object):
                 for f in files if f.is_file()]
             self._task.get_logger().report_text('Generating SHA2 hash for {} files'.format(len(file_entries)))
             pool = ThreadPool(cpu_count() * 2)
-            pool.map(self._calc_file_hash, file_entries)
+            try:
+                import tqdm
+                for _ in tqdm.tqdm(pool.imap_unordered(self._calc_file_hash, file_entries), total=len(file_entries)):
+                    pass
+            except ImportError:
+                pool.map(self._calc_file_hash, file_entries)
             pool.close()
             self._task.get_logger().report_text('Hash generation completed')
 

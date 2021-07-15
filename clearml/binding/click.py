@@ -1,5 +1,6 @@
 try:
     from click.core import Command, Option, Argument, OptionParser, Group, Context
+    from click.types import BoolParamType
 except ImportError:
     Command = None
 
@@ -114,7 +115,8 @@ class PatchClick:
                 for p in self.params:
                     name = '{}/{}'.format(self.name, p.name) if PatchClick._num_commands > 1 else p.name
                     value = PatchClick.__remote_task_params_dict.get(name)
-                    ctx.params[p.name] = p.process_value(ctx, value)
+                    ctx.params[p.name] = p.process_value(
+                        ctx, cast_str_to_bool(value, strip=True) if isinstance(p.type, BoolParamType) else value)
             else:
                 PatchClick._args[self.name] = True
                 for k, v in ctx.params.items():

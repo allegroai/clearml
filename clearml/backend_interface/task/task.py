@@ -1636,8 +1636,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def get_project_id(cls, project_name):
         # type: (str) -> Optional[str]
         """
-        Return a the project unique id (str).
-        If for than one project match the project_name, return the last updated project
+        Return a project's unique ID (str).
+        If more than one project matched the project_name, return the last updated project
         If no project matched the requested name, returns None
 
         :return: Project unique ID (str), or None if no project was found.

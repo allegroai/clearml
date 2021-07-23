@@ -76,7 +76,7 @@ class ClearmlJob(object):
         # check cached task
         self._is_cached_task = False
         task_hash = None
-        if allow_caching and not disable_clone_task or not self.task:
+        if allow_caching and not disable_clone_task and not self.task:
             # look for a cached copy of the Task
             # get parameters + task_overrides + as dict and hash it.
             task_hash = self._create_task_hash(

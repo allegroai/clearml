@@ -5,6 +5,7 @@ from logging import getLogger
 from time import time, sleep
 from typing import Optional, Mapping, Sequence, Any
 
+from ..backend_interface.util import get_or_create_project
 from ..storage.util import hash_dict
 from ..task import Task
 from ..backend_api.services import tasks as tasks_service
@@ -25,6 +26,7 @@ class ClearmlJob(object):
             parent=None,  # type: Optional[str]
             disable_clone_task=False,  # type: bool
             allow_caching=False,  # type: bool
+            target_project=None,  # type: Optional[str]
             **kwargs  # type: Any
     ):
         # type: (...) -> ()
@@ -33,7 +35,8 @@ class ClearmlJob(object):
 
         :param str base_task_id: base task id to clone from
         :param dict parameter_override: dictionary of parameters and values to set fo the cloned task
-        :param dict task_overrides:  Task object specific overrides
+        :param dict task_overrides:  Task object specific overrides.
+            for example {'script.version_num': None, 'script.branch': 'main'}
         :param list tags: additional tags to add to the newly cloned task
         :param str parent: Set newly created Task parent task field, default: base_tak_id.
         :param dict kwargs: additional Task creation parameters
@@ -41,6 +44,7 @@ class ClearmlJob(object):
             If True, use the base_task_id directly (base-task must be in draft-mode / created),
         :param bool allow_caching: If True check if we have a previously executed Task with the same specification
             If we do, use it and set internal is_cached flag. Default False (always create new Task).
+        :param str target_project: Optional, Set the target project name to create the cloned Task in.
         """
         base_temp_task = Task.get_task(task_id=base_task_id)
         if disable_clone_task:
@@ -92,7 +96,14 @@ class ClearmlJob(object):
 
         # check again if we need to clone the Task
         if not disable_clone_task:
-            self.task = Task.clone(base_task_id, parent=parent or base_task_id, **kwargs)
+            # noinspection PyProtectedMember
+            self.task = Task.clone(
+                base_task_id, parent=parent or base_task_id,
+                project=get_or_create_project(
+                    session=Task._get_default_session(), project_name=target_project
+                ) if target_project else None,
+                **kwargs
+            )
 
         if tags:
             self.task.set_tags(list(set(self.task.get_tags()) | set(tags)))

@@ -2,6 +2,8 @@ from .parameters import UniformParameterRange, DiscreteParameterRange, UniformIn
 from .optimization import GridSearch, RandomSearch, HyperParameterOptimizer, Objective
 from .job import ClearmlJob
 from .controller import PipelineController
+from .scheduler import TaskScheduler
 
 __all__ = ["UniformParameterRange", "DiscreteParameterRange", "UniformIntegerParameterRange", "ParameterSet",
-           "GridSearch", "RandomSearch", "HyperParameterOptimizer", "Objective", "ClearmlJob", "PipelineController"]
+           "GridSearch", "RandomSearch", "HyperParameterOptimizer", "Objective", "ClearmlJob", "PipelineController",
+           "TaskScheduler"]

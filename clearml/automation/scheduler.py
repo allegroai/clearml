@@ -248,6 +248,7 @@ class TaskScheduler(object):
             name=name or task_id,
             base_task_id=task_id,
             queue=queue,
+            target_project=target_project,
             execution_limit_hours=limit_execution_time,
             recurring=bool(recurring),
             single_instance=bool(single_instance),

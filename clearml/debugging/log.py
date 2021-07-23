@@ -20,6 +20,10 @@ class PickledLogger(logging.getLoggerClass()):
 
     @staticmethod
     def wrapper(a_instance, func, **kwargs):
+        # if python 3.7 and above Loggers are pickle-able
+        if sys.version_info.major >= 3 and sys.version_info.minor >= 7:
+            return a_instance
+
         safe_logger = PickledLogger(name=kwargs.get('name'))
         safe_logger.__dict__ = a_instance.__dict__
         if 'stream' in kwargs and kwargs['stream']:

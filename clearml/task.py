@@ -354,8 +354,11 @@ class Task(_Task):
 
             .. code-block:: py
 
-               auto_connect_frameworks={'matplotlib': True, 'tensorflow': True, 'tensorboard': True, 'pytorch': True,
-                    'xgboost': True, 'scikit': True, 'fastai': True, 'lightgbm': True, 'hydra': True}
+               auto_connect_frameworks={
+                   'matplotlib': True, 'tensorflow': True, 'tensorboard': True, 'pytorch': True,
+                   'xgboost': True, 'scikit': True, 'fastai': True, 'lightgbm': True,
+                   'hydra': True, 'detect_repository': True,
+               }
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
             These plots appear in in the **ClearML Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab,

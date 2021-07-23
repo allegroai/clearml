@@ -1971,7 +1971,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             If None, the new task will inherit the cloned task's project.
         :param logging.Logger log: Log object used by the infrastructure.
         :param Session session: Session object used for sending requests to the API
-        :return: The new tasks's ID.
+        :return: The new task's ID.
         """
 
         session = session if session else cls._get_default_session()

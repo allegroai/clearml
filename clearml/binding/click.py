@@ -1,10 +1,10 @@
 try:
-    from click.core import Command, Option, Argument, OptionParser, Group, Context
-    from click.types import BoolParamType
+    from click.core import Command, Option, Argument, Group, Context  # noqa
+    from click.types import BoolParamType  # noqa
 except ImportError:
     Command = None
 
-from .frameworks import _patched_call
+from .frameworks import _patched_call  # noqa
 from ..config import running_remotely, get_remote_task_id
 from ..utilities.dicts import cast_str_to_bool
 

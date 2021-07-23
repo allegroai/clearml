@@ -432,7 +432,7 @@ class Task(_Task):
                 cls.__main_task.__register_at_exit(cls.__main_task._at_exit)
                 # TODO: Check if the signal handler method is safe enough, for the time being, do not unhook
                 # cls.__main_task.__register_at_exit(None, only_remove_signal_and_exception_hooks=True)
-                
+
                 # start all reporting threads
                 BackgroundMonitor.start_all(task=cls.__main_task)
 
@@ -2897,10 +2897,10 @@ class Task(_Task):
             return
         # shutdown will clear the main, so we have to store it before.
         # is_main = self.is_main_task()
-        # fix debugger signal in the middle
+        # fix debugger signal in the middle, catch everything
         try:
             self.__shutdown()
-        except:
+        except:  # noqa
             pass
         # In rare cases we might need to forcefully shutdown the process, currently we should avoid it.
         # if is_main:

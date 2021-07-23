@@ -3338,7 +3338,7 @@ class Task(_Task):
             tasks.GetAllRequest(
                 id=task_ids,
                 project=project_ids if project_ids else kwargs.pop('project', None),
-                name=task_name if task_name else None,
+                name=task_name if task_name else kwargs.pop('name', None),
                 only_fields=only_fields,
                 **kwargs
             )

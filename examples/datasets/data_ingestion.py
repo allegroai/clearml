@@ -1,3 +1,5 @@
+# Using ClearML's Dataset class to register data
+# Make sure to execute dataset_creation.py first
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -13,25 +15,10 @@ from ignite.utils import setup_logger
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
-from clearml import Dataset, Task, StorageManager
+from clearml import Dataset, Task
 
 dataset_name = "cifar_dataset"
 dataset_project = "dataset examples"
-
-# Download the data and create a dataset
-"""
-manager = StorageManager()
-
-dataset_path = manager.get_local_copy(remote_url="https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz")
-
-dataset = Dataset.create(dataset_name=dataset_name, dataset_project=dataset_project)
-
-dataset.add_files(path=dataset_path)
-
-dataset.upload()
-
-dataset.finalize()
-"""
 
 task = Task.init(project_name='Image Example', task_name='image classification CIFAR10')
 params = {'number_of_epochs': 20, 'batch_size': 64, 'dropout': 0.25, 'base_lr': 0.001, 'momentum': 0.9, 'loss_report': 100}
@@ -40,7 +27,7 @@ print(params)  # printing actual configuration (after override in remote mode)
 
 
 # The below gets the dataset and stores in the cache. If you want to download the dataset regardless if it's in the
-# cache, use the Dataset.get(dataset_id).get_mutable_local_copy(path to download)
+# cache, use the Dataset.get(dataset_name, dataset_project).get_mutable_local_copy(path to download)
 dataset_path = Dataset.get(dataset_name=dataset_name, dataset_project=dataset_project).get_local_copy()
 
 # Dataset and Dataloader initializations

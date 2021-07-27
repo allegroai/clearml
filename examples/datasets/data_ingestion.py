@@ -18,7 +18,7 @@ from tqdm import tqdm
 from clearml import Dataset, Task
 
 dataset_name = "cifar_dataset"
-dataset_project = "dataset examples"
+dataset_project = "dataset_examples"
 
 task = Task.init(project_name='Image Example', task_name='image classification CIFAR10')
 params = {'number_of_epochs': 20, 'batch_size': 64, 'dropout': 0.25, 'base_lr': 0.001, 'momentum': 0.9, 'loss_report': 100}

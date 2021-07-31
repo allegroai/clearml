@@ -29,6 +29,7 @@ class CreateAndPopulate(object):
             docker=None,  # Optional[str]
             docker_args=None,  # Optional[str]
             docker_bash_setup_script=None,  # Optional[str]
+            output_uri=None,  # Optional[str]
             base_task_id=None,  # Optional[str]
             add_task_init_call=True,  # bool
             raise_on_missing_entries=False,  # bool
@@ -63,7 +64,9 @@ class CreateAndPopulate(object):
         :param docker: Select the docker image to be executed in by the remote session
         :param docker_args: Add docker arguments, pass a single string
         :param docker_bash_setup_script: Add bash script to be executed
-            inside the docker before setting up the Task's environement
+            inside the docker before setting up the Task's environment
+        :param output_uri: Optional, set the Tasks's output_uri (Storage destination).
+            examples: 's3://bucket/folder', 'https://server/' , 'gs://bucket/folder', 'azure://bucket', '/folder/'
         :param base_task_id: Use a pre-existing task in the system, instead of a local repo/script.
             Essentially clones an existing task and overrides arguments/requirements.
         :param add_task_init_call: If True, a 'Task.init()' call is added to the script entry point in remote execution.
@@ -106,6 +109,7 @@ class CreateAndPopulate(object):
         self.project_name = project_name
         self.task_name = task_name
         self.task_type = task_type
+        self.output_uri = output_uri
         self.task = None
         self.raise_on_missing_entries = raise_on_missing_entries
         self.verbose = verbose
@@ -148,11 +152,17 @@ class CreateAndPopulate(object):
             if self.verbose:
                 print('Cloning task {}'.format(self.base_task_id))
             task = Task.clone(source_task=self.base_task_id, project=Task.get_project_id(self.project_name))
+
+            if self.output_uri:
+                task.output_uri = self.output_uri
         else:
             # noinspection PyProtectedMember
             task = Task._create(
                 task_name=self.task_name, project_name=self.project_name,
                 task_type=self.task_type or Task.TaskTypes.training)
+
+            if self.output_uri:
+                task.output_uri = self.output_uri
 
             # if there is nothing to populate, return
             if not any([

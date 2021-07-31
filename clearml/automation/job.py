@@ -159,7 +159,7 @@ class ClearmlJob(object):
 
         :param str queue_name:
 
-        :return False if Task is not in "created" status (i.e. cannot be enqueued)
+        :return False if Task is not in "created" status (i.e. cannot be enqueued) or cannot be enqueued
         """
         if self._is_cached_task:
             return False
@@ -167,7 +167,7 @@ class ClearmlJob(object):
             Task.enqueue(task=self.task, queue_name=queue_name)
             return True
         except Exception as ex:
-            logger.warning(ex)
+            logger.warning('Error enqueuing Task {} to {}: {}'.format(self.task, queue_name, ex))
         return False
 
     def abort(self):

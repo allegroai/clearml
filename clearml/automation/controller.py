@@ -673,7 +673,7 @@ class PipelineController(object):
         elif node.job.is_cached_task():
             node.executed = node.job.task_id()
         else:
-            node.job.launch(queue_name=node.queue or self._default_execution_queue)
+            return node.job.launch(queue_name=node.queue or self._default_execution_queue)
 
         return True
 

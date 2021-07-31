@@ -998,6 +998,8 @@ class Task(_Task):
 
         req = tasks.EnqueueRequest(task=task_id, queue=queue_id)
         res = cls._send(session=session, req=req)
+        if not res.ok():
+            raise ValueError(res.response)
         resp = res.response
         return resp
 

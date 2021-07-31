@@ -276,8 +276,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 entry_point_filename = None if config.get('development.force_analyze_entire_repo', False) else \
                     os.path.join(result.script['working_dir'], entry_point)
                 if self._force_use_pip_freeze:
-                    requirements, conda_requirements = pip_freeze(
-                        combine_conda_with_pip=config.get('development.detect_with_conda_freeze', True))
+                    if isinstance(self._force_use_pip_freeze, (str, Path)):
+                        conda_requirements = ''
+                        req_file = Path(self._force_use_pip_freeze)
+                        requirements = req_file.read_text() if req_file.is_file() else None
+                    else:
+                        requirements, conda_requirements = pip_freeze(
+                            combine_conda_with_pip=config.get('development.detect_with_conda_freeze', True))
                     requirements = '# Python ' + sys.version.replace('\n', ' ').replace('\r', ' ') + '\n\n'\
                                    + requirements
                 else:
@@ -1697,16 +1702,18 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         cls._ignore_requirements.add(str(package_name))
 
     @classmethod
-    def force_requirements_env_freeze(cls, force=True):
-        # type: (bool) -> None
+    def force_requirements_env_freeze(cls, force=True, requirements_file=None):
+        # type: (bool, Optional[Union[str, Path]]) -> None
         """
         Force using `pip freeze` / `conda list` to store the full requirements of the active environment
         (instead of statically analyzing the running code and listing directly imported packages)
         Notice: Must be called before `Task.init` !
 
         :param force: Set force using `pip freeze` flag on/off
+        :param requirements_file: Optional pass requirements.txt file to use
+        (instead of `pip freeze` or automatic analysis)
         """
-        cls._force_use_pip_freeze = bool(force)
+        cls._force_use_pip_freeze = requirements_file if requirements_file else bool(force)
 
     def _get_default_report_storage_uri(self):
         # type: () -> str

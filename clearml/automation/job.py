@@ -94,6 +94,13 @@ class ClearmlJob(object):
                 self._worker = None
                 return
 
+        # if we have target_project, remove project from kwargs if we have it.
+        if target_project and 'project' in kwargs:
+            logger.info(
+                'target_project={} and project={} passed, using target_project.'.format(
+                    target_project, kwargs['project']))
+            kwargs.pop('project', None)
+
         # check again if we need to clone the Task
         if not disable_clone_task:
             # noinspection PyProtectedMember
@@ -101,7 +108,7 @@ class ClearmlJob(object):
                 base_task_id, parent=parent or base_task_id,
                 project=get_or_create_project(
                     session=Task._get_default_session(), project_name=target_project
-                ) if target_project else None,
+                ) if target_project else kwargs.pop('project', None),
                 **kwargs
             )
 
@@ -396,6 +403,21 @@ class ClearmlJob(object):
 
         hyper_params = task.get_parameters() if params_override is None else params_override
         configs = task.get_configuration_objects()
+        # currently we do not add the docker image to the hash (only args and setup script),
+        # because default docker image will cause the step to change
+        docker = None
+        if getattr(task.data, 'container'):
+            docker = dict(**(task.data.container or dict()))
+            docker.pop('image', None)
+
+        # make sure that if we only have docker args/bash,
+        # we use encode it, otherwise we revert to the original encoding (excluding docker altogether)
+        if docker:
+            return hash_dict(
+                dict(script=script, hyper_params=hyper_params, configs=configs, docker=docker),
+                hash_func='crc32'
+            )
+
         return hash_dict(dict(script=script, hyper_params=hyper_params, configs=configs), hash_func='crc32')
 
     @classmethod

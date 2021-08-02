@@ -63,7 +63,7 @@ def get_or_create_project(session, project_name, description=None):
 
 
 def get_queue_id(session, queue):
-    # type: ('Session', str) -> Optional[str]
+    # type: ('Session', str) -> Optional[str] # noqa: F821
     if not queue:
         return None
 
@@ -78,7 +78,6 @@ def get_queue_id(session, queue):
         return res.response.queues[0].id
 
     return None
-
 
 
 # Hack for supporting windows
@@ -162,4 +161,3 @@ def datetime_from_isoformat(o):
     if isinstance(o, datetime):
         return o
     return datetime.strptime(o, "%Y-%m-%dT%H:%M:%S.%f")
-

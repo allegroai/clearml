@@ -335,6 +335,7 @@ class ResourceMonitor(BackgroundMonitor):
 
     def _get_machine_specs(self):
         # type: () -> dict
+        specs = {}
         # noinspection PyBroadException
         try:
             specs = {
@@ -347,10 +348,10 @@ class ResourceMonitor(BackgroundMonitor):
                 'memory_gb': round(psutil.virtual_memory().total / 1024 ** 3, 1),
                 'hostname': str(platform.node()),
                 'gpu_count': 0,
-                'gpu_type': '',
-                'gpu_memory': '',
-                'gpu_driver_version': '',
-                'gpu_driver_cuda_version': '',
+                'gpu_type': 'N/A',
+                'gpu_memory': 'N/A',
+                'gpu_driver_version': 'N/A',
+                'gpu_driver_cuda_version': 'N/A',
             }
             if self._gpustat:
                 gpu_stat = self._gpustat.new_query(shutdown=True, get_driver_info=True)
@@ -363,6 +364,6 @@ class ResourceMonitor(BackgroundMonitor):
                     specs['gpu_driver_cuda_version'] = gpu_stat.driver_cuda_version or ''
 
         except Exception:
-            return {}
+            pass
 
         return specs

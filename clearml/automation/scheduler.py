@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from threading import Thread, enumerate as enumerate_threads
 from time import sleep, time
-from typing import List, Union, Optional, Callable
+from typing import List, Union, Optional, Callable, Sequence
 
 from attr import attrs, attrib
 from dateutil.relativedelta import relativedelta
@@ -24,7 +24,7 @@ class BaseScheduleJob(object):
     task_parameters = attrib(type=dict, default={})
     task_overrides = attrib(type=dict, default={})
     clone_task = attrib(type=bool, default=True)
-    _executed_instances = attrib(type=list, default=[])
+    _executed_instances = attrib(type=list, default=None)
 
     def to_dict(self, full=False):
         return {k: v for k, v in self.__dict__.items()
@@ -53,6 +53,9 @@ class BaseScheduleJob(object):
     def run(self, task_id):
         # type (Optional[str]) -> datetime
         if task_id:
+            # make sure we have a new instance
+            if not self._executed_instances:
+                self._executed_instances = []
             self._executed_instances.append(str(task_id))
 
 
@@ -230,8 +233,8 @@ class ScheduleJob(BaseScheduleJob):
 
 @attrs
 class ExecutedJob(object):
-    name = attrib(type=str)
-    started = attrib(type=datetime, converter=datetime_from_isoformat)
+    name = attrib(type=str, default=None)
+    started = attrib(type=datetime, converter=datetime_from_isoformat, default=None)
     finished = attrib(type=datetime, converter=datetime_from_isoformat, default=None)
     task_id = attrib(type=str, default=None)
     thread_id = attrib(type=str, default=None)
@@ -241,8 +244,14 @@ class ExecutedJob(object):
 
 
 class BaseScheduler(object):
-    def __init__(self, sync_frequency_minutes=15, force_create_task_name=None, force_create_task_project=None):
-        # type: (float, Optional[str], Optional[str]) -> None
+    def __init__(
+            self,
+            sync_frequency_minutes=15,
+            force_create_task_name=None,
+            force_create_task_project=None,
+            pooling_frequency_minutes=None
+    ):
+        # type: (float, Optional[str], Optional[str], Optional[float]) -> None
         """
         Create a Task scheduler service
 
@@ -254,6 +263,7 @@ class BaseScheduler(object):
         even if main Task.init already exists.
         """
         self._last_sync = 0
+        self._pooling_frequency_minutes = pooling_frequency_minutes
         self._sync_frequency_minutes = sync_frequency_minutes
         if force_create_task_name or not Task.current_task():
             self._task = Task.init(
@@ -296,6 +306,11 @@ class BaseScheduler(object):
                 self._log('Warning: Exception caught during scheduling step: {}'.format(ex))
                 # rate control
                 sleep(15)
+
+            # sleep until the next pool (default None)
+            if self._pooling_frequency_minutes:
+                self._log("Sleeping until the next pool in {} minutes".format(self._pooling_frequency_minutes))
+                sleep(self._pooling_frequency_minutes*60.)
 
     def start_remotely(self, queue='services'):
         # type: (str) -> None
@@ -360,8 +375,8 @@ class BaseScheduler(object):
         self._launch_job_task(job)
         self._launch_job_function(job)
 
-    def _launch_job_task(self, job):
-        # type: (BaseScheduleJob) -> Optional[ClearmlJob]
+    def _launch_job_task(self, job, task_parameters=None, add_tags=None):
+        # type: (BaseScheduleJob, Optional[dict], Optional[List[str]]) -> Optional[ClearmlJob]
         # make sure this is not a function job
         if job.base_function:
             return None
@@ -380,11 +395,12 @@ class BaseScheduler(object):
         # actually run the job
         task_job = ClearmlJob(
             base_task_id=job.base_task_id,
-            parameter_override=job.task_parameters,
+            parameter_override=task_parameters or job.task_parameters,
             task_overrides=job.task_overrides,
             disable_clone_task=not job.clone_task,
             allow_caching=False,
             target_project=job.target_project,
+            tags=[add_tags] if add_tags and isinstance(add_tags, str) else add_tags,
         )
         self._log('Scheduling Job {}, Task {} on queue {}.'.format(
             job.name, task_job.task_id(), job.queue))
@@ -393,8 +409,8 @@ class BaseScheduler(object):
             job.run(task_job.task_id())
         return task_job
 
-    def _launch_job_function(self, job):
-        # type: (ScheduleJob) -> Optional[Thread]
+    def _launch_job_function(self, job, func_args=None):
+        # type: (BaseScheduleJob, Optional[Sequence]) -> Optional[Thread]
         # make sure this IS a function job
         if not job.base_function:
             return None
@@ -419,7 +435,7 @@ class BaseScheduler(object):
 
         self._log("Scheduling Job '{}', Task '{}' on background thread".format(
             job.name, job.base_function))
-        t = Thread(target=job.base_function)
+        t = Thread(target=job.base_function, args=func_args or ())
         t.start()
         # mark as run
         job.run(t.ident)
@@ -489,7 +505,8 @@ class TaskScheduler(BaseScheduler):
         # type(...) -> bool
         """
         Create a cron job alike scheduling for a pre existing Task.
-        Notice it is recommended to give the Task a descriptive name, if not provided a random UUID is used.
+        Notice it is recommended to give the schedule entry a descriptive unique name,
+        if not provided a task ID is used.
 
         Examples:
         Launch every 15 minutes
@@ -763,7 +780,7 @@ class TaskScheduler(BaseScheduler):
 
         # plot the schedule definition
         columns = [
-            'name', 'base_task_id', 'next_run', 'target_project', 'queue',
+            'name', 'base_task_id', 'base_function', 'next_run', 'target_project', 'queue',
             'minute', 'hour', 'day', 'month', 'year',
             'starting_time', 'execution_limit_hours', 'recurring',
             'single_instance', 'task_parameters', 'task_overrides', 'clone_task',
@@ -772,6 +789,14 @@ class TaskScheduler(BaseScheduler):
         for j in self._schedule_jobs:
             j_dict = j.to_dict()
             j_dict['next_run'] = j.next()
+            j_dict['base_function'] = "{}.{}".format(
+                getattr(j.base_function, '__module__', ''),
+                getattr(j.base_function, '__name__', '')
+            ) if j.base_function else ''
+
+            if not j_dict.get('base_task_id'):
+                j_dict['clone_task'] = ''
+
             row = [
                 str(j_dict.get(c)).split('.', 1)[0] if isinstance(j_dict.get(c), datetime) else str(j_dict.get(c) or '')
                 for c in columns
@@ -802,7 +827,7 @@ class TaskScheduler(BaseScheduler):
                 [executed_job.name,
                  '<a href="{}">{}</a>'.format(task_link_template.format(
                      project='*', task=executed_job.task_id), executed_job.task_id)
-                 if executed_job.task_id else '',
+                 if executed_job.task_id else 'function',
                  str(executed_job.started).split('.', 1)[0], str(executed_job.finished).split('.', 1)[0]
                  ]
             ]

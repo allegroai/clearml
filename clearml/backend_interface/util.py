@@ -160,4 +160,4 @@ def datetime_from_isoformat(o):
         return None
     if isinstance(o, datetime):
         return o
-    return datetime.strptime(o, "%Y-%m-%dT%H:%M:%S.%f")
+    return datetime.strptime(o.split('+')[0], "%Y-%m-%dT%H:%M:%S.%f")

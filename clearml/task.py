@@ -403,7 +403,8 @@ class Task(_Task):
                     raise UsageError(
                         "Current task already created "
                         "and requested {field} '{default}' does not match current {field} '{current}'. "
-                        "If you wish to create additional tasks use `Task.create`".format(
+                        "If you wish to create additional tasks use `Task.create`, "
+                        "or close the current task with `task.close()` before calling `Task.init(...)`".format(
                             field=field,
                             default=default,
                             current=current,

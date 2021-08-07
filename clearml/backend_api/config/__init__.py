@@ -10,7 +10,7 @@ def load(*additional_module_paths):
     configurations should be loaded as well
     :return: Config object
     """
-    config = Config(verbose=False)
+    config = Config()
     this_module_path = Path(__file__).parent
     config.load_relative_to(this_module_path, *additional_module_paths)
     return config

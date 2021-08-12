@@ -23,7 +23,7 @@ from ..backend_api.services import tasks
 from ..backend_interface.metrics.events import UploadEvent
 from ..debugging.log import LoggerRoot
 from ..storage.helper import remote_driver_schemes
-from ..storage.util import sha256sum, format_size
+from ..storage.util import sha256sum, format_size, get_common_path
 
 try:
     import pandas as pd
@@ -321,6 +321,8 @@ class Artifacts(object):
         if preview:
             preview = str(preview)
 
+        pathlib_types = (Path, pathlib_Path,) if pathlib_Path is not None else (Path,)
+
         # try to convert string Path object (it might reference a file/folder)
         # dont not try to serialize long texts.
         if isinstance(artifact_object, six.string_types) and len(artifact_object) < 2048:
@@ -393,7 +395,7 @@ class Artifacts(object):
                 )
 
             delete_after_upload = True
-        elif isinstance(artifact_object, (Path, pathlib_Path,) if pathlib_Path is not None else (Path,)):
+        elif isinstance(artifact_object, pathlib_types):
             # check if single file
             artifact_object = Path(artifact_object)
 
@@ -456,6 +458,43 @@ class Artifacts(object):
                 artifact_type = 'custom'
                 artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
                 local_filename = artifact_object
+        elif isinstance(artifact_object, (list, tuple)) and all(isinstance(p, pathlib_types) for p in artifact_object):
+            # find common path if exists
+            list_files = [Path(p) for p in artifact_object]
+            override_filename_ext_in_uri = '.zip'
+            override_filename_in_uri = quote(name, safe="") + override_filename_ext_in_uri
+            common_path = get_common_path(list_files)
+            fd, zip_file = mkstemp(
+                prefix='artifact_folder.', suffix=override_filename_ext_in_uri
+            )
+            try:
+                artifact_type_data.content_type = 'application/zip'
+                archive_preview = 'Archive content:\n'
+
+                with ZipFile(zip_file, 'w', allowZip64=True, compression=ZIP_DEFLATED) as zf:
+                    for filename in sorted(list_files):
+                        if filename.is_file():
+                            relative_file_name = filename.relative_to(Path(common_path)).as_posix() \
+                                if common_path else filename.as_posix()
+                            archive_preview += '{} - {}\n'.format(
+                                relative_file_name, format_size(filename.stat().st_size))
+                            zf.write(filename.as_posix(), arcname=relative_file_name)
+                        else:
+                            LoggerRoot.get_base_logger().warning(
+                                "Failed zipping artifact file '{}', file not found!".format(filename.as_posix()))
+            except Exception as e:
+                # failed uploading folder:
+                LoggerRoot.get_base_logger().warning('Exception {}\nFailed zipping artifact files {}'.format(
+                    artifact_object, e))
+                return False
+            finally:
+                os.close(fd)
+            artifact_type_data.preview = preview or archive_preview
+            artifact_object = zip_file
+            artifact_type = 'archive'
+            artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
+            local_filename = artifact_object
+            delete_after_upload = True
         elif (
                 isinstance(artifact_object, six.string_types) and len(artifact_object) < 4096
                 and urlparse(artifact_object).scheme in remote_driver_schemes

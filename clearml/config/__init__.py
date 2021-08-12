@@ -20,7 +20,7 @@ def get_cache_dir():
     cache_base_dir = Path(  # noqa: F405
         expandvars(
             expanduser(
-                TRAINS_CACHE_DIR.get() or  # noqa: F405
+                CLEARML_CACHE_DIR.get() or  # noqa: F405
                 config.get("storage.cache.default_base_dir") or
                 DEFAULT_CACHE_DIR  # noqa: F405
             )

@@ -16,8 +16,8 @@ from clearml.utilities.pyhocon import ConfigFactory, ConfigMissingException
 
 description = "\n" \
     "Please create new clearml credentials through the profile page in " \
-    "your clearml web app (e.g. http://localhost:8080/profile) \n"\
-    "Or with the free hosted service at https://app.community.clear.ml/profile\n" \
+    "your `clearml-server` web app (e.g. http://localhost:8080/profile) \n"\
+    "Or create a free account at https://app.community.clear.ml/profile\n\n" \
     "In the profile page, press \"Create new credentials\", then press \"Copy to clipboard\".\n" \
     "\n" \
     "Paste copied configuration here:\n"

@@ -1,4 +1,5 @@
 """ Utilities """
+from typing import Optional, Any
 
 _epsilon = 0.00001
 
@@ -126,11 +127,17 @@ def merge_dicts(dict1, dict2):
     return dict1
 
 
-def hocon_quote_key(a_dict):
+def hocon_quote_key(a_obj):
     """ Recursively quote key with '.' to \"key\" """
-    if not isinstance(a_dict, dict):
-        return a_dict
+    if isinstance(a_obj, list):
+        return [hocon_quote_key(a) for a in a_obj]
+    elif isinstance(a_obj, tuple):
+        return tuple(hocon_quote_key(a) for a in a_obj)
+    elif not isinstance(a_obj, dict):
+        return a_obj
+
     # preserve dict type
+    a_dict = a_obj
     new_dict = type(a_dict)()
     for k, v in a_dict.items():
         if isinstance(k, str) and '.' in k:
@@ -140,10 +147,22 @@ def hocon_quote_key(a_dict):
     return new_dict
 
 
-def hocon_unquote_key(a_dict):
+def hocon_unquote_key(a_obj):
     """ Recursively unquote \"key\" with '.' to key """
-    if not isinstance(a_dict, dict):
-        return a_dict
+
+    if isinstance(a_obj, list):
+        return [hocon_unquote_key(a) for a in a_obj]
+    elif isinstance(a_obj, tuple):
+        return tuple(hocon_unquote_key(a) for a in a_obj)
+    elif not isinstance(a_obj, dict):
+        return a_obj
+
+    a_dict = a_obj
+
+    # ConfigTree to dict
+    if hasattr(a_dict, 'as_plain_ordered_dict'):
+        a_dict = a_dict.as_plain_ordered_dict()
+
     # preserve dict type
     new_dict = type(a_dict)()
     for k, v in a_dict.items():
@@ -152,3 +171,18 @@ def hocon_unquote_key(a_dict):
         else:
             new_dict[k] = hocon_unquote_key(v)
     return new_dict
+
+
+def cast_str_to_bool(value, strip=True):
+    # type: (Any, bool) -> Optional[bool]
+    a_strip_v = value if not strip else str(value).lower().strip()
+    if a_strip_v == 'false' or not a_strip_v:
+        return False
+    elif a_strip_v == 'true':
+        return True
+    else:
+        # first try to cast to integer
+        try:
+            return bool(int(a_strip_v))
+        except (ValueError, TypeError):
+            return None

@@ -29,6 +29,7 @@ from .defs import (
     LOCAL_CONFIG_FILES,
     LOCAL_CONFIG_FILE_OVERRIDE_VAR,
     ENV_CONFIG_PATH_OVERRIDE_VAR,
+    CONFIG_VERBOSE,
 )
 from .defs import is_config_file
 from .entry import Entry, NotSet
@@ -64,12 +65,6 @@ class ConfigEntry(Entry):
 
 
 class Config(object):
-    """
-    Represents a server configuration.
-    If watch=True, will watch configuration folders for changes and reload itself.
-    NOTE: will not watch folders that were created after initialization.
-    """
-
     # used in place of None in Config.get as default value because None is a valid value
     _MISSING = object()
 
@@ -77,14 +72,14 @@ class Config(object):
         self,
         config_folder=None,
         env=None,
-        verbose=True,
+        verbose=None,
         relative_to=None,
         app=None,
         is_server=False,
         **_
     ):
         self._app = app
-        self._verbose = verbose
+        self._verbose = verbose if verbose is not None else CONFIG_VERBOSE.get()
         self._folder_name = config_folder or DEFAULT_CONFIG_FOLDER
         self._roots = []
         self._config = ConfigTree()
@@ -233,7 +228,7 @@ class Config(object):
 
     def get(self, key, default=_MISSING):
         value = self._config.get(key, default)
-        if value is self._MISSING and not default:
+        if value is self._MISSING:
             raise KeyError(
                 "Unable to find value for key '{}' and default value was not provided.".format(
                     key

@@ -294,8 +294,8 @@ class StorageManager(object):
         return local_folder
 
     @classmethod
-    def list(cls, remote_url):
-        # type: (str) -> Optional[List[str]]
+    def list(cls, remote_url, return_full_path=False):
+        # type: (str, bool) -> Optional[List[str]]
         """
         Return a list of object names inside the base path
 
@@ -304,6 +304,8 @@ class StorageManager(object):
             For example: AWS S3: `s3://bucket/folder_` will list all the files you have in
             `s3://bucket-name/folder_*/*`. The same behaviour with Google Storage: `gs://bucket/folder_`,
             Azure blob storage: `azure://bucket/folder_` and also file system listing: `/mnt/share/folder_`
+        :param bool return_full_path: If True, return a list of full object paths, otherwise return a list of
+            relative object paths (default False).
 
         :return: The paths of all the objects in the storage base path under prefix, relative to the base path.
             None in case of list operation is not supported (http and https protocols for example)
@@ -314,4 +316,4 @@ class StorageManager(object):
         except Exception as ex:
             LoggerRoot.get_base_logger().warning("Can not list files for '{}' - {}".format(remote_url, ex))
             names_list = None
-        return names_list
+        return ["{}/{}".format(helper.base_url, name) for name in names_list] if return_full_path else names_list

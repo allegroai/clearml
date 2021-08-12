@@ -276,8 +276,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 entry_point_filename = None if config.get('development.force_analyze_entire_repo', False) else \
                     os.path.join(result.script['working_dir'], entry_point)
                 if self._force_use_pip_freeze:
-                    requirements, conda_requirements = pip_freeze(
-                        combine_conda_with_pip=config.get('development.detect_with_conda_freeze', True))
+                    if isinstance(self._force_use_pip_freeze, (str, Path)):
+                        conda_requirements = ''
+                        req_file = Path(self._force_use_pip_freeze)
+                        requirements = req_file.read_text() if req_file.is_file() else None
+                    else:
+                        requirements, conda_requirements = pip_freeze(
+                            combine_conda_with_pip=config.get('development.detect_with_conda_freeze', True))
                     requirements = '# Python ' + sys.version.replace('\n', ' ').replace('\r', ' ') + '\n\n'\
                                    + requirements
                 else:
@@ -932,18 +937,26 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 return ""
 
             str_value = str(value)
-            if isinstance(value, (tuple, list, dict)) and 'None' in re.split(r'[ ,\[\]{}()]', str_value):
-                # If we have None in the string we have to use json to replace it with null,
-                # otherwise we end up with None as string when running remotely
-                try:
-                    str_json = json.dumps(value)
-                    # verify we actually have a null in the string, otherwise prefer the str cast
-                    # This is because we prefer to have \' as in str and not \" used in json
-                    if 'null' in re.split(r'[ ,\[\]{}()]', str_json):
+            if isinstance(value, (tuple, list, dict)):
+                if 'None' in re.split(r'[ ,\[\]{}()]', str_value):
+                    # If we have None in the string we have to use json to replace it with null,
+                    # otherwise we end up with None as string when running remotely
+                    try:
+                        str_json = json.dumps(value)
+                        # verify we actually have a null in the string, otherwise prefer the str cast
+                        # This is because we prefer to have \' as in str and not \" used in json
+                        if 'null' in re.split(r'[ ,\[\]{}()]', str_json):
+                            return str_json
+                    except TypeError:
+                        # if we somehow failed to json serialize, revert to previous std casting
+                        pass
+                elif any('\\' in str(v) for v in value):
+                    try:
+                        str_json = json.dumps(value)
                         return str_json
-                except TypeError:
-                    # if we somehow failed to json serialize, revert to previous std casting
-                    pass
+                    except TypeError:
+                        pass
+
             return str_value
 
         if not all(isinstance(x, (dict, Iterable)) for x in args):
@@ -1636,8 +1649,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def get_project_id(cls, project_name):
         # type: (str) -> Optional[str]
         """
-        Return a the project unique id (str).
-        If for than one project match the project_name, return the last updated project
+        Return a project's unique ID (str).
+        If more than one project matched the project_name, return the last updated project
         If no project matched the requested name, returns None
 
         :return: Project unique ID (str), or None if no project was found.
@@ -1697,16 +1710,18 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         cls._ignore_requirements.add(str(package_name))
 
     @classmethod
-    def force_requirements_env_freeze(cls, force=True):
-        # type: (bool) -> None
+    def force_requirements_env_freeze(cls, force=True, requirements_file=None):
+        # type: (bool, Optional[Union[str, Path]]) -> None
         """
         Force using `pip freeze` / `conda list` to store the full requirements of the active environment
         (instead of statically analyzing the running code and listing directly imported packages)
         Notice: Must be called before `Task.init` !
 
         :param force: Set force using `pip freeze` flag on/off
+        :param requirements_file: Optional pass requirements.txt file to use
+        (instead of `pip freeze` or automatic analysis)
         """
-        cls._force_use_pip_freeze = bool(force)
+        cls._force_use_pip_freeze = requirements_file if requirements_file else bool(force)
 
     def _get_default_report_storage_uri(self):
         # type: () -> str
@@ -1871,7 +1886,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self._edit(script=script)
 
     def _set_configuration(self, name, description=None, config_type=None, config_text=None, config_dict=None):
-        # type: (str, Optional[str], Optional[str], Optional[str], Optional[Mapping]) -> None
+        # type: (str, Optional[str], Optional[str], Optional[str], Optional[Union[Mapping, list]]) -> None
         """
         Set Task configuration text/dict. Multiple configurations are supported.
 
@@ -1971,7 +1986,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             If None, the new task will inherit the cloned task's project.
         :param logging.Logger log: Log object used by the infrastructure.
         :param Session session: Session object used for sending requests to the API
-        :return: The new tasks's ID.
+        :return: The new task's ID.
         """
 
         session = session if session else cls._get_default_session()

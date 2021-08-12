@@ -2,6 +2,8 @@ import getpass
 import re
 from _socket import gethostname
 from datetime import datetime
+from typing import Optional
+
 try:
     from datetime import timezone
     utc_timezone = timezone.utc
@@ -19,8 +21,8 @@ except ImportError:
             return timedelta(0)
     utc_timezone = UTC()
 
-from ..backend_api.services import projects
-from ..debugging.log import get_logger
+from ..backend_api.services import projects, queues
+from ..debugging.log import get_logger, LoggerRoot
 
 
 def make_message(s, **kwargs):
@@ -51,13 +53,31 @@ def make_message(s, **kwargs):
 
 
 def get_or_create_project(session, project_name, description=None):
-    res = session.send(projects.GetAllRequest(name=exact_match_regex(project_name)))
+    res = session.send(projects.GetAllRequest(name=exact_match_regex(project_name), only_fields=['id']))
     if not res:
         return None
-    if res.response.projects:
+    if res.response and res.response.projects:
         return res.response.projects[0].id
     res = session.send(projects.CreateRequest(name=project_name, description=description or ''))
     return res.response.id
+
+
+def get_queue_id(session, queue):
+    # type: ('Session', str) -> Optional[str] # noqa: F821
+    if not queue:
+        return None
+
+    res = session.send(queues.GetByIdRequest(queue=queue))
+    if res and res.response.queue:
+        return queue
+    res = session.send(queues.GetAllRequest(name=exact_match_regex(queue), only_fields=['id']))
+    if res and res.response and res.response.queues:
+        if len(res.response.queues) > 1:
+            LoggerRoot.get_base_logger().info(
+                "Multiple queues with name={}, selecting queue id={}".format(queue, res.response.queues[0].id))
+        return res.response.queues[0].id
+
+    return None
 
 
 # Hack for supporting windows
@@ -126,3 +146,18 @@ def validate_dict(obj, key_types, value_types, desc=''):
 def exact_match_regex(name):
     """ Convert string to a regex representing an exact match """
     return '^%s$' % re.escape(name or '')
+
+
+def datetime_to_isoformat(o):
+    if isinstance(o, datetime):
+        return o.isoformat()
+    return None
+
+
+def datetime_from_isoformat(o):
+    # type: (str) -> Optional[datetime]
+    if not o:
+        return None
+    if isinstance(o, datetime):
+        return o
+    return datetime.strptime(o.split('+')[0], "%Y-%m-%dT%H:%M:%S.%f")

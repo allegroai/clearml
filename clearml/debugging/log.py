@@ -12,6 +12,39 @@ from six import BytesIO
 default_level = logging.INFO
 
 
+class PickledLogger(logging.getLoggerClass()):
+
+    def __init__(self, *args, **kwargs):
+        super(PickledLogger, self).__init__(*args, **kwargs)
+        self._init_kwargs = None
+
+    @staticmethod
+    def wrapper(a_instance, func, **kwargs):
+        # if python 3.7 and above Loggers are pickle-able
+        if sys.version_info.major >= 3 and sys.version_info.minor >= 7:
+            return a_instance
+
+        safe_logger = PickledLogger(name=kwargs.get('name'))
+        safe_logger.__dict__ = a_instance.__dict__
+        if 'stream' in kwargs and kwargs['stream']:
+            kwargs['stream'] = 'stdout' if kwargs['stream'] == sys.stdout else (
+                'stderr' if kwargs['stream'] == sys.stderr else kwargs['stream'])
+        else:
+            kwargs['stream'] = None
+        kwargs['_func'] = func
+        safe_logger._init_kwargs = kwargs
+        return safe_logger
+
+    def __getstate__(self):
+        return self._init_kwargs or {}
+
+    def __setstate__(self, state):
+        state['stream'] = sys.stdout if state['stream'] == 'stdout' else (
+            sys.stderr if state['stream'] == 'stderr' else state['stream'])
+        _func = state.pop('_func') or self.__class__
+        self.__dict__ = _func(**state).__dict__
+
+
 class _LevelRangeFilter(logging.Filter):
 
     def __init__(self, min_level, max_level, name=''):
@@ -55,8 +88,10 @@ class LoggerRoot(object):
             return LoggerRoot.__base_logger
         # avoid nested imports
         from ..config import get_log_redirect_level
-
-        LoggerRoot.__base_logger = logging.getLogger('clearml')
+        LoggerRoot.__base_logger = PickledLogger.wrapper(
+            logging.getLogger('clearml'),
+            func=cls.get_base_logger,
+            level=level, stream=stream, colored=colored)
         level = level if level is not None else default_level
         LoggerRoot.__base_logger.setLevel(level)
 
@@ -123,7 +158,8 @@ def get_logger(path=None, level=None, stream=None, colored=False):
         if level is not None:
             ch.setLevel(level)
     log.propagate = True
-    return log
+    return PickledLogger.wrapper(
+        log, func=get_logger, path=path, level=level, stream=stream, colored=colored)
 
 
 def _add_file_handler(logger, log_dir, fh, formatter=None):
@@ -164,7 +200,7 @@ def get_null_logger(name=None):
 
         log.addHandler(logging.NullHandler())
         log.propagate = config.get("log.null_log_propagate", False)
-    return log
+    return PickledLogger.wrapper(log, func=get_null_logger, name=name)
 
 
 class TqdmLog(object):

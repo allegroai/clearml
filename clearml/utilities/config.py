@@ -56,8 +56,8 @@ def config_dict_to_text(config):
     # if already string return as is
     if isinstance(config, six.string_types):
         return config
-    if not isinstance(config, dict):
-        raise ValueError("Configuration only supports dictionary objects")
+    if not isinstance(config, (dict, list)):
+        raise ValueError("Configuration only supports dictionary/list objects")
     try:
         # noinspection PyBroadException
         try:
@@ -79,7 +79,7 @@ def text_to_config_dict(text):
         raise ValueError("Configuration parsing only supports string")
     # noinspection PyBroadException
     try:
-        return hocon_unquote_key(ConfigFactory.parse_string(text).as_plain_ordered_dict())
+        return hocon_unquote_key(ConfigFactory.parse_string(text))
     except pyparsing.ParseBaseException as ex:
         pos = "at char {}, line:{}, col:{}".format(ex.loc, ex.lineno, ex.column)
         six.raise_from(ValueError("Could not parse configuration text ({}):\n{}".format(pos, text)), None)

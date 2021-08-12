@@ -503,8 +503,12 @@ def create_plotly_table(table_plot, title, series, layout_config=None):
         headers_values = list([col] for col in table_plot.columns)
         cells_values = table_plot.T.values.tolist()
         if index_added:
-            headers_values.insert(0, table_plot.index.name or "")
-            cells_values.insert(0, table_plot.index.values.tolist())
+            if isinstance(table_plot.index, pd.MultiIndex):
+                headers_values = list(table_plot.index.names or []) + headers_values
+                cells_values = list(zip(*(table_plot.index.values.tolist() or []))) + cells_values
+            else:
+                headers_values.insert(0, table_plot.index.name or "")
+                cells_values.insert(0, table_plot.index.values.tolist())
 
     ret = {
         "data": [{

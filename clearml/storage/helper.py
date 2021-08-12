@@ -759,7 +759,7 @@ class StorageHelper(object):
         return self._driver.delete_object(self._get_object(path))
 
     def check_write_permissions(self, dest_path=None):
-        # create a temporary file, then de;ete it
+        # create a temporary file, then delete it
         base_url = dest_path or self._base_url
         dest_path = base_url + '/.clearml.test'
         # do not check http/s connection permissions
@@ -1055,7 +1055,8 @@ class _HttpDriver(_Driver):
         container = self._containers[obj.container_name]
         res = container.session.delete(obj.url, headers=container.get_headers(obj.url))
         if res.status_code != requests.codes.ok:
-            raise ValueError('Failed deleting object %s (%d): %s' % (obj.object_name, res.status_code, res.text))
+            log.warning('Failed deleting object %s (%d): %s' % (obj.object_name, res.status_code, res.text))
+            return False
         return True
 
     def get_object(self, container_name, object_name, *args, **kwargs):

@@ -3,7 +3,7 @@
 import kerastuner as kt
 import tensorflow as tf
 import tensorflow_datasets as tfds
-from clearml.external.kerastuner import TrainsTunerLogger
+from clearml.external.kerastuner import ClearmlTunerLogger
 
 from clearml import Task
 
@@ -50,7 +50,7 @@ task = Task.init('examples', 'kerastuner cifar10 tuning')
 tuner = kt.Hyperband(
     build_model,
     project_name='kt examples',
-    logger=TrainsTunerLogger(),
+    logger=ClearmlTunerLogger(),
     objective='val_accuracy',
     max_epochs=10,
     hyperband_iterations=6)

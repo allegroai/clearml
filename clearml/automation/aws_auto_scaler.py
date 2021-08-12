@@ -25,6 +25,35 @@ class AwsAutoScaler(AutoScaler):
         workers_prefix = attr.ib(default="dynamic_aws")
         cloud_provider = attr.ib(default="AWS")
 
+    startup_bash_script = [
+        "#!/bin/bash",
+        "sudo apt-get update",
+        "sudo apt-get install -y python3-dev",
+        "sudo apt-get install -y python3-pip",
+        "sudo apt-get install -y gcc",
+        "sudo apt-get install -y git",
+        "sudo apt-get install -y build-essential",
+        "python3 -m pip install -U pip",
+        "python3 -m pip install virtualenv",
+        "python3 -m virtualenv clearml_agent_venv",
+        "source clearml_agent_venv/bin/activate",
+        "python -m pip install clearml-agent",
+        "echo 'agent.git_user=\"{git_user}\"' >> /root/clearml.conf",
+        "echo 'agent.git_pass=\"{git_pass}\"' >> /root/clearml.conf",
+        "echo \"{clearml_conf}\" >> /root/clearml.conf",
+        "export CLEARML_API_HOST={api_server}",
+        "export CLEARML_WEB_HOST={web_server}",
+        "export CLEARML_FILES_HOST={files_server}",
+        "export DYNAMIC_INSTANCE_ID=`curl http://169.254.169.254/latest/meta-data/instance-id`",
+        "export CLEARML_WORKER_ID={worker_id}:$DYNAMIC_INSTANCE_ID",
+        "export CLEARML_API_ACCESS_KEY='{access_key}'",
+        "export CLEARML_API_SECRET_KEY='{secret_key}'",
+        "source ~/.bashrc",
+        "{bash_script}",
+        "python -m clearml_agent --config-file '/root/clearml.conf' daemon --queue '{queue}' {docker}",
+        "shutdown",
+    ]
+
     def __init__(self, settings, configuration):
         # type: (Union[dict, AwsAutoScaler.Settings], Union[dict, AwsAutoScaler.Configuration]) -> None
         super(AwsAutoScaler, self).__init__(settings, configuration)
@@ -51,33 +80,7 @@ class AwsAutoScaler(AutoScaler):
 
         # user_data script will automatically run when the instance is started. it will install the required packages
         # for clearml-agent configure it using environment variables and run clearml-agent on the required queue
-        user_data = """#!/bin/bash
-        sudo apt-get update
-        sudo apt-get install -y python3-dev
-        sudo apt-get install -y python3-pip
-        sudo apt-get install -y gcc
-        sudo apt-get install -y git
-        sudo apt-get install -y build-essential
-        python3 -m pip install -U pip
-        python3 -m pip install virtualenv
-        python3 -m virtualenv clearml_agent_venv
-        source clearml_agent_venv/bin/activate
-        python -m pip install clearml-agent
-        echo 'agent.git_user=\"{git_user}\"' >> /root/clearml.conf
-        echo 'agent.git_pass=\"{git_pass}\"' >> /root/clearml.conf
-        echo "{clearml_conf}" >> /root/clearml.conf
-        export CLEARML_API_HOST={api_server}
-        export CLEARML_WEB_HOST={web_server}
-        export CLEARML_FILES_HOST={files_server}
-        export DYNAMIC_INSTANCE_ID=`curl http://169.254.169.254/latest/meta-data/instance-id`
-        export CLEARML_WORKER_ID={worker_id}:$DYNAMIC_INSTANCE_ID
-        export CLEARML_API_ACCESS_KEY='{access_key}'
-        export CLEARML_API_SECRET_KEY='{secret_key}'
-        {bash_script}
-        source ~/.bashrc
-        python -m clearml_agent --config-file '/root/clearml.conf' daemon --queue '{queue}' {docker}
-        shutdown
-        """.format(
+        user_data = ('\n'.join(self.startup_bash_script) + '\n').format(
             api_server=self.api_server,
             web_server=self.web_server,
             files_server=self.files_server,
@@ -89,9 +92,7 @@ class AwsAutoScaler(AutoScaler):
             git_pass=self.git_pass or "",
             clearml_conf='\\"'.join(self.extra_clearml_conf.split('"')),
             bash_script=self.extra_vm_bash_script,
-            docker="--docker '{}'".format(self.default_docker_image)
-            if self.default_docker_image
-            else "",
+            docker="--docker '{}'".format(self.default_docker_image) if self.default_docker_image else "",
         )
 
         ec2 = boto3.client(

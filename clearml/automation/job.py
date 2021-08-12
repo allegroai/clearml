@@ -5,6 +5,7 @@ from logging import getLogger
 from time import time, sleep
 from typing import Optional, Mapping, Sequence, Any
 
+from ..backend_interface.util import get_or_create_project
 from ..storage.util import hash_dict
 from ..task import Task
 from ..backend_api.services import tasks as tasks_service
@@ -25,6 +26,7 @@ class ClearmlJob(object):
             parent=None,  # type: Optional[str]
             disable_clone_task=False,  # type: bool
             allow_caching=False,  # type: bool
+            target_project=None,  # type: Optional[str]
             **kwargs  # type: Any
     ):
         # type: (...) -> ()
@@ -33,7 +35,8 @@ class ClearmlJob(object):
 
         :param str base_task_id: base task id to clone from
         :param dict parameter_override: dictionary of parameters and values to set fo the cloned task
-        :param dict task_overrides:  Task object specific overrides
+        :param dict task_overrides:  Task object specific overrides.
+            for example {'script.version_num': None, 'script.branch': 'main'}
         :param list tags: additional tags to add to the newly cloned task
         :param str parent: Set newly created Task parent task field, default: base_tak_id.
         :param dict kwargs: additional Task creation parameters
@@ -41,6 +44,7 @@ class ClearmlJob(object):
             If True, use the base_task_id directly (base-task must be in draft-mode / created),
         :param bool allow_caching: If True check if we have a previously executed Task with the same specification
             If we do, use it and set internal is_cached flag. Default False (always create new Task).
+        :param str target_project: Optional, Set the target project name to create the cloned Task in.
         """
         base_temp_task = Task.get_task(task_id=base_task_id)
         if disable_clone_task:
@@ -76,7 +80,7 @@ class ClearmlJob(object):
         # check cached task
         self._is_cached_task = False
         task_hash = None
-        if allow_caching and not disable_clone_task or not self.task:
+        if allow_caching and not disable_clone_task and not self.task:
             # look for a cached copy of the Task
             # get parameters + task_overrides + as dict and hash it.
             task_hash = self._create_task_hash(
@@ -90,9 +94,23 @@ class ClearmlJob(object):
                 self._worker = None
                 return
 
+        # if we have target_project, remove project from kwargs if we have it.
+        if target_project and 'project' in kwargs:
+            logger.info(
+                'target_project={} and project={} passed, using target_project.'.format(
+                    target_project, kwargs['project']))
+            kwargs.pop('project', None)
+
         # check again if we need to clone the Task
         if not disable_clone_task:
-            self.task = Task.clone(base_task_id, parent=parent or base_task_id, **kwargs)
+            # noinspection PyProtectedMember
+            self.task = Task.clone(
+                base_task_id, parent=parent or base_task_id,
+                project=get_or_create_project(
+                    session=Task._get_default_session(), project_name=target_project
+                ) if target_project else kwargs.pop('project', None),
+                **kwargs
+            )
 
         if tags:
             self.task.set_tags(list(set(self.task.get_tags()) | set(tags)))
@@ -148,7 +166,7 @@ class ClearmlJob(object):
 
         :param str queue_name:
 
-        :return False if Task is not in "created" status (i.e. cannot be enqueued)
+        :return False if Task is not in "created" status (i.e. cannot be enqueued) or cannot be enqueued
         """
         if self._is_cached_task:
             return False
@@ -156,7 +174,7 @@ class ClearmlJob(object):
             Task.enqueue(task=self.task, queue_name=queue_name)
             return True
         except Exception as ex:
-            logger.warning(ex)
+            logger.warning('Error enqueuing Task {} to {}: {}'.format(self.task, queue_name, ex))
         return False
 
     def abort(self):
@@ -385,6 +403,21 @@ class ClearmlJob(object):
 
         hyper_params = task.get_parameters() if params_override is None else params_override
         configs = task.get_configuration_objects()
+        # currently we do not add the docker image to the hash (only args and setup script),
+        # because default docker image will cause the step to change
+        docker = None
+        if getattr(task.data, 'container'):
+            docker = dict(**(task.data.container or dict()))
+            docker.pop('image', None)
+
+        # make sure that if we only have docker args/bash,
+        # we use encode it, otherwise we revert to the original encoding (excluding docker altogether)
+        if docker:
+            return hash_dict(
+                dict(script=script, hyper_params=hyper_params, configs=configs, docker=docker),
+                hash_func='crc32'
+            )
+
         return hash_dict(dict(script=script, hyper_params=hyper_params, configs=configs), hash_func='crc32')
 
     @classmethod

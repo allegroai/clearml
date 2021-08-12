@@ -177,18 +177,19 @@ class Objective(object):
         # normalize value so we always look for the highest objective value
         return self.sign * objective
 
-    def get_top_tasks(self, top_k, optimizer_task_id=None):
-        # type: (int, Optional[str]) -> Sequence[Task]
+    def get_top_tasks(self, top_k, optimizer_task_id=None, task_filter=None):
+        # type: (int, Optional[str], Optional[dict]) -> Sequence[Task]
         """
         Return a list of Tasks of the top performing experiments, based on the title/series objective.
 
         :param int top_k: The number of Tasks (experiments) to return.
         :param str optimizer_task_id: Parent optimizer Task ID
+        :param dict task_filter: Optional task_filtering for the query
 
         :return: A list of Task objects, ordered by performance, where index 0 is the best performing Task.
         """
-
-        task_filter = {'page_size': int(top_k), 'page': 0}
+        task_filter = deepcopy(task_filter) if task_filter else {}
+        task_filter.update({'page_size': int(top_k), 'page': 0})
         if optimizer_task_id:
             task_filter['parent'] = optimizer_task_id
         order_by = self._get_last_metrics_encode_field()
@@ -406,8 +407,10 @@ class SearchStrategy(object):
             new_job = self.create_job()
             if not new_job:
                 break
+            if not new_job.launch(self._execution_queue):
+                # error enqueuing Job, something wrong here
+                continue
             self._num_jobs += 1
-            new_job.launch(self._execution_queue)
             self._current_jobs.append(new_job)
             self._pending_jobs.append(new_job)
 

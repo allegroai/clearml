@@ -335,6 +335,7 @@ class ResourceMonitor(BackgroundMonitor):
 
     def _get_machine_specs(self):
         # type: () -> dict
+        specs = {}
         # noinspection PyBroadException
         try:
             specs = {
@@ -343,26 +344,24 @@ class ResourceMonitor(BackgroundMonitor):
                 'python_exec': str(sys.executable),
                 'OS': str(platform.platform(aliased=True)),
                 'processor': str(platform.machine()),
-                'cores': int(psutil.cpu_count()),
+                'cpu_cores': int(psutil.cpu_count()),
                 'memory_gb': round(psutil.virtual_memory().total / 1024 ** 3, 1),
                 'hostname': str(platform.node()),
                 'gpu_count': 0,
-                'gpu_type': '',
-                'gpu_memory': '',
-                'driver_version': '',
-                'driver_cuda_version': '',
             }
             if self._gpustat:
                 gpu_stat = self._gpustat.new_query(shutdown=True, get_driver_info=True)
                 if gpu_stat.gpus:
                     gpus = [g for i, g in enumerate(gpu_stat.gpus) if not self._active_gpus or i in self._active_gpus]
-                    specs['gpu_count'] = int(len(gpus))
-                    specs['gpu_type'] = ', '.join(g.name for g in gpus)
-                    specs['gpu_memory'] = ', '.join('{}GB'.format(round(g.memory_total/1024.0)) for g in gpus)
-                    specs['driver_version'] = gpu_stat.driver_version or ''
-                    specs['driver_cuda_version'] = gpu_stat.driver_cuda_version or ''
+                    specs.update(
+                        gpu_count=int(len(gpus)),
+                        gpu_type=', '.join(g.name for g in gpus),
+                        gpu_memory=', '.join('{}GB'.format(round(g.memory_total/1024.0)) for g in gpus),
+                        gpu_driver_version=gpu_stat.driver_version or '',
+                        gpu_driver_cuda_version=gpu_stat.driver_cuda_version or '',
+                    )
 
         except Exception:
-            return {}
+            pass
 
         return specs

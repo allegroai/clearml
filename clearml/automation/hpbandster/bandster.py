@@ -65,7 +65,8 @@ class _TrainsBandsterWorker(Worker):
         self._current_job = self.optimizer.helper_create_job(self.base_task_id, parameter_override=config)
         # noinspection PyProtectedMember
         self.optimizer._current_jobs.append(self._current_job)
-        self._current_job.launch(self.queue_name)
+        if not self._current_job.launch(self.queue_name):
+            return dict()
         iteration_value = None
         is_pending = True
 

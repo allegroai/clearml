@@ -1,41 +1,48 @@
 # ClearML - Example of manual model configuration
-#
-import os
-
+import json
+import yaml
 from clearml import Task, OutputModel
 
 
 # Connecting ClearML with the current process,
-# from here on everything is logged automatically
 task = Task.init(project_name='examples', task_name='Model configuration example')
 
-# Connect a local configuration file
-config_file = os.path.join('data_samples', 'sample.json')
-config_file = task.connect_configuration(config_file)
-# then read configuration as usual, the backend will contain a copy of it.
-# later when executing remotely, the returned `config_file` will be a temporary file
-# containing a new copy of the configuration retrieved form the backend
-# # model_config_dict = json.load(open(config_file, 'rt'))
+# Connect a local configuration file in json format
+config_file_json = 'data_samples/sample.json'
+# In the web UI, this file will appear in the CONFIGURATION OBJECTS tab,
+# under the "json file" subsection because of the `name` parameter entered here
+task.connect_configuration(name="json file", configuration=config_file_json)
 
-# Or Store dictionary of definition for a specific network design
+# Read configuration as usual, the backend will contain a copy of it.
+# When executing remotely, the returned `config_file_json` will be a temporary file
+# that contains a new copy of the configuration retrieved form the backend
+model_config_dictionary_json = json.load(open(config_file_json, 'rt'))
+
+
+# Connecting a local configuration file in yaml format
+config_file_yaml = 'data_samples/config_yaml.yaml'
+task.connect_configuration(configuration=config_file_yaml, name="yaml file")
+# Read configuration as usual
+model_config_dictionary_yaml = yaml.load(open(config_file_yaml), Loader=yaml.FullLoader)
+
+# Connecting a dictionary of definitions for a specific network design
 model_config_dict = {
-    'value': 13.37,
+    'CHANGE ME': 13.37,
     'dict': {'sub_value': 'string', 'sub_integer': 11},
     'list_of_ints': [1, 2, 3, 4],
 }
-model_config_dict = task.connect_configuration(model_config_dict)
+model_config_dict = task.connect_configuration(name='dictionary', configuration=model_config_dict)
 
-# We now update the dictionary after connecting it, and the changes will be tracked as well.
+# Update the dictionary after connecting it, and the changes will be tracked as well.
 model_config_dict['new value'] = 10
-model_config_dict['value'] *= model_config_dict['new value']
+model_config_dict['CHANGE ME'] *= model_config_dict['new value']
 
-# store the label enumeration of the training model
+# Connecting label enumeration
 labels = {'background': 0, 'cat': 1, 'dog': 2}
 task.connect_label_enumeration(labels)
 
-# Manually log a local model file
+# Manually log a local model file, which will have the labels connected above
 OutputModel().update_weights('my_best_model.bin')
 
-# storing a model: Any saved model (keras / pytorch / tensorflow / etc.)
-# will have the task network configuration and label enumeration
+# Any saved model (keras / pytorch / tensorflow / etc.) will have the task network configuration and label enumeration
 print('Any model stored from this point onwards, will contain both model_config and label_enumeration')

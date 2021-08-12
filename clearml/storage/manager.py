@@ -279,7 +279,7 @@ class StorageManager(object):
                 remote_path = os.path.join(helper.base_url, path)
                 if match_wildcard and not fnmatch.fnmatch(remote_path, match_wildcard):
                     continue
-                local_url = remote_path.replace(remote_url, local_folder)
+                local_url = os.path.join(local_folder, remote_path[len(remote_url):].lstrip(os.path.sep))
                 if not os.path.exists(local_url) or os.path.getsize(local_url) == 0:
                     results.append(
                         pool.apply_async(

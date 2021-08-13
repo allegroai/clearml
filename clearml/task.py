@@ -357,7 +357,7 @@ class Task(_Task):
                auto_connect_frameworks={
                    'matplotlib': True, 'tensorflow': True, 'tensorboard': True, 'pytorch': True,
                    'xgboost': True, 'scikit': True, 'fastai': True, 'lightgbm': True,
-                   'hydra': True, 'detect_repository': True,
+                   'hydra': True, 'detect_repository': True, 'tfdefines': True,
                }
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
@@ -551,7 +551,9 @@ class Task(_Task):
                     PatchedMatplotlib.update_current_task(Task.__main_task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('tensorflow', True) \
                         or auto_connect_frameworks.get('tensorboard', True):
-                    PatchAbsl.update_current_task(Task.__main_task)
+                    # allow to disable tfdefines
+                    if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('tfdefines', True):
+                        PatchAbsl.update_current_task(Task.__main_task)
                     TensorflowBinding.update_current_task(
                         task,
                         patch_reporting=(is_auto_connect_frameworks_bool

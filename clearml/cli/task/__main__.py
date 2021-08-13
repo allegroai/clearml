@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 from pathlib2 import Path
 
 from clearml import Task
+from clearml.version import __version__
 from clearml.backend_interface.task.populate import CreateAndPopulate
 
 
@@ -12,7 +13,7 @@ def setup_parser(parser):
     parser.add_argument('--project', type=str, default=None,
                         help='Required: set the project name for the task. '
                              'If --base-task-id is used, this arguments is optional.')
-    parser.add_argument('--name', type=str, default=None, required=True,
+    parser.add_argument('--name', type=str, default=None,
                         help='Required: select a name for the remote task')
     parser.add_argument('--repo', type=str, default=None,
                         help='remote URL for the repository to use. '
@@ -80,9 +81,11 @@ def cli():
     args = parser.parse_args()
 
     if args.version:
-        from ...version import __version__
         print('Version {}'.format(__version__))
         exit(0)
+
+    if not args.name:
+        raise ValueError("Task name must be provided, use `--name <task-name>`")
 
     if args.docker_bash_setup_script and Path(args.docker_bash_setup_script).is_file():
         with open(args.docker_bash_setup_script, "r") as bash_setup_script_file:

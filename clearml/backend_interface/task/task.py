@@ -307,12 +307,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def _auto_generate(self, project_name=None, task_name=None, task_type=TaskTypes.training):
         created_msg = make_message('Auto-generated at %(time)s UTC by %(user)s@%(host)s')
 
-        if task_type.value not in (self.TaskTypes.training, self.TaskTypes.testing) and \
+        if isinstance(task_type, self.TaskTypes):
+            task_type = task_type.value
+
+        if task_type not in (self.TaskTypes.training.value, self.TaskTypes.testing.value) and \
                 not Session.check_min_api_version('2.8'):
             print('WARNING: Changing task type to "{}" : '
                   'clearml-server does not support task type "{}", '
-                  'please upgrade clearml-server.'.format(self.TaskTypes.training, task_type.value))
-            task_type = self.TaskTypes.training
+                  'please upgrade clearml-server.'.format(self.TaskTypes.training, task_type))
+            task_type = self.TaskTypes.training.value
 
         project_id = None
         if project_name:
@@ -322,7 +325,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         extra_properties = {'system_tags': tags} if Session.check_min_api_version('2.3') else {'tags': tags}
         req = tasks.CreateRequest(
             name=task_name or make_message('Anonymous task (%(user)s@%(host)s %(time)s)'),
-            type=tasks.TaskTypeEnum(task_type.value),
+            type=tasks.TaskTypeEnum(task_type),
             comment=created_msg,
             project=project_id,
             input={'view': {}},

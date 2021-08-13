@@ -61,5 +61,8 @@ labels = dtest.get_label()
 # plot results
 xgb.plot_importance(model)
 plt.show()
-plot_tree(model)
-plt.show()
+try:
+    plot_tree(model)
+    plt.show()
+except ImportError:
+    print('Skipping tree plot: You must install graphviz to support plot tree')

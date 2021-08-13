@@ -143,6 +143,14 @@ optional arguments:
                         Manually specify a list of required packages. Example:
                         --packages "tqdm>=2.1" "scikit-learn"
   --docker DOCKER       Select the docker image to use in the remote session
+  --docker_args DOCKER_ARGS
+                        Add docker arguments, pass a single string
+  --docker_bash_setup_script DOCKER_BASH_SETUP_SCRIPT
+                        Add bash script to be executed inside the docker
+                        before setting up the Task's environment
+  --output-uri OUTPUT_URI
+                        Optional: set the Task `output_uri` (automatically
+                        upload model destination)
   --task-type TASK_TYPE
                         Set the Task type, optional values: training, testing,
                         inference, data_processing, application, monitor,

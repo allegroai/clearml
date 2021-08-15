@@ -15,6 +15,17 @@ from ...task import Task
 
 
 class CreateAndPopulate(object):
+    _VCS_SSH_REGEX = \
+        "^" \
+        "(?:(?P<user>{regular}*?)@)?" \
+        "(?P<host>{regular}*?)" \
+        ":" \
+        "(?P<path>{regular}.*)?" \
+        "$" \
+        .format(
+            regular=r"[^/@:#]"
+        )
+
     def __init__(
             self,
             project_name=None,  # type: Optional[str]
@@ -74,7 +85,7 @@ class CreateAndPopulate(object):
         :param raise_on_missing_entries: If True raise ValueError on missing entries when populating
         :param verbose: If True print verbose logging
         """
-        if len(urlparse(repo).scheme) <= 1:
+        if repo and len(urlparse(repo).scheme) <= 1 and not re.compile(self._VCS_SSH_REGEX).match(repo):
             folder = repo
             repo = None
         else:

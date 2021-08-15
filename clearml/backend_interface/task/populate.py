@@ -1,39 +1,40 @@
+import inspect
 import json
 import os
 import re
+import tempfile
 from functools import reduce
 from logging import getLogger
-from typing import Optional, Sequence, Union, Tuple, List
-
-from six.moves.urllib.parse import urlparse
+from typing import Optional, Sequence, Union, Tuple, List, Callable, Dict, Any
 
 from pathlib2 import Path
+from six.moves.urllib.parse import urlparse
 
-from ...task import Task
 from .repo import ScriptInfo
+from ...task import Task
 
 
 class CreateAndPopulate(object):
     def __init__(
             self,
-            project_name=None,  # Optional[str]
-            task_name=None,  # Optional[str]
-            task_type=None,  # Optional[str]
-            repo=None,  # Optional[str]
-            branch=None,  # Optional[str]
-            commit=None,  # Optional[str]
-            script=None,  # Optional[str]
-            working_directory=None,  # Optional[str]
-            packages=None,  # Optional[Union[bool, Sequence[str]]]
-            requirements_file=None,  # Optional[Union[str, Path]]
-            docker=None,  # Optional[str]
-            docker_args=None,  # Optional[str]
-            docker_bash_setup_script=None,  # Optional[str]
-            output_uri=None,  # Optional[str]
-            base_task_id=None,  # Optional[str]
-            add_task_init_call=True,  # bool
-            raise_on_missing_entries=False,  # bool
-            verbose=False,  # bool
+            project_name=None,  # type: Optional[str]
+            task_name=None,  # type: Optional[str]
+            task_type=None,  # type: Optional[str]
+            repo=None,  # type: Optional[str]
+            branch=None,  # type: Optional[str]
+            commit=None,  # type: Optional[str]
+            script=None,  # type: Optional[str]
+            working_directory=None,  # type: Optional[str]
+            packages=None,  # type: Optional[Union[bool, Sequence[str]]]
+            requirements_file=None,  # type: Optional[Union[str, Path]]
+            docker=None,  # type: Optional[str]
+            docker_args=None,  # type: Optional[str]
+            docker_bash_setup_script=None,  # type: Optional[str]
+            output_uri=None,  # type: Optional[str]
+            base_task_id=None,  # type: Optional[str]
+            add_task_init_call=True,  # type: bool
+            raise_on_missing_entries=False,  # type: bool
+            verbose=False,  # type: bool
     ):
         # type: (...) -> None
         """
@@ -139,8 +140,11 @@ class CreateAndPopulate(object):
             repo_info, requirements = ScriptInfo.get(
                 filepaths=[entry_point],
                 log=getLogger(),
-                create_requirements=self.packages is True, uncommitted_from_remote=True,
-                detect_jupyter_notebook=False)
+                create_requirements=self.packages is True,
+                uncommitted_from_remote=True,
+                detect_jupyter_notebook=False,
+                add_missing_installed_packages=True,
+            )
 
         # check if we have no repository and no requirements raise error
         if self.raise_on_missing_entries and (not self.requirements_file and not self.packages) \
@@ -409,3 +413,139 @@ class CreateAndPopulate(object):
                 break
 
         return found_index if found_index < 0 else lines[found_index][0]
+
+
+def create_task_from_function(
+        a_function,  # type: Callable
+        function_kwargs=None,  # type: Optional[Dict[str, Any]]
+        function_input_artifacts=None,  # type: Optional[Dict[str, str]]
+        function_results=None,  # type: Optional[List[str]]
+        project_name=None,  # type: Optional[str]
+        task_name=None,  # type: Optional[str]
+        task_type=None,  # type: Optional[str]
+        packages=None,  # type: Optional[Sequence[str]]
+        docker=None,  # type: Optional[str]
+        docker_args=None,  # type: Optional[str]
+        docker_bash_setup_script=None,  # type: Optional[str]
+        output_uri=None,  # type: Optional[str]
+):
+    # type: (...) -> Optional[Task]
+    """
+    Create a Task from a function, including wrapping the function input arguments
+    into the hyper-parameter section as kwargs, and storing function results as named artifacts
+
+    Example:
+        def mock_func(a=6, b=9):
+            c = a*b
+            print(a, b, c)
+            return c, c**2
+
+        create_task_from_function(mock_func, function_results=['mul', 'square'])
+
+    Example arguments from other Tasks (artifact):
+        def mock_func(matrix_np):
+            c = matrix_np*matrix_np
+            print(matrix_np, c)
+            return c
+
+        create_task_from_function(
+            mock_func,
+            function_input_artifacts={'matrix_np': 'aabb1122.previous_matrix'},
+            function_results=['square_matrix']
+        )
+
+    :param a_function: A global function to convert into a standalone Task
+    :param function_kwargs: Optional, provide subset of function arguments and default values to expose.
+        If not provided automatically take all function arguments & defaults
+    :param function_input_artifacts: Optional, pass input arguments to the function from other Tasks's output artifact.
+        Example argument named `numpy_matrix` from Task ID `aabbcc` artifact name `answer`:
+        {'numpy_matrix': 'aabbcc.answer'}
+    :param function_results: Provide a list of names for all the results.
+        If not provided no results will be stored as artifacts.
+    :param project_name: Set the project name for the task. Required if base_task_id is None.
+    :param task_name: Set the name of the remote task. Required if base_task_id is None.
+    :param task_type: Optional, The task type to be created. Supported values: 'training', 'testing', 'inference',
+        'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc', 'custom'
+    :param packages: Manually specify a list of required packages. Example: ["tqdm>=2.1", "scikit-learn"]
+        If not provided, packages are automatically added based on the imports used in the function.
+    :param docker: Select the docker image to be executed in by the remote session
+    :param docker_args: Add docker arguments, pass a single string
+    :param docker_bash_setup_script: Add bash script to be executed
+        inside the docker before setting up the Task's environment
+    :param output_uri: Optional, set the Tasks's output_uri (Storage destination).
+        examples: 's3://bucket/folder', 'https://server/' , 'gs://bucket/folder', 'azure://bucket', '/folder/'
+    :return: Newly created Task object
+    """
+    function_name = str(a_function.__name__)
+    function_source = inspect.getsource(a_function)
+    function_input_artifacts = function_input_artifacts or dict()
+    # verify artifact kwargs:
+    if not all(len(v.split('.', 1)) == 2 for v in function_input_artifacts.values()):
+        raise ValueError(
+            'function_input_artifacts={}, it must in the format: '
+            '{{"argument": "task_id.artifact_name"}}'.format(function_input_artifacts)
+        )
+
+    if function_kwargs is None:
+        function_kwargs = dict()
+        inspect_args = inspect.getfullargspec(a_function)
+        if inspect_args and inspect_args.args:
+            inspect_defaults = inspect_args.defaults
+            if inspect_defaults and len(inspect_defaults) != len(inspect_args.args):
+                getLogger().warning(
+                    'Ignoring default argument values: '
+                    'could not find all default valued for: \'{}\''.format(function_name))
+                inspect_defaults = []
+
+            function_kwargs = {str(k): v for k, v in zip(inspect_args.args, inspect_defaults)} \
+                if inspect_defaults else {str(k): None for k in inspect_args.args}
+
+    task_template = """
+from clearml import Task
+
+{function_source}
+
+if __name__ == '__main__':
+    task = Task.init()
+    kwargs = {function_kwargs}
+    task.connect(kwargs, name='kwargs')
+    function_input_artifacts = {function_input_artifacts}
+    if function_input_artifacts:
+        task.connect(function_input_artifacts, name='kwargs_artifacts')
+        for k, v in function_input_artifacts.items():
+            if not v:
+                continue
+            task_id, artifact_name = v.split('.', 1) 
+            kwargs[k] = Task.get_task(task_id=task_id).artifact[artifact_name].get()
+    results = {function_name}(**kwargs)
+    result_names = {function_results}
+    if results and result_names:
+        for name, artifact in zip(results, result_names):
+            task.upload_artifact(name=name, artifact_object=artifact) 
+
+    """.format(
+        function_source=function_source,
+        function_kwargs=function_kwargs,
+        function_input_artifacts=function_input_artifacts,
+        function_name=function_name,
+        function_results=function_results)
+
+    with tempfile.NamedTemporaryFile('w', suffix='.py') as temp_file:
+        temp_file.write(task_template)
+        temp_file.flush()
+
+        populate = CreateAndPopulate(
+            project_name=project_name,
+            task_name=task_name,
+            task_type=task_type,
+            script=temp_file.name,
+            packages=packages if packages is not None else True,
+            docker=docker,
+            docker_args=docker_args,
+            docker_bash_setup_script=docker_bash_setup_script,
+            output_uri=output_uri,
+            add_task_init_call=False,
+        )
+        task = populate.create_task()
+        task.update_task(task_data={'script': {'entry_point': '{}.py'.format(function_name)}})
+        return task

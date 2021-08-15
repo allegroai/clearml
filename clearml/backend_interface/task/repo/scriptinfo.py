@@ -32,7 +32,7 @@ class ScriptRequirements(object):
     def __init__(self, root_folder):
         self._root_folder = root_folder
 
-    def get_requirements(self, entry_point_filename=None):
+    def get_requirements(self, entry_point_filename=None, add_missing_installed_packages=False):
         # noinspection PyBroadException
         try:
             from ....utilities.pigar.reqs import get_installed_pkgs_detail
@@ -44,6 +44,10 @@ class ScriptRequirements(object):
                                        'site-packages', 'dist-packages'])
             reqs, try_imports, guess, local_pks = gr.extract_reqs(
                 module_callback=ScriptRequirements.add_trains_used_packages, entry_point_filename=entry_point_filename)
+            if add_missing_installed_packages and guess:
+                for k in guess:
+                    if k not in reqs:
+                        reqs[k] = guess[k]
             return self.create_requirements_txt(reqs, local_pks)
         except Exception as ex:
             _logger.warning("Failed auto-generating package requirements: {}".format(ex))
@@ -177,13 +181,13 @@ class ScriptRequirements(object):
         for k, v in reqs.sorted_items():
             if k in ignored_packages or k.lower() in ignored_packages:
                 continue
-            version = v.version
+            version = v.version if v else None
             if k in forced_packages:
                 forced_version = forced_packages.pop(k, None)
                 if forced_version is not None:
                     version = forced_version
             # requirements_txt += ''.join(['# {0}\n'.format(c) for c in v.comments.sorted_items()])
-            requirements_txt += ScriptRequirements._make_req_line(k, version)
+            requirements_txt += ScriptRequirements._make_req_line(k, version or None)
 
         # add forced requirements that we could not find installed on the system
         for k in sorted(forced_packages.keys()):
@@ -204,6 +208,8 @@ class ScriptRequirements(object):
                 requirements_txt += ''.join(['# {0}\n'.format(c) for c in v.comments.sorted_items()])
 
         for k, v in reqs.sorted_items():
+            if not v:
+                continue
             requirements_txt += '\n'
             if k == '-e':
                 requirements_txt += '# IMPORT PACKAGE {0} {1}\n'.format(k, v.version)
@@ -704,7 +710,7 @@ class ScriptInfo(object):
     @classmethod
     def _get_script_info(
             cls, filepaths, check_uncommitted=True, create_requirements=True, log=None,
-            uncommitted_from_remote=False, detect_jupyter_notebook=True):
+            uncommitted_from_remote=False, detect_jupyter_notebook=True, add_missing_installed_packages=False):
         jupyter_filepath = cls._get_jupyter_notebook_filename() if detect_jupyter_notebook else None
         if jupyter_filepath:
             scripts_path = [Path(os.path.normpath(jupyter_filepath)).absolute()]
@@ -786,7 +792,10 @@ class ScriptInfo(object):
             script_requirements = ScriptRequirements(
                 Path(repo_root).as_posix() if repo_info.url else script_path.as_posix())
             if create_requirements:
-                requirements, conda_requirements = script_requirements.get_requirements()
+                requirements, conda_requirements = script_requirements.get_requirements(
+                    entry_point_filename=script_path.as_posix()
+                    if not repo_info.url and script_path.is_file() else None,
+                    add_missing_installed_packages=add_missing_installed_packages)
         else:
             script_requirements = None
 
@@ -818,7 +827,7 @@ class ScriptInfo(object):
 
     @classmethod
     def get(cls, filepaths=None, check_uncommitted=True, create_requirements=True, log=None,
-            uncommitted_from_remote=False, detect_jupyter_notebook=True):
+            uncommitted_from_remote=False, detect_jupyter_notebook=True, add_missing_installed_packages=False):
         try:
             if not filepaths:
                 filepaths = [sys.argv[0], ]
@@ -828,6 +837,7 @@ class ScriptInfo(object):
                 create_requirements=create_requirements, log=log,
                 uncommitted_from_remote=uncommitted_from_remote,
                 detect_jupyter_notebook=detect_jupyter_notebook,
+                add_missing_installed_packages=add_missing_installed_packages,
             )
         except SystemExit:
             pass

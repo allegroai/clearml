@@ -131,10 +131,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param log: Optional log to be used. If not provided, and internal log shared with all backend objects will be
             used instead.
         :type log: logging.Logger
-        :param project_name: Optional project name, used only if a new task is created. The new task will be associated
-            with a project by this name. If no such project exists, a new project will be created using the API.
+        :param project_name: Optional project name, minimum length of 3 characters, used only if a new task is created.
+            The new task will be associated with a project by this name. If no such project exists, a new project will
+            be created using the API.
         :type project_name: str
-        :param task_name: Optional task name, used only if a new task is created.
+        :param task_name: Optional task name, minimum length of 3 characters, used only if a new task is created.
         :type project_name: str
         :param task_type: Optional task type, used only if a new task is created. Default is training task.
         :type task_type: str (see tasks.TaskTypeEnum)

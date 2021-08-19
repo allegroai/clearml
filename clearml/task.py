@@ -2237,7 +2237,7 @@ class Task(_Task):
         Metrics.report_offline_session(task, session_folder)
         # print imported results page
         print('ClearML results page: {}'.format(task.get_output_log_web_page()))
-        task.completed()
+        task.mark_completed()
         # close task
         task.close()
 
@@ -3054,7 +3054,7 @@ class Task(_Task):
                 elif task_status[0] == 'failed':
                     self.mark_failed(status_reason=task_status[1])
                 elif task_status[0] == 'completed':
-                    self.completed()
+                    self.mark_completed()
                 elif task_status[0] == 'stopped':
                     self.stopped()
 

@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import sys
+import warnings
 from copy import copy
 from datetime import datetime
 from enum import Enum
@@ -559,6 +560,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return self.send(tasks.StoppedRequest(self.id, force=force), ignore_errors=ignore_errors)
 
     def completed(self, ignore_errors=True):
+        # type: (bool) -> ()
+        """
+        .. note:: Deprecated in 1.1.0
+        """
+        warnings.warn("'completed' is deprecated; use 'mark_completed' instead.", DeprecationWarning)
+        return self.mark_completed(ignore_errors=ignore_errors)
+
+    def mark_completed(self, ignore_errors=True):
         # type: (bool) -> ()
         """ The signal indicating that this Task completed. """
         if hasattr(tasks, 'CompletedRequest') and callable(tasks.CompletedRequest):

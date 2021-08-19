@@ -417,7 +417,7 @@ class Dataset(object):
             self._task.flush(wait_for_uploads=True)
         else:
             self._task.close()
-            self._task.completed()
+            self._task.mark_completed()
 
         if self._task_pinger:
             self._task_pinger.unregister()

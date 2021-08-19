@@ -283,7 +283,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             logger=logger,
         )
 
-    def report_plot(self, title, series, plot, iter, round_digits=None):
+    def report_plot(self, title, series, plot, iter, round_digits=None, nan_as_null=True):
         """
         Report a Plotly chart
         :param title: Title (AKA metric)
@@ -295,13 +295,15 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param iter: Iteration number
         :param round_digits: number of digits after the dot to leave
         :type round_digits: int
+        :param nan_as_null: If True, Convert NaN to None (null), otherwise use 'nan'
+        :type nan_as_null: bool
         """
         inf_value = math.inf if six.PY3 else float("inf")
 
         def to_base_type(o):
             if isinstance(o, float):
                 if o != o:
-                    return 'nan'
+                    return None if nan_as_null else 'nan'
                 elif o == inf_value:
                     return 'inf'
                 elif o == -inf_value:
@@ -501,6 +503,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=self._normalize_name(series),
             plot=plotly_dict,
             iter=iter,
+            nan_as_null=False,
         )
 
     def report_table(self, title, series, table, iteration, layout_config=None):
@@ -525,6 +528,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             plot=table_output,
             iter=iteration,
             round_digits=False,
+            nan_as_null=False,
         )
 
     def report_line_plot(self, title, series, iter, xtitle, ytitle, mode='lines', reverse_xaxis=False,
@@ -568,6 +572,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series='',
             plot=plotly_dict,
             iter=iter,
+            nan_as_null=False,
         )
 
     def report_2d_scatter(self, title, series, data, iter, mode='lines', xtitle=None, ytitle=None, labels=None,
@@ -609,6 +614,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=self._normalize_name(series),
             plot=plotly_dict,
             iter=iter,
+            nan_as_null=False,
         )
 
     def report_3d_scatter(self, title, series, data, iter, labels=None, mode='lines', color=((217, 217, 217, 0.14),),
@@ -679,6 +685,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=self._normalize_name(series) if not isinstance(series, list) else None,
             plot=plotly_obj,
             iter=iter,
+            nan_as_null=False,
         )
 
     def report_value_matrix(self, title, series, data, iter, xtitle=None, ytitle=None, xlabels=None, ylabels=None,
@@ -722,6 +729,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=self._normalize_name(series),
             plot=plotly_dict,
             iter=iter,
+            nan_as_null=False,
         )
 
     def report_value_surface(self, title, series, data, iter, xlabels=None, ylabels=None,
@@ -767,6 +775,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=self._normalize_name(series),
             plot=plotly_dict,
             iter=iter,
+            nan_as_null=False,
         )
 
     def report_image_plot_and_upload(self, title, series, iter, path=None, matrix=None,
@@ -835,6 +844,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=self._normalize_name(series),
             plot=plotly_dict,
             iter=iter,
+            nan_as_null=False,
         )
 
     def report_console(self, message, level=logging.INFO):

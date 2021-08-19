@@ -2,6 +2,7 @@ import logging
 import os
 from time import time
 from typing import Optional, AnyStr, IO
+from ..config import config
 
 
 class ProgressReport(object):
@@ -33,7 +34,9 @@ class ProgressReport(object):
 
 
 class UploadProgressReport(ProgressReport):
-    def __init__(self, filename, verbose, total_size, log, report_chunk_size_mb=5):
+    def __init__(self, filename, verbose, total_size, log, report_chunk_size_mb=0):
+        if not report_chunk_size_mb:
+            report_chunk_size_mb = int(config.get('storage.log.report_upload_chunk_size_mb', 0) or 5)
         super(UploadProgressReport, self).__init__(verbose, total_size, log, report_chunk_size_mb)
         self._filename = filename
 
@@ -71,7 +74,10 @@ class UploadProgressReport(ProgressReport):
 
 
 class DownloadProgressReport(ProgressReport):
-    def __init__(self, total_size, verbose, remote_path, log, report_chunk_size_mb=5):
+    def __init__(self, total_size, verbose, remote_path, log, report_chunk_size_mb=0):
+        if not report_chunk_size_mb:
+            report_chunk_size_mb = int(config.get('storage.log.report_download_chunk_size_mb', 0) or 5)
+
         super(DownloadProgressReport, self).__init__(verbose, total_size, log, report_chunk_size_mb)
         self._remote_path = remote_path
 

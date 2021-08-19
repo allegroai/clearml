@@ -18,7 +18,7 @@ try:
 except ImportError:
     from collections import Sequence as CollectionsSequence
 
-from typing import Optional, Union, Mapping, Sequence, Any, Dict, Iterable, TYPE_CHECKING, Callable
+from typing import Optional, Union, Mapping, Sequence, Any, Dict, Iterable, TYPE_CHECKING, Callable, Tuple
 
 import psutil
 import six
@@ -630,22 +630,22 @@ class Task(_Task):
     @classmethod
     def create(
         cls,
-        project_name=None,  # Optional[str]
-        task_name=None,  # Optional[str]
-        task_type=None,  # Optional[str]
-        repo=None,  # Optional[str]
-        branch=None,  # Optional[str]
-        commit=None,  # Optional[str]
-        script=None,  # Optional[str]
-        working_directory=None,  # Optional[str]
-        packages=None,  # Optional[Union[bool, Sequence[str]]]
-        requirements_file=None,  # Optional[Union[str, Path]]
-        docker=None,  # Optional[str]
-        docker_args=None,  # Optional[str]
-        docker_bash_setup_script=None,  # Optional[str]
-        argparse_args=None,  # Optional[Sequence[Tuple[str, str]]]
-        base_task_id=None,  # Optional[str]
-        add_task_init_call=True,  # bool
+        project_name=None,   # type: Optional[str]
+        task_name=None,  # type: Optional[str]
+        task_type=None,  # type: Optional[str]
+        repo=None,  # type: Optional[str]
+        branch=None,  # type: Optional[str]
+        commit=None,  # type: Optional[str]
+        script=None,  # type: Optional[str]
+        working_directory=None,  # type: Optional[str]
+        packages=None,  # type: Optional[Union[bool, Sequence[str]]]
+        requirements_file=None,  # type: Optional[Union[str, Path]]
+        docker=None,  # type: Optional[str]
+        docker_args=None,  # type: Optional[str]
+        docker_bash_setup_script=None,  # type: Optional[str]
+        argparse_args=None,  # type: Optional[Sequence[Tuple[str, str]]]
+        base_task_id=None,  # type: Optional[str]
+        add_task_init_call=True,  # type: bool
     ):
         # type: (...) -> Task
         """

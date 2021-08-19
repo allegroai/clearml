@@ -104,7 +104,7 @@ class PatchClick:
                 if 'args' in kwargs:
                     kwargs['args'] = init_args
                 else:
-                    args = (args[0], init_args, *args[2:])
+                    args = (args[0], init_args) + args[2:]
 
         ret = original_fn(self, *args, **kwargs)
 

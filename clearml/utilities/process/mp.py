@@ -7,7 +7,7 @@ from multiprocessing import Lock, Event as ProcessEvent
 from threading import Thread, Event as TrEvent
 from time import sleep, time
 from typing import List, Dict, Optional
-from multiprocessing import Process, get_context
+from multiprocessing import Process
 
 import psutil
 from six.moves.queue import Empty, Queue as TrQueue
@@ -19,10 +19,18 @@ try:
 except ImportError:
     from multiprocessing.queues import SimpleQueue
 
+# Windows/MacOS compatibility
 try:
     from multiprocessing.context import ForkContext  # noqa
 except ImportError:
     ForkContext = None
+
+# PY2 compatibility
+try:
+    from multiprocessing import get_context
+except ImportError:
+    def get_context(*args, **kwargs):
+        return False
 
 
 class ThreadCalls(object):

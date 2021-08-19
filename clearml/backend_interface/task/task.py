@@ -562,7 +562,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def completed(self, ignore_errors=True):
         # type: (bool) -> ()
         """
-        .. note:: Deprecated in 1.1.0
+        .. note:: Deprecated, use mark_completed(...) instead
         """
         warnings.warn("'completed' is deprecated; use 'mark_completed' instead.", DeprecationWarning)
         return self.mark_completed(ignore_errors=ignore_errors)

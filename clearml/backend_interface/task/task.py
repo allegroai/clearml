@@ -1602,6 +1602,19 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         return self._get_configuration_text(name)
 
+    def get_configuration_object_as_dict(self, name):
+        # type: (str) -> Optional[Union[dict, list]]
+        """
+        Get the Task's configuration object section as parsed dictionary
+        Parsing supports JSON and HOCON, otherwise parse manually with `get_configuration_object()`
+        Use only for automation (externally), otherwise use `Task.connect_configuration`.
+
+        :param str name: Configuration section name
+        :return: The Task's configuration as a parsed dict.
+            return None if configuration name is not valid
+        """
+        return self._get_configuration_dict(name)
+
     def get_configuration_objects(self):
         # type: () -> Optional[Mapping[str, str]]
         """
@@ -1619,10 +1632,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         configuration = self.data.configuration or {}
         return {k: v.value for k, v in configuration.items()}
 
-    def set_configuration_object(self, name, config_text=None, description=None, config_type=None):
-        # type: (str, Optional[str], Optional[str], Optional[str]) -> None
+    def set_configuration_object(self, name, config_text=None, description=None, config_type=None, config_dict=None):
+        # type: (str, Optional[str], Optional[str], Optional[str], Optional[Union[dict, list]]) -> None
         """
-        Set the Task's configuration object as a blob of text.
+        Set the Task's configuration object as a blob of text or automatically encoded dictionary/list.
         Use only for automation (externally), otherwise use `Task.connect_configuration`.
 
         :param str name: Configuration section name
@@ -1630,9 +1643,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             usually the content of a configuration file of a sort
         :param str description: Configuration section description
         :param str config_type: Optional configuration format type
+        :param dict config_dict: configuration dictionary/list to be encoded using HOCON (json alike) into stored text
+            Notice you can either pass `config_text` or `config_dict`, not both
         """
         return self._set_configuration(
-            name=name, description=description, config_type=config_type, config_text=config_text)
+            name=name, description=description, config_type=config_type,
+            config_text=config_text, config_dict=config_dict)
 
     @classmethod
     def get_projects(cls):

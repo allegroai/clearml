@@ -406,7 +406,7 @@ class ClearmlJob(object):
         # currently we do not add the docker image to the hash (only args and setup script),
         # because default docker image will cause the step to change
         docker = None
-        if getattr(task.data, 'container'):
+        if hasattr(task.data, 'container'):
             docker = dict(**(task.data.container or dict()))
             docker.pop('image', None)
 

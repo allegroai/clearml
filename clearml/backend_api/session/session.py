@@ -84,6 +84,10 @@ class Session(TokenManager):
         return self.__secret_key
 
     @property
+    def auth_token(self):
+        return self.__auth_token
+
+    @property
     def host(self):
         return self.__host
 

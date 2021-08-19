@@ -47,7 +47,7 @@ from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
 from .binding.joblib_bind import PatchedJoblib
 from .binding.matplotlib_bind import PatchedMatplotlib
 from .binding.hydra_bind import PatchHydra
-from .binding.click import PatchClick
+from .binding.click_bind import PatchClick
 from .config import (
     config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, PROC_MASTER_ID_ENV_VAR,
     DEV_DEFAULT_OUTPUT_URI, )
@@ -3534,3 +3534,20 @@ class Task(_Task):
 
             return True
         return False
+
+    def __getstate__(self):
+        # type: () -> dict
+        return {'main': self.is_main_task(), 'id': self.id, 'offline': self.is_offline()}
+
+    def __setstate__(self, state):
+        if state['main'] and not self.__main_task:
+            Task.__forked_proc_main_pid = None
+            Task.__update_master_pid_task(task=state['id'])
+        if state['offline']:
+            Task.set_offline(offline_mode=state['offline'])
+
+        task = Task.init(
+            continue_last_task=state['id'],
+            auto_connect_frameworks={'detect_repository': False}) \
+            if state['main'] else Task.get_task(task_id=state['id'])
+        self.__dict__ = task.__dict__

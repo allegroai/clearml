@@ -1451,7 +1451,7 @@ class Task(_Task):
         """
         Register (add) an artifact for the current Task. Registered artifacts are dynamically sychronized with the
         **ClearML Server** (backend). If a registered artifact is updated, the update is stored in the
-        **ClearML Server** (backend). Registered artifacts are primarily used for Data Audition.
+        **ClearML Server** (backend). Registered artifacts are primarily used for Data Auditing.
 
         The currently supported registered artifact object type is a pandas.DataFrame.
 

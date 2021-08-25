@@ -1236,7 +1236,7 @@ class _Boto3Driver(_Driver):
             except ImportError:
                 raise UsageError(
                     'AWS S3 storage driver (boto3) not found. '
-                    'Please install driver using "pip install \'boto3>=1.9\'"'
+                    'Please install driver using: pip install \"boto3>=1.9\"'
                 )
 
             # skip 's3://'
@@ -1496,7 +1496,7 @@ class _GoogleCloudStorageDriver(_Driver):
             except ImportError:
                 raise UsageError(
                     'Google cloud driver not found. '
-                    'Please install driver using "pip install \'google-cloud-storage>=1.13.2\'"'
+                    'Please install driver using: pip install \"google-cloud-storage>=1.13.2\"'
                 )
 
             self.name = name[len(_GoogleCloudStorageDriver.scheme_prefix):]
@@ -1612,7 +1612,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
             except ImportError:
                 raise UsageError(
                     'Azure blob storage driver not found. '
-                    'Please install driver using "pip install \'azure.storage.blob<=2.1.0\'"'
+                    'Please install driver using: pip install \"azure.storage.blob<=2.1.0\"'
                 )
 
             self.name = name

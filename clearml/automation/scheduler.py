@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from threading import Thread, enumerate as enumerate_threads
 from time import sleep, time
-from typing import List, Union, Optional, Callable, Sequence
+from typing import List, Union, Optional, Callable, Sequence, Dict
 
 from attr import attrs, attrib
 from dateutil.relativedelta import relativedelta
@@ -31,6 +31,7 @@ class BaseScheduleJob(object):
                 if not callable(v) and (full or not str(k).startswith('_'))}
 
     def update(self, a_job):
+        # type: (Union[Dict, BaseScheduleJob]) -> BaseScheduleJob
         converters = {a.name: a.converter for a in getattr(self, '__attrs_attrs__', [])}
         for k, v in (a_job.to_dict(full=True) if not isinstance(a_job, dict) else a_job).items():
             if v is not None and not callable(getattr(self, k, v)):
@@ -38,7 +39,7 @@ class BaseScheduleJob(object):
         return self
 
     def verify(self):
-        # type () -> None
+        # type: () -> None
         if self.base_function and not self.name:
             raise ValueError("Entry 'name' must be supplied for function scheduling")
         if self.base_task_id and not self.queue:
@@ -47,11 +48,11 @@ class BaseScheduleJob(object):
             raise ValueError("Either schedule function or task-id must be provided")
 
     def get_last_executed_task_id(self):
-        # type () -> Optional[str]
+        # type: () -> Optional[str]
         return self._executed_instances[-1] if self._executed_instances else None
 
     def run(self, task_id):
-        # type (Optional[str]) -> datetime
+        # type: (Optional[str]) -> None
         if task_id:
             # make sure we have a new instance
             if not self._executed_instances:
@@ -77,23 +78,42 @@ class ScheduleJob(BaseScheduleJob):
     _last_executed = attrib(type=datetime, converter=datetime_from_isoformat, default=None)
 
     def verify(self):
-        # type () -> None
+        # type: () -> None
+        def check_integer(value):
+            try:
+                return False if not isinstance(value, (int, float)) or \
+                               int(value) != float(value) else True
+            except (TypeError, ValueError):
+                return False
+
         super(ScheduleJob, self).verify()
         if self.weekdays and self.day not in (None, 0, 1):
             raise ValueError("`weekdays` and `day` combination is not valid (day must be None,0 or 1)")
+        if self.weekdays and any(w not in self._weekdays_ind for w in self.weekdays):
+            raise ValueError("`weekdays` must be a list of strings, valid values are: {}".format(self._weekdays_ind))
         if not (self.minute or self.hour or self.day or self.month or self.year):
             raise ValueError("Schedule time/date was not provided")
+        if self.minute and not check_integer(self.minute):
+            raise ValueError("Schedule `minute` must be an integer")
+        if self.hour and not check_integer(self.hour):
+            raise ValueError("Schedule `hour` must be an integer")
+        if self.day and not check_integer(self.day):
+            raise ValueError("Schedule `day` must be an integer")
+        if self.month and not check_integer(self.month):
+            raise ValueError("Schedule `month` must be an integer")
+        if self.year and not check_integer(self.year):
+            raise ValueError("Schedule `year` must be an integer")
 
     def next_run(self):
-        # type () -> Optional[datetime]
+        # type: () -> Optional[datetime]
         return self._next_run
 
     def get_execution_timeout(self):
-        # type () -> Optional[datetime]
+        # type: () -> Optional[datetime]
         return self._execution_timeout
 
     def next(self):
-        # type () -> Optional[datetime]
+        # type: () -> Optional[datetime]
         """
         :return: Return the next run datetime, None if no scheduling needed
         """
@@ -211,7 +231,7 @@ class ScheduleJob(BaseScheduleJob):
         return self._next_run
 
     def run(self, task_id):
-        # type (Optional[str]) -> datetime
+        # type: (Optional[str]) -> datetime
         super(ScheduleJob, self).run(task_id)
         self._last_executed = datetime.utcnow()
         if self.execution_limit_hours and task_id:
@@ -484,25 +504,26 @@ class TaskScheduler(BaseScheduler):
 
     def add_task(
             self,
-            schedule_task_id=None,  # type(Union[str, Task])
-            schedule_function=None,   # type(Callable)
-            queue=None,  # type(str)
-            name=None,  # type(Optional[str])
-            target_project=None,  # type(Optional[str])
-            minute=None,  # type(Optional[int])
-            hour=None,  # type(Optional[int])
-            day=None,  # type(Optional[int])
-            weekdays=None,  # type(Optional[List[str]])
-            month=None,  # type(Optional[int])
-            year=None,  # type(Optional[int])
-            limit_execution_time=None,  # type(Optional[float])
-            single_instance=False,  # type(bool)
-            recurring=True,  # type(bool)
-            reuse_task=False,  # type(bool)
-            task_parameters=None,  # type(Optional[dict])
-            task_overrides=None,  # type(Optional[dict])
+            schedule_task_id=None,  # type: Union[str, Task]
+            schedule_function=None,   # type: Callable
+            queue=None,  # type: str
+            name=None,  # type: Optional[str]
+            target_project=None,  # type: Optional[str]
+            minute=None,  # type: Optional[int]
+            hour=None,  # type: Optional[int]
+            day=None,  # type: Optional[int]
+            weekdays=None,  # type: Optional[List[str]]
+            month=None,  # type: Optional[int]
+            year=None,  # type: Optional[int]
+            limit_execution_time=None,  # type: Optional[float]
+            single_instance=False,  # type: bool
+            recurring=True,  # type: bool
+            execute_immediately=True,  # type: bool
+            reuse_task=False,  # type: bool
+            task_parameters=None,  # type: Optional[dict]
+            task_overrides=None,  # type: Optional[dict]
     ):
-        # type(...) -> bool
+        # type: (...) -> bool
         """
         Create a cron job alike scheduling for a pre existing Task.
         Notice it is recommended to give the schedule entry a descriptive unique name,
@@ -545,6 +566,8 @@ class TaskScheduler(BaseScheduler):
         :param single_instance: If True, do not launch the Task job if the previous instance is still running
         (skip until the next scheduled time period). Default False.
         :param recurring: If False only launch the Task once (default: True, repeat)
+        :param execute_immediately: If True, schedule the Task to be execute immediately
+        then recurring based on the timing schedule arguments
         :param reuse_task: If True, re-enqueue the same Task (i.e. do not clone it) every time, default False.
         :param task_parameters: Configuration parameters to the executed Task.
         for example: {'Args/batch': '12'} Notice: not available when reuse_task=True/
@@ -569,7 +592,7 @@ class TaskScheduler(BaseScheduler):
             task_parameters=task_parameters,
             task_overrides=task_overrides,
             clone_task=not bool(reuse_task),
-            starting_time=datetime.utcnow(),
+            starting_time=datetime.fromtimestamp(0) if execute_immediately else datetime.utcnow(),
             minute=minute,
             hour=hour,
             day=day,
@@ -746,7 +769,7 @@ class TaskScheduler(BaseScheduler):
 
     @staticmethod
     def __deserialize_scheduled_jobs(serialized_jobs_dicts, current_jobs):
-        # type(List[Dict], List[ScheduleJob]) -> List[ScheduleJob]
+        # type: (List[Dict], List[ScheduleJob]) -> List[ScheduleJob]
         scheduled_jobs = [ScheduleJob().update(j) for j in serialized_jobs_dicts]
         scheduled_jobs = {j.name: j for j in scheduled_jobs}
         current_scheduled_jobs = {j.name: j for j in current_jobs}
@@ -841,9 +864,9 @@ class TaskScheduler(BaseScheduler):
             table_plot=executed_table
         )
 
-    def _launch_job_task(self, job):
-        # type: (ScheduleJob) -> None
-        task_job = super(TaskScheduler, self)._launch_job_task(job)
+    def _launch_job_task(self, job, task_parameters=None, add_tags=None):
+        # type: (ScheduleJob, Optional[dict], Optional[List[str]]) -> Optional[ClearmlJob]
+        task_job = super(TaskScheduler, self)._launch_job_task(job, task_parameters=task_parameters, add_tags=add_tags)
         # make sure this is not a function job
         if task_job:
             self._executed_jobs.append(ExecutedJob(
@@ -852,12 +875,15 @@ class TaskScheduler(BaseScheduler):
             if job.get_execution_timeout():
                 # we should probably make sure we are not overwriting a Task
                 self._timeout_jobs[job.get_execution_timeout()] = task_job.task_id()
+        return task_job
 
-    def _launch_job_function(self, job):
-        # type: (ScheduleJob) -> None
-        thread_job = super(TaskScheduler, self)._launch_job_function(job)
+    def _launch_job_function(self, job, func_args=None):
+        # type: (ScheduleJob, Optional[Sequence]) -> Optional[Thread]
+        thread_job = super(TaskScheduler, self)._launch_job_function(job, func_args=func_args)
         # make sure this is not a function job
         if thread_job:
             self._executed_jobs.append(ExecutedJob(
                 name=job.name, thread_id=str(thread_job.ident), started=datetime.utcnow()))
             # execution timeout is not supported with function callbacks.
+
+        return thread_job

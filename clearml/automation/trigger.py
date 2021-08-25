@@ -2,7 +2,7 @@ import json
 import logging
 from datetime import datetime
 from threading import enumerate as enumerate_threads
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union, Callable
 
 from attr import attrs, attrib
 
@@ -40,7 +40,7 @@ class BaseTrigger(BaseScheduleJob):
         }
 
     def verify(self):
-        # type () -> None
+        # type: () -> None
         super(BaseTrigger, self).verify()
         if self.tags and (not isinstance(self.tags, (list, tuple)) or
                           not all(isinstance(s, str) for s in self.tags)):
@@ -109,7 +109,7 @@ class TaskTrigger(BaseTrigger):
     threshold = attrib(default=None, type=float)
     value_sign = attrib(default=None, type=str)
     exclude_dev = attrib(default=None, type=bool)
-    on_status = attrib(type=str, default=None)
+    on_status = attrib(type=list, default=None)
 
     def build_query(self, ref_time):
         query = super(TaskTrigger, self).build_query(ref_time)
@@ -127,7 +127,7 @@ class TaskTrigger(BaseTrigger):
         return query
 
     def verify(self):
-        # type () -> None
+        # type: () -> None
         super(TaskTrigger, self).verify()
         if (self.metrics or self.variant or self.threshold is not None) and \
                 not (self.metrics and self.variant and self.threshold is not None):
@@ -192,24 +192,24 @@ class TriggerScheduler(BaseScheduler):
 
     def add_model_trigger(
             self,
-            schedule_task_id=None,  # type(Union[str, Task])
-            schedule_queue=None,  # type(str)
-            schedule_function=None,  # type(Callable)
-            trigger_project=None,  # type(str)
-            trigger_name=None,  # type(Optional[str])
-            trigger_on_publish=None,  # type(bool)
-            trigger_on_tags=None,  # type(Optional[List[str]])
-            trigger_on_archive=None,  # type(bool)
-            trigger_required_tags=None,  # type(Optional[List[str]])
-            name=None,  # type(Optional[str])
-            target_project=None,  # type(Optional[str])
-            add_tag=True,  # type(Union[bool, str])
-            single_instance=False,  # type(bool)
-            reuse_task=False,  # type(bool)
-            task_parameters=None,  # type(Optional[dict])
-            task_overrides=None,  # type(Optional[dict])
+            schedule_task_id=None,  # type: Union[str, Task]
+            schedule_queue=None,  # type: str
+            schedule_function=None,  # type: Callable[[str], None]
+            trigger_project=None,  # type: str
+            trigger_name=None,  # type: Optional[str]
+            trigger_on_publish=None,  # type: bool
+            trigger_on_tags=None,  # type: Optional[List[str]]
+            trigger_on_archive=None,  # type: bool
+            trigger_required_tags=None,  # type: Optional[List[str]]
+            name=None,  # type: Optional[str]
+            target_project=None,  # type: Optional[str]
+            add_tag=True,  # type: Union[bool, str]
+            single_instance=False,  # type: bool
+            reuse_task=False,  # type: bool
+            task_parameters=None,  # type: Optional[dict]
+            task_overrides=None,  # type: Optional[dict]
     ):
-        # type(...) -> bool
+        # type: (...) -> None
         """
         Create a cron job alike scheduling for a pre existing Task or function.
         Trigger the Task/function execution on changes in the model repository
@@ -270,24 +270,24 @@ class TriggerScheduler(BaseScheduler):
 
     def add_dataset_trigger(
             self,
-            schedule_task_id=None,  # type(Union[str, Task])
-            schedule_queue=None,  # type(str)
-            schedule_function=None,  # type(Callable)
-            trigger_project=None,  # type(str)
-            trigger_name=None,  # type(Optional[str])
-            trigger_on_publish=None,  # type(bool)
-            trigger_on_tags=None,  # type(Optional[List[str]])
-            trigger_on_archive=None,  # type(bool)
-            trigger_required_tags=None,  # type(Optional[List[str]])
-            name=None,  # type(Optional[str])
-            target_project=None,  # type(Optional[str])
-            add_tag=True,  # type(Union[bool, str])
-            single_instance=False,  # type(bool)
-            reuse_task=False,  # type(bool)
-            task_parameters=None,  # type(Optional[dict])
-            task_overrides=None,  # type(Optional[dict])
+            schedule_task_id=None,  # type: Union[str, Task]
+            schedule_queue=None,  # type: str
+            schedule_function=None,  # type: Callable[[str], None]
+            trigger_project=None,  # type: str
+            trigger_name=None,  # type: Optional[str]
+            trigger_on_publish=None,  # type: bool
+            trigger_on_tags=None,  # type: Optional[List[str]]
+            trigger_on_archive=None,  # type: bool
+            trigger_required_tags=None,  # type: Optional[List[str]]
+            name=None,  # type: Optional[str]
+            target_project=None,  # type: Optional[str]
+            add_tag=True,  # type: Union[bool, str]
+            single_instance=False,  # type: bool
+            reuse_task=False,  # type: bool
+            task_parameters=None,  # type: Optional[dict]
+            task_overrides=None,  # type: Optional[dict]
     ):
-        # type(...) -> bool
+        # type: (...) -> None
         """
         Create a cron job alike scheduling for a pre existing Task or function.
         Trigger the Task/function execution on changes in the dataset repository (notice this is not the hyper-datasets)
@@ -349,28 +349,28 @@ class TriggerScheduler(BaseScheduler):
 
     def add_task_trigger(
             self,
-            schedule_task_id=None,  # type(Union[str, Task])
-            schedule_queue=None,  # type(str)
-            schedule_function=None,  # type(Callable)
-            trigger_project=None,  # type(str)
-            trigger_name=None,  # type(Optional[str])
-            trigger_on_tags=None,  # type(Optional[List[str]])
-            trigger_on_status=None,  # type(Optional[List[str]])
-            trigger_exclude_dev_tasks=None,  # type(Optional[bool])
-            trigger_on_metric=None,  # type(Optional[str])
-            trigger_on_variant=None,  # type(Optional[str])
-            trigger_on_threshold=None,  # type(Optional[str])
-            trigger_on_sign=None,  # type(Optional[str])
-            trigger_required_tags=None,  # type(Optional[List[str]])
-            name=None,  # type(Optional[str])
-            target_project=None,  # type(Optional[str])
-            add_tag=True,  # type(Union[bool, str])
-            single_instance=False,  # type(bool)
-            reuse_task=False,  # type(bool)
-            task_parameters=None,  # type(Optional[dict])
-            task_overrides=None,  # type(Optional[dict])
+            schedule_task_id=None,  # type: Union[str, Task]
+            schedule_queue=None,  # type: str
+            schedule_function=None,  # type: Callable[[str], None]
+            trigger_project=None,  # type: str
+            trigger_name=None,  # type: Optional[str]
+            trigger_on_tags=None,  # type: Optional[List[str]]
+            trigger_on_status=None,  # type: Optional[List[str]]
+            trigger_exclude_dev_tasks=None,  # type: Optional[bool]
+            trigger_on_metric=None,  # type: Optional[str]
+            trigger_on_variant=None,  # type: Optional[str]
+            trigger_on_threshold=None,  # type: Optional[float]
+            trigger_on_sign=None,  # type: Optional[str]
+            trigger_required_tags=None,  # type: Optional[List[str]]
+            name=None,  # type: Optional[str]
+            target_project=None,  # type: Optional[str]
+            add_tag=True,  # type: Union[bool, str]
+            single_instance=False,  # type: bool
+            reuse_task=False,  # type: bool
+            task_parameters=None,  # type: Optional[dict]
+            task_overrides=None,  # type: Optional[dict]
     ):
-        # type(...) -> bool
+        # type: (...) -> None
         """
         Create a cron job alike scheduling for a pre existing Task or function.
         Trigger the Task/function execution on changes in the Task
@@ -570,8 +570,8 @@ class TriggerScheduler(BaseScheduler):
 
     @staticmethod
     def __deserialize_triggers(trigger_jobs, trigger_class, current_triggers):
-        # type (List[dict], TriggerCLass, List[BaseTrigger]) -> List[BaseTrigger]
-        trigger_jobs = [trigger_class().update(j) for j in trigger_jobs]
+        # type:  (List[dict], BaseTrigger, List[BaseTrigger]) -> List[BaseTrigger]
+        trigger_jobs = [trigger_class().update(j) for j in trigger_jobs]  # noqa
 
         trigger_jobs = {j.name: j for j in trigger_jobs}
         current_triggers = {j.name: j for j in current_triggers}
@@ -617,17 +617,17 @@ class TriggerScheduler(BaseScheduler):
         state_dict = json.loads(state_json_str)
         self._dataset_triggers = self.__deserialize_triggers(
             state_dict.get('dataset_triggers', []),
-            trigger_class=DatasetTrigger,
+            trigger_class=DatasetTrigger,  # noqa
             current_triggers=self._dataset_triggers
         )
         self._model_triggers = self.__deserialize_triggers(
             state_dict.get('model_triggers', []),
-            trigger_class=ModelTrigger,
+            trigger_class=ModelTrigger,  # noqa
             current_triggers=self._model_triggers
         )
         self._task_triggers = self.__deserialize_triggers(
             state_dict.get('task_triggers', []),
-            trigger_class=TaskTrigger,
+            trigger_class=TaskTrigger,  # noqa
             current_triggers=self._task_triggers
         )
 

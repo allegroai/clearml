@@ -169,7 +169,7 @@ def cli():
 
     squash = subparsers.add_parser('squash',
                                    help='Squash multiple datasets into a single dataset version (merge down)')
-    squash.add_argument('--name', type=str, required=True, help='Creat squashed dataset name')
+    squash.add_argument('--name', type=str, required=True, help='Create squashed dataset name')
     squash.add_argument('--ids', type=str, required=True, nargs='*', help='Source dataset IDs to squash (merge down)')
     squash.add_argument('--storage', type=str, default=None, help='See `upload storage`')
     squash.add_argument('--verbose', default=False, action='store_true',

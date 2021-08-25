@@ -339,8 +339,10 @@ class _JupyterObserver(object):
         try:
             import re
             replace_ipython_pattern = re.compile(r'\n([ \t]*)get_ipython\(\)')
+            replace_ipython_display_pattern = re.compile(r'\n([ \t]*)display\(')
         except Exception:
             replace_ipython_pattern = None
+            replace_ipython_display_pattern = None
 
         # main observer loop, check if we need to exit
         while not cls._exit_event.wait(timeout=0.):
@@ -427,6 +429,8 @@ class _JupyterObserver(object):
                 # we will not be able to run them anyhow
                 if replace_ipython_pattern:
                     script_code = replace_ipython_pattern.sub(r'\n# \g<1>get_ipython()', script_code)
+                if replace_ipython_display_pattern:
+                    script_code = replace_ipython_display_pattern.sub(r'\n\g<1>print(', script_code)
 
                 requirements_txt = ''
                 conda_requirements = ''

@@ -89,7 +89,7 @@ class PatchClick:
                     if option.type is not None:
                         PatchClick._args_type[name+'/'+option.name] = str(option.type)
                     # store value help
-                    if option.help:
+                    if getattr(option, 'help', None):
                         PatchClick._args_desc[name+'/'+option.name] = str(option.help)
 
         return original_fn(self, *args, **kwargs)

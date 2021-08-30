@@ -184,7 +184,7 @@ class Task(_Task):
         :return: The current running Task (experiment).
         """
         # check if we have no main Task, but the main process created one.
-        if not cls.__main_task and PROC_MASTER_ID_ENV_VAR.get():
+        if not cls.__main_task and cls.__get_master_id_task_id():
             # initialize the Task, connect to stdout
             Task.init()
         # return main Task
@@ -3061,6 +3061,7 @@ class Task(_Task):
             # this is so in theory we can close a main task and start a new one
             if self.is_main_task():
                 Task.__main_task = None
+                Task.__update_master_pid_task(task=None)
         except Exception:
             # make sure we do not interrupt the exit process
             pass

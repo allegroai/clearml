@@ -1364,6 +1364,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def set_system_tags(self, tags):
         # type: (Sequence[str]) -> ()
         assert isinstance(tags, (list, tuple))
+        tags = list(set(tags))
         if Session.check_min_api_version('2.3'):
             self._set_task_property("system_tags", tags)
             self._edit(system_tags=self.data.system_tags)
@@ -2208,7 +2209,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     @classmethod
     def __update_master_pid_task(cls, pid=None, task=None):
-        # type: (Optional[int], Union[str, Task]) -> None
+        # type: (Optional[int], Optional[Union[str, Task]]) -> None
         pid = pid or os.getpid()
         if not task:
             PROC_MASTER_ID_ENV_VAR.set(str(pid) + ':')
@@ -2223,11 +2224,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     @classmethod
     def __get_master_id_task_id(cls):
         # type: () -> Optional[str]
-        master_task_id = PROC_MASTER_ID_ENV_VAR.get().split(':')
+        master_pid, _, master_task_id = PROC_MASTER_ID_ENV_VAR.get('').partition(':')
         # we could not find a task ID, revert to old stub behaviour
-        if len(master_task_id) < 2 or not master_task_id[1]:
+        if not master_task_id:
             return None
-        return master_task_id[1]
+        return master_task_id
 
     @classmethod
     def __get_master_process_id(cls):

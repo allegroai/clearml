@@ -168,16 +168,14 @@ class CreateAndPopulate(object):
                 print('Cloning task {}'.format(self.base_task_id))
             task = Task.clone(source_task=self.base_task_id, project=Task.get_project_id(self.project_name))
 
-            if self.output_uri:
-                task.output_uri = self.output_uri
+            self._set_output_uri(task)
         else:
             # noinspection PyProtectedMember
             task = Task._create(
                 task_name=self.task_name, project_name=self.project_name,
                 task_type=self.task_type or Task.TaskTypes.training)
 
-            if self.output_uri:
-                task.output_uri = self.output_uri
+            self._set_output_uri(task)
 
             # if there is nothing to populate, return
             if not any([
@@ -333,6 +331,15 @@ class CreateAndPopulate(object):
         task.update_task(task_state)
         self.task = task
         return task
+
+    def _set_output_uri(self, task):
+        if self.output_uri:
+            try:
+                task.output_uri = self.output_uri
+            except ValueError:
+                getLogger().warning('Could not verify permission for output_uri: "{}"'.format(self.output_uri))
+                # do not verify the output uri (it might not be valid when we are creating the Task)
+                task.storage_uri = self.output_uri
 
     def update_task_args(self, args=None):
         # type: (Optional[Union[Sequence[str], Sequence[Tuple[str, str]]]]) -> ()

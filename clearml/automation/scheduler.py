@@ -147,7 +147,11 @@ class ScheduleJob(BaseScheduleJob):
         if self.weekdays:
             # get previous weekday
             _weekdays = [self.get_weekday_ord(w) for w in self.weekdays]
-            prev_weekday_ind = _weekdays.index(self._last_executed.weekday()) if self._last_executed else -1
+            try:
+                prev_weekday_ind = _weekdays.index(self._last_executed.weekday()) if self._last_executed else -1
+            except ValueError:
+                # in case previous execution was not in the weekday (for example executed immediately at scheduling)
+                prev_weekday_ind = -1
             weekday = _weekdays[(prev_weekday_ind+1) % len(_weekdays)]
 
         # check if we have a specific day of the week
@@ -518,7 +522,7 @@ class TaskScheduler(BaseScheduler):
             limit_execution_time=None,  # type: Optional[float]
             single_instance=False,  # type: bool
             recurring=True,  # type: bool
-            execute_immediately=True,  # type: bool
+            execute_immediately=False,  # type: bool
             reuse_task=False,  # type: bool
             task_parameters=None,  # type: Optional[dict]
             task_overrides=None,  # type: Optional[dict]
@@ -567,10 +571,10 @@ class TaskScheduler(BaseScheduler):
         (skip until the next scheduled time period). Default False.
         :param recurring: If False only launch the Task once (default: True, repeat)
         :param execute_immediately: If True, schedule the Task to be execute immediately
-        then recurring based on the timing schedule arguments
+        then recurring based on the timing schedule arguments. Default False.
         :param reuse_task: If True, re-enqueue the same Task (i.e. do not clone it) every time, default False.
         :param task_parameters: Configuration parameters to the executed Task.
-        for example: {'Args/batch': '12'} Notice: not available when reuse_task=True/
+        for example: {'Args/batch': '12'} Notice: not available when reuse_task=True
         :param task_overrides: Change task definition.
         for example {'script.version_num': None, 'script.branch': 'main'} Notice: not available when reuse_task=True
 

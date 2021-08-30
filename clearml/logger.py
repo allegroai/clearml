@@ -157,7 +157,7 @@ class Logger(object):
             the same ``title`` for each call to this method.
         :param str series: The series name (variant) of the reported scalar.
         :param float value: The value to plot per iteration.
-        :param int iteration: The iteration number. Iterations are on the x-axis.
+        :param int iteration: The reported iteration / step (x-axis of the reported time series)
         """
 
         # if task was not started, we have to start it
@@ -197,7 +197,7 @@ class Logger(object):
         :param list(float) values: The series values. A list of floats, or an N-dimensional Numpy array containing
             data for each histogram bar.
         :type values: list(float), numpy.ndarray
-        :param int iteration: The iteration number. Each ``iteration`` creates another plot.
+        :param int iteration: The reported iteration / step. Each ``iteration`` creates another plot.
         :param list(str) labels: Labels for each bar group, creating a plot legend labeling each series. (Optional)
         :param list(str) xlabels: Labels per entry in each bucket in the histogram (vector), creating a set of labels
             for each histogram bar on the x-axis. (Optional)
@@ -244,7 +244,7 @@ class Logger(object):
         :param list(float) values: The series values. A list of floats, or an N-dimensional Numpy array containing
             data for each histogram bar.
         :type values: list(float), numpy.ndarray
-        :param int iteration: The iteration number. Each ``iteration`` creates another plot.
+        :param int iteration: The reported iteration / step. Each ``iteration`` creates another plot.
         :param list(str) labels: Labels for each bar group, creating a plot legend labeling each series. (Optional)
         :param list(str) xlabels: Labels per entry in each bucket in the histogram (vector), creating a set of labels
             for each histogram bar on the x-axis. (Optional)
@@ -309,7 +309,7 @@ class Logger(object):
 
         :param str title: The title (metric) of the table.
         :param str series: The series name (variant) of the reported table.
-        :param int iteration: The iteration number.
+        :param int iteration: The reported iteration / step.
         :param table_plot: The output table plot object
         :type table_plot: pandas.DataFrame or Table as list of rows (list)
         :param csv: path to local csv file
@@ -373,7 +373,7 @@ class Logger(object):
 
         :param str title: The title (metric) of the plot.
         :param list series: All the series data, one list element for each line in the plot.
-        :param int iteration: The iteration number.
+        :param int iteration: The reported iteration / step.
         :param str xaxis: The x-axis title. (Optional)
         :param str yaxis: The y-axis title. (Optional)
         :param str mode: The type of line plot.
@@ -455,7 +455,7 @@ class Logger(object):
         :param str title: The title (metric) of the plot.
         :param str series: The series name (variant) of the reported scatter plot.
         :param list scatter: The scatter data. numpy.ndarray or list of (pairs of x,y) scatter:
-        :param int iteration: The iteration number. To set an initial iteration, for example to continue a previously
+        :param int iteration: The reported iteration / step.
         :param str xaxis: The x-axis title. (Optional)
         :param str yaxis: The y-axis title. (Optional)
         :param list(str) labels: Labels per point in the data assigned to the ``scatter`` parameter. The labels must be
@@ -517,7 +517,7 @@ class Logger(object):
         :param str series: The series name (variant) of the reported scatter plot.
         :param Union[numpy.ndarray, list] scatter: The scatter data.
             list of (pairs of x,y,z), list of series [[(x1,y1,z1)...]], or numpy.ndarray
-        :param int iteration: The iteration number.
+        :param int iteration: The reported iteration / step.
         :param str xaxis: The x-axis title. (Optional)
         :param str yaxis: The y-axis title. (Optional)
         :param str zaxis: The z-axis title. (Optional)
@@ -620,7 +620,7 @@ class Logger(object):
         :param str title: The title (metric) of the plot.
         :param str series: The series name (variant) of the reported confusion matrix.
         :param numpy.ndarray matrix: A heat-map matrix (example: confusion matrix)
-        :param int iteration: The iteration number.
+        :param int iteration: The reported iteration / step.
         :param str xaxis: The x-axis title. (Optional)
         :param str yaxis: The y-axis title. (Optional)
         :param list(str) xlabels: Labels for each column of the matrix. (Optional)
@@ -674,7 +674,7 @@ class Logger(object):
         :param str title: The title (metric) of the plot.
         :param str series: The series name (variant) of the reported confusion matrix.
         :param numpy.ndarray matrix: A heat-map matrix (example: confusion matrix)
-        :param int iteration: The iteration number.
+        :param int iteration: The reported iteration / step.
         :param str xaxis: The x-axis title. (Optional)
         :param str yaxis: The y-axis title. (Optional)
         :param list(str) xlabels: Labels for each column of the matrix. (Optional)
@@ -720,7 +720,7 @@ class Logger(object):
         :param str title: The title (metric) of the plot.
         :param str series: The series name (variant) of the reported surface.
         :param numpy.ndarray matrix: A heat-map matrix (example: confusion matrix)
-        :param int iteration: The iteration number.
+        :param int iteration: The reported iteration / step.
         :param str xaxis: The x-axis title. (Optional)
         :param str yaxis: The y-axis title. (Optional)
         :param str zaxis: The z-axis title. (Optional)
@@ -792,7 +792,7 @@ class Logger(object):
 
         :param str title: The title (metric) of the image.
         :param str series: The series name (variant) of the reported image.
-        :param int iteration: The iteration number.
+        :param int iteration: The reported iteration / step.
         :param str local_path: A path to an image file.
         :param str url: A URL for the location of a pre-uploaded image.
         :param image: Image data (RGB).
@@ -889,7 +889,7 @@ class Logger(object):
 
         :param str title: The title (metric) of the media.
         :param str series: The series name (variant) of the reported media.
-        :param int iteration: The iteration number.
+        :param int iteration: The reported iteration / step.
         :param str local_path: A path to an media file.
         :param stream: BytesIO stream to upload. If provided, ``file_extension`` must also be provided.
         :param str url: A URL to the location of a pre-uploaded media.
@@ -959,7 +959,7 @@ class Logger(object):
 
         :param str title: The title (metric) of the plot.
         :param str series: The series name (variant) of the reported plot.
-        :param int iteration: The iteration number.
+        :param int iteration: The reported iteration / step.
         :param dict figure: A ``plotly`` Figure object or a ``poltly`` dictionary
         """
         # if task was not started, we have to start it
@@ -997,7 +997,7 @@ class Logger(object):
 
         :param str title: The title (metric) of the plot.
         :param str series: The series name (variant) of the reported plot.
-        :param int iteration: The iteration number.
+        :param int iteration: The reported iteration / step.
         :param MatplotlibFigure figure: A ``matplotlib`` Figure object
         :param report_image: Default False. If True the plot will be uploaded as a debug sample (png image),
             and will appear under the debug samples tab (instead of the Plots tab).

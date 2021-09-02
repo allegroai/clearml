@@ -250,7 +250,8 @@ class CreateAndPopulate(object):
         elif not self.repo and repo_info and not repo_info.script.get('requirements'):
             # we are in local mode, make sure we have "requirements.txt" it is a must
             reqs_txt_file = Path(repo_info.script['repo_root']) / "requirements.txt"
-            if self.raise_on_missing_entries and not reqs_txt_file.is_file():
+            poetry_toml_file = Path(repo_info.script['repo_root']) / "pyproject.toml"
+            if self.raise_on_missing_entries and not reqs_txt_file.is_file() and not poetry_toml_file.is_file():
                 raise ValueError(
                     "requirements.txt not found [{}] "
                     "Use --requirements or --packages".format(reqs_txt_file.as_posix()))

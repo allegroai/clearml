@@ -1088,7 +1088,7 @@ class Task(_Task):
             - Class type - A Class type, storing all class properties (excluding '_' prefix properties)
             - Object - A class instance, storing all instance properties (excluding '_' prefix properties)
 
-        :param str name: A section name associated with the connected object. Default: 'General'
+        :param str name: A section name associated with the connected object, if 'name' is None defaults to 'General'
             Currently only supported for `dict` / `TaskParameter` objects
             Examples:
             name='General' will put the connected dictionary under the General section in the hyper-parameters

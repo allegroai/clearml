@@ -409,7 +409,7 @@ class _JupyterObserver(object):
                             from nbconvert.exporters import HTMLExporter  # noqa
                             html, _ = HTMLExporter().from_filename(filename=local_jupyter_filename)
                             local_html = Path(gettempdir()) / 'notebook_{}.html'.format(task.id)
-                            with open(local_html.as_posix(), 'wt') as f:
+                            with open(local_html.as_posix(), 'wt', encoding="utf-8") as f:
                                 f.write(html)
                             task.upload_artifact(
                                 name='notebook preview', artifact_object=local_html,

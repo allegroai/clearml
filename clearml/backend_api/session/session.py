@@ -223,6 +223,8 @@ class Session(TokenManager):
         if self.force_max_api_version and self.check_min_api_version(self.force_max_api_version):
             Session.max_api_version = Session.api_version = str(self.force_max_api_version)
 
+        self._load_vaults()
+
     def _load_vaults(self):
         if not self.check_min_api_version("2.15") or self.feature_set == "basic":
             return

@@ -1543,7 +1543,19 @@ class _GoogleCloudStorageDriver(_Driver):
         return list(container.bucket.list_blobs())
 
     def delete_object(self, object, **kwargs):
-        object.delete()
+        try:
+            object.delete()
+        except Exception as ex:
+            try:
+                from google.cloud.exceptions import NotFound
+                if isinstance(ex, NotFound):
+                    return False
+            except ImportError:
+                pass
+            name = getattr(object, "name", "")
+            log.warning("Failed deleting object {}: {}".format(name, ex))
+            return False
+
         return not object.exists()
 
     def get_object(self, container_name, object_name, *args, **kwargs):

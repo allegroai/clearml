@@ -86,6 +86,7 @@ class Config(object):
         self._env = env or os.environ.get("CLEARML_ENV", os.environ.get("TRAINS_ENV", Environment.default))
         self.config_paths = set()
         self.is_server = is_server
+        self._overrides_configs = None
 
         if self._verbose:
             print("Config env:%s" % str(self._env))
@@ -174,6 +175,15 @@ class Config(object):
                     copy_trees=True,
                 ),
                 local_config_files,
+                config,
+            )
+
+        if self._overrides_configs:
+            config = functools.reduce(
+                lambda cfg, override: ConfigTree.merge_configs(
+                    cfg, override, copy_trees=True
+                ),
+                self._overrides_configs,
                 config,
             )
 
@@ -401,3 +411,10 @@ class Config(object):
             bucket=bucket,
             host=host,
         )
+
+    def set_overrides(self, *dicts):
+        """ Set several override dictionaries or ConfigTree objects which should be merged onto the configuration """
+        self._overrides_configs = [
+            d if isinstance(d, ConfigTree) else ConfigFactory.from_dict(d) for d in dicts
+        ]
+        self.reload()

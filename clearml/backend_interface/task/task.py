@@ -1801,6 +1801,20 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         except Exception:
             return None
 
+    def _set_runtime_properties(self, runtime_properties):
+        # type: (Mapping[str, str]) -> bool
+        if not Session.check_min_api_version('2.13') or not runtime_properties:
+            return False
+
+        with self._edit_lock:
+            self.reload()
+            current_runtime_properties = self.data.runtime or {}
+            current_runtime_properties.update(runtime_properties)
+            # noinspection PyProtectedMember
+            self._edit(runtime=current_runtime_properties)
+
+        return True
+
     def _clear_task(self, system_tags=None, comment=None):
         # type: (Optional[Sequence[str]], Optional[str]) -> ()
         self._data.script = tasks.Script(

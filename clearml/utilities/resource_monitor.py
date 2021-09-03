@@ -76,11 +76,8 @@ class ResourceMonitor(BackgroundMonitor):
             try:
                 machine_spec = self._get_machine_specs()
                 if machine_spec:
-                    self._task.reload()
-                    runtime_properties = self._task.data.runtime or {}
-                    runtime_properties.update(machine_spec)
                     # noinspection PyProtectedMember
-                    self._task._edit(runtime=runtime_properties)
+                    self._task._set_runtime_properties(runtime_properties=machine_spec)
             except Exception as ex:
                 logging.getLogger('clearml.resource_monitor').debug(
                     'Failed logging machine specification: {}'.format(ex))

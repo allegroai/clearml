@@ -4,6 +4,7 @@ import logging
 import math
 from multiprocessing import Semaphore
 from threading import Event as TrEvent
+from time import sleep
 
 import numpy as np
 import six
@@ -60,16 +61,21 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
     def stop(self):
         if isinstance(self._queue, PrQueue):
             self._queue.close(self._event)
-        if not self.is_subprocess() or self.is_subprocess_alive():
+        if not self.is_subprocess_mode() or self.is_subprocess_alive():
             self._exit_event.set()
         super(BackgroundReportService, self).stop()
 
     def flush(self):
         self._queue_size = 0
-        if not self.is_subprocess() or self.is_subprocess_alive():
+        if not self.is_subprocess_mode() or self.is_subprocess_alive():
             self._event.set()
 
     def wait_for_events(self, timeout=None):
+        # noinspection PyProtectedMember
+        if self._is_subprocess_mode_and_not_parent_process():
+            while self._queue and not self._queue.empty():
+                sleep(0.1)
+            return
         self._empty_state_event.clear()
         return self._empty_state_event.wait(timeout)
 
@@ -218,7 +224,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             return
         report_service = self._report_service
         self._report_service = None
-        if not report_service.is_subprocess() or report_service.is_alive():
+        if not report_service.is_subprocess_mode() or report_service.is_alive():
             report_service.stop()
             report_service.wait()
         else:

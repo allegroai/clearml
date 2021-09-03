@@ -328,7 +328,7 @@ class BackgroundMonitor(object):
         if not self._thread:
             return
 
-        if not self.is_subprocess() or self.is_subprocess_alive():
+        if not self.is_subprocess_mode() or self.is_subprocess_alive():
             self._event.set()
 
         if isinstance(self._thread, Thread):
@@ -505,7 +505,7 @@ class BackgroundMonitor(object):
         return
 
     def is_alive(self):
-        if self.is_subprocess():
+        if self.is_subprocess_mode():
             return self.is_subprocess_alive() and self._thread \
                    and self._start_ev.is_set() and not self._done_ev.is_set()
         else:
@@ -534,12 +534,15 @@ class BackgroundMonitor(object):
                     return child.is_running() and child.status() != psutil.STATUS_ZOMBIE
             return False
 
-    def is_subprocess(self):
+    def is_subprocess_mode(self):
         return self._subprocess is not False and \
                bool(self._main_process) and self._task_id == self._main_process_task_id
 
     def _get_instances(self):
         return self._instances.setdefault(self._task_obj_id, [])
+
+    def _is_subprocess_mode_and_not_parent_process(self):
+        return self.is_subprocess_mode() and self._main_process != os.getpid()
 
     @classmethod
     def is_subprocess_enabled(cls, task=None):

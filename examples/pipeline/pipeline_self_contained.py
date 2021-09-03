@@ -79,9 +79,9 @@ pipe.add_function_step(
 )
 
 # for debugging purposes use local jobs
-pipe.start_locally()
+# pipe.start_locally()
 
 # Starting the pipeline on the services queue (remote machine, default on the clearml-server)
-# pipe.start()
+pipe.start()
 
 print('pipeline done')

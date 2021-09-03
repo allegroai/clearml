@@ -49,6 +49,8 @@ pipe = PipelineController(
     add_pipeline_tags=False,
 )
 
+pipe.set_default_execution_queue('default')
+
 pipe.add_parameter(
     name='url',
     description='url to pickle file',
@@ -79,7 +81,7 @@ pipe.add_function_step(
 )
 
 # for debugging purposes use local jobs
-# pipe.start_locally()
+# pipe.start_locally(run_pipeline_steps_locally=False)
 
 # Starting the pipeline on the services queue (remote machine, default on the clearml-server)
 pipe.start()

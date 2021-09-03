@@ -1,11 +1,18 @@
 import hashlib
+import os
+import subprocess
+import sys
+import tempfile
 import warnings
 from datetime import datetime
 from logging import getLogger
 from time import time, sleep
 from typing import Optional, Mapping, Sequence, Any
 
-from ..backend_interface.util import get_or_create_project
+from pathlib2 import Path
+
+from ..backend_api import Session
+from ..backend_interface.util import get_or_create_project, exact_match_regex
 from ..storage.util import hash_dict
 from ..task import Task
 from ..backend_api.services import tasks as tasks_service
@@ -16,6 +23,7 @@ logger = getLogger('clearml.automation.job')
 
 class ClearmlJob(object):
     _job_hash_description = 'job_hash={}'
+    _job_hash_property = 'pipeline_job_hash'
 
     def __init__(
             self,
@@ -80,7 +88,7 @@ class ClearmlJob(object):
         # check cached task
         self._is_cached_task = False
         task_hash = None
-        if allow_caching and not disable_clone_task and not self.task:
+        if allow_caching:
             # look for a cached copy of the Task
             # get parameters + task_overrides + as dict and hash it.
             task_hash = self._create_task_hash(
@@ -88,6 +96,11 @@ class ClearmlJob(object):
             task = self._get_cached_task(task_hash)
             # if we found a task, just use
             if task:
+                if disable_clone_task and self.task and self.task.status == self.task.TaskStatusEnum.created:
+                    # if the base task at is in draft mode, and we are using cached task
+                    # we assume the base Task was created adhoc and we can delete it.
+                    pass  # self.task.delete()
+
                 self._is_cached_task = True
                 self.task = task
                 self.task_started = True
@@ -379,11 +392,13 @@ class ClearmlJob(object):
         # type: (Task, Optional[dict], Optional[dict]) -> Optional[str]
         """
         Create Hash (str) representing the state of the Task
+
         :param task: A Task to hash
         :param section_overrides: optional dict (keys are Task's section names) with task overrides.
         :param params_override: Alternative to the entire Task's hyper parameters section
         (notice this should not be a nested dict but a flat key/value)
-        :return: str crc32 of the Task configuration
+
+        :return: str hash of the Task configuration
         """
         if not task:
             return None
@@ -410,15 +425,20 @@ class ClearmlJob(object):
             docker = dict(**(task.data.container or dict()))
             docker.pop('image', None)
 
+        hash_func = 'md5' if Session.check_min_api_version('2.13') else 'crc32'
+
         # make sure that if we only have docker args/bash,
         # we use encode it, otherwise we revert to the original encoding (excluding docker altogether)
         if docker:
             return hash_dict(
                 dict(script=script, hyper_params=hyper_params, configs=configs, docker=docker),
-                hash_func='crc32'
+                hash_func=hash_func
             )
 
-        return hash_dict(dict(script=script, hyper_params=hyper_params, configs=configs), hash_func='crc32')
+        return hash_dict(
+            dict(script=script, hyper_params=hyper_params, configs=configs),
+            hash_func=hash_func
+        )
 
     @classmethod
     def _get_cached_task(cls, task_hash):
@@ -430,13 +450,23 @@ class ClearmlJob(object):
         """
         if not task_hash:
             return None
-        # noinspection PyProtectedMember
-        potential_tasks = Task._query_tasks(
-            status=['completed', 'stopped', 'published'],
-            system_tags=['-{}'.format(Task.archived_tag)],
-            _all_=dict(fields=['comment'], pattern=cls._job_hash_description.format(task_hash)),
-            only_fields=['id'],
-        )
+        if Session.check_min_api_version('2.13'):
+            # noinspection PyProtectedMember
+            potential_tasks = Task._query_tasks(
+                status=['completed', 'stopped', 'published'],
+                system_tags=['-{}'.format(Task.archived_tag)],
+                _all_=dict(fields=['runtime.{}'.format(cls._job_hash_property)],
+                           pattern=exact_match_regex(task_hash)),
+                only_fields=['id'],
+            )
+        else:
+            # noinspection PyProtectedMember
+            potential_tasks = Task._query_tasks(
+                status=['completed', 'stopped', 'published'],
+                system_tags=['-{}'.format(Task.archived_tag)],
+                _all_=dict(fields=['comment'], pattern=cls._job_hash_description.format(task_hash)),
+                only_fields=['id'],
+            )
         for obj in potential_tasks:
             task = Task.get_task(task_id=obj.id)
             if task_hash == cls._create_task_hash(task):
@@ -455,11 +485,99 @@ class ClearmlJob(object):
             return
         if not task_hash:
             task_hash = cls._create_task_hash(task=task)
-        hash_comment = cls._job_hash_description.format(task_hash) + '\n'
-        task.set_comment(task.comment + '\n' + hash_comment if task.comment else hash_comment)
+        if Session.check_min_api_version('2.13'):
+            # noinspection PyProtectedMember
+            task._set_runtime_properties(runtime_properties={cls._job_hash_property: str(task_hash)})
+        else:
+            hash_comment = cls._job_hash_description.format(task_hash) + '\n'
+            task.set_comment(task.comment + '\n' + hash_comment if task.comment else hash_comment)
+
+
+class LocalClearmlJob(ClearmlJob):
+    """
+    Run jobs locally as a sub-process, use for debugging purposes only
+    """
+    def __init__(self, *args, **kwargs):
+        super(LocalClearmlJob, self).__init__(*args, **kwargs)
+        self._job_process = None
+        self._local_temp_file = None
+
+    def launch(self, queue_name=None):
+        # type: (str) -> bool
+        """
+        Launch job as a subprocess, ignores "queue_name"
+
+        :param queue_name: Ignored
+
+        :return: True if successful
+        """
+        if self._is_cached_task:
+            return False
+
+        # check if standalone
+        diff = self.task.data.script.diff
+        if diff and not diff.lstrip().startswith('diff '):
+            # standalone, we need to create if
+            fd, local_filename = tempfile.mkstemp(suffix='.py')
+            os.close(fd)
+            with open(local_filename, 'wt') as f:
+                f.write(diff)
+            self._local_temp_file = local_filename
+        else:
+            local_filename = self.task.data.script.entry_point
+
+        cwd = os.path.join(os.getcwd(), self.task.data.script.working_dir)
+        # try to check based on current root repo + entrypoint
+        if Task.current_task() and not (Path(cwd)/local_filename).is_file():
+            working_dir = Task.current_task().data.script.working_dir or ''
+            working_dir = working_dir.strip('.')
+            levels = 0
+            if working_dir:
+                levels = 1 + sum(1 for c in working_dir if c == '/')
+            if levels:
+                cwd = os.path.abspath(os.path.join(cwd, os.sep.join(['..'] * levels)))
+            cwd = os.path.join(cwd, self.task.data.script.working_dir)
+
+        python = sys.executable
+        env = dict(**os.environ)
+        env.pop('CLEARML_PROC_MASTER_ID', None)
+        env.pop('TRAINS_PROC_MASTER_ID', None)
+        env['CLEARML_TASK_ID'] = env['TRAINS_TASK_ID'] = str(self.task.id)
+        env['CLEARML_LOG_TASK_TO_BACKEND'] = '1'
+        env['CLEARML_SIMULATE_REMOTE_TASK'] = '1'
+        self._job_process = subprocess.Popen(args=[python, local_filename], cwd=cwd, env=env)
+        return True
+
+    def wait_for_process(self, timeout=None):
+        # type: (Optional[int]) -> Optional[int]
+        """
+        Wait until Job subprocess completed/exited
+
+        :param timeout: Timeout in seconds to wait for the subprocess to finish. Default None==infinite
+        :return Sub-process exit code. 0 is success, None if subprocess is not running or timeout
+        """
+        if not self._job_process:
+            return None
+        try:
+            exit_code = self._job_process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            return None
+
+        self._job_process = None
+        if self._local_temp_file:
+            # noinspection PyBroadException
+            try:
+                Path(self._local_temp_file).unlink()
+            except Exception:
+                pass
+            self._local_temp_file = None
+        return exit_code
 
 
 class TrainsJob(ClearmlJob):
+    """
+    Deprecated, use ClearmlJob
+    """
 
     def __init__(self, **kwargs):
         super(TrainsJob, self).__init__(**kwargs)

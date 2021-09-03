@@ -126,11 +126,12 @@ class CreateAndPopulate(object):
         self.raise_on_missing_entries = raise_on_missing_entries
         self.verbose = verbose
 
-    def create_task(self):
-        # type: () -> Task
+    def create_task(self, dry_run=False):
+        # type: (bool) -> Union[Task, Dict]
         """
         Create the new populated Task
 
+        :param dry_run: Optional, If True do not create an actual Task, instead return the Task definition as dict
         :return: newly created Task object
         """
         local_entry_file = None
@@ -163,30 +164,41 @@ class CreateAndPopulate(object):
                 not repo_info or not repo_info.script or not repo_info.script.get('repository')):
             raise ValueError("Standalone script detected \'{}\', but no requirements provided".format(self.script))
 
-        if self.base_task_id:
-            if self.verbose:
-                print('Cloning task {}'.format(self.base_task_id))
-            task = Task.clone(source_task=self.base_task_id, project=Task.get_project_id(self.project_name))
-
-            self._set_output_uri(task)
+        if dry_run:
+            task = None
+            task_state = dict(
+                name=self.task_name,
+                project=Task.get_project_id(self.project_name),
+                type=str(self.task_type or Task.TaskTypes.training),
+            )
+            if self.output_uri:
+                task_state['output'] = dict(destination=self.output_uri)
         else:
-            # noinspection PyProtectedMember
-            task = Task._create(
-                task_name=self.task_name, project_name=self.project_name,
-                task_type=self.task_type or Task.TaskTypes.training)
+            task_state = dict(script={})
 
-            self._set_output_uri(task)
+            if self.base_task_id:
+                if self.verbose:
+                    print('Cloning task {}'.format(self.base_task_id))
+                task = Task.clone(source_task=self.base_task_id, project=Task.get_project_id(self.project_name))
 
-            # if there is nothing to populate, return
-            if not any([
-                self.folder, self.commit, self.branch, self.repo, self.script, self.cwd,
-                self.packages, self.requirements_file, self.base_task_id] + (list(self.docker.values()))
-            ):
-                return task
+                self._set_output_uri(task)
+            else:
+                # noinspection PyProtectedMember
+                task = Task._create(
+                    task_name=self.task_name, project_name=self.project_name,
+                    task_type=self.task_type or Task.TaskTypes.training)
 
-        task_state = task.export_task()
-        if 'script' not in task_state:
-            task_state['script'] = {}
+                self._set_output_uri(task)
+
+                # if there is nothing to populate, return
+                if not any([
+                    self.folder, self.commit, self.branch, self.repo, self.script, self.cwd,
+                    self.packages, self.requirements_file, self.base_task_id] + (list(self.docker.values()))
+                ):
+                    return task
+
+        # clear the script section
+        task_state['script'] = {}
 
         if repo_info:
             task_state['script']['repository'] = repo_info.script['repository']
@@ -303,11 +315,18 @@ class CreateAndPopulate(object):
 
         # set base docker image if provided
         if self.docker:
-            task.set_base_docker(
-                docker_cmd=self.docker.get('image'),
-                docker_arguments=self.docker.get('args'),
-                docker_setup_bash_script=self.docker.get('bash_script'),
-            )
+            if dry_run:
+                task_state['container'] = dict(
+                    image=self.docker.get('image') or '',
+                    arguments=self.docker.get('args') or '',
+                    setup_shell_script=self.docker.get('bash_script') or '',
+                )
+            else:
+                task.set_base_docker(
+                    docker_image=self.docker.get('image'),
+                    docker_arguments=self.docker.get('args'),
+                    docker_setup_bash_script=self.docker.get('bash_script'),
+                )
 
         if self.verbose:
             if task_state['script']['repository']:
@@ -327,6 +346,9 @@ class CreateAndPopulate(object):
                 ))
             if self.docker:
                 print('Base docker image: {}'.format(self.docker))
+
+        if dry_run:
+            return task_state
 
         # update the Task
         task.update_task(task_state)
@@ -434,137 +456,177 @@ class CreateAndPopulate(object):
         return found_index if found_index < 0 else lines[found_index][0]
 
 
-def create_task_from_function(
-        a_function,  # type: Callable
-        function_kwargs=None,  # type: Optional[Dict[str, Any]]
-        function_input_artifacts=None,  # type: Optional[Dict[str, str]]
-        function_results=None,  # type: Optional[List[str]]
-        project_name=None,  # type: Optional[str]
-        task_name=None,  # type: Optional[str]
-        task_type=None,  # type: Optional[str]
-        packages=None,  # type: Optional[Sequence[str]]
-        docker=None,  # type: Optional[str]
-        docker_args=None,  # type: Optional[str]
-        docker_bash_setup_script=None,  # type: Optional[str]
-        output_uri=None,  # type: Optional[str]
-):
-    # type: (...) -> Optional[Task]
-    """
-    Create a Task from a function, including wrapping the function input arguments
-    into the hyper-parameter section as kwargs, and storing function results as named artifacts
+class CreateFromFunction(object):
+    kwargs_section = 'kwargs'
+    input_artifact_section = 'kwargs_artifacts'
+    task_template = """from clearml import Task
 
-    Example:
-        def mock_func(a=6, b=9):
-            c = a*b
-            print(a, b, c)
-            return c, c**2
-
-        create_task_from_function(mock_func, function_results=['mul', 'square'])
-
-    Example arguments from other Tasks (artifact):
-        def mock_func(matrix_np):
-            c = matrix_np*matrix_np
-            print(matrix_np, c)
-            return c
-
-        create_task_from_function(
-            mock_func,
-            function_input_artifacts={'matrix_np': 'aabb1122.previous_matrix'},
-            function_results=['square_matrix']
-        )
-
-    :param a_function: A global function to convert into a standalone Task
-    :param function_kwargs: Optional, provide subset of function arguments and default values to expose.
-        If not provided automatically take all function arguments & defaults
-    :param function_input_artifacts: Optional, pass input arguments to the function from other Tasks's output artifact.
-        Example argument named `numpy_matrix` from Task ID `aabbcc` artifact name `answer`:
-        {'numpy_matrix': 'aabbcc.answer'}
-    :param function_results: Provide a list of names for all the results.
-        If not provided no results will be stored as artifacts.
-    :param project_name: Set the project name for the task. Required if base_task_id is None.
-    :param task_name: Set the name of the remote task. Required if base_task_id is None.
-    :param task_type: Optional, The task type to be created. Supported values: 'training', 'testing', 'inference',
-        'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc', 'custom'
-    :param packages: Manually specify a list of required packages. Example: ["tqdm>=2.1", "scikit-learn"]
-        If not provided, packages are automatically added based on the imports used in the function.
-    :param docker: Select the docker image to be executed in by the remote session
-    :param docker_args: Add docker arguments, pass a single string
-    :param docker_bash_setup_script: Add bash script to be executed
-        inside the docker before setting up the Task's environment
-    :param output_uri: Optional, set the Tasks's output_uri (Storage destination).
-        examples: 's3://bucket/folder', 'https://server/' , 'gs://bucket/folder', 'azure://bucket', '/folder/'
-    :return: Newly created Task object
-    """
-    function_name = str(a_function.__name__)
-    function_source = inspect.getsource(a_function)
-    function_input_artifacts = function_input_artifacts or dict()
-    # verify artifact kwargs:
-    if not all(len(v.split('.', 1)) == 2 for v in function_input_artifacts.values()):
-        raise ValueError(
-            'function_input_artifacts={}, it must in the format: '
-            '{{"argument": "task_id.artifact_name"}}'.format(function_input_artifacts)
-        )
-
-    if function_kwargs is None:
-        function_kwargs = dict()
-        inspect_args = inspect.getfullargspec(a_function)
-        if inspect_args and inspect_args.args:
-            inspect_defaults = inspect_args.defaults
-            if inspect_defaults and len(inspect_defaults) != len(inspect_args.args):
-                getLogger().warning(
-                    'Ignoring default argument values: '
-                    'could not find all default valued for: \'{}\''.format(function_name))
-                inspect_defaults = []
-
-            function_kwargs = {str(k): v for k, v in zip(inspect_args.args, inspect_defaults)} \
-                if inspect_defaults else {str(k): None for k in inspect_args.args}
-
-    task_template = """
-from clearml import Task
 
 {function_source}
 
 if __name__ == '__main__':
     task = Task.init()
     kwargs = {function_kwargs}
-    task.connect(kwargs, name='kwargs')
+    task.connect(kwargs, name='{kwargs_section}')
     function_input_artifacts = {function_input_artifacts}
     if function_input_artifacts:
-        task.connect(function_input_artifacts, name='kwargs_artifacts')
+        task.connect(function_input_artifacts, name='{input_artifact_section}')
         for k, v in function_input_artifacts.items():
             if not v:
                 continue
             task_id, artifact_name = v.split('.', 1) 
-            kwargs[k] = Task.get_task(task_id=task_id).artifact[artifact_name].get()
+            kwargs[k] = Task.get_task(task_id=task_id).artifacts[artifact_name].get()
     results = {function_name}(**kwargs)
-    result_names = {function_results}
-    if results and result_names:
-        for name, artifact in zip(results, result_names):
+    result_names = {function_return}
+    if result_names:
+        if not isinstance(results, (tuple, list)) or (len(result_names)==1 and len(results) != 1):
+            results = [results]
+        for name, artifact in zip(result_names, results):
             task.upload_artifact(name=name, artifact_object=artifact) 
+"""
 
-    """.format(
-        function_source=function_source,
-        function_kwargs=function_kwargs,
-        function_input_artifacts=function_input_artifacts,
-        function_name=function_name,
-        function_results=function_results)
+    @classmethod
+    def create_task_from_function(
+            cls,
+            a_function,  # type: Callable
+            function_kwargs=None,  # type: Optional[Dict[str, Any]]
+            function_input_artifacts=None,  # type: Optional[Dict[str, str]]
+            function_return=None,  # type: Optional[List[str]]
+            project_name=None,  # type: Optional[str]
+            task_name=None,  # type: Optional[str]
+            task_type=None,  # type: Optional[str]
+            packages=None,  # type: Optional[Sequence[str]]
+            docker=None,  # type: Optional[str]
+            docker_args=None,  # type: Optional[str]
+            docker_bash_setup_script=None,  # type: Optional[str]
+            output_uri=None,  # type: Optional[str]
+            dry_run=False,  # type: bool
+    ):
+        # type: (...) -> Optional[Dict, Task]
+        """
+        Create a Task from a function, including wrapping the function input arguments
+        into the hyper-parameter section as kwargs, and storing function results as named artifacts
 
-    with tempfile.NamedTemporaryFile('w', suffix='.py') as temp_file:
-        temp_file.write(task_template)
-        temp_file.flush()
+        Example:
+            def mock_func(a=6, b=9):
+                c = a*b
+                print(a, b, c)
+                return c, c**2
 
-        populate = CreateAndPopulate(
-            project_name=project_name,
-            task_name=task_name,
-            task_type=task_type,
-            script=temp_file.name,
-            packages=packages if packages is not None else True,
-            docker=docker,
-            docker_args=docker_args,
-            docker_bash_setup_script=docker_bash_setup_script,
-            output_uri=output_uri,
-            add_task_init_call=False,
-        )
-        task = populate.create_task()
-        task.update_task(task_data={'script': {'entry_point': '{}.py'.format(function_name)}})
-        return task
+            create_task_from_function(mock_func, function_return=['mul', 'square'])
+
+        Example arguments from other Tasks (artifact):
+            def mock_func(matrix_np):
+                c = matrix_np*matrix_np
+                print(matrix_np, c)
+                return c
+
+            create_task_from_function(
+                mock_func,
+                function_input_artifacts={'matrix_np': 'aabb1122.previous_matrix'},
+                function_return=['square_matrix']
+            )
+
+        :param a_function: A global function to convert into a standalone Task
+        :param function_kwargs: Optional, provide subset of function arguments and default values to expose.
+            If not provided automatically take all function arguments & defaults
+        :param function_input_artifacts: Optional, pass input arguments to the function from other Tasks's output artifact.
+            Example argument named `numpy_matrix` from Task ID `aabbcc` artifact name `answer`:
+            {'numpy_matrix': 'aabbcc.answer'}
+        :param function_return: Provide a list of names for all the results.
+            If not provided no results will be stored as artifacts.
+        :param project_name: Set the project name for the task. Required if base_task_id is None.
+        :param task_name: Set the name of the remote task. Required if base_task_id is None.
+        :param task_type: Optional, The task type to be created. Supported values: 'training', 'testing', 'inference',
+            'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc', 'custom'
+        :param packages: Manually specify a list of required packages. Example: ["tqdm>=2.1", "scikit-learn"]
+            If not provided, packages are automatically added based on the imports used in the function.
+        :param docker: Select the docker image to be executed in by the remote session
+        :param docker_args: Add docker arguments, pass a single string
+        :param docker_bash_setup_script: Add bash script to be executed
+            inside the docker before setting up the Task's environment
+        :param output_uri: Optional, set the Tasks's output_uri (Storage destination).
+            examples: 's3://bucket/folder', 'https://server/' , 'gs://bucket/folder', 'azure://bucket', '/folder/'
+        :param dry_run: If True do not create the Task, but return a dict of the Task's definitions
+        :return: Newly created Task object
+        """
+        function_name = str(a_function.__name__)
+        function_source = inspect.getsource(a_function)
+        function_input_artifacts = function_input_artifacts or dict()
+        # verify artifact kwargs:
+        if not all(len(v.split('.', 1)) == 2 for v in function_input_artifacts.values()):
+            raise ValueError(
+                'function_input_artifacts={}, it must in the format: '
+                '{{"argument": "task_id.artifact_name"}}'.format(function_input_artifacts)
+            )
+
+        if function_kwargs is None:
+            function_kwargs = dict()
+            inspect_args = inspect.getfullargspec(a_function)
+            if inspect_args and inspect_args.args:
+                inspect_defaults_vals = inspect_args.defaults
+                inspect_defaults_args = inspect_args.args
+
+                if inspect_defaults_vals and len(inspect_defaults_vals) != len(inspect_defaults_args):
+                    inspect_defaults_args = [a for a in inspect_defaults_args if a not in function_input_artifacts]
+
+                if inspect_defaults_vals and len(inspect_defaults_vals) != len(inspect_defaults_args):
+                    getLogger().warning(
+                        'Ignoring default argument values: '
+                        'could not find all default valued for: \'{}\''.format(function_name))
+                    inspect_defaults_vals = []
+
+                function_kwargs = {str(k): v for k, v in zip(inspect_defaults_args, inspect_defaults_vals)} \
+                    if inspect_defaults_vals else {str(k): None for k in inspect_defaults_args}
+
+        task_template = cls.task_template.format(
+            kwargs_section=cls.kwargs_section,
+            input_artifact_section=cls.input_artifact_section,
+            function_source=function_source,
+            function_kwargs=function_kwargs,
+            function_input_artifacts=function_input_artifacts,
+            function_name=function_name,
+            function_return=function_return)
+
+        with tempfile.NamedTemporaryFile('w', suffix='.py') as temp_file:
+            temp_file.write(task_template)
+            temp_file.flush()
+
+            populate = CreateAndPopulate(
+                project_name=project_name,
+                task_name=task_name or str(function_name),
+                task_type=task_type,
+                script=temp_file.name,
+                packages=packages if packages is not None else True,
+                docker=docker,
+                docker_args=docker_args,
+                docker_bash_setup_script=docker_bash_setup_script,
+                output_uri=output_uri,
+                add_task_init_call=False,
+            )
+            entry_point = '{}.py'.format(function_name)
+            task = populate.create_task(dry_run=dry_run)
+
+            if dry_run:
+                task['script']['entry_point'] = entry_point
+                task['hyperparams'] = {
+                    cls.kwargs_section: {
+                        k: dict(section=cls.kwargs_section, name=k, value=str(v))
+                        for k, v in (function_kwargs or {}).items()
+                    },
+                    cls.input_artifact_section: {
+                        k: dict(section=cls.input_artifact_section, name=k, value=str(v))
+                        for k, v in (function_input_artifacts or {}).items()
+                    }
+                }
+            else:
+                task.update_task(task_data={'script': {'entry_point': entry_point}})
+                hyper_parameters = {'{}/{}'.format(cls.kwargs_section, k): str(v) for k, v in function_kwargs} \
+                    if function_kwargs else {}
+                hyper_parameters.update(
+                    {'{}/{}'.format(cls.input_artifact_section, k): str(v) for k, v in function_input_artifacts}
+                    if function_input_artifacts else {}
+                )
+                task.set_parameters(hyper_parameters)
+
+            return task

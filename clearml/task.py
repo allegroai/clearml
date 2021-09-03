@@ -1858,15 +1858,23 @@ class Task(_Task):
 
         return self._hyper_params_manager.delete_hyper_params(*iterables)
 
-    def set_base_docker(self, docker_cmd, docker_arguments=None, docker_setup_bash_script=None):
-        # type: (str, Optional[Union[str, Sequence[str]]], Optional[Union[str, Sequence[str]]]) -> ()
+    def set_base_docker(
+            self,
+            docker_cmd=None,  # type: Optional[str]
+            docker_image=None,  # type: Optional[str]
+            docker_arguments=None,  # type: Optional[Union[str, Sequence[str]]]
+            docker_setup_bash_script=None  # type: Optional[Union[str, Sequence[str]]]
+    ):
+        # type: (...) -> ()
         """
         Set the base docker image for this experiment
         If provided, this value will be used by clearml-agent to execute this experiment
         inside the provided docker image.
         When running remotely the call is ignored
 
-        :param docker_cmd: docker container image (example: 'nvidia/cuda:11.1')
+        :param docker_cmd: Deprecated! compound docker container image + arguments
+            (example: 'nvidia/cuda:11.1 -e test=1') Deprecated, use specific arguments.
+        :param docker_image: docker container image (example: 'nvidia/cuda:11.1')
         :param docker_arguments: docker execution parameters (example: '-e ENV=1')
         :param docker_setup_bash_script: bash script to run at the
             beginning of the docker before launching the Task itself. example: ['apt update', 'apt-get install -y gcc']
@@ -1875,7 +1883,7 @@ class Task(_Task):
             return
 
         super(Task, self).set_base_docker(
-            docker_cmd=docker_cmd,
+            docker_cmd=docker_cmd or docker_image,
             docker_arguments=docker_arguments,
             docker_setup_bash_script=docker_setup_bash_script
         )

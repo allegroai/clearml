@@ -1407,7 +1407,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if parent:
             assert isinstance(parent, (str, Task))
             if isinstance(parent, Task):
-                parent = parent.parent
+                parent = parent.id
             assert parent != self.id
         self._set_task_property("parent", str(parent) if parent else None)
         self._edit(parent=self.data.parent)

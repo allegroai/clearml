@@ -101,6 +101,9 @@ class Dataset(object):
             # if the task is running make sure we ping to the server so it will not be aborted by a watchdog
             self._task_pinger = DevWorker()
             self._task_pinger.register(task, stop_signal_support=False)
+            # set the newly created Dataset parent ot the current Task, so we know who created it.
+            if Task.current_task() and Task.current_task().id != task.id:
+                task.set_parent(Task.current_task())
 
         # store current dataset Task
         self._task = task

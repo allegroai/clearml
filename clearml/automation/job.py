@@ -4,10 +4,11 @@ import subprocess
 import sys
 import tempfile
 import warnings
+from copy import deepcopy
 from datetime import datetime
 from logging import getLogger
 from time import time, sleep
-from typing import Optional, Mapping, Sequence, Any
+from typing import Optional, Mapping, Sequence, Any, Callable
 
 from pathlib2 import Path
 
@@ -24,6 +25,7 @@ logger = getLogger('clearml.automation.job')
 class ClearmlJob(object):
     _job_hash_description = 'job_hash={}'
     _job_hash_property = 'pipeline_job_hash'
+    _hashing_callback = None
 
     def __init__(
             self,
@@ -388,6 +390,19 @@ class ClearmlJob(object):
         return self._is_cached_task
 
     @classmethod
+    def register_hashing_callback(cls, a_function):
+        # type: (Callable[[dict], dict]) -> None
+        """
+        Allow to customize the dict used for hashing the Task.
+        Provided function will be called with a dict representing a Task,
+        allowing to return a modified version of the representation dict.
+
+        :param a_function:  Function manipulating the representation dict of a function
+        """
+        assert callable(a_function)
+        cls._hashing_callback = a_function
+
+    @classmethod
     def _create_task_hash(cls, task, section_overrides=None, params_override=None):
         # type: (Task, Optional[dict], Optional[dict]) -> Optional[str]
         """
@@ -429,16 +444,14 @@ class ClearmlJob(object):
 
         # make sure that if we only have docker args/bash,
         # we use encode it, otherwise we revert to the original encoding (excluding docker altogether)
-        if docker:
-            return hash_dict(
-                dict(script=script, hyper_params=hyper_params, configs=configs, docker=docker),
-                hash_func=hash_func
-            )
+        repr_dict = dict(script=script, hyper_params=hyper_params, configs=configs, docker=docker) \
+            if docker else dict(script=script, hyper_params=hyper_params, configs=configs)
 
-        return hash_dict(
-            dict(script=script, hyper_params=hyper_params, configs=configs),
-            hash_func=hash_func
-        )
+        # callback for modifying the representation dict
+        if cls._hashing_callback:
+            repr_dict = cls._hashing_callback(deepcopy(repr_dict))
+
+        return hash_dict(repr_dict, hash_func=hash_func)
 
     @classmethod
     def _get_cached_task(cls, task_hash):
@@ -469,8 +482,7 @@ class ClearmlJob(object):
             )
         for obj in potential_tasks:
             task = Task.get_task(task_id=obj.id)
-            if task_hash == cls._create_task_hash(task):
-                return task
+            return task
         return None
 
     @classmethod
@@ -545,6 +557,7 @@ class LocalClearmlJob(ClearmlJob):
         env['CLEARML_TASK_ID'] = env['TRAINS_TASK_ID'] = str(self.task.id)
         env['CLEARML_LOG_TASK_TO_BACKEND'] = '1'
         env['CLEARML_SIMULATE_REMOTE_TASK'] = '1'
+        self.task.mark_started()
         self._job_process = subprocess.Popen(args=[python, local_filename], cwd=cwd, env=env)
         return True
 
@@ -571,6 +584,12 @@ class LocalClearmlJob(ClearmlJob):
             except Exception:
                 pass
             self._local_temp_file = None
+
+        if exit_code == 0:
+            self.task.mark_completed()
+        else:
+            self.task.mark_failed()
+            
         return exit_code
 
 

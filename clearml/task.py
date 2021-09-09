@@ -50,7 +50,7 @@ from .binding.hydra_bind import PatchHydra
 from .binding.click_bind import PatchClick
 from .config import (
     config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, PROC_MASTER_ID_ENV_VAR,
-    DEV_DEFAULT_OUTPUT_URI, )
+    DEV_DEFAULT_OUTPUT_URI, deferred_config, )
 from .config import running_remotely, get_remote_task_id
 from .config.cache import SessionCache
 from .debugging.log import LoggerRoot
@@ -134,9 +134,9 @@ class Task(_Task):
     __main_task = None  # type: Optional[Task]
     __exit_hook = None
     __forked_proc_main_pid = None
-    __task_id_reuse_time_window_in_hours = float(config.get('development.task_reuse_time_window_in_hours', 24.0))
-    __detect_repo_async = config.get('development.vcs_repo_detect_async', False)
-    __default_output_uri = DEV_DEFAULT_OUTPUT_URI.get() or config.get('development.default_output_uri', None)
+    __task_id_reuse_time_window_in_hours = deferred_config('development.task_reuse_time_window_in_hours', 24.0, float)
+    __detect_repo_async = deferred_config('development.vcs_repo_detect_async', False)
+    __default_output_uri = DEV_DEFAULT_OUTPUT_URI.get() or deferred_config('development.default_output_uri', None)
 
     class _ConnectedParametersType(object):
         argparse = "argument_parser"
@@ -1987,6 +1987,8 @@ class Task(_Task):
             # Remove the development system tag
             system_tags = [t for t in task.get_system_tags() if t != self._development_tag]
             self.set_system_tags(system_tags)
+            # if we leave the Task out there, it makes sense to make it editable.
+            self.reset(force=True)
 
         # leave this process.
         if exit_process:

@@ -6,13 +6,13 @@ from pathlib2 import Path
 
 from .helper import StorageHelper
 from .util import quote_url
-from ..config import get_cache_dir, config
+from ..config import get_cache_dir, deferred_config
 from ..debugging.log import LoggerRoot
 
 
 class CacheManager(object):
     __cache_managers = {}
-    _default_cache_file_limit = config.get("storage.cache.default_cache_manager_size", 100)
+    _default_cache_file_limit = deferred_config("storage.cache.default_cache_manager_size", 100)
     _storage_manager_folder = "storage_manager"
     _default_context = "global"
     _local_to_remote_url_lookup = OrderedDict()
@@ -155,7 +155,8 @@ class CacheManager(object):
         cache_context = cache_context or cls._default_context
         if cache_context not in cls.__cache_managers:
             cls.__cache_managers[cache_context] = cls.CacheContext(
-                cache_context, cache_file_limit or cls._default_cache_file_limit
+                cache_context,
+                cache_file_limit or cls._default_cache_file_limit
             )
         if cache_file_limit:
             cls.__cache_managers[cache_context].set_cache_limit(cache_file_limit)

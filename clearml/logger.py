@@ -19,7 +19,7 @@ from .backend_interface.logger import StdStreamPatch
 from .backend_interface.task import Task as _Task
 from .backend_interface.task.log import TaskHandler
 from .backend_interface.util import mutually_exclusive
-from .config import running_remotely, get_cache_dir, config, DEBUG_SIMULATE_REMOTE_TASK
+from .config import running_remotely, get_cache_dir, config, DEBUG_SIMULATE_REMOTE_TASK, deferred_config
 from .errors import UsageError
 from .storage.helper import StorageHelper
 from .utilities.plotly_reporter import SeriesInfo
@@ -57,7 +57,7 @@ class Logger(object):
     """
     SeriesInfo = SeriesInfo
     _tensorboard_logging_auto_group_scalars = False
-    _tensorboard_single_series_per_graph = config.get('metrics.tensorboard_single_series_per_graph', False)
+    _tensorboard_single_series_per_graph = deferred_config('metrics.tensorboard_single_series_per_graph', False)
 
     def __init__(self, private_task, connect_stdout=True, connect_stderr=True, connect_logging=False):
         """
@@ -192,19 +192,18 @@ class Logger(object):
 
         You can view the vectors plots in the **ClearML Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
 
-        :param str title: The title (metric) of the plot.
-        :param str series: The series name (variant) of the reported histogram.
-        :param list(float) values: The series values. A list of floats, or an N-dimensional Numpy array containing
+        :param title: The title (metric) of the plot.
+        :param series: The series name (variant) of the reported histogram.
+        :param values: The series values. A list of floats, or an N-dimensional Numpy array containing
             data for each histogram bar.
-        :type values: list(float), numpy.ndarray
-        :param int iteration: The reported iteration / step. Each ``iteration`` creates another plot.
-        :param list(str) labels: Labels for each bar group, creating a plot legend labeling each series. (Optional)
-        :param list(str) xlabels: Labels per entry in each bucket in the histogram (vector), creating a set of labels
+        :param iteration: The reported iteration / step. Each ``iteration`` creates another plot.
+        :param labels: Labels for each bar group, creating a plot legend labeling each series. (Optional)
+        :param xlabels: Labels per entry in each bucket in the histogram (vector), creating a set of labels
             for each histogram bar on the x-axis. (Optional)
-        :param str xaxis: The x-axis title. (Optional)
-        :param str yaxis: The y-axis title. (Optional)
-        :param str mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
-        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+        :param xaxis: The x-axis title. (Optional)
+        :param yaxis: The y-axis title. (Optional)
+        :param mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
+        :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
         self._touch_title_series(title, series)
@@ -239,19 +238,18 @@ class Logger(object):
 
         You can view the reported histograms in the **ClearML Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
 
-        :param str title: The title (metric) of the plot.
-        :param str series: The series name (variant) of the reported histogram.
-        :param list(float) values: The series values. A list of floats, or an N-dimensional Numpy array containing
+        :param title: The title (metric) of the plot.
+        :param series: The series name (variant) of the reported histogram.
+        :param values: The series values. A list of floats, or an N-dimensional Numpy array containing
             data for each histogram bar.
-        :type values: list(float), numpy.ndarray
-        :param int iteration: The reported iteration / step. Each ``iteration`` creates another plot.
-        :param list(str) labels: Labels for each bar group, creating a plot legend labeling each series. (Optional)
-        :param list(str) xlabels: Labels per entry in each bucket in the histogram (vector), creating a set of labels
+        :param iteration: The reported iteration / step. Each ``iteration`` creates another plot.
+        :param labels: Labels for each bar group, creating a plot legend labeling each series. (Optional)
+        :param xlabels: Labels per entry in each bucket in the histogram (vector), creating a set of labels
             for each histogram bar on the x-axis. (Optional)
-        :param str xaxis: The x-axis title. (Optional)
-        :param str yaxis: The y-axis title. (Optional)
-        :param str mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
-        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+        :param xaxis: The x-axis title. (Optional)
+        :param yaxis: The y-axis title. (Optional)
+        :param mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
+        :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
 
@@ -307,18 +305,14 @@ class Logger(object):
 
         You can view the reported tables in the **ClearML Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
 
-        :param str title: The title (metric) of the table.
-        :param str series: The series name (variant) of the reported table.
-        :param int iteration: The reported iteration / step.
+        :param title: The title (metric) of the table.
+        :param series: The series name (variant) of the reported table.
+        :param iteration: The reported iteration / step.
         :param table_plot: The output table plot object
-        :type table_plot: pandas.DataFrame or Table as list of rows (list)
         :param csv: path to local csv file
-        :type csv: str
         :param url: A URL to the location of csv file.
-        :type url: str
         :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
-        :type extra_layout: dict
         """
         mutually_exclusive(
             UsageError, _check_none=True,
@@ -769,7 +763,7 @@ class Logger(object):
         """
         For explicit reporting, report an image and upload its contents.
 
-        This method uploads the image to a preconfigured bucket (see :meth:`Logger.setup_upload`) with a key (filename)
+        This method uploads the image to a preconfigured bucket (see :meth:`Logger.set_default_upload_destination`)
         describing the task ID, title, series and iteration.
 
         For example:
@@ -790,22 +784,20 @@ class Logger(object):
         - ``image``
         - ``matrix``
 
-        :param str title: The title (metric) of the image.
-        :param str series: The series name (variant) of the reported image.
-        :param int iteration: The reported iteration / step.
-        :param str local_path: A path to an image file.
-        :param str url: A URL for the location of a pre-uploaded image.
+        :param title: The title (metric) of the image.
+        :param series: The series name (variant) of the reported image.
+        :param iteration: The reported iteration / step.
+        :param local_path: A path to an image file.
+        :param url: A URL for the location of a pre-uploaded image.
         :param image: Image data (RGB).
-        :type image: numpy.ndarray, PIL.Image.Image
-        :param numpy.ndarray matrix: Image data (RGB).
+        :param matrix: Deperacted, Image data (RGB).
 
             .. note::
-               The ``matrix`` paramater is deprecated. Use the ``image`` parameters.
-        :type matrix: 3D numpy.ndarray
-        :param int max_image_history: The maximum number of images to store per metric/variant combination.
+               The ``matrix`` parameter is deprecated. Use the ``image`` parameters.
+        :param max_image_history: The maximum number of images to store per metric/variant combination.
             For an unlimited number, use a negative value. The default value is set in global configuration
             (default=``5``).
-        :param bool delete_after_upload: After the upload, delete the local copy of the image
+        :param delete_after_upload: After the upload, delete the local copy of the image
 
             The values are:
 
@@ -1147,7 +1139,6 @@ class Logger(object):
             - ``True`` - Scalars without specific titles are grouped together in the "Scalars" plot, preserving
               backward compatibility with ClearML automagical behavior.
             - ``False`` - TensorBoard scalars without titles get a title/series with the same tag. (default)
-        :type group_scalars: bool
         """
         cls._tensorboard_logging_auto_group_scalars = group_scalars
 
@@ -1165,7 +1156,6 @@ class Logger(object):
             - ``True`` - Generate a separate plot for each TensorBoard scalar series.
             - ``False`` - Group the TensorBoard scalar series together in the same plot. (default)
 
-        :type single_series: bool
         """
         cls._tensorboard_single_series_per_graph = single_series
 
@@ -1205,11 +1195,10 @@ class Logger(object):
         """
         print text to log (same as print to console, and also prints to console)
 
-        :param str msg: text to print to the console (always send to the backend and displayed in console)
+        :param msg: text to print to the console (always send to the backend and displayed in console)
         :param level: logging level, default: logging.INFO
-        :type level: Logging Level
-        :param bool omit_console: Omit the console output, and only send the ``msg`` value to the log
-        :param bool force_send: Report with an explicit log level. Only supported if ``omit_console`` is True
+        :param omit_console: Omit the console output, and only send the ``msg`` value to the log
+        :param force_send: Report with an explicit log level. Only supported if ``omit_console`` is True
 
             - ``True`` - Omit the console output.
             - ``False`` - Print the console output. (default)
@@ -1271,24 +1260,17 @@ class Logger(object):
         """
         Report an image, upload its contents, and present in plots section using plotly
 
-        Image is uploaded to a preconfigured bucket (see :meth:`Logger.setup_upload`) with a key (filename)
+        Image is uploaded to a preconfigured bucket (see :meth:`Logger.set_default_upload_destination`)
         describing the task ID, title, series and iteration.
 
         :param title: Title (AKA metric)
-        :type title: str
         :param series: Series (AKA variant)
-        :type series: str
         :param iteration: Iteration number
-        :type iteration: int
         :param path: A path to an image file. Required unless matrix is provided.
-        :type path: str
         :param matrix: A 3D numpy.ndarray object containing image data (RGB). Required unless filename is provided.
-        :type matrix: np.array
         :param max_image_history: maximum number of image to store per metric/variant combination \
         use negative value for unlimited. default is set in global configuration (default=5)
-        :type max_image_history: int
         :param delete_after_upload: if True, one the file was uploaded the local copy will be deleted
-        :type delete_after_upload: boolean
         """
 
         # if task was not started, we have to start it
@@ -1326,22 +1308,16 @@ class Logger(object):
         """
         Upload a file and report it as link in the debug images section.
 
-        File is uploaded to a preconfigured storage (see :meth:`Logger.setup_upload`) with a key (filename)
+        File is uploaded to a preconfigured storage (see :meth:`Loggerset_default_upload_destination`)
         describing the task ID, title, series and iteration.
 
         :param title: Title (AKA metric)
-        :type title: str
         :param series: Series (AKA variant)
-        :type series: str
         :param iteration: Iteration number
-        :type iteration: int
         :param path: A path to file to be uploaded
-        :type path: str
         :param max_file_history: maximum number of files to store per metric/variant combination \
         use negative value for unlimited. default is set in global configuration (default=5)
-        :type max_file_history: int
         :param delete_after_upload: if True, one the file was uploaded the local copy will be deleted
-        :type delete_after_upload: boolean
         """
 
         # if task was not started, we have to start it

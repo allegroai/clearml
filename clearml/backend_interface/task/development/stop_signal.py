@@ -1,4 +1,4 @@
-from ....config import config
+from ....config import config, deferred_config
 
 
 class TaskStopReason(object):
@@ -8,7 +8,7 @@ class TaskStopReason(object):
 
 
 class TaskStopSignal(object):
-    enabled = bool(config.get('development.support_stopping', False))
+    enabled = deferred_config('development.support_stopping', False, transform=bool)
 
     _number_of_consecutive_reset_tests = 4
 

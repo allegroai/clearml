@@ -34,18 +34,9 @@ from .callbacks import UploadProgressReport, DownloadProgressReport
 from .util import quote_url
 from ..backend_api.utils import get_http_session_with_retry
 from ..backend_config.bucket_config import S3BucketConfigurations, GSBucketConfigurations, AzureContainerConfigurations
-from ..config import config
+from ..config import config, deferred_config
 from ..debugging import get_logger
 from ..errors import UsageError
-
-log = get_logger('storage')
-level = config.get('storage.log.level', None)
-
-if level:
-    try:
-        log.setLevel(level)
-    except (TypeError, ValueError):
-        log.error('invalid storage log level in configuration: %s' % level)
 
 
 class StorageError(Exception):
@@ -58,6 +49,10 @@ class DownloadError(Exception):
 
 @six.add_metaclass(ABCMeta)
 class _Driver(object):
+
+    @classmethod
+    def get_logger(cls):
+        return get_logger('storage')
 
     @abstractmethod
     def get_container(self, container_name, config=None, **kwargs):
@@ -107,6 +102,10 @@ class StorageHelper(object):
     """
     _temp_download_suffix = '.partially'
 
+    @classmethod
+    def _get_logger(cls):
+        return get_logger('storage')
+
     @attrs
     class _PathSubstitutionRule(object):
         registered_prefix = attrib(type=str)
@@ -128,7 +127,7 @@ class StorageHelper(object):
                 )
 
                 if any(prefix is None for prefix in (rule.registered_prefix, rule.local_prefix)):
-                    log.warning(
+                    StorageHelper._get_logger().warning(
                         "Illegal substitution rule configuration '{}[{}]': {}".format(
                             cls.path_substitution_config,
                             index,
@@ -138,7 +137,7 @@ class StorageHelper(object):
                     continue
 
                 if all((rule.replace_windows_sep, rule.replace_linux_sep)):
-                    log.warning(
+                    StorageHelper._get_logger().warning(
                         "Only one of replace_windows_sep and replace_linux_sep flags may be set."
                         "'{}[{}]': {}".format(
                             cls.path_substitution_config,
@@ -190,11 +189,10 @@ class StorageHelper(object):
     _upload_pool = None
 
     # collect all bucket credentials that aren't empty (ignore entries with an empty key or secret)
-    _s3_configurations = S3BucketConfigurations.from_config(config.get('aws.s3', {}))
-    _gs_configurations = GSBucketConfigurations.from_config(config.get('google.storage', {}))
-    _azure_configurations = AzureContainerConfigurations.from_config(config.get('azure.storage', {}))
-
-    _path_substitutions = _PathSubstitutionRule.load_list_from_config()
+    _s3_configurations = deferred_config('aws.s3', {}, transform=S3BucketConfigurations.from_config)
+    _gs_configurations = deferred_config('google.storage', {}, transform=GSBucketConfigurations.from_config)
+    _azure_configurations = deferred_config('azure.storage', {}, transform=AzureContainerConfigurations.from_config)
+    _path_substitutions = deferred_config(transform=_PathSubstitutionRule.load_list_from_config)
 
     @property
     def log(self):
@@ -236,10 +234,10 @@ class StorageHelper(object):
         try:
             instance = cls(base_url=base_url, url=url, logger=logger, canonize_url=False, **kwargs)
         except (StorageError, UsageError) as ex:
-            log.error(str(ex))
+            cls._get_logger().error(str(ex))
             return None
         except Exception as ex:
-            log.error("Failed creating storage object {} Reason: {}".format(
+            cls._get_logger().error("Failed creating storage object {} Reason: {}".format(
                 base_url or url, ex))
             return None
 
@@ -264,7 +262,15 @@ class StorageHelper(object):
 
     def __init__(self, base_url, url, key=None, secret=None, region=None, verbose=False, logger=None, retries=5,
                  **kwargs):
-        self._log = logger or log
+        level = config.get('storage.log.level', None)
+
+        if level:
+            try:
+                self._get_logger().setLevel(level)
+            except (TypeError, ValueError):
+                self._get_logger().error('invalid storage log level in configuration: %s' % level)
+
+        self._log = logger or self._get_logger()
         self._verbose = verbose
         self._retries = retries
         self._extra = {}
@@ -856,7 +862,7 @@ class StorageHelper(object):
                 else:
                     folder_uri = '/'.join((_base_url, folder_uri))
 
-                log.debug('Upload destination {} amended to {} for registration purposes'.format(
+                cls._get_logger().debug('Upload destination {} amended to {} for registration purposes'.format(
                     prev_folder_uri, folder_uri))
             else:
                 raise ValueError('folder_uri: {} does not start with base url: {}'.format(folder_uri, _base_url))
@@ -1055,7 +1061,8 @@ class _HttpDriver(_Driver):
         container = self._containers[obj.container_name]
         res = container.session.delete(obj.url, headers=container.get_headers(obj.url))
         if res.status_code != requests.codes.ok:
-            log.warning('Failed deleting object %s (%d): %s' % (obj.object_name, res.status_code, res.text))
+            self._get_logger().warning('Failed deleting object %s (%d): %s' % (
+                obj.object_name, res.status_code, res.text))
             return False
         return True
 
@@ -1086,7 +1093,7 @@ class _HttpDriver(_Driver):
         obj = self._get_download_object(obj)
         p = Path(local_path)
         if not overwrite_existing and p.is_file():
-            log.warning('failed saving after download: overwrite=False and file exists (%s)' % str(p))
+            self.get_logger().warning('failed saving after download: overwrite=False and file exists (%s)' % str(p))
             return
         length = 0
         with p.open(mode='wb') as f:
@@ -1156,7 +1163,7 @@ class _Stream(object):
                     self.closed = True
                     raise StopIteration()
                 except Exception as ex:
-                    log.error('Failed downloading: %s' % ex)
+                    _Driver.get_logger().error('Failed downloading: %s' % ex)
             else:
                 # in/out stream
                 try:
@@ -1210,10 +1217,9 @@ class _Stream(object):
 class _Boto3Driver(_Driver):
     """ Boto3 storage adapter (simple, enough for now) """
 
-    _max_multipart_concurrency = config.get('aws.boto3.max_multipart_concurrency', 16)
-
     _min_pool_connections = 512
-    _pool_connections = config.get('aws.boto3.pool_connections', 512)
+    _max_multipart_concurrency = deferred_config('aws.boto3.max_multipart_concurrency', 16)
+    _pool_connections = deferred_config('aws.boto3.pool_connections', 512)
 
     _stream_download_pool_connections = 128
     _stream_download_pool = None
@@ -1297,7 +1303,7 @@ class _Boto3Driver(_Driver):
                 Callback=callback,
             )
         except Exception as ex:
-            log.error('Failed uploading: %s' % ex)
+            self.get_logger().error('Failed uploading: %s' % ex)
             return False
         return True
 
@@ -1310,7 +1316,7 @@ class _Boto3Driver(_Driver):
                 num_download_attempts=container.config.retries),
                 Callback=callback)
         except Exception as ex:
-            log.error('Failed uploading: %s' % ex)
+            self.get_logger().error('Failed uploading: %s' % ex)
             return False
         return True
 
@@ -1344,7 +1350,7 @@ class _Boto3Driver(_Driver):
             try:
                 a_obj.download_fileobj(a_stream, Callback=cb, Config=cfg)
             except Exception as ex:
-                log.error('Failed downloading: %s' % ex)
+                (log or self.get_logger()).error('Failed downloading: %s' % ex)
             a_stream.close()
 
         import boto3.s3.transfer
@@ -1366,7 +1372,7 @@ class _Boto3Driver(_Driver):
         import boto3.s3.transfer
         p = Path(local_path)
         if not overwrite_existing and p.is_file():
-            log.warning('failed saving after download: overwrite=False and file exists (%s)' % str(p))
+            self.get_logger().warning('failed saving after download: overwrite=False and file exists (%s)' % str(p))
             return
         container = self._containers[obj.container_name]
         obj.download_file(str(p),
@@ -1526,7 +1532,7 @@ class _GoogleCloudStorageDriver(_Driver):
             blob = container.bucket.blob(object_name)
             blob.upload_from_file(iterator)
         except Exception as ex:
-            log.error('Failed uploading: %s' % ex)
+            self.get_logger().error('Failed uploading: %s' % ex)
             return False
         return True
 
@@ -1535,7 +1541,7 @@ class _GoogleCloudStorageDriver(_Driver):
             blob = container.bucket.blob(object_name)
             blob.upload_from_filename(file_path)
         except Exception as ex:
-            log.error('Failed uploading: %s' % ex)
+            self.get_logger().error('Failed uploading: %s' % ex)
             return False
         return True
 
@@ -1553,7 +1559,7 @@ class _GoogleCloudStorageDriver(_Driver):
             except ImportError:
                 pass
             name = getattr(object, "name", "")
-            log.warning("Failed deleting object {}: {}".format(name, ex))
+            self.get_logger().warning("Failed deleting object {}: {}".format(name, ex))
             return False
 
         return not object.exists()
@@ -1572,7 +1578,7 @@ class _GoogleCloudStorageDriver(_Driver):
             try:
                 a_obj.download_to_file(a_stream)
             except Exception as ex:
-                log.error('Failed downloading: %s' % ex)
+                self.get_logger().error('Failed downloading: %s' % ex)
             a_stream.close()
 
         # return iterable object
@@ -1585,7 +1591,7 @@ class _GoogleCloudStorageDriver(_Driver):
     def download_object(self, obj, local_path, overwrite_existing=True, delete_on_failure=True, callback=None, **_):
         p = Path(local_path)
         if not overwrite_existing and p.is_file():
-            log.warning('failed saving after download: overwrite=False and file exists (%s)' % str(p))
+            self.get_logger().warning('failed saving after download: overwrite=False and file exists (%s)' % str(p))
             return
         obj.download_to_filename(str(p))
 
@@ -1664,9 +1670,9 @@ class _AzureBlobServiceStorageDriver(_Driver):
             )
             return True
         except AzureHttpError as ex:
-            log.error('Failed uploading (Azure error): %s' % ex)
+            self.get_logger().error('Failed uploading (Azure error): %s' % ex)
         except Exception as ex:
-            log.error('Failed uploading: %s' % ex)
+            self.get_logger().error('Failed uploading: %s' % ex)
         return False
 
     def upload_object(self, file_path, container, object_name, callback=None, extra=None, **kwargs):
@@ -1690,9 +1696,9 @@ class _AzureBlobServiceStorageDriver(_Driver):
             )
             return True
         except AzureHttpError as ex:
-            log.error('Failed uploading (Azure error): %s' % ex)
+            self.get_logger().error('Failed uploading (Azure error): %s' % ex)
         except Exception as ex:
-            log.error('Failed uploading: %s' % ex)
+            self.get_logger().error('Failed uploading: %s' % ex)
         finally:
             if stream:
                 stream.close()
@@ -1727,7 +1733,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
             container.name,
             obj.blob_name
         )
-        cb = DownloadProgressReport(total_size_mb, verbose, remote_path, log)
+        cb = DownloadProgressReport(total_size_mb, verbose, remote_path, self.get_logger())
         blob = container.blob_service.get_blob_to_bytes(
             container.name,
             obj.blob_name,
@@ -1738,7 +1744,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
     def download_object(self, obj, local_path, overwrite_existing=True, delete_on_failure=True, callback=None, **_):
         p = Path(local_path)
         if not overwrite_existing and p.is_file():
-            log.warning('failed saving after download: overwrite=False and file exists (%s)' % str(p))
+            self.get_logger().warning('failed saving after download: overwrite=False and file exists (%s)' % str(p))
             return
 
         download_done = threading.Event()

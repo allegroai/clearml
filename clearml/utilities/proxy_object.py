@@ -195,8 +195,10 @@ class WrapperBase(type):
                 return mtd(*args, **kwargs)
             return method
 
+        typed_class = attrs.get('_base_class_')
         for name in mcs._special_names:
-            attrs[name] = make_method(name)
+            if not typed_class or hasattr(typed_class, name):
+                attrs[name] = make_method(name)
 
         overrides = attrs.get('__overrides__', [])
         # overrides.extend(k for k, v in attrs.items() if isinstance(v, lazy))
@@ -223,10 +225,38 @@ class LazyEvalWrapper(six.with_metaclass(WrapperBase)):
 
     def _remoteref(self):
         func = object.__getattribute__(self, "_remote_reference")
-        if func in LazyEvalWrapper._remote_reference_calls:
+        if func and func in LazyEvalWrapper._remote_reference_calls:
             LazyEvalWrapper._remote_reference_calls.remove(func)
 
         return func() if callable(func) else func
+
+    def __getattribute__(self, attr):
+        if attr in ('__isabstractmethod__', ):
+            return None
+        if attr in ('_remoteref', '_remote_reference'):
+            return object.__getattribute__(self, attr)
+        return getattr(LazyEvalWrapper._load_object(self), attr)
+
+    def __setattr__(self, attr, value):
+        setattr(LazyEvalWrapper._load_object(self), attr, value)
+
+    def __delattr__(self, attr):
+        delattr(LazyEvalWrapper._load_object(self), attr)
+
+    def __nonzero__(self):
+        return bool(LazyEvalWrapper._load_object(self))
+
+    def __bool__(self):
+        return bool(LazyEvalWrapper._load_object(self))
+
+    @staticmethod
+    def _load_object(self):
+        obj = object.__getattribute__(self, "_wrapped")
+        if obj is None:
+            cb = object.__getattribute__(self, "_callback")
+            obj = cb()
+            object.__setattr__(self, '_wrapped', obj)
+        return obj
 
     @classmethod
     def trigger_all_remote_references(cls):
@@ -234,3 +264,29 @@ class LazyEvalWrapper(six.with_metaclass(WrapperBase)):
             if callable(func):
                 func()
         cls._remote_reference_calls = []
+
+
+def lazy_eval_wrapper_spec_class(class_type):
+    class TypedLazyEvalWrapper(six.with_metaclass(WrapperBase)):
+        _base_class_ = class_type
+        __slots__ = ['_wrapped', '_callback', '__weakref__']
+
+        def __init__(self, callback):
+            object.__setattr__(self, '_wrapped', None)
+            object.__setattr__(self, '_callback', callback)
+
+        def __nonzero__(self):
+            return bool(LazyEvalWrapper._load_object(self))
+
+        def __bool__(self):
+            return bool(LazyEvalWrapper._load_object(self))
+
+        def __getattribute__(self, attr):
+            if attr == '__isabstractmethod__':
+                return None
+            if attr == '__class__':
+                return class_type
+
+            return getattr(LazyEvalWrapper._load_object(self), attr)
+
+    return TypedLazyEvalWrapper

@@ -12,7 +12,7 @@ from PIL import Image
 from six.moves.urllib.parse import urlparse, urlunparse
 
 from ...backend_api.services import events
-from ...config import config
+from ...config import config, deferred_config
 from ...storage.util import quote_url
 from ...utilities.attrs import attrs
 from ...utilities.process.mp import SingletonLock
@@ -196,14 +196,17 @@ class ImageEventNoUpload(MetricsEventAdapter):
 
 class UploadEvent(MetricsEventAdapter):
     """ Image event adapter """
-    _format = '.' + str(config.get('metrics.images.format', 'JPEG')).upper().lstrip('.')
-    _quality = int(config.get('metrics.images.quality', 87))
-    _subsampling = int(config.get('metrics.images.subsampling', 0))
+    _format = deferred_config(
+        'metrics.images.format', 'JPEG',
+        transform=lambda x: '.' + str(x).upper().lstrip('.')
+    )
+    _quality = deferred_config('metrics.images.quality', 87, transform=int)
+    _subsampling = deferred_config('metrics.images.subsampling', 0, transform=int)
+    _file_history_size = deferred_config('metrics.file_history_size', 5, transform=int)
     _upload_retries = 3
 
     _metric_counters = {}
     _metric_counters_lock = SingletonLock()
-    _file_history_size = int(config.get('metrics.file_history_size', 5))
 
     @staticmethod
     def _replace_slash(part):

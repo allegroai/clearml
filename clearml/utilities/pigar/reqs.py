@@ -316,6 +316,8 @@ def is_std_or_local_lib(name):
             # if we got here, the loader failed on us, meaning this is definitely a module and not std
             return False
         if not module_info:
+            if name == '__builtin__':
+                return True
             return False
         mpath = module_info.origin
         # this is std

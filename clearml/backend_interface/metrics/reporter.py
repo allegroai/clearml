@@ -167,6 +167,9 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         """
         log = metrics.log.getChild('reporter')
         log.setLevel(log.level)
+        if self.__class__.max_float_num_digits is -1:
+            self.__class__.max_float_num_digits = config.get('metrics.plot_max_num_digits', None)
+
         super(Reporter, self).__init__(session=metrics.session, log=log)
         self._metrics = metrics
         self._bucket_config = None
@@ -185,7 +188,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._report_service.set_storage_uri(self._storage_uri)
 
     storage_uri = property(None, _set_storage_uri)
-    max_float_num_digits = config.get('metrics.plot_max_num_digits', None)
+    max_float_num_digits = -1
 
     @property
     def async_enable(self):

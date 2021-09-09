@@ -47,7 +47,7 @@ from ..util import (
     exact_match_regex, mutually_exclusive, )
 from ...config import (
     get_config_for_bucket, get_remote_task_id, TASK_ID_ENV_VAR,
-    running_remotely, get_cache_dir, DOCKER_IMAGE_ENV_VAR, get_offline_dir, get_log_to_backend, )
+    running_remotely, get_cache_dir, DOCKER_IMAGE_ENV_VAR, get_offline_dir, get_log_to_backend, deferred_config, )
 from ...debugging import get_logger
 from ...storage.helper import StorageHelper, StorageError
 from .access import AccessMixin
@@ -70,12 +70,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     _force_requirements = {}
     _ignore_requirements = set()
 
-    _store_diff = config.get('development.store_uncommitted_code_diff', False)
-    _store_remote_diff = config.get('development.store_code_diff_from_remote', False)
-    _report_subprocess_enabled = config.get('development.report_use_subprocess', sys.platform == 'linux')
-    _force_use_pip_freeze = \
-        config.get('development.detect_with_pip_freeze', False) or \
-        config.get('development.detect_with_conda_freeze', False)
+    _store_diff = deferred_config('development.store_uncommitted_code_diff', False)
+    _store_remote_diff = deferred_config('development.store_code_diff_from_remote', False)
+    _report_subprocess_enabled = deferred_config('development.report_use_subprocess', sys.platform == 'linux')
+    _force_use_pip_freeze = deferred_config(multi=[('development.detect_with_pip_freeze', False),
+                                                   ('development.detect_with_conda_freeze', False)])
     _offline_filename = 'task.json'
 
     class TaskTypes(Enum):
@@ -1814,6 +1813,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self._edit(runtime=current_runtime_properties)
 
         return True
+
+    def _get_runtime_properties(self):
+        # type: () -> Mapping[str, str]
+        if not Session.check_min_api_version('2.13'):
+            return dict()
+        return dict(**self.data.runtime) if self.data.runtime else dict()
 
     def _clear_task(self, system_tags=None, comment=None):
         # type: (Optional[Sequence[str]], Optional[str]) -> ()

@@ -18,8 +18,6 @@ from ....config.defs import (
 from ....debugging import get_logger
 from .util import get_command_output
 
-_logger = get_logger("Repository Detection")
-
 
 class DetectionError(Exception):
     pass
@@ -52,6 +50,10 @@ class Detector(object):
 
     _fallback = '_fallback'
     _remote = '_remote'
+
+    @classmethod
+    def _get_logger(cls):
+        return get_logger("Repository Detection")
 
     @attr.s
     class Commands(object):
@@ -93,9 +95,9 @@ class Detector(object):
                         return get_command_output(fallback_command, path, strip=strip)
                     except (CalledProcessError, UnicodeDecodeError):
                         pass
-            _logger.warning("Can't get {} information for {} repo in {}".format(name, self.type_name, path))
+            self._get_logger().warning("Can't get {} information for {} repo in {}".format(name, self.type_name, path))
             # full details only in debug
-            _logger.debug(
+            self._get_logger().debug(
                 "Can't get {} information for {} repo in {}: {}".format(
                     name, self.type_name, path, str(ex)
                 )
@@ -180,7 +182,7 @@ class Detector(object):
                     == 0
                 )
         except CalledProcessError:
-            _logger.warning("Can't get {} status".format(self.type_name))
+            self._get_logger().warning("Can't get {} status".format(self.type_name))
         except (OSError, EnvironmentError, IOError):
             # File not found or can't be executed
             pass

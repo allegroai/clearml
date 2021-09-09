@@ -65,6 +65,7 @@ def executing_pipeline(pickle_url, mock_parameter='mock'):
     print('pipeline args:', pickle_url, mock_parameter)
 
     # Use the pipeline argument to start the pipeline and pass it ot the first step
+    print('launch step one')
     data_frame = step_one(pickle_url)
 
     # Use the returned data from the first step (`step_one`), and pass it to the next step (`step_two`)
@@ -72,11 +73,13 @@ def executing_pipeline(pickle_url, mock_parameter='mock'):
     # the pipeline logic does not actually load the artifact itself.
     # When actually passing the `data_frame` object into a new step,
     # It waits for the creating step/function (`step_one`) to complete the execution
+    print('launch step two')
     processed_data = step_two(data_frame)
 
     # Notice we can actually process/modify the returned values inside the pipeline logic context.
     # This means the modified object will be stored on the pipeline Task.
     processed_data = [processed_data[0], processed_data[1]*2, processed_data[2], processed_data[3]]
+    print('launch step three')
     model = step_three(processed_data)
 
     # Notice since we are "printing" the `model` object,

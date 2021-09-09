@@ -156,6 +156,7 @@ class CreateAndPopulate(object):
                 uncommitted_from_remote=True,
                 detect_jupyter_notebook=False,
                 add_missing_installed_packages=True,
+                detailed_req_report=False,
             )
 
         # check if we have no repository and no requirements raise error
@@ -495,7 +496,10 @@ if __name__ == '__main__':
             project_name=None,  # type: Optional[str]
             task_name=None,  # type: Optional[str]
             task_type=None,  # type: Optional[str]
-            packages=None,  # type: Optional[Sequence[str]]
+            repo=None,  # type: Optional[str]
+            branch=None,  # type: Optional[str]
+            commit=None,  # type: Optional[str]
+            packages=None,  # type: Optional[Union[str, Sequence[str]]]
             docker=None,  # type: Optional[str]
             docker_args=None,  # type: Optional[str]
             docker_bash_setup_script=None,  # type: Optional[str]
@@ -540,7 +544,13 @@ if __name__ == '__main__':
         :param task_name: Set the name of the remote task. Required if base_task_id is None.
         :param task_type: Optional, The task type to be created. Supported values: 'training', 'testing', 'inference',
             'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc', 'custom'
-        :param packages: Manually specify a list of required packages. Example: ["tqdm>=2.1", "scikit-learn"]
+        :param repo: Remote URL for the repository to use, OR path to local copy of the git repository
+            Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'
+        :param branch: Select specific repository branch/tag (implies the latest commit from the branch)
+        :param commit: Select specific commit id to use (default: latest commit,
+            or when used with local repository matching the local commit id)
+        :param packages: Manually specify a list of required packages or a local requirements.txt file.
+            Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
             If not provided, packages are automatically added based on the imports used in the function.
         :param docker: Select the docker image to be executed in by the remote session
         :param docker_args: Add docker arguments, pass a single string
@@ -594,9 +604,15 @@ if __name__ == '__main__':
             function_name=function_name,
             function_return=function_return)
 
-        with tempfile.NamedTemporaryFile('w', suffix='.py') as temp_file:
+        temp_dir = repo if repo and Path(repo).is_dir() else None
+        with tempfile.NamedTemporaryFile('w', suffix='.py', dir=temp_dir) as temp_file:
             temp_file.write(task_template)
             temp_file.flush()
+
+            requirements_file = None
+            if packages and not isinstance(packages, (list, tuple)) and Path(packages).is_file():
+                requirements_file = packages
+                packages = False
 
             populate = CreateAndPopulate(
                 project_name=project_name,
@@ -604,6 +620,10 @@ if __name__ == '__main__':
                 task_type=task_type,
                 script=temp_file.name,
                 packages=packages if packages is not None else True,
+                requirements_file=requirements_file,
+                repo=repo,
+                branch=branch,
+                commit=commit,
                 docker=docker,
                 docker_args=docker_args,
                 docker_bash_setup_script=docker_bash_setup_script,
@@ -614,7 +634,9 @@ if __name__ == '__main__':
             task = populate.create_task(dry_run=dry_run)
 
             if dry_run:
+                task['script']['diff'] = task_template
                 task['script']['entry_point'] = entry_point
+                task['script']['working_dir'] = '.'
                 task['hyperparams'] = {
                     cls.kwargs_section: {
                         k: dict(section=cls.kwargs_section, name=k, value=str(v))
@@ -626,7 +648,9 @@ if __name__ == '__main__':
                     }
                 }
             else:
-                task.update_task(task_data={'script': {'entry_point': entry_point}})
+                task.update_task(task_data={
+                    'script': task.data.script.to_dict().update(
+                        {'entry_point': entry_point, 'working_dir': '.', 'diff': task_template})})
                 hyper_parameters = {'{}/{}'.format(cls.kwargs_section, k): str(v) for k, v in function_kwargs} \
                     if function_kwargs else {}
                 hyper_parameters.update(

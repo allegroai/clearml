@@ -466,7 +466,7 @@ class ClearmlJob(object):
         if Session.check_min_api_version('2.13'):
             # noinspection PyProtectedMember
             potential_tasks = Task._query_tasks(
-                status=['completed', 'stopped', 'published'],
+                status=['completed', 'published'],
                 system_tags=['-{}'.format(Task.archived_tag)],
                 _all_=dict(fields=['runtime.{}'.format(cls._job_hash_property)],
                            pattern=exact_match_regex(task_hash)),
@@ -475,7 +475,7 @@ class ClearmlJob(object):
         else:
             # noinspection PyProtectedMember
             potential_tasks = Task._query_tasks(
-                status=['completed', 'stopped', 'published'],
+                status=['completed', 'published'],
                 system_tags=['-{}'.format(Task.archived_tag)],
                 _all_=dict(fields=['comment'], pattern=cls._job_hash_description.format(task_hash)),
                 only_fields=['id'],

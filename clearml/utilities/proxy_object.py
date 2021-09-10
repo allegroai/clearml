@@ -191,6 +191,16 @@ class WrapperBase(type):
                     cb = object.__getattribute__(self, "_callback")
                     obj = cb()
                     object.__setattr__(self, '_wrapped', obj)
+
+                # we have to convert the instance to the real type
+                if args and len(args) == 1 and (
+                        type(args[0]) == LazyEvalWrapper or hasattr(type(args[0]), '_base_class_')):
+                    try:
+                        int(args[0])  # force loading the instance
+                    except:  # noqa
+                        pass
+                    args = (object.__getattribute__(args[0], "_wrapped"), )
+
                 mtd = getattr(obj, name)
                 return mtd(*args, **kwargs)
             return method

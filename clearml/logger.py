@@ -1050,16 +1050,18 @@ class Logger(object):
         # noinspection PyProtectedMember
         return self._default_upload_destination or self._task._get_default_report_storage_uri()
 
-    def flush(self):
-        # type: () -> bool
+    def flush(self, wait=False):
+        # type: (bool) -> bool
         """
         Flush cached reports and console outputs to backend.
+
+        :param wait: Wait for all outstanding uploads and events to be sent (default False)
 
         :return: True, if successfully flushed the cache. False, if failed.
         """
         self._flush_stdout_handler()
         if self._task:
-            return self._task.flush()
+            return self._task.flush(wait_for_uploads=wait)
         return False
 
     def get_flush_period(self):

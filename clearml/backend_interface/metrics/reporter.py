@@ -167,7 +167,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         """
         log = metrics.log.getChild('reporter')
         log.setLevel(log.level)
-        if self.__class__.max_float_num_digits is -1:
+        if self.__class__.max_float_num_digits == -1:
             self.__class__.max_float_num_digits = config.get('metrics.plot_max_num_digits', None)
 
         super(Reporter, self).__init__(session=metrics.session, log=log)

@@ -60,10 +60,11 @@ def deferred_config(key=None, default=Config._MISSING, transform=None, multi=Non
     return LazyEvalWrapper(
         callback=lambda:
         (ConfigSDKWrapper.get(key, default) if not multi else
-         next(ConfigSDKWrapper.get(*a) for a in multi if ConfigSDKWrapper.get(*a)))
+         next((ConfigSDKWrapper.get(*a) for a in multi if ConfigSDKWrapper.get(*a)), None))
         if transform is None
         else (transform() if key is None else transform(ConfigSDKWrapper.get(key, default) if not multi else  # noqa
-                  next(ConfigSDKWrapper.get(*a) for a in multi if ConfigSDKWrapper.get(*a)))))
+                  next((ConfigSDKWrapper.get(*a) for a in multi if ConfigSDKWrapper.get(*a)), None)))
+    )
 
 
 config_obj = ConfigWrapper

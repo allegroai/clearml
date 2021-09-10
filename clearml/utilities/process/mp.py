@@ -542,7 +542,7 @@ class BackgroundMonitor(object):
         return self._instances.setdefault(self._task_obj_id, [])
 
     def _is_subprocess_mode_and_not_parent_process(self):
-        return self.is_subprocess_mode() and self._main_process != os.getpid()
+        return self.is_subprocess_mode() and self._parent_pid != os.getpid()
 
     @classmethod
     def is_subprocess_enabled(cls, task=None):

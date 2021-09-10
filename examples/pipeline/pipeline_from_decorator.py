@@ -60,7 +60,7 @@ def step_three(data):
 # The actual pipeline execution context
 # notice that all pipeline component function calls are actually executed remotely
 # Only when a return value is used, the pipeline logic will wait for the component execution to complete
-@PipelineDecorator.pipeline(name='custom pipeline logic', project='examples', version='0.0.1')
+@PipelineDecorator.pipeline(name='custom pipeline logic', project='examples', version='0.0.5')
 def executing_pipeline(pickle_url, mock_parameter='mock'):
     print('pipeline args:', pickle_url, mock_parameter)
 
@@ -89,7 +89,7 @@ def executing_pipeline(pickle_url, mock_parameter='mock'):
 
 if __name__ == '__main__':
     # set the pipeline steps default execution queue (per specific step we can override it with the decorator)
-    PipelineDecorator.set_default_execution_queue('default')
+    PipelineDecorator.set_default_execution_queue('moshik')
     # run the pipeline steps as subprocess on the current machine, for debugging purposes
     # PipelineDecorator.debug_pipeline()
 

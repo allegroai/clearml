@@ -9,12 +9,15 @@ from .storage import StorageManager
 from .errors import UsageError
 from .datasets import Dataset
 
+TaskTypes = Task.TaskTypes
+
 if not PY2:
     from .automation.controller import PipelineController
 
     __all__ = [
         "__version__",
         "Task",
+        "TaskTypes",
         "InputModel",
         "OutputModel",
         "Model",
@@ -28,6 +31,7 @@ else:
     __all__ = [
         "__version__",
         "Task",
+        "TaskTypes",
         "InputModel",
         "OutputModel",
         "Model",

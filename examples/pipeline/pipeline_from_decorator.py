@@ -1,6 +1,7 @@
 from clearml.automation.controller import PipelineDecorator
 from clearml import TaskTypes
 
+
 # Make the following function an independent pipeline component step
 # notice all package imports inside the function will be automatically logged as
 # required packages for the pipeline execution step

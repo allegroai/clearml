@@ -89,7 +89,7 @@ def executing_pipeline(pickle_url, mock_parameter='mock'):
 
 if __name__ == '__main__':
     # set the pipeline steps default execution queue (per specific step we can override it with the decorator)
-    PipelineDecorator.set_default_execution_queue('moshik')
+    PipelineDecorator.set_default_execution_queue('default')
     # run the pipeline steps as subprocess on the current machine, for debugging purposes
     # PipelineDecorator.debug_pipeline()
 

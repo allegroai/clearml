@@ -367,7 +367,7 @@ class EventTrainsWriter(object):
             output = BytesIO(imdata)
             im = Image.open(output)
             # if this is a GIF store as is
-            if getattr(im, 'is_animated'):
+            if getattr(im, 'is_animated', None):
                 output.close()
                 fd, temp_file = mkstemp(
                     suffix=guess_extension(im.get_format_mimetype()) if hasattr(im, 'get_format_mimetype')

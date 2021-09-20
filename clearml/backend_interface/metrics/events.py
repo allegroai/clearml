@@ -12,7 +12,7 @@ from PIL import Image
 from six.moves.urllib.parse import urlparse, urlunparse
 
 from ...backend_api.services import events
-from ...config import config, deferred_config
+from ...config import deferred_config
 from ...storage.util import quote_url
 from ...utilities.attrs import attrs
 from ...utilities.process.mp import SingletonLock
@@ -288,11 +288,16 @@ class UploadEvent(MetricsEventAdapter):
 
     def get_file_entry(self):
         local_file = None
-        # don't provide file in case this event is out of the history window
-        last_count = self._get_metric_count(self.metric, self.variant, next=False)
-        if abs(self._count - last_count) > int(self._file_history_size):
-            output = None
-        elif isinstance(self._image_data, (six.StringIO, six.BytesIO)):
+
+        # Notice that in case we are running with reporter in subprocess,
+        # when we are here, the cls._metric_counters is actually empty,
+        # since it was updated on the main process and this function is running from the subprocess.
+        #
+        # In the future, if we want to support multi processes reporting images with the same title/series,
+        # we should move the _count & _filename selection into the subprocess, not the main process.
+        # For the time being, this will remain a limitation of the Image reporting mechanism.
+
+        if isinstance(self._image_data, (six.StringIO, six.BytesIO)):
             output = self._image_data
         elif self._image_data is not None:
             image_data = self._image_data

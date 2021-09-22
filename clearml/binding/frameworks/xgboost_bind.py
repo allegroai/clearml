@@ -116,13 +116,13 @@ class PatchXGBoostModelIO(PatchBaseModelIO):
         return model
 
     @staticmethod
-    def _train(original_fn, __obj, *args, **kwargs):
+    def _train(original_fn, *args, **kwargs):
         if PatchXGBoostModelIO.__callback_cls:
             callbacks = kwargs.get('callbacks') or []
             kwargs['callbacks'] = callbacks + [
                 PatchXGBoostModelIO.__callback_cls(task=PatchXGBoostModelIO.__main_task)
             ]
-        return original_fn(__obj, *args, **kwargs)
+        return original_fn(*args, **kwargs)
 
     @classmethod
     def _generate_training_callback_class(cls):

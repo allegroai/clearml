@@ -1,10 +1,11 @@
 from clearml.automation.controller import PipelineDecorator
+from clearml import TaskTypes
 
 
 # Make the following function an independent pipeline component step
 # notice all package imports inside the function will be automatically logged as
 # required packages for the pipeline execution step
-@PipelineDecorator.component(return_values=['data_frame'], cache=True)
+@PipelineDecorator.component(return_values=['data_frame'], cache=True, task_type=TaskTypes.data_processing)
 def step_one(pickle_data_url: str, extra: int = 43):
     print('step_one')
     # make sure we have scikit-learn for this step, we need it to use to unpickle the object
@@ -26,7 +27,7 @@ def step_one(pickle_data_url: str, extra: int = 43):
 # required packages for the pipeline execution step.
 # Specifying `return_values` makes sure the function step can return an object to the pipeline logic
 # In this case, the returned tuple will be stored as an artifact named "processed_data"
-@PipelineDecorator.component(return_values=['processed_data'], cache=True,)
+@PipelineDecorator.component(return_values=['processed_data'], cache=True, task_type=TaskTypes.data_processing)
 def step_two(data_frame, test_size=0.2, random_state=42):
     print('step_two')
     # make sure we have pandas for this step, we need it to use the data_frame
@@ -45,7 +46,7 @@ def step_two(data_frame, test_size=0.2, random_state=42):
 # required packages for the pipeline execution step
 # Specifying `return_values` makes sure the function step can return an object to the pipeline logic
 # In this case, the returned object will be stored as an artifact named "model"
-@PipelineDecorator.component(return_values=['model'], cache=True,)
+@PipelineDecorator.component(return_values=['model'], cache=True, task_type=TaskTypes.training)
 def step_three(data):
     print('step_three')
     # make sure we have pandas for this step, we need it to use the data_frame

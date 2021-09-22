@@ -70,7 +70,9 @@ def cli():
     subparsers = parser.add_subparsers(help='Dataset actions', dest='command')
 
     create = subparsers.add_parser('create', help='Create a new dataset')
-    create.add_argument('--parents', type=str, nargs='*', help='Specify dataset parents IDs (i.e. merge all parents)')
+    create.add_argument('--parents', type=str, nargs='*',
+                        help='[Optional] Specify dataset parents IDs (i.e. merge all parents). ' 
+                             'Example: `--parents "a17b4fID1" "f0ee5ID2" "a17b4f09eID3"`')
     create.add_argument('--project', type=str, required=False, default=None, help='Dataset project name')
     create.add_argument('--name', type=str, required=True, default=None, help='Dataset name')
     create.add_argument('--tags', type=str, nargs='*', help='Dataset user Tags')
@@ -98,13 +100,14 @@ def cli():
                       help='Local folder to sync (support for wildcard selection). '
                            'Example: ~/data/*.jpg')
     sync.add_argument('--parents', type=str, nargs='*',
-                      help='[Optional - Create new dataset] Specify dataset parents IDs (i.e. merge all parents)')
+                      help='[Optional] Specify dataset parents IDs (i.e. merge all parents). ' 
+                           'Example: `--parents "a17b4fID1" "f0ee5ID2" "a17b4f09eID3"`')
     sync.add_argument('--project', type=str, required=False, default=None,
-                      help='[Optional - Create new dataset] Dataset project name')
+                      help='[Optional] Dataset project name')
     sync.add_argument('--name', type=str, required=False, default=None,
-                      help='[Optional - Create new dataset] Dataset project name')
+                      help='[Optional] Dataset project name')
     sync.add_argument('--tags', type=str, nargs='*',
-                      help='[Optional - Create new dataset] Dataset user Tags')
+                      help='[Optional] Dataset user Tags')
     sync.add_argument('--storage', type=str, default=None,
                       help='Remote storage to use for the dataset files (default: files_server). '
                            'Examples: \'s3://bucket/data\', \'gs://bucket/data\', \'azure://bucket/data\', '

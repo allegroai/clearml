@@ -247,8 +247,8 @@ class Dataset(object):
     def sync_folder(self, local_path, dataset_path=None, verbose=False):
         # type: (Union[Path, _Path, str], Union[Path, _Path, str], bool) -> (int, int)
         """
-        Synchronize the dataset with a local folder. The dataset is synchronized from the
-            relative_base_folder (default: dataset root)  and deeper with the specified local path.
+        Synchronize the dataset with a local folder. The dataset is synchronized recursively from the `local_path` into
+        the `dataset_path` (default: dataset root).
 
         :param local_path: Local folder to sync (assumes all files and recursive)
         :param dataset_path: Target dataset path to sync with (default the root of the dataset)

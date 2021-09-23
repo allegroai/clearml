@@ -72,7 +72,7 @@ def cli():
     create = subparsers.add_parser('create', help='Create a new dataset')
     create.add_argument('--parents', type=str, nargs='*',
                         help='[Optional] Specify dataset parents IDs (i.e. merge all parents). ' 
-                             'Example: `--parents "a17b4fID1" "f0ee5ID2" "a17b4f09eID3"`')
+                             'Example: a17b4fID1 f0ee5ID2 a17b4f09eID3')
     create.add_argument('--project', type=str, required=False, default=None, help='Dataset project name')
     create.add_argument('--name', type=str, required=True, default=None, help='Dataset name')
     create.add_argument('--tags', type=str, nargs='*', help='Dataset user Tags')
@@ -101,7 +101,7 @@ def cli():
                            'Example: ~/data/*.jpg')
     sync.add_argument('--parents', type=str, nargs='*',
                       help='[Optional] Specify dataset parents IDs (i.e. merge all parents). ' 
-                           'Example: `--parents "a17b4fID1" "f0ee5ID2" "a17b4f09eID3"`')
+                           'Example: a17b4fID1 f0ee5ID2 a17b4f09eID3')
     sync.add_argument('--project', type=str, required=False, default=None,
                       help='[Optional] Dataset project name')
     sync.add_argument('--name', type=str, required=False, default=None,

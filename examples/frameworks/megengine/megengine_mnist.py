@@ -90,7 +90,7 @@ def train(dataloader, args):
                 print("epoch:{}, iter:{}, loss:{}".format(epoch + 1, step, float(loss)))  # noqa
             writer.add_scalar("loss", float(loss), epoch * epoch_length + step)
         if (epoch + 1) % 5 == 0:
-            mge.save(net.state_dict(), os.path.join(gettempdir(), f"mnist_net_e{epoch + 1}.mge")) # noqa
+            mge.save(net.state_dict(), os.path.join(gettempdir(), f"mnist_net_e{epoch + 1}.pkl")) # noqa
 
 
 def main():

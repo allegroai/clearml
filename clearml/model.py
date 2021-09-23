@@ -78,7 +78,6 @@ class Framework(Options):
         '__model__': (paddlepaddle, ),
         '.pkl': (scikitlearn, keras, xgboost, megengine),
         '.parquet': (parquet, ),
-        '.mge': (megengine, ),
     }
 
     @classmethod

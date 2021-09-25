@@ -241,6 +241,33 @@ class GitDetector(Detector):
             diff_fallback_remote=["git", "diff", ],
         )
 
+    def get_info(self, path, include_diff=False, diff_from_remote=False):
+        """
+        Get repository information.
+        :param path: Path to repository
+        :param include_diff: Whether to include the diff command's output (if available)
+        :param diff_from_remote: Whether to store the remote diff/commit based on the remote commit (not local commit)
+        :return: RepoInfo instance
+        """
+        info = super(GitDetector, self).get_info(
+            path=path, include_diff=include_diff, diff_from_remote=diff_from_remote)
+        # we could not locate the git because of some configuration issue, we need to try a more complex command
+        if info and info.url == "origin":
+            # noinspection PyBroadException
+            try:
+                url = get_command_output(["git", "remote", "-v"], path, strip=True)
+                url = url.split('\n')[0].split('\t', 1)[1]
+                if url.endswith('(fetch)'):
+                    url = url[:-len('(fetch)')]
+                elif url.endswith('(pull)'):
+                    url = url[:-len('(pull)')]
+                info.url = url.strip()
+            except Exception:
+                # not sure what happened, just skip it.
+                pass
+
+        return info
+
     def _post_process_info(self, info):
         # Deprecated code: this was intended to make sure git repository names always
         # ended with ".git", but this is not always the case (e.g. Azure Repos)

@@ -97,8 +97,16 @@ class StorageManager(object):
         ).set_cache_limit(cache_file_limit)
 
     @classmethod
-    def _extract_to_cache(cls, cached_file, name, cache_context=None, target_folder=None, cache_path_encoding=None):
-        # type: (str, str, Optional[str], Optional[str], Optional[str]) -> str
+    def _extract_to_cache(
+            cls,
+            cached_file,  # type: str
+            name,  # type: str
+            cache_context=None,  # type: Optional[str]
+            target_folder=None,  # type: Optional[str]
+            cache_path_encoding=None,  # type: Optional[str]
+            force=False,  # type: bool
+    ):
+        # type: (...) -> str
         """
         Extract cached file to cache folder
         :param str cached_file: local copy of archive file
@@ -108,6 +116,7 @@ class StorageManager(object):
         :param str cache_path_encoding: specify representation of the local path of the cached files,
             this will always point to local cache folder, even if we have direct access file.
             Used for extracting the cached archived based on cache_path_encoding
+        :param bool force: Force archive extraction even if target folder exists
         :return: cached folder containing the extracted archive content
         """
         if not cached_file:
@@ -133,7 +142,7 @@ class StorageManager(object):
             target_folder = cache_folder / CacheManager.get_context_folder_lookup(
                 cache_context).format(archive_suffix, name)
 
-        if target_folder.is_dir():
+        if target_folder.is_dir() and not force:
             # noinspection PyBroadException
             try:
                 target_folder.touch(exist_ok=True)
@@ -143,9 +152,14 @@ class StorageManager(object):
 
         base_logger = LoggerRoot.get_base_logger()
         try:
-            temp_target_folder = cache_folder / "{0}_{1}_{2}".format(
-                target_folder.name, time() * 1000, str(random()).replace('.', ''))
-            temp_target_folder.mkdir(parents=True, exist_ok=True)
+            # if target folder exists, meaning this is forced ao we extract directly into target folder
+            if target_folder.is_dir():
+                temp_target_folder = target_folder
+            else:
+                temp_target_folder = cache_folder / "{0}_{1}_{2}".format(
+                    target_folder.name, time() * 1000, str(random()).replace('.', ''))
+                temp_target_folder.mkdir(parents=True, exist_ok=True)
+
             if suffix == ".zip":
                 ZipFile(cached_file.as_posix()).extractall(path=temp_target_folder.as_posix())
             elif suffix == ".tar.gz":
@@ -155,23 +169,24 @@ class StorageManager(object):
                 with tarfile.open(cached_file.as_posix(), mode='r:gz') as file:
                     file.extractall(temp_target_folder.as_posix())
 
-            # we assume we will have such folder if we already extract the file
-            # noinspection PyBroadException
-            try:
-                # if rename fails, it means that someone else already manged to extract the file, delete the current
-                # folder and return the already existing cached zip folder
-                shutil.move(temp_target_folder.as_posix(), target_folder.as_posix())
-            except Exception:
-                if target_folder.exists():
-                    target_folder.touch(exist_ok=True)
-                else:
-                    base_logger.warning(
-                        "Failed renaming {0} to {1}".format(temp_target_folder.as_posix(), target_folder.as_posix()))
+            if temp_target_folder != target_folder:
+                # we assume we will have such folder if we already extract the file
+                # noinspection PyBroadException
                 try:
-                    shutil.rmtree(temp_target_folder.as_posix())
-                except Exception as ex:
-                    base_logger.warning(
-                        "Exception {}\nFailed deleting folder {}".format(ex, temp_target_folder.as_posix()))
+                    # if rename fails, it means that someone else already manged to extract the file, delete the current
+                    # folder and return the already existing cached zip folder
+                    shutil.move(temp_target_folder.as_posix(), target_folder.as_posix())
+                except Exception:
+                    if target_folder.exists():
+                        target_folder.touch(exist_ok=True)
+                    else:
+                        base_logger.warning(
+                            "Failed renaming {0} to {1}".format(temp_target_folder.as_posix(), target_folder.as_posix()))
+                    try:
+                        shutil.rmtree(temp_target_folder.as_posix())
+                    except Exception as ex:
+                        base_logger.warning(
+                            "Exception {}\nFailed deleting folder {}".format(ex, temp_target_folder.as_posix()))
         except Exception as ex:
             # failed extracting the file:
             base_logger.warning(

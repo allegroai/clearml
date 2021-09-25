@@ -179,6 +179,22 @@ class Lock(object):
                 pass
             self.fh = None
 
+    def delete_lock_file(self):
+        # type: () -> bool
+        """
+        Remove the local file used for locking (fail if file is locked)
+
+        :return: True is successful
+        """
+        if self.fh:
+            return False
+        # noinspection PyBroadException
+        try:
+            os.unlink(path=self.filename)
+        except BaseException:
+            return False
+        return True
+
     def _get_fh(self):
         '''Get a new filehandle'''
         return open(self.filename, self.mode, **self.file_open_kwargs)

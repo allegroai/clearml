@@ -179,8 +179,8 @@ class PrintPatchLogger(object):
     cr_flush_period = None
 
     def __init__(self, stream, logger=None, level=logging.INFO):
-        if self.__class__.cr_flush_period is None:
-            self.__class__.cr_flush_period = config.get("development.worker.console_cr_flush_period", 0)
+        if PrintPatchLogger.cr_flush_period is None:
+            PrintPatchLogger.cr_flush_period = config.get("development.worker.console_cr_flush_period", 0)
         PrintPatchLogger.patched = True
         self._terminal = stream
         self._log = logger

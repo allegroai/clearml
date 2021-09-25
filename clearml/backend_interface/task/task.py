@@ -1266,6 +1266,34 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 self._edit(execution=execution)
         return self.data.execution.artifacts or []
 
+    def _delete_artifacts(self, artifact_names):
+        # type: (Sequence[str]) -> bool
+        """
+        Delete a list of artifacts, by artifact name, from the Task.
+
+        :param list artifact_names: list of artifact names
+        :return: True if successful
+        """
+        if not Session.check_min_api_version('2.3'):
+            return False
+        if not isinstance(artifact_names, (list, tuple)):
+            raise ValueError('Expected artifact names as List[str]')
+
+        with self._edit_lock:
+            if Session.check_min_api_version("2.13") and not self._offline_mode:
+                req = tasks.DeleteArtifactsRequest(
+                    task=self.task_id, artifacts=[{"key": n, "mode": "output"} for n in artifact_names], force=True)
+                res = self.send(req, raise_on_errors=False)
+                if not res or not res.response or not res.response.deleted:
+                    return False
+                self.reload()
+            else:
+                self.reload()
+                execution = self.data.execution
+                execution.artifacts = [a for a in execution.artifacts or [] if a.key not in artifact_names]
+                self._edit(execution=execution)
+        return self.data.execution.artifacts or []
+
     def _set_model_design(self, design=None):
         # type: (str) -> ()
         with self._edit_lock:

@@ -85,7 +85,7 @@ def get_epoch_beginning_of_time(timezone_info=None):
     return datetime(1970, 1, 1).replace(tzinfo=timezone_info if timezone_info else utc_timezone)
 
 
-def get_single_result(entity, query, results, log=None, show_results=10, raise_on_error=True, sort_by_date=True):
+def get_single_result(entity, query, results, log=None, show_results=1, raise_on_error=True, sort_by_date=True):
     if not results:
         if not raise_on_error:
             return None
@@ -96,8 +96,12 @@ def get_single_result(entity, query, results, log=None, show_results=10, raise_o
         if show_results:
             if not log:
                 log = get_logger()
-            log.warning('More than one {entity} found when searching for `{query}`'
-                        ' (showing first {show_results} {entity}s follow)'.format(**locals()))
+            if show_results > 1:
+                log.warning('{num} {entity} found when searching for `{query}`'
+                            ' (showing first {show_results} {entity}s follow)'.format(num=len(results), **locals()))
+            else:
+                log.warning('{num} {entity} found when searching for `{query}`'.format(num=len(results), **locals()))
+
         if sort_by_date:
             relative_time = get_epoch_beginning_of_time()
             # sort results based on timestamp and return the newest one

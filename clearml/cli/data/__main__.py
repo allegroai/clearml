@@ -70,9 +70,7 @@ def cli():
     subparsers = parser.add_subparsers(help='Dataset actions', dest='command')
 
     create = subparsers.add_parser('create', help='Create a new dataset')
-    create.add_argument('--parents', type=str, nargs='*',
-                        help='[Optional] Specify dataset parents IDs (i.e. merge all parents). ' 
-                             'Example: a17b4fID1 f0ee5ID2 a17b4f09eID3')
+    create.add_argument('--parents', type=str, nargs='*', help='Specify dataset parents IDs (i.e. merge all parents)')
     create.add_argument('--project', type=str, required=False, default=None, help='Dataset project name')
     create.add_argument('--name', type=str, required=True, default=None, help='Dataset name')
     create.add_argument('--tags', type=str, nargs='*', help='Dataset user Tags')
@@ -100,20 +98,22 @@ def cli():
                       help='Local folder to sync (support for wildcard selection). '
                            'Example: ~/data/*.jpg')
     sync.add_argument('--parents', type=str, nargs='*',
-                      help='[Optional] Specify dataset parents IDs (i.e. merge all parents). ' 
-                           'Example: a17b4fID1 f0ee5ID2 a17b4f09eID3')
+                      help='[Optional - Create new dataset] Specify dataset parents IDs (i.e. merge all parents)')
     sync.add_argument('--project', type=str, required=False, default=None,
-                      help='[Optional] Dataset project name')
+                      help='[Optional - Create new dataset] Dataset project name')
     sync.add_argument('--name', type=str, required=False, default=None,
-                      help='[Optional] Dataset project name')
+                      help='[Optional - Create new dataset] Dataset project name')
     sync.add_argument('--tags', type=str, nargs='*',
-                      help='[Optional] Dataset user Tags')
+                      help='[Optional - Create new dataset] Dataset user Tags')
     sync.add_argument('--storage', type=str, default=None,
                       help='Remote storage to use for the dataset files (default: files_server). '
                            'Examples: \'s3://bucket/data\', \'gs://bucket/data\', \'azure://bucket/data\', '
                            '\'/mnt/shared/folder/data\'')
     sync.add_argument('--skip-close', action='store_true', default=False,
                       help='Do not auto close dataset after syncing folders')
+    sync.add_argument('--chunk-size', default=-1, type=int,
+                      help='Set dataset artifact chunk size in MB. Default -1, unlimited size. '
+                           'Example: 512, dataset will be split and uploaded in 512mb chunks.')
     sync.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
     sync.set_defaults(func=ds_sync)
 
@@ -136,6 +136,9 @@ def cli():
                         help='Remote storage to use for the dataset files (default: files_server). '
                              'Examples: \'s3://bucket/data\', \'gs://bucket/data\', \'azure://bucket/data\', '
                              '\'/mnt/shared/folder/data\'')
+    upload.add_argument('--chunk-size', default=-1, type=int,
+                        help='Set dataset artifact chunk size in MB. Default -1, unlimited size. '
+                             'Example: 512, dataset will be split and uploaded in 512mb chunks.')
     upload.add_argument('--verbose', default=False, action='store_true', help='Verbose reporting')
     upload.set_defaults(func=ds_upload)
 
@@ -148,6 +151,9 @@ def cli():
                                '\'/mnt/shared/folder/data\'')
     finalize.add_argument('--disable-upload', action='store_true', default=False,
                           help='Disable automatic upload when closing the dataset')
+    finalize.add_argument('--chunk-size', default=-1, type=int,
+                          help='Set dataset artifact chunk size in MB. Default -1, unlimited size. '
+                               'Example: 512, dataset will be split and uploaded in 512mb chunks.')
     finalize.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
     finalize.set_defaults(func=ds_close)
 
@@ -216,6 +222,14 @@ def cli():
     get.add_argument('--link', type=str, default=None,
                      help='Create a soft link (not supported on Windows) to a '
                           'read-only cached folder containing the dataset')
+    get.add_argument('--part', type=int, default=None,
+                     help='Retrieve a partial copy of the dataset. '
+                          'Part number (0 to `num-parts`-1) of total parts --num-parts.')
+    get.add_argument('--num-parts', type=int, default=None,
+                     help='Total number of parts to divide the dataset to. '
+                          'Notice minimum retrieved part is a single chunk in a dataset (or its parents).'
+                          'Example: Dataset gen4, with 3 parents, each with a single chunk, '
+                          'can be divided into 4 parts')
     get.add_argument('--overwrite', action='store_true', default=False, help='If True, overwrite the target folder')
     get.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
     get.set_defaults(func=ds_get)
@@ -274,7 +288,7 @@ def ds_get(args):
                 pass
     if args.copy:
         ds_folder = args.copy
-        ds.get_mutable_local_copy(target_folder=ds_folder)
+        ds.get_mutable_local_copy(target_folder=ds_folder, part=args.part, num_parts=args.num_parts)
     else:
         if args.link:
             Path(args.link).mkdir(parents=True, exist_ok=True)
@@ -286,7 +300,7 @@ def ds_get(args):
                     Path(args.link).unlink()
                 except Exception:
                     raise ValueError("Target directory {} is not empty. Use --overwrite.".format(args.link))
-        ds_folder = ds.get_local_copy()
+        ds_folder = ds.get_local_copy(part=args.part, num_parts=args.num_parts)
         if args.link:
             os.symlink(ds_folder, args.link)
             ds_folder = args.link
@@ -372,7 +386,10 @@ def ds_close(args):
             raise ValueError("Pending uploads, cannot finalize dataset. run `clearml-data upload`")
         # upload the files
         print("Pending uploads, starting dataset upload to {}".format(args.storage or ds.get_default_storage()))
-        ds.upload(show_progress=True, verbose=args.verbose, output_url=args.storage or None)
+        ds.upload(show_progress=True,
+                  verbose=args.verbose,
+                  output_url=args.storage or None,
+                  chunk_size=args.chunk_size or -1,)
 
     ds.finalize()
     print('Dataset closed and finalized')
@@ -399,7 +416,7 @@ def ds_upload(args):
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
-    ds.upload(verbose=args.verbose, output_url=args.storage or None)
+    ds.upload(verbose=args.verbose, output_url=args.storage or None, chunk_size=args.chunk_size or -1)
     print('Dataset upload completed')
     return 0
 
@@ -443,7 +460,10 @@ def ds_sync(args):
         if ds.is_dirty():
             # upload the files
             print("Pending uploads, starting dataset upload to {}".format(args.storage or ds.get_default_storage()))
-            ds.upload(show_progress=True, verbose=args.verbose, output_url=args.storage or None)
+            ds.upload(show_progress=True,
+                      verbose=args.verbose,
+                      output_url=args.storage or None,
+                      chunk_size=args.chunk_size or -1, )
 
         ds.finalize()
         print('Dataset closed and finalized')

@@ -1943,7 +1943,7 @@ class PipelineDecorator(PipelineController):
             task_type=None,  # type: Optional[str]
             repo=None,  # type: Optional[str]
             repo_branch=None,  # type: Optional[str]
-            repo_commit=None,  # type: Optional[str]
+            repo_commit=None  # type: Optional[str]
     ):
         # type: (...) -> Callable
         """
@@ -2130,7 +2130,7 @@ class PipelineDecorator(PipelineController):
             pool_frequency=0.2,  # type: float
             add_pipeline_tags=False,  # type: bool
             target_project=None,  # type: Optional[str]
-            pipeline_execution_queue='services',  # type: Optional[str]
+            pipeline_execution_queue='services'  # type: Optional[str]
     ):
         # type: (...) -> Callable
         """

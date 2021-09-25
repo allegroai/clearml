@@ -357,7 +357,7 @@ class Task(_Task):
                auto_connect_frameworks={
                    'matplotlib': True, 'tensorflow': True, 'tensorboard': True, 'pytorch': True,
                    'xgboost': True, 'scikit': True, 'fastai': True, 'lightgbm': True,
-                   'hydra': True, 'detect_repository': True, 'tfdefines': True,
+                   'hydra': True, 'detect_repository': True, 'tfdefines': True, 'joblib': True,
                }
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
@@ -545,7 +545,9 @@ class Task(_Task):
                 is_auto_connect_frameworks_bool = not isinstance(auto_connect_frameworks, dict)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('hydra', True):
                     PatchHydra.update_current_task(task)
-                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('scikit', True):
+                if is_auto_connect_frameworks_bool or (
+                        auto_connect_frameworks.get('scikit', True) and
+                        auto_connect_frameworks.get('joblib', True)):
                     PatchedJoblib.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('matplotlib', True):
                     PatchedMatplotlib.update_current_task(Task.__main_task)

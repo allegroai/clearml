@@ -461,6 +461,7 @@ class CreateFromFunction(object):
     kwargs_section = 'kwargs'
     input_artifact_section = 'kwargs_artifacts'
     task_template = """from clearml import Task
+from clearml.automation.controller import PipelineDecorator
 
 
 {function_source}
@@ -504,8 +505,10 @@ if __name__ == '__main__':
             docker_args=None,  # type: Optional[str]
             docker_bash_setup_script=None,  # type: Optional[str]
             output_uri=None,  # type: Optional[str]
+            helper_functions=None,  # type: Optional[Sequence[Callable]]
             dry_run=False,  # type: bool
             _sanitize_function=None,  # type: Optional[Callable[[str], str]]
+            _sanitize_helper_functions=None,  # type: Optional[Callable[[str], str]]
     ):
         # type: (...) -> Optional[Dict, Task]
         """
@@ -558,14 +561,25 @@ if __name__ == '__main__':
             inside the docker before setting up the Task's environment
         :param output_uri: Optional, set the Tasks's output_uri (Storage destination).
             examples: 's3://bucket/folder', 'https://server/' , 'gs://bucket/folder', 'azure://bucket', '/folder/'
+        :param helper_functions: Optional, a list of helper functions to make available
+            for the standalone function Task.
         :param dry_run: If True do not create the Task, but return a dict of the Task's definitions
         :param _sanitize_function: Sanitization function for the function string.
+        :param _sanitize_helper_functions: Sanitization function for the helper function string.
         :return: Newly created Task object
         """
         function_name = str(a_function.__name__)
         function_source = inspect.getsource(a_function)
         if _sanitize_function:
             function_source = _sanitize_function(function_source)
+        function_source = cls.__sanitize_remove_type_hints(function_source)
+
+        # add helper functions on top.
+        for f in (helper_functions or []):
+            f_source = inspect.getsource(f)
+            if _sanitize_helper_functions:
+                f_source = _sanitize_helper_functions(f_source)
+            function_source = cls.__sanitize_remove_type_hints(f_source) + '\n\n' + function_source
 
         function_input_artifacts = function_input_artifacts or dict()
         # verify artifact kwargs:
@@ -660,3 +674,36 @@ if __name__ == '__main__':
                 task.set_parameters(hyper_parameters)
 
             return task
+
+    @staticmethod
+    def __sanitize_remove_type_hints(function_source):
+        # type: (str) -> str
+        try:
+            import ast
+            from ...utilities.lowlevel.astor_unparse import unparse
+        except ImportError:
+            return function_source
+
+        # noinspection PyBroadException
+        try:
+            class TypeHintRemover(ast.NodeTransformer):
+
+                def visit_FunctionDef(self, node):
+                    # remove the return type definition
+                    node.returns = None
+                    # remove all argument annotations
+                    if node.args.args:
+                        for arg in node.args.args:
+                            arg.annotation = None
+                    return node
+
+            # parse the source code into an AST
+            parsed_source = ast.parse(function_source)
+            # remove all type annotations, function return type definitions
+            # and import statements from 'typing'
+            transformed = TypeHintRemover().visit(parsed_source)
+            # convert the AST back to source code
+            return unparse(transformed).lstrip('\n')
+        except Exception:
+            # just in case we failed parsing.
+            return function_source

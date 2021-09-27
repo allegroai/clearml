@@ -2,16 +2,17 @@ import functools
 import inspect
 import json
 import re
-from copy import copy
+from copy import copy, deepcopy
 from datetime import datetime
 from logging import getLogger
 from threading import Thread, Event, RLock
 from time import time
-from typing import Sequence, Optional, Mapping, Callable, Any, List, Dict, Union
+from typing import Sequence, Optional, Mapping, Callable, Any, List, Dict, Union, Tuple
 
 from attr import attrib, attrs
 
-from .job import LocalClearmlJob
+from .job import LocalClearmlJob, RunningJob
+from .. import Logger
 from ..automation import ClearmlJob
 from ..backend_interface.task.populate import CreateFromFunction
 from ..backend_interface.util import get_or_create_project, exact_match_regex
@@ -38,6 +39,8 @@ class PipelineController(object):
     _reserved_pipeline_names = (_pipeline_step_ref, )
     _task_project_lookup = {}
     _clearml_job_class = ClearmlJob
+    _update_execution_plot_interval = 5.*60
+    _monitor_node_interval = 5.*60
 
     @attrs
     class Node(object):
@@ -55,6 +58,23 @@ class PipelineController(object):
         skip_job = attrib(type=bool, default=False)  # if True, this step should be skipped
         cache_executed_step = attrib(type=bool, default=False)  # if True this pipeline step should be cached
         return_artifacts = attrib(type=list, default=[])  # List of artifact names returned by the step
+        monitor_metrics = attrib(type=list, default=[])  # List of metric title/series to monitor
+        monitor_artifacts = attrib(type=list, default=[])  # List of artifact names to monitor
+        monitor_models = attrib(type=list, default=[])  # List of models to monitor
+
+        def copy(self):
+            # type: () -> PipelineController.Node
+            """
+            return a copy of the current Node, excluding the `job`, `executed`, fields
+            :return: new Node copy
+            """
+            new_copy = PipelineController.Node(
+                name=self.name,
+                **dict((k, deepcopy(v)) for k, v in self.__dict__.items()
+                       if k not in ('name', 'job', 'executed', 'task_factory_func'))
+            )
+            new_copy.task_factory_func = self.task_factory_func
+            return new_copy
 
     def __init__(
             self,
@@ -108,6 +128,7 @@ class PipelineController(object):
         self._reporting_lock = RLock()
         self._pipeline_task_status_failed = None
         self._auto_version_bump = bool(auto_version_bump)
+        self._mock_execution = False  # used for nested pipelines (eager execution)
         if not self._task:
             self._task = Task.init(
                 project_name=project or 'Pipelines',
@@ -123,6 +144,8 @@ class PipelineController(object):
         # make sure we add to the main Task the pipeline tag
         if self._task:
             self._task.add_tags([self._tag])
+
+        self._monitored_nodes = {}  # type: Dict[str, dict]
 
     def set_default_execution_queue(self, default_execution_queue):
         # type: (Optional[str]) -> None
@@ -151,6 +174,9 @@ class PipelineController(object):
             parameter_override=None,  # type: Optional[Mapping[str, Any]]
             task_overrides=None,  # type: Optional[Mapping[str, Any]]
             execution_queue=None,  # type: Optional[str]
+            monitor_metrics=None,  # type: Optional[List[Union[Tuple[str, str], Tuple[(str, str), (str, str)]]]]
+            monitor_artifacts=None,  # type: Optional[List[Union[str, Tuple[str, str]]]]
+            monitor_models=None,  # type: Optional[List[Union[str, Tuple[str, str]]]]
             time_limit=None,  # type: Optional[float]
             base_task_project=None,  # type: Optional[str]
             base_task_name=None,  # type: Optional[str]
@@ -193,6 +219,27 @@ class PipelineController(object):
                 parameter_override={'container.image': '${stage1.container.image}' }
         :param execution_queue: Optional, the queue to use for executing this specific step.
             If not provided, the task will be sent to the default execution queue, as defined on the class
+        :param monitor_metrics: Optional, log the step's metrics on the pipeline Task.
+            Format is a list of pairs metric (title, series) to log:
+                [(step_metric_title, step_metric_series), ]
+                Example: [('test', 'accuracy'), ]
+            Or a list of tuple pairs, to specify a different target metric for to use on the pipeline Task:
+                [((step_metric_title, step_metric_series), (target_metric_title, target_metric_series)), ]
+                Example: [[('test', 'accuracy'), ('model', 'accuracy')], ]
+        :param monitor_artifacts: Optional, log the step's artifacts on the pipeline Task.
+            Provided a list of artifact names existing on the step's Task, they will also appear on the Pipeline itself.
+            Example: [('processed_data', 'final_processed_data'), ]
+            Alternatively user can also provide a list of artifacts to monitor
+            (target artifact name will be the same as original artifact name)
+            Example: ['processed_data', ]
+        :param monitor_models: Optional, log the step's output models on the pipeline Task.
+            Provided a list of model names existing on the step's Task, they will also appear on the Pipeline itself.
+            Example: [('model_weights', 'final_model_weights'), ]
+            Alternatively user can also provide a list of models to monitor
+            (target models name will be the same as original model)
+            Example: ['model_weights', ]
+            To select the latest (lexicographic) model use "model_*", or the last created model with just "*"
+            Example:  ['model_weights_*', ]
         :param time_limit: Default None, no time limit.
             Step execution time limit, if exceeded the Task is aborted and the pipeline is stopped and marked failed.
         :param base_task_project: If base_task_id is not given,
@@ -288,6 +335,9 @@ class PipelineController(object):
             task_overrides=task_overrides,
             cache_executed_step=cache_executed_step,
             task_factory_func=base_task_factory,
+            monitor_metrics=monitor_metrics or [],
+            monitor_artifacts=monitor_artifacts or [],
+            monitor_models=monitor_models or [],
         )
 
         if self._task and not self._task.running_locally():
@@ -308,11 +358,15 @@ class PipelineController(object):
             repo=None,  # type: Optional[str]
             repo_branch=None,  # type: Optional[str]
             repo_commit=None,  # type: Optional[str]
+            helper_functions=None,  # type: Optional[Sequence[Callable]]
             docker=None,  # type: Optional[str]
             docker_args=None,  # type: Optional[str]
             docker_bash_setup_script=None,  # type: Optional[str]
             parents=None,  # type: Optional[Sequence[str]],
             execution_queue=None,  # type: Optional[str]
+            monitor_metrics=None,  # type: Optional[List[Union[Tuple[str, str], Tuple[(str, str), (str, str)]]]]
+            monitor_artifacts=None,  # type: Optional[List[Union[str, Tuple[str, str]]]]
+            monitor_models=None,  # type: Optional[List[Union[str, Tuple[str, str]]]]
             time_limit=None,  # type: Optional[float]
             pre_execute_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node, dict], bool]]  # noqa
             post_execute_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node], None]]  # noqa
@@ -368,6 +422,8 @@ class PipelineController(object):
             repo url and commit ID based on the locally cloned copy
         :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
         :param repo_commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
+        :param helper_functions: Optional, a list of helper functions to make available
+            for the standalone function Task.
         :param docker: Select the docker image to be executed in by the remote session
         :param docker_args: Add docker arguments, pass a single string
         :param docker_bash_setup_script: Add bash script to be executed
@@ -377,6 +433,27 @@ class PipelineController(object):
             have been executed successfully.
         :param execution_queue: Optional, the queue to use for executing this specific step.
             If not provided, the task will be sent to the default execution queue, as defined on the class
+        :param monitor_metrics: Optional, log the step's metrics on the pipeline Task.
+            Format is a list of pairs metric (title, series) to log:
+                [(step_metric_title, step_metric_series), ]
+                Example: [('test', 'accuracy'), ]
+            Or a list of tuple pairs, to specify a different target metric for to use on the pipeline Task:
+                [((step_metric_title, step_metric_series), (target_metric_title, target_metric_series)), ]
+                Example: [[('test', 'accuracy'), ('model', 'accuracy')], ]
+        :param monitor_artifacts: Optional, log the step's artifacts on the pipeline Task.
+            Provided a list of artifact names existing on the step's Task, they will also appear on the Pipeline itself.
+            Example: [('processed_data', 'final_processed_data'), ]
+            Alternatively user can also provide a list of artifacts to monitor
+            (target artifact name will be the same as original artifact name)
+            Example: ['processed_data', ]
+        :param monitor_models: Optional, log the step's output models on the pipeline Task.
+            Provided a list of model names existing on the step's Task, they will also appear on the Pipeline itself.
+            Example: [('model_weights', 'final_model_weights'), ]
+            Alternatively user can also provide a list of models to monitor
+            (target models name will be the same as original model)
+            Example: ['model_weights', ]
+            To select the latest (lexicographic) model use "model_*", or the last created model with just "*"
+            Example:  ['model_weights_*', ]
         :param time_limit: Default None, no time limit.
             Step execution time limit, if exceeded the Task is aborted and the pipeline is stopped and marked failed.
         :param pre_execute_callback: Callback function, called when the step (Task) is created
@@ -447,19 +524,31 @@ class PipelineController(object):
                  for k, v in function_input_artifacts.items()}
             )
 
-        if self._task.running_locally():
+        if self._mock_execution:
             project_name = project_name or self._target_project or self._task.get_project_name()
 
-            task_definition = self._create_task_from_function(docker, docker_args, docker_bash_setup_script, function,
-                                                              function_input_artifacts, function_kwargs,
-                                                              function_return, packages, project_name, task_name,
-                                                              task_type, repo, repo_branch, repo_commit)
+            task_definition = self._create_task_from_function(
+                docker, docker_args, docker_bash_setup_script, function,
+                function_input_artifacts, function_kwargs,
+                function_return, packages, project_name, task_name,
+                task_type, repo, repo_branch, repo_commit, helper_functions)
+
+        elif self._task.running_locally():
+            project_name = project_name or self._target_project or self._task.get_project_name()
+
+            task_definition = self._create_task_from_function(
+                docker, docker_args, docker_bash_setup_script, function,
+                function_input_artifacts, function_kwargs,
+                function_return, packages, project_name, task_name,
+                task_type, repo, repo_branch, repo_commit, helper_functions)
+            # update configuration with the task definitions
             # noinspection PyProtectedMember
             self._task._set_configuration(
                 name=name, config_type='json',
                 config_text=json.dumps(task_definition, indent=1)
             )
         else:
+            # load task definition from configuration
             # noinspection PyProtectedMember
             task_definition = json.loads(self._task._get_configuration_text(name=name))
 
@@ -481,37 +570,15 @@ class PipelineController(object):
             cache_executed_step=cache_executed_step,
             task_factory_func=_create_task,
             return_artifacts=function_return,
+            monitor_artifacts=monitor_artifacts,
+            monitor_metrics=monitor_metrics,
+            monitor_models=monitor_models,
         )
 
-        if self._task and not self._task.running_locally():
+        if self._task and not self._task.running_locally() and not self._mock_execution:
             self.update_execution_plot()
 
         return True
-
-    def _create_task_from_function(
-            self, docker, docker_args, docker_bash_setup_script,
-            function, function_input_artifacts, function_kwargs, function_return,
-            packages, project_name, task_name, task_type, repo, branch, commit
-    ):
-        task_definition = CreateFromFunction.create_task_from_function(
-            a_function=function,
-            function_kwargs=function_kwargs or None,
-            function_input_artifacts=function_input_artifacts,
-            function_return=function_return,
-            project_name=project_name,
-            task_name=task_name,
-            task_type=task_type,
-            repo=repo,
-            branch=branch,
-            commit=commit,
-            packages=packages,
-            docker=docker,
-            docker_args=docker_args,
-            docker_bash_setup_script=docker_bash_setup_script,
-            output_uri=None,
-            dry_run=True,
-        )
-        return task_definition
 
     def start(
             self,
@@ -522,7 +589,7 @@ class PipelineController(object):
     ):
         # type: (...) -> bool
         """
-                Start the current pipeline remotely (on the selected services queue)
+        Start the current pipeline remotely (on the selected services queue)
         The current process will be stopped if exit_process is True.
 
         :param queue: queue name to launch the pipeline on
@@ -610,6 +677,97 @@ class PipelineController(object):
         self.update_execution_plot()
 
         self._start(wait=True)
+
+    def create_draft(self):
+        # type: () -> None
+        """
+        Optional, manually create & serialize the Pipeline Task.
+        After calling Pipeline.create(), users can edit the pipeline in the UI and enqueue it for execution.
+
+        Notice: this function should be used to programmatically create pipeline for later usage.
+        To automatically create and launch pipelines, call the `start()` method.
+        """
+        self._verify()
+        self._serialize_pipeline_task()
+        self._task.close()
+        self._task.reset()
+
+    @classmethod
+    def get_logger(cls):
+        # type: () -> Logger
+        """
+        Return a logger connected to the Pipeline Task.
+        The logger can be used by any function/tasks executed by the pipeline, in order to report
+        directly to the pipeline Task itself. It can also be called from the main pipeline control Task.
+
+        Raise ValueError if main Pipeline task could not be located.
+
+        :return: Logger object for reporting metrics (scalars, plots, debug samples etc.)
+        """
+        return cls._get_pipeline_task().get_logger()
+
+    @classmethod
+    def upload_artifact(
+        cls,
+        name,  # type: str
+        artifact_object,  # type: Any
+        metadata=None,  # type: Optional[Mapping]
+        delete_after_upload=False,  # type: bool
+        auto_pickle=True,  # type: bool
+        preview=None,  # type: Any
+        wait_on_upload=False,  # type: bool
+    ):
+        # type: (...) -> bool
+        """
+        Upload (add) an artifact to the main Pipeline Task object.
+
+        The artifact can be uploaded by any function/tasks executed by the pipeline, in order to report
+        directly to the pipeline Task itself. It can also be called from the main pipeline control Task.
+
+        Raise ValueError if main Pipeline task could not be located.
+
+        The currently supported upload artifact types include:
+        - string / Path - A path to artifact file. If a wildcard or a folder is specified, then ClearML
+          creates and uploads a ZIP file.
+        - dict - ClearML stores a dictionary as ``.json`` file and uploads it.
+        - pandas.DataFrame - ClearML stores a pandas.DataFrame as ``.csv.gz`` (compressed CSV) file and uploads it.
+        - numpy.ndarray - ClearML stores a numpy.ndarray as ``.npz`` file and uploads it.
+        - PIL.Image - ClearML stores a PIL.Image as ``.png`` file and uploads it.
+        - Any - If called with auto_pickle=True, the object will be pickled and uploaded.
+
+        :param str name: The artifact name.
+
+            .. warning::
+               If an artifact with the same name was previously uploaded, then it is overwritten.
+
+        :param object artifact_object:  The artifact object.
+        :param dict metadata: A dictionary of key-value pairs for any metadata. This dictionary appears with the
+            experiment in the **ClearML Web-App (UI)**, **ARTIFACTS** tab.
+        :param bool delete_after_upload: After the upload, delete the local copy of the artifact
+
+            - ``True`` - Delete the local copy of the artifact.
+            - ``False`` - Do not delete. (default)
+
+        :param bool auto_pickle: If True (default) and the artifact_object is not one of the following types:
+            pathlib2.Path, dict, pandas.DataFrame, numpy.ndarray, PIL.Image, url (string), local_file (string)
+            the artifact_object will be pickled and uploaded as pickle file artifact (with file extension .pkl)
+
+        :param Any preview: The artifact preview
+
+        :param bool wait_on_upload: Whether or not the upload should be synchronous, forcing the upload to complete
+            before continuing.
+
+        :return: The status of the upload.
+
+        - ``True`` - Upload succeeded.
+        - ``False`` - Upload failed.
+
+        :raise: If the artifact object type is not supported, raise a ``ValueError``.
+        """
+        task = cls._get_pipeline_task()
+        return task.upload_artifact(
+            name=name, artifact_object=artifact_object, metadata=metadata, delete_after_upload=delete_after_upload,
+            auto_pickle=auto_pickle, preview=preview, wait_on_upload=wait_on_upload)
 
     def stop(self, timeout=None):
         # type: (Optional[float]) -> ()
@@ -732,6 +890,8 @@ class PipelineController(object):
         """
         with self._reporting_lock:
             self._update_execution_plot()
+        # also trigger node monitor scanning
+        self._scan_monitored_nodes()
 
     def add_parameter(self, name, default=None, description=None):
         # type: (str, Optional[Any], Optional[str]) -> None
@@ -757,6 +917,32 @@ class PipelineController(object):
         :return: Dictionary str -> str
         """
         return self._pipeline_args
+
+    def _create_task_from_function(
+            self, docker, docker_args, docker_bash_setup_script,
+            function, function_input_artifacts, function_kwargs, function_return,
+            packages, project_name, task_name, task_type, repo, branch, commit, helper_functions
+    ):
+        task_definition = CreateFromFunction.create_task_from_function(
+            a_function=function,
+            function_kwargs=function_kwargs or None,
+            function_input_artifacts=function_input_artifacts,
+            function_return=function_return,
+            project_name=project_name,
+            task_name=task_name,
+            task_type=task_type,
+            repo=repo,
+            branch=branch,
+            commit=commit,
+            packages=packages,
+            docker=docker,
+            docker_args=docker_args,
+            docker_bash_setup_script=docker_bash_setup_script,
+            output_uri=None,
+            helper_functions=helper_functions,
+            dry_run=True,
+        )
+        return task_definition
 
     def _start(
             self,
@@ -837,7 +1023,7 @@ class PipelineController(object):
         self._deserialize(pipeline_dag)
         # if we continue the pipeline, make sure that we re-execute failed tasks
         if params['_continue_pipeline_']:
-            for node in self._nodes.values():
+            for node in list(self._nodes.values()):
                 if node.executed is False:
                     node.executed = None
         if not self._verify():
@@ -943,7 +1129,7 @@ class PipelineController(object):
                     only_fields=['id', 'hyperparams', 'runtime'],
                 )
                 found_match_version = False
-                existing_versions = set([self._version])
+                existing_versions = set([self._version])  # noqa
                 for t in existing_tasks:
                     if not t.hyperparams:
                         continue
@@ -990,7 +1176,7 @@ class PipelineController(object):
         """
         dag = {name: dict((k, v) for k, v in node.__dict__.items()
                           if k not in ('job', 'name', 'task_factory_func'))
-               for name, node in self._nodes.items()}
+               for name, node in list(self._nodes.items())}
 
         return dag
 
@@ -1003,7 +1189,7 @@ class PipelineController(object):
         """
 
         # if we do not clone the Task, only merge the parts we can override.
-        for name in self._nodes:
+        for name in list(self._nodes.keys()):
             if not self._nodes[name].clone_task and name in dag_dict and not dag_dict[name].get('clone_task'):
                 for k in ('queue', 'parents', 'timeout', 'parameters', 'task_overrides'):
                     setattr(self._nodes[name], k, dag_dict[name].get(k) or type(getattr(self._nodes[name], k))())
@@ -1034,7 +1220,7 @@ class PipelineController(object):
         :return: return True iff DAG has no errors
         """
         # verify nodes
-        for node in self._nodes.values():
+        for node in list(self._nodes.values()):
             # raise value error if not verified
             self._verify_node(node)
 
@@ -1084,6 +1270,43 @@ class PipelineController(object):
                 'Node "{}" missing parent reference, adding: {}'.format(node.name, parents))
             node.parents = (node.parents or []) + list(parents)
 
+        # verify and fix monitoring sections:
+        def _verify_monitors(monitors, monitor_type, nested_pairs=False):
+            if not monitors:
+                return monitors
+
+            if nested_pairs:
+                if not all(isinstance(x, (list, tuple)) and x for x in monitors):
+                    raise ValueError("{} should be a list of tuples, found: {}".format(monitor_type, monitors))
+                # convert single pair into a pair of pairs:
+                conformed_monitors = [
+                    pair if isinstance(pair[0], (list, tuple)) else (pair, pair) for pair in monitors
+                ]
+                # verify pair of pairs
+                if not all(isinstance(x[0][0], str) and isinstance(x[0][1], str) and
+                           isinstance(x[1][0], str) and isinstance(x[1][1], str) for x in conformed_monitors):
+                    raise ValueError("{} should be a list of tuples, found: {}".format(monitor_type, monitors))
+            else:
+                # verify a list of tuples
+                if not all(isinstance(x, (list, tuple, str)) and x for x in monitors):
+                    raise ValueError(
+                        "{} should be a list of tuples, found: {}".format(monitor_type, monitors))
+                # convert single str into a pair of pairs:
+                conformed_monitors = [
+                    pair if isinstance(pair, (list, tuple)) else (pair, pair) for pair in monitors
+                ]
+                # verify pair of pairs
+                if not all(isinstance(x[0], str) and isinstance(x[1], str) for x in conformed_monitors):
+                    raise ValueError(
+                        "{} should be a list of tuples, found: {}".format(monitor_type, monitors))
+
+            return conformed_monitors
+
+        # verify and fix monitoring sections:
+        node.monitor_metrics = _verify_monitors(node.monitor_metrics, 'monitor_metrics', nested_pairs=True)
+        node.monitor_artifacts = _verify_monitors(node.monitor_artifacts, 'monitor_artifacts')
+        node.monitor_models = _verify_monitors(node.monitor_models, 'monitor_models')
+
         return True
 
     def _verify_dag(self):
@@ -1095,7 +1318,7 @@ class PipelineController(object):
         prev_visited = None
         while prev_visited != visited:
             prev_visited = copy(visited)
-            for k, node in self._nodes.items():
+            for k, node in list(self._nodes.items()):
                 if k in visited:
                     continue
                 if any(p == node.name for p in node.parents or []):
@@ -1212,7 +1435,10 @@ class PipelineController(object):
                 visited.append(node.name)
                 idx = len(visited) - 1
                 parents = [visited.index(p) for p in node.parents or []]
-                node_params.append(node.job.task_parameter_override if node.job else node.parameters) or {}
+                node_params.append(
+                    (node.job.task_parameter_override
+                     if node.job and node.job.task_parameter_override
+                     else node.parameters) or {})
                 # sankey_node['label'].append(node.name)
                 # sankey_node['customdata'].append(
                 #     '<br />'.join('{}: {}'.format(k, v) for k, v in (node.parameters or {}).items()))
@@ -1299,7 +1525,7 @@ class PipelineController(object):
         table_values = [["Pipeline Step", "Task ID", "Task Name", "Status", "Parameters"]]
 
         for name, param in zip(visited, node_params):
-            param_str = str(param)
+            param_str = str(param) if param else ''
             if len(param_str) > 3:
                 # remove {} from string
                 param_str = param_str[1:-1]
@@ -1342,6 +1568,8 @@ class PipelineController(object):
         elif node.job:
             if node.job.is_pending():
                 return "#bdf5bd"  # lightgreen, pending in queue
+            elif node.job.is_completed():
+                return "blue"  # completed job
             else:
                 return "green"  # running job
         elif node.skip_job:
@@ -1365,7 +1593,7 @@ class PipelineController(object):
         """
         pooling_counter = 0
         launched_nodes = set()
-        last_plot_report = time()
+        last_monitor_report = last_plot_report = time()
         while self._stop_event:
             # stop request
             if self._stop_event.wait(self._pool_frequency if pooling_counter else 0.01):
@@ -1408,9 +1636,13 @@ class PipelineController(object):
             # nothing changed, we can sleep
             if not completed_jobs and self._running_nodes:
                 # force updating the pipeline state (plot) at least every 5 min.
-                if force_execution_plot_update or time()-last_plot_report > 5.*60:
+                if force_execution_plot_update or time()-last_plot_report > self._update_execution_plot_interval:
                     last_plot_report = time()
+                    last_monitor_report = time()
                     self.update_execution_plot()
+                elif time()-last_monitor_report > self._monitor_node_interval:
+                    last_monitor_report = time()
+                    self._scan_monitored_nodes()
                 continue
 
             # callback on completed jobs
@@ -1426,7 +1658,7 @@ class PipelineController(object):
 
             # Pull the next jobs in the pipeline, based on the completed list
             next_nodes = []
-            for node in self._nodes.values():
+            for node in list(self._nodes.values()):
                 # check if already processed or needs to be skipped
                 if node.job or node.executed or node.skip_job:
                     continue
@@ -1461,7 +1693,7 @@ class PipelineController(object):
                 break
 
         # stop all currently running jobs:
-        for node in self._nodes.values():
+        for node in list(self._nodes.values()):
             if node.executed is False:
                 self._pipeline_task_status_failed = True
             if node.job and node.executed and not node.job.is_stopped():
@@ -1516,6 +1748,129 @@ class PipelineController(object):
             raise ValueError('Node named \'{}\' already exists in the pipeline dag'.format(name))
         if name in self._reserved_pipeline_names:
             raise ValueError('Node named \'{}\' is a reserved keyword, use a different name'.format(name))
+
+    def _scan_monitored_nodes(self):
+        # type: () -> None
+        """
+        Scan all nodes and monitor their metrics/artifacts/models
+        """
+        for node in list(self._nodes.values()):
+            self._monitor_node(node)
+
+    def _monitor_node(self, node):
+        # type: (PipelineController.Node) -> None
+        """
+        If Node is running, put the metrics from the node on the pipeline itself.
+        :param node: Node to test
+        """
+        if not node:
+            return
+
+        # verify we have the node
+        if node.name not in self._monitored_nodes:
+            self._monitored_nodes[node.name] = {}
+
+        # if we are done with this node, skip it
+        if self._monitored_nodes[node.name].get('completed'):
+            return
+
+        if node.job and node.job.task:
+            task = node.job.task
+        elif node.job and node.executed and isinstance(node.executed, str):
+            task = Task.get_task(task_id=node.executed)
+        else:
+            return
+
+        # update the metrics
+        if node.monitor_metrics:
+            metrics_state = self._monitored_nodes[node.name].get('metrics', {})
+            logger = self._task.get_logger()
+            scalars = task.get_reported_scalars(x_axis='iter')
+            for (s_title, s_series), (t_title, t_series) in node.monitor_metrics:
+                values = scalars.get(s_title, {}).get(s_series)
+                if values and values.get('x') is not None and values.get('y') is not None:
+                    x = values['x'][-1]
+                    y = values['y'][-1]
+                    last_y = metrics_state.get(s_title, {}).get(s_series)
+                    if last_y is None or y > last_y:
+                        logger.report_scalar(title=t_title, series=t_series, value=y, iteration=int(x))
+                        last_y = y
+                    if not metrics_state.get(s_title):
+                        metrics_state[s_title] = {}
+                    metrics_state[s_title][s_series] = last_y
+
+            self._monitored_nodes[node.name]['metrics'] = metrics_state
+
+        if node.monitor_artifacts:
+            task.reload()
+            artifacts = task.data.execution.artifacts
+            self._task.reload()
+            output_artifacts = []
+            for s_artifact, t_artifact in node.monitor_artifacts:
+                # find artifact
+                for a in artifacts:
+                    if a.key != s_artifact:
+                        continue
+
+                    new_a = copy(a)
+                    new_a.key = t_artifact
+                    output_artifacts.append(new_a)
+                    break
+
+            # update artifacts directly on the Task
+            if output_artifacts:
+                # noinspection PyProtectedMember
+                self._task._add_artifacts(output_artifacts)
+
+        if node.monitor_models:
+            task.reload()
+            output_models = task.data.models.output
+            self._task.reload()
+            target_models = []
+            for s_model, t_model in node.monitor_models:
+                # find artifact
+                for a in output_models:
+                    if a.name != s_model:
+                        continue
+
+                    new_a = copy(a)
+                    new_a.name = t_model
+                    target_models.append(new_a)
+                    break
+
+            # update artifacts directly on the Task
+            if target_models:
+                self._task.reload()
+                models = self._task.data.models
+                keys = [a.name for a in models.output]
+                models.output = [a for a in models.output or [] if a.name not in keys] + target_models
+                # noinspection PyProtectedMember
+                self._task._edit(models=models)
+
+        # update the state (so that we do not scan the node twice)
+        if node.job.is_stopped():
+            self._monitored_nodes[node.name]['completed'] = True
+
+    @classmethod
+    def _get_pipeline_task(cls):
+        # type: () -> Task
+        """
+        Return the pipeline Task (either the current one, or the parent Task of the currently running Task)
+        Raise ValueError if we could not locate the pipeline Task
+
+        :return: Pipeline Task
+        """
+        # get main Task.
+        task = Task.current_task()
+        if str(task.task_type) == str(Task.TaskTypes.controller) and cls._tag in task.get_system_tags():
+            return task
+        # get the parent Task, it should be the pipeline
+        if not task.parent:
+            raise ValueError("Could not locate parent Pipeline Task")
+        parent = Task.get_task(task_id=task.parent)
+        if str(parent.task_type) == str(Task.TaskTypes.controller) and cls._tag in parent.get_system_tags():
+            return parent
+        raise ValueError("Could not locate parent Pipeline Task")
 
     def __verify_step_reference(self, node, step_ref_string):
         # type: (PipelineController.Node, str) -> Optional[str]
@@ -1717,6 +2072,8 @@ class PipelineController(object):
 class PipelineDecorator(PipelineController):
     _added_decorator = []  # type: List[dict]
     _singleton = None  # type: Optional[PipelineDecorator]
+    _eager_step_artifact = 'eager_step'
+    _eager_execution_instance = False
     _debug_execute_step_process = False
     _debug_execute_step_function = False
     _default_execution_queue = None
@@ -1751,6 +2108,11 @@ class PipelineDecorator(PipelineController):
             add_pipeline_tags=add_pipeline_tags,
             target_project=target_project,
         )
+
+        # if we are in eager execution, make sure parent class knows it
+        if self._eager_execution_instance:
+            self._mock_execution = True
+
         if PipelineDecorator._default_execution_queue:
             super(PipelineDecorator, self).set_default_execution_queue(
                 PipelineDecorator._default_execution_queue)
@@ -1760,6 +2122,8 @@ class PipelineDecorator(PipelineController):
         self._added_decorator.clear()
         PipelineDecorator._singleton = self
         self._reference_callback = []
+        # map eager steps task id to the new step name
+        self._eager_steps_task_id = {}  # type: Dict[str, str]
 
     def _daemon(self):
         # type: () -> ()
@@ -1771,7 +2135,7 @@ class PipelineDecorator(PipelineController):
         """
         pooling_counter = 0
         launched_nodes = set()
-        last_plot_report = time()
+        last_monitor_report = last_plot_report = time()
         while self._stop_event:
             # stop request
             if self._stop_event.wait(self._pool_frequency if pooling_counter else 0.01):
@@ -1814,9 +2178,13 @@ class PipelineDecorator(PipelineController):
             # nothing changed, we can sleep
             if not completed_jobs and self._running_nodes:
                 # force updating the pipeline state (plot) at least every 5 min.
-                if force_execution_plot_update or time()-last_plot_report > 5.*60:
+                if force_execution_plot_update or time()-last_plot_report > self._update_execution_plot_interval:
                     last_plot_report = time()
+                    last_monitor_report = time()
                     self.update_execution_plot()
+                elif time()-last_monitor_report > self._monitor_node_interval:
+                    last_monitor_report = time()
+                    self._scan_monitored_nodes()
                 continue
 
             # callback on completed jobs
@@ -1836,8 +2204,8 @@ class PipelineDecorator(PipelineController):
             # visualize pipeline state (plot)
             self.update_execution_plot()
 
-        # stop all currently running jobs:
-        for node in self._nodes.values():
+        # stop all currently running jobs, protect against changes while iterating):
+        for node in list(self._nodes.values()):
             if node.executed is False:
                 self._pipeline_task_status_failed = True
             if node.job and node.executed and not node.job.is_stopped():
@@ -1845,6 +2213,16 @@ class PipelineDecorator(PipelineController):
             elif not node.job and not node.executed:
                 # mark Node as skipped if it has no Job object and it is not executed
                 node.skip_job = True
+                # if this is a standalone node, we need to remove it from the graph
+                if not node.parents:
+                    # check if this node is anyone's parent
+                    found_parent = False
+                    for v in list(self._nodes.values()):
+                        if node.name in (v.parents or []):
+                            found_parent = True
+                            break
+                    if not found_parent:
+                        self._nodes.pop(node.name, None)
 
         # visualize pipeline state (plot)
         self.update_execution_plot()
@@ -1856,10 +2234,76 @@ class PipelineDecorator(PipelineController):
             except Exception:
                 pass
 
+    def update_execution_plot(self):
+        # type: () -> ()
+        """
+        Update sankey diagram of the current pipeline
+        """
+        self._update_eager_generated_steps()
+        super(PipelineDecorator, self).update_execution_plot()
+
+    def _update_eager_generated_steps(self):
+        # noinspection PyProtectedMember
+        self._task.reload()
+        artifacts = self._task.data.execution.artifacts
+        # check if we have a new step on the DAG
+        eager_artifacts = []
+        for a in artifacts:
+            if a.key and a.key.startswith('{}:'.format(self._eager_step_artifact)):
+                # expected value: '"eager_step":"parent-node-task-id":"eager-step-task-id'
+                eager_artifacts.append(a)
+
+        # verify we have the step, if we do not, add it.
+        delete_artifact_keys = []
+        for artifact in eager_artifacts:
+            _, parent_step_task_id, eager_step_task_id = artifact.key.split(':', 2)
+
+            # deserialize node definition
+            eager_node_def = json.loads(artifact.type_data.preview)
+            eager_node_name, eager_node_def = list(eager_node_def.items())[0]
+
+            # verify we do not have any new nodes on the DAG (i.e. a step generating a Node eagerly)
+            parent_node = None
+            for node in list(self._nodes.values()):
+                if not node.job and not node.executed:
+                    continue
+                t_id = node.executed or node.job.task_id
+                if t_id == parent_step_task_id:
+                    parent_node = node
+                    break
+
+            if not parent_node:
+                # should not happen
+                continue
+
+            new_step_node_name = '{}_{}'.format(parent_node.name, eager_node_name)
+            counter = 1
+            while new_step_node_name in self._nodes:
+                new_step_node_name = '{}_{}'.format(new_step_node_name, counter)
+                counter += 1
+
+            eager_node_def['name'] = new_step_node_name
+            eager_node_def['parents'] = [parent_node.name]
+            is_cached = eager_node_def.pop('is_cached', None)
+            self._nodes[new_step_node_name] = self.Node(**eager_node_def)
+            self._nodes[new_step_node_name].job = RunningJob(existing_task=eager_step_task_id)
+            if is_cached:
+                self._nodes[new_step_node_name].job.force_set_is_cached(is_cached)
+
+            # make sure we will not rescan it.
+            delete_artifact_keys.append(artifact.key)
+
+        # remove all processed eager step artifacts
+        if delete_artifact_keys:
+            # noinspection PyProtectedMember
+            self._task._delete_artifacts(delete_artifact_keys)
+            self._force_task_configuration_update()
+
     def _create_task_from_function(
             self, docker, docker_args, docker_bash_setup_script,
             function, function_input_artifacts, function_kwargs, function_return,
             packages, project_name, task_name, task_type, repo, branch, commit,
+            helper_functions,
     ):
         def sanitize(function_source):
             matched = re.match(r"[\s]*@PipelineDecorator.component[\s\\]*\(", function_source)
@@ -1896,6 +2340,7 @@ class PipelineDecorator(PipelineController):
             docker_args=docker_args,
             docker_bash_setup_script=docker_bash_setup_script,
             output_uri=None,
+            helper_functions=helper_functions,
             dry_run=True,
             _sanitize_function=sanitize,
         )
@@ -1903,8 +2348,8 @@ class PipelineDecorator(PipelineController):
 
     def _find_executed_node_leaves(self):
         # type: () -> List[PipelineController.Node]
-        all_parents = set([p for n in self._nodes.values() if n.executed for p in n.parents])
-        executed_leaves = [name for name, n in self._nodes.items() if n.executed and name not in all_parents]
+        all_parents = set([p for n in list(self._nodes.values()) if n.executed for p in n.parents])
+        executed_leaves = [name for name, n in list(self._nodes.items()) if n.executed and name not in all_parents]
         return executed_leaves
 
     def _adjust_task_hashing(self, task_hash):
@@ -1943,7 +2388,11 @@ class PipelineDecorator(PipelineController):
             task_type=None,  # type: Optional[str]
             repo=None,  # type: Optional[str]
             repo_branch=None,  # type: Optional[str]
-            repo_commit=None  # type: Optional[str]
+            repo_commit=None,  # type: Optional[str]
+            helper_functions=None,  # type: Optional[Sequence[Callable]]
+            monitor_metrics=None,  # type: Optional[List[Union[Tuple[str, str], Tuple[(str, str), (str, str)]]]]
+            monitor_artifacts=None,  # type: Optional[List[Union[str, Tuple[str, str]]]]
+            monitor_models=None,  # type: Optional[List[Union[str, Tuple[str, str]]]]
     ):
         # type: (...) -> Callable
         """
@@ -1981,6 +2430,29 @@ class PipelineDecorator(PipelineController):
             repo url and commit ID based on the locally cloned copy
         :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
         :param repo_commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
+        :param helper_functions: Optional, a list of helper functions to make available
+            for the standalone pipeline step function Task.
+        :param monitor_metrics: Optional, log the step's metrics on the pipeline Task.
+            Format is a list of pairs metric (title, series) to log:
+                [(step_metric_title, step_metric_series), ]
+                Example: [('test', 'accuracy'), ]
+            Or a list of tuple pairs, to specify a different target metric for to use on the pipeline Task:
+                [((step_metric_title, step_metric_series), (target_metric_title, target_metric_series)), ]
+                Example: [[('test', 'accuracy'), ('model', 'accuracy')], ]
+        :param monitor_artifacts: Optional, log the step's artifacts on the pipeline Task.
+            Provided a list of artifact names existing on the step's Task, they will also appear on the Pipeline itself.
+            Example: [('processed_data', 'final_processed_data'), ]
+            Alternatively user can also provide a list of artifacts to monitor
+            (target artifact name will be the same as original artifact name)
+            Example: ['processed_data', ]
+        :param monitor_models: Optional, log the step's output models on the pipeline Task.
+            Provided a list of model names existing on the step's Task, they will also appear on the Pipeline itself.
+            Example: [('model_weights', 'final_model_weights'), ]
+            Alternatively user can also provide a list of models to monitor
+            (target models name will be the same as original model)
+            Example: ['model_weights', ]
+            To select the latest (lexicographic) model use "model_*", or the last created model with just "*"
+            Example:  ['model_weights_*', ]
 
         :return: function wrapper
         """
@@ -2013,6 +2485,10 @@ class PipelineDecorator(PipelineController):
                 repo=repo,
                 repo_branch=repo_branch,
                 repo_commit=repo_commit,
+                helper_functions=helper_functions,
+                monitor_metrics=monitor_metrics,
+                monitor_models=monitor_models,
+                monitor_artifacts=monitor_artifacts,
             )
 
             if cls._singleton:
@@ -2055,7 +2531,52 @@ class PipelineDecorator(PipelineController):
                 )
                 kwargs = {k: v for k, v in kwargs.items() if not isinstance(v, LazyEvalWrapper)}
 
-                _node = cls._singleton._nodes[_name]
+                # check if we have the singleton
+                if not cls._singleton:
+                    # todo: somehow make sure the generated tasks list the parent pipeline as parent
+                    original_tags = Task.current_task().get_tags(), Task.current_task().get_system_tags()
+                    # This is an adhoc pipeline step,
+                    PipelineDecorator._eager_execution_instance = True
+                    a_pipeline = PipelineDecorator(
+                        name=name,
+                        project='DevOps',  # it will not actually be used
+                        version='0.0.0',
+                        pool_frequency=111,
+                        add_pipeline_tags=False,
+                        target_project=None,
+                    )
+
+                    target_queue = \
+                        PipelineDecorator._default_execution_queue or \
+                        Task.current_task().data.execution.queue
+                    if target_queue:
+                        PipelineDecorator.set_default_execution_queue(target_queue)
+                    else:
+                        # if we are are not running from a queue, we are probably in debug mode
+                        a_pipeline._clearml_job_class = LocalClearmlJob
+                        a_pipeline._default_execution_queue = 'mock'
+
+                    # restore tags, the pipeline might add a few
+                    Task.current_task().set_tags(original_tags[0])
+                    Task.current_task().set_system_tags(original_tags[1])
+
+                # get original node name
+                _node_name = _name
+                # get node
+                _node = cls._singleton._nodes[_node_name]
+
+                # if we already have a JOB on the node, this means we are calling the same function/task
+                # twice inside the pipeline, this means we need to replicate the node.
+                if _node.job:
+                    _node = _node.copy()
+                    # find a new name
+                    counter = 1
+                    while _node.name in cls._singleton._nodes:
+                        _node.name = '{}_{}'.format(_node_name, counter)
+                        counter += 1
+                    _node_name = _node.name
+                    cls._singleton._nodes[_node.name] = _node
+
                 # update artifacts kwargs
                 for k, v in kwargs_artifacts.items():
                     if k in kwargs:
@@ -2086,8 +2607,32 @@ class PipelineDecorator(PipelineController):
                             set((_node.parents or []) + cls._singleton._find_executed_node_leaves())
                             - set(list(_node.name)))
 
+                # verify the new step
                 cls._singleton._verify_node(_node)
+                # launch the new step
                 cls._singleton._launch_node(_node)
+                # check if we generated the pipeline we need to update the new eager step
+                if PipelineDecorator._eager_execution_instance and _node.job:
+                    # store the new generated node, so we can later serialize it
+                    pipeline_dag = cls._singleton._serialize()
+                    # check if node is cached
+                    if _node.job.is_cached_task():
+                        pipeline_dag[_node_name]['is_cached'] = True
+                    # store entire definition on the parent pipeline
+                    from clearml.backend_api.services import tasks
+                    artifact = tasks.Artifact(
+                        key='{}:{}:{}'.format(cls._eager_step_artifact, Task.current_task().id, _node.job.task_id()),
+                        type="json",
+                        mode='output',
+                        type_data=tasks.ArtifactTypeData(
+                            preview=json.dumps({_node_name: pipeline_dag[_node_name]}),
+                            content_type='application/pipeline')
+                    )
+                    req = tasks.AddOrUpdateArtifactsRequest(
+                        task=Task.current_task().parent, artifacts=[artifact], force=True)
+                    res = Task.current_task().send(req, raise_on_errors=False)
+                    if not res or not res.response or not res.response.updated:
+                        pass
 
                 def results_reference(return_name):
                     # wait until job is completed
@@ -2130,7 +2675,7 @@ class PipelineDecorator(PipelineController):
             pool_frequency=0.2,  # type: float
             add_pipeline_tags=False,  # type: bool
             target_project=None,  # type: Optional[str]
-            pipeline_execution_queue='services'  # type: Optional[str]
+            pipeline_execution_queue='services',  # type: Optional[str]
     ):
         # type: (...) -> Callable
         """
@@ -2212,6 +2757,16 @@ class PipelineDecorator(PipelineController):
                 # this time the pipeline is executed only on the remote machine
                 func(**pipeline_kwargs)
                 LazyEvalWrapper.trigger_all_remote_references()
+                # make sure we wait for all nodes to finish
+                waited = True
+                while waited:
+                    waited = False
+                    for node in list(a_pipeline._nodes.values()):
+                        if node.executed or not node.job or node.job.is_stopped():
+                            continue
+                        node.job.wait(pool_period=15)
+                        waited = True
+                # now we can stop the pipeline
                 a_pipeline.stop()
                 return
 

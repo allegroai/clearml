@@ -130,7 +130,7 @@ class Artifact(object):
         self._mode = artifact_api_object.mode
         self._url = artifact_api_object.uri
         self._hash = artifact_api_object.hash
-        self._timestamp = datetime.fromtimestamp(artifact_api_object.timestamp)
+        self._timestamp = datetime.fromtimestamp(artifact_api_object.timestamp or 0)
         self._metadata = dict(artifact_api_object.display_data) if artifact_api_object.display_data else {}
         self._preview = artifact_api_object.type_data.preview if artifact_api_object.type_data else None
         self._object = None

@@ -3,6 +3,7 @@ from argparse import ArgumentParser
 from pathlib2 import Path
 
 from clearml import Task
+from clearml.version import __version__
 from clearml.backend_interface.task.populate import CreateAndPopulate
 
 
@@ -12,7 +13,7 @@ def setup_parser(parser):
     parser.add_argument('--project', type=str, default=None,
                         help='Required: set the project name for the task. '
                              'If --base-task-id is used, this arguments is optional.')
-    parser.add_argument('--name', type=str, default=None, required=True,
+    parser.add_argument('--name', type=str, default=None,
                         help='Required: select a name for the remote task')
     parser.add_argument('--repo', type=str, default=None,
                         help='remote URL for the repository to use. '
@@ -56,6 +57,8 @@ def setup_parser(parser):
     parser.add_argument('--docker_bash_setup_script', type=str, default=None,
                         help="Add bash script to be executed inside the docker before setting up "
                              "the Task's environment")
+    parser.add_argument('--output-uri', type=str, default=None, required=False,
+                        help='Optional: set the Task `output_uri` (automatically upload model destination)')
     parser.add_argument('--task-type', type=str, default=None,
                         help='Set the Task type, optional values: '
                              'training, testing, inference, data_processing, application, monitor, '
@@ -78,9 +81,11 @@ def cli():
     args = parser.parse_args()
 
     if args.version:
-        from ...version import __version__
         print('Version {}'.format(__version__))
         exit(0)
+
+    if not args.name:
+        raise ValueError("Task name must be provided, use `--name <task-name>`")
 
     if args.docker_bash_setup_script and Path(args.docker_bash_setup_script).is_file():
         with open(args.docker_bash_setup_script, "r") as bash_setup_script_file:
@@ -105,6 +110,7 @@ def cli():
         docker=args.docker,
         docker_args=args.docker_args,
         docker_bash_setup_script=bash_setup_script,
+        output_uri=args.output_uri,
         base_task_id=args.base_task_id,
         add_task_init_call=not args.skip_task_init,
         raise_on_missing_entries=True,

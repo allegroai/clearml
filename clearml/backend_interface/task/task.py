@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import sys
+import warnings
 from copy import copy
 from datetime import datetime
 from enum import Enum
@@ -46,7 +47,7 @@ from ..util import (
     exact_match_regex, mutually_exclusive, )
 from ...config import (
     get_config_for_bucket, get_remote_task_id, TASK_ID_ENV_VAR,
-    running_remotely, get_cache_dir, DOCKER_IMAGE_ENV_VAR, get_offline_dir, get_log_to_backend, )
+    running_remotely, get_cache_dir, DOCKER_IMAGE_ENV_VAR, get_offline_dir, get_log_to_backend, deferred_config, )
 from ...debugging import get_logger
 from ...storage.helper import StorageHelper, StorageError
 from .access import AccessMixin
@@ -69,12 +70,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     _force_requirements = {}
     _ignore_requirements = set()
 
-    _store_diff = config.get('development.store_uncommitted_code_diff', False)
-    _store_remote_diff = config.get('development.store_code_diff_from_remote', False)
-    _report_subprocess_enabled = config.get('development.report_use_subprocess', sys.platform == 'linux')
-    _force_use_pip_freeze = \
-        config.get('development.detect_with_pip_freeze', False) or \
-        config.get('development.detect_with_conda_freeze', False)
+    _store_diff = deferred_config('development.store_uncommitted_code_diff', False)
+    _store_remote_diff = deferred_config('development.store_code_diff_from_remote', False)
+    _report_subprocess_enabled = deferred_config('development.report_use_subprocess', sys.platform == 'linux')
+    _force_use_pip_freeze = deferred_config(multi=[('development.detect_with_pip_freeze', False),
+                                                   ('development.detect_with_conda_freeze', False)])
     _offline_filename = 'task.json'
 
     class TaskTypes(Enum):
@@ -131,10 +131,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param log: Optional log to be used. If not provided, and internal log shared with all backend objects will be
             used instead.
         :type log: logging.Logger
-        :param project_name: Optional project name, used only if a new task is created. The new task will be associated
-            with a project by this name. If no such project exists, a new project will be created using the API.
+        :param project_name: Optional project name, minimum length of 3 characters, used only if a new task is created.
+            The new task will be associated with a project by this name. If no such project exists, a new project will
+            be created using the API.
         :type project_name: str
-        :param task_name: Optional task name, used only if a new task is created.
+        :param task_name: Optional task name, minimum length of 3 characters, used only if a new task is created.
         :type project_name: str
         :param task_type: Optional task type, used only if a new task is created. Default is training task.
         :type task_type: str (see tasks.TaskTypeEnum)
@@ -276,8 +277,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 entry_point_filename = None if config.get('development.force_analyze_entire_repo', False) else \
                     os.path.join(result.script['working_dir'], entry_point)
                 if self._force_use_pip_freeze:
-                    requirements, conda_requirements = pip_freeze(
-                        combine_conda_with_pip=config.get('development.detect_with_conda_freeze', True))
+                    if isinstance(self._force_use_pip_freeze, (str, Path)):
+                        conda_requirements = ''
+                        req_file = Path(self._force_use_pip_freeze)
+                        requirements = req_file.read_text() if req_file.is_file() else None
+                    else:
+                        requirements, conda_requirements = pip_freeze(
+                            combine_conda_with_pip=config.get('development.detect_with_conda_freeze', True))
                     requirements = '# Python ' + sys.version.replace('\n', ' ').replace('\r', ' ') + '\n\n'\
                                    + requirements
                 else:
@@ -302,12 +308,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def _auto_generate(self, project_name=None, task_name=None, task_type=TaskTypes.training):
         created_msg = make_message('Auto-generated at %(time)s UTC by %(user)s@%(host)s')
 
-        if task_type.value not in (self.TaskTypes.training, self.TaskTypes.testing) and \
+        if isinstance(task_type, self.TaskTypes):
+            task_type = task_type.value
+
+        if task_type not in (self.TaskTypes.training.value, self.TaskTypes.testing.value) and \
                 not Session.check_min_api_version('2.8'):
             print('WARNING: Changing task type to "{}" : '
                   'clearml-server does not support task type "{}", '
-                  'please upgrade clearml-server.'.format(self.TaskTypes.training, task_type.value))
-            task_type = self.TaskTypes.training
+                  'please upgrade clearml-server.'.format(self.TaskTypes.training, task_type))
+            task_type = self.TaskTypes.training.value
 
         project_id = None
         if project_name:
@@ -317,7 +326,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         extra_properties = {'system_tags': tags} if Session.check_min_api_version('2.3') else {'tags': tags}
         req = tasks.CreateRequest(
             name=task_name or make_message('Anonymous task (%(user)s@%(host)s %(time)s)'),
-            type=tasks.TaskTypeEnum(task_type.value),
+            type=tasks.TaskTypeEnum(task_type),
             comment=created_msg,
             project=project_id,
             input={'view': {}},
@@ -550,6 +559,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return self.send(tasks.StoppedRequest(self.id, force=force), ignore_errors=ignore_errors)
 
     def completed(self, ignore_errors=True):
+        # type: (bool) -> ()
+        """
+        .. note:: Deprecated, use mark_completed(...) instead
+        """
+        warnings.warn("'completed' is deprecated; use 'mark_completed' instead.", DeprecationWarning)
+        return self.mark_completed(ignore_errors=ignore_errors)
+
+    def mark_completed(self, ignore_errors=True):
         # type: (bool) -> ()
         """ The signal indicating that this Task completed. """
         if hasattr(tasks, 'CompletedRequest') and callable(tasks.CompletedRequest):
@@ -932,18 +949,26 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 return ""
 
             str_value = str(value)
-            if isinstance(value, (tuple, list, dict)) and 'None' in re.split(r'[ ,\[\]{}()]', str_value):
-                # If we have None in the string we have to use json to replace it with null,
-                # otherwise we end up with None as string when running remotely
-                try:
-                    str_json = json.dumps(value)
-                    # verify we actually have a null in the string, otherwise prefer the str cast
-                    # This is because we prefer to have \' as in str and not \" used in json
-                    if 'null' in re.split(r'[ ,\[\]{}()]', str_json):
+            if isinstance(value, (tuple, list, dict)):
+                if 'None' in re.split(r'[ ,\[\]{}()]', str_value):
+                    # If we have None in the string we have to use json to replace it with null,
+                    # otherwise we end up with None as string when running remotely
+                    try:
+                        str_json = json.dumps(value)
+                        # verify we actually have a null in the string, otherwise prefer the str cast
+                        # This is because we prefer to have \' as in str and not \" used in json
+                        if 'null' in re.split(r'[ ,\[\]{}()]', str_json):
+                            return str_json
+                    except TypeError:
+                        # if we somehow failed to json serialize, revert to previous std casting
+                        pass
+                elif any('\\' in str(v) for v in value):
+                    try:
+                        str_json = json.dumps(value)
                         return str_json
-                except TypeError:
-                    # if we somehow failed to json serialize, revert to previous std casting
-                    pass
+                    except TypeError:
+                        pass
+
             return str_value
 
         if not all(isinstance(x, (dict, Iterable)) for x in args):
@@ -1241,6 +1266,34 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 self._edit(execution=execution)
         return self.data.execution.artifacts or []
 
+    def _delete_artifacts(self, artifact_names):
+        # type: (Sequence[str]) -> bool
+        """
+        Delete a list of artifacts, by artifact name, from the Task.
+
+        :param list artifact_names: list of artifact names
+        :return: True if successful
+        """
+        if not Session.check_min_api_version('2.3'):
+            return False
+        if not isinstance(artifact_names, (list, tuple)):
+            raise ValueError('Expected artifact names as List[str]')
+
+        with self._edit_lock:
+            if Session.check_min_api_version("2.13") and not self._offline_mode:
+                req = tasks.DeleteArtifactsRequest(
+                    task=self.task_id, artifacts=[{"key": n, "mode": "output"} for n in artifact_names], force=True)
+                res = self.send(req, raise_on_errors=False)
+                if not res or not res.response or not res.response.deleted:
+                    return False
+                self.reload()
+            else:
+                self.reload()
+                execution = self.data.execution
+                execution.artifacts = [a for a in execution.artifacts or [] if a.key not in artifact_names]
+                self._edit(execution=execution)
+        return self.data.execution.artifacts or []
+
     def _set_model_design(self, design=None):
         # type: (str) -> ()
         with self._edit_lock:
@@ -1338,6 +1391,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def set_system_tags(self, tags):
         # type: (Sequence[str]) -> ()
         assert isinstance(tags, (list, tuple))
+        tags = list(set(tags))
         if Session.check_min_api_version('2.3'):
             self._set_task_property("system_tags", tags)
             self._edit(system_tags=self.data.system_tags)
@@ -1380,7 +1434,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if parent:
             assert isinstance(parent, (str, Task))
             if isinstance(parent, Task):
-                parent = parent.parent
+                parent = parent.id
             assert parent != self.id
         self._set_task_property("parent", str(parent) if parent else None)
         self._edit(parent=self.data.parent)
@@ -1585,6 +1639,19 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         return self._get_configuration_text(name)
 
+    def get_configuration_object_as_dict(self, name):
+        # type: (str) -> Optional[Union[dict, list]]
+        """
+        Get the Task's configuration object section as parsed dictionary
+        Parsing supports JSON and HOCON, otherwise parse manually with `get_configuration_object()`
+        Use only for automation (externally), otherwise use `Task.connect_configuration`.
+
+        :param str name: Configuration section name
+        :return: The Task's configuration as a parsed dict.
+            return None if configuration name is not valid
+        """
+        return self._get_configuration_dict(name)
+
     def get_configuration_objects(self):
         # type: () -> Optional[Mapping[str, str]]
         """
@@ -1602,10 +1669,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         configuration = self.data.configuration or {}
         return {k: v.value for k, v in configuration.items()}
 
-    def set_configuration_object(self, name, config_text=None, description=None, config_type=None):
-        # type: (str, Optional[str], Optional[str], Optional[str]) -> None
+    def set_configuration_object(self, name, config_text=None, description=None, config_type=None, config_dict=None):
+        # type: (str, Optional[str], Optional[str], Optional[str], Optional[Union[dict, list]]) -> None
         """
-        Set the Task's configuration object as a blob of text.
+        Set the Task's configuration object as a blob of text or automatically encoded dictionary/list.
         Use only for automation (externally), otherwise use `Task.connect_configuration`.
 
         :param str name: Configuration section name
@@ -1613,9 +1680,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             usually the content of a configuration file of a sort
         :param str description: Configuration section description
         :param str config_type: Optional configuration format type
+        :param dict config_dict: configuration dictionary/list to be encoded using HOCON (json alike) into stored text
+            Notice you can either pass `config_text` or `config_dict`, not both
         """
         return self._set_configuration(
-            name=name, description=description, config_type=config_type, config_text=config_text)
+            name=name, description=description, config_type=config_type,
+            config_text=config_text, config_dict=config_dict)
 
     @classmethod
     def get_projects(cls):
@@ -1697,16 +1767,18 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         cls._ignore_requirements.add(str(package_name))
 
     @classmethod
-    def force_requirements_env_freeze(cls, force=True):
-        # type: (bool) -> None
+    def force_requirements_env_freeze(cls, force=True, requirements_file=None):
+        # type: (bool, Optional[Union[str, Path]]) -> None
         """
         Force using `pip freeze` / `conda list` to store the full requirements of the active environment
         (instead of statically analyzing the running code and listing directly imported packages)
         Notice: Must be called before `Task.init` !
 
         :param force: Set force using `pip freeze` flag on/off
+        :param requirements_file: Optional pass requirements.txt file to use
+        (instead of `pip freeze` or automatic analysis)
         """
-        cls._force_use_pip_freeze = bool(force)
+        cls._force_use_pip_freeze = requirements_file if requirements_file else bool(force)
 
     def _get_default_report_storage_uri(self):
         # type: () -> str
@@ -1755,6 +1827,26 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self.data.last_iteration = all_tasks[0].last_iteration
         except Exception:
             return None
+
+    def _set_runtime_properties(self, runtime_properties):
+        # type: (Mapping[str, str]) -> bool
+        if not Session.check_min_api_version('2.13') or not runtime_properties:
+            return False
+
+        with self._edit_lock:
+            self.reload()
+            current_runtime_properties = self.data.runtime or {}
+            current_runtime_properties.update(runtime_properties)
+            # noinspection PyProtectedMember
+            self._edit(runtime=current_runtime_properties)
+
+        return True
+
+    def _get_runtime_properties(self):
+        # type: () -> Mapping[str, str]
+        if not Session.check_min_api_version('2.13'):
+            return dict()
+        return dict(**self.data.runtime) if self.data.runtime else dict()
 
     def _clear_task(self, system_tags=None, comment=None):
         # type: (Optional[Sequence[str]], Optional[str]) -> ()
@@ -1871,7 +1963,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self._edit(script=script)
 
     def _set_configuration(self, name, description=None, config_type=None, config_text=None, config_dict=None):
-        # type: (str, Optional[str], Optional[str], Optional[str], Optional[Mapping]) -> None
+        # type: (str, Optional[str], Optional[str], Optional[str], Optional[Union[Mapping, list]]) -> None
         """
         Set Task configuration text/dict. Multiple configurations are supported.
 
@@ -2164,7 +2256,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     @classmethod
     def __update_master_pid_task(cls, pid=None, task=None):
-        # type: (Optional[int], Union[str, Task]) -> None
+        # type: (Optional[int], Optional[Union[str, Task]]) -> None
         pid = pid or os.getpid()
         if not task:
             PROC_MASTER_ID_ENV_VAR.set(str(pid) + ':')
@@ -2179,11 +2271,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     @classmethod
     def __get_master_id_task_id(cls):
         # type: () -> Optional[str]
-        master_task_id = PROC_MASTER_ID_ENV_VAR.get().split(':')
+        master_pid, _, master_task_id = PROC_MASTER_ID_ENV_VAR.get('').partition(':')
         # we could not find a task ID, revert to old stub behaviour
-        if len(master_task_id) < 2 or not master_task_id[1]:
+        if not master_task_id:
             return None
-        return master_task_id[1]
+        return master_task_id
 
     @classmethod
     def __get_master_process_id(cls):

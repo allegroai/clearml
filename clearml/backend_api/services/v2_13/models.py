@@ -219,6 +219,11 @@ class Model(NonStrictDataModel):
                 "description": "Json object representing the ids of the labels in the model. The keys are the layers' names and the values are the ids.",
                 "type": ["object", "null"],
             },
+            "last_update": {
+                "description": "Model last update time",
+                "format": "date-time",
+                "type": ["string", "null"],
+            },
             "name": {"description": "Model name", "type": ["string", "null"]},
             "parent": {"description": "Parent model ID", "type": ["string", "null"]},
             "project": {
@@ -282,6 +287,7 @@ class Model(NonStrictDataModel):
         ready=None,
         ui_cache=None,
         metadata=None,
+        last_update=None,
         **kwargs
     ):
         super(Model, self).__init__(**kwargs)
@@ -303,6 +309,7 @@ class Model(NonStrictDataModel):
         self.ready = ready
         self.ui_cache = ui_cache
         self.metadata = metadata
+        self.last_update = last_update
 
     @schema_property("id")
     def id(self):
@@ -548,6 +555,21 @@ class Model(NonStrictDataModel):
         else:
             self.assert_isinstance(value, "metadata", MetadataItem, is_array=True)
         self._property_metadata = value
+
+    @schema_property("last_update")
+    def last_update(self):
+        return self._property_last_update
+
+    @last_update.setter
+    def last_update(self, value):
+        if value is None:
+            self._property_last_update = None
+            return
+
+        self.assert_isinstance(value, "last_update", six.string_types + (datetime,))
+        if not isinstance(value, datetime):
+            value = parse_datetime(value)
+        self._property_last_update = value
 
 
 class AddOrUpdateMetadataRequest(Request):
@@ -2054,6 +2076,11 @@ class GetAllRequest(Request):
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
+            "last_update": {
+                "description": "Model last update time",
+                "format": "date-time",
+                "type": ["string", "null"],
+            },
             "name": {
                 "description": "Get only models whose name matches this pattern (python regular expression syntax)",
                 "type": ["string", "null"],
@@ -2139,6 +2166,7 @@ class GetAllRequest(Request):
         uri=None,
         _all_=None,
         _any_=None,
+        last_update=None,
         **kwargs
     ):
         super(GetAllRequest, self).__init__(**kwargs)
@@ -2159,6 +2187,7 @@ class GetAllRequest(Request):
         self.uri = uri
         self._all_ = _all_
         self._any_ = _any_
+        self.last_update = last_update
 
     @schema_property("name")
     def name(self):
@@ -2408,6 +2437,19 @@ class GetAllRequest(Request):
         else:
             self.assert_isinstance(value, "_any_", MultiFieldPatternData)
         self._property__any_ = value
+
+    @schema_property("last_update")
+    def last_update(self):
+        return self._property_last_update
+
+    @last_update.setter
+    def last_update(self, value):
+        if value is None:
+            self._property_last_update = None
+            return
+
+        self.assert_isinstance(value, "last_update", six.string_types)
+        self._property_last_update = value
 
 
 class GetAllResponse(Response):

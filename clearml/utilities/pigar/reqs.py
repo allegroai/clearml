@@ -303,6 +303,9 @@ def is_std_or_local_lib(name):
         if isinstance(module_info[0], FileType):
             module_info[0].close()  # noqa
         mpath = module_info[1]  # noqa
+        # make sure we remove built-in modules
+        if mpath and not os.path.exists(mpath):
+            mpath = None
     else:
         module_info = None
         try:
@@ -313,6 +316,8 @@ def is_std_or_local_lib(name):
             # if we got here, the loader failed on us, meaning this is definitely a module and not std
             return False
         if not module_info:
+            if name == '__builtin__':
+                return True
             return False
         mpath = module_info.origin
         # this is std

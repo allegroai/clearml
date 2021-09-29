@@ -367,7 +367,7 @@ class EventTrainsWriter(object):
             output = BytesIO(imdata)
             im = Image.open(output)
             # if this is a GIF store as is
-            if getattr(im, 'is_animated'):
+            if getattr(im, 'is_animated', None):
                 output.close()
                 fd, temp_file = mkstemp(
                     suffix=guess_extension(im.get_format_mimetype()) if hasattr(im, 'get_format_mimetype')
@@ -1254,20 +1254,22 @@ class PatchTensorFlowEager(object):
             # noinspection PyBroadException
             try:
                 plugin_type = summary_metadata.decode()
-                if plugin_type.endswith('scalars'):
+                # remove any none alpha numeric value
+                plugin_type = plugin_type[next(i for i, c in enumerate(plugin_type) if c >= 'A'):]
+                if plugin_type.startswith('scalars'):
                     event_writer._add_scalar(tag=str(tag),
                                              step=int(step.numpy()) if not isinstance(step, int) else step,
                                              scalar_data=tensor.numpy())
-                elif plugin_type.endswith('images'):
+                elif plugin_type.startswith('images'):
                     img_data_np = tensor.numpy()
                     PatchTensorFlowEager._add_image_event_helper(event_writer, img_data_np=img_data_np,
                                                                  tag=tag, step=step, **kwargs)
-                elif plugin_type.endswith('histograms'):
+                elif plugin_type.startswith('histograms'):
                     event_writer._add_histogram(
                         tag=str(tag), step=int(step.numpy()) if not isinstance(step, int) else step,
                         hist_data=tensor.numpy()
                     )
-                elif plugin_type.endswith('text'):
+                elif plugin_type.startswith('text'):
                     event_writer._add_text(
                         tag=str(tag), step=int(step.numpy()) if not isinstance(step, int) else step,
                         tensor_bytes=tensor.numpy()

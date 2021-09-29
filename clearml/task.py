@@ -18,14 +18,14 @@ try:
 except ImportError:
     from collections import Sequence as CollectionsSequence
 
-from typing import Optional, Union, Mapping, Sequence, Any, Dict, Iterable, TYPE_CHECKING, Callable
+from typing import Optional, Union, Mapping, Sequence, Any, Dict, Iterable, TYPE_CHECKING, Callable, Tuple
 
 import psutil
 import six
 from pathlib2 import Path
 
 from .backend_config.defs import get_active_config_file, get_config_file
-from .backend_api.services import tasks, projects, queues
+from .backend_api.services import tasks, projects
 from .backend_api.session.session import (
     Session, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_HOST, ENV_WEB_HOST, ENV_FILES_HOST)
 from .backend_interface.metrics import Metrics
@@ -47,10 +47,10 @@ from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
 from .binding.joblib_bind import PatchedJoblib
 from .binding.matplotlib_bind import PatchedMatplotlib
 from .binding.hydra_bind import PatchHydra
-from .binding.click import PatchClick
+from .binding.click_bind import PatchClick
 from .config import (
     config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, PROC_MASTER_ID_ENV_VAR,
-    DEV_DEFAULT_OUTPUT_URI, )
+    DEV_DEFAULT_OUTPUT_URI, deferred_config, )
 from .config import running_remotely, get_remote_task_id
 from .config.cache import SessionCache
 from .debugging.log import LoggerRoot
@@ -134,9 +134,9 @@ class Task(_Task):
     __main_task = None  # type: Optional[Task]
     __exit_hook = None
     __forked_proc_main_pid = None
-    __task_id_reuse_time_window_in_hours = float(config.get('development.task_reuse_time_window_in_hours', 24.0))
-    __detect_repo_async = config.get('development.vcs_repo_detect_async', False)
-    __default_output_uri = DEV_DEFAULT_OUTPUT_URI.get() or config.get('development.default_output_uri', None)
+    __task_id_reuse_time_window_in_hours = deferred_config('development.task_reuse_time_window_in_hours', 24.0, float)
+    __detect_repo_async = deferred_config('development.vcs_repo_detect_async', False)
+    __default_output_uri = DEV_DEFAULT_OUTPUT_URI.get() or deferred_config('development.default_output_uri', None)
 
     class _ConnectedParametersType(object):
         argparse = "argument_parser"
@@ -184,7 +184,7 @@ class Task(_Task):
         :return: The current running Task (experiment).
         """
         # check if we have no main Task, but the main process created one.
-        if not cls.__main_task and PROC_MASTER_ID_ENV_VAR.get():
+        if not cls.__main_task and cls.__get_master_id_task_id():
             # initialize the Task, connect to stdout
             Task.init()
         # return main Task
@@ -357,7 +357,7 @@ class Task(_Task):
                auto_connect_frameworks={
                    'matplotlib': True, 'tensorflow': True, 'tensorboard': True, 'pytorch': True,
                    'xgboost': True, 'scikit': True, 'fastai': True, 'lightgbm': True,
-                   'hydra': True, 'detect_repository': True,
+                   'hydra': True, 'detect_repository': True, 'tfdefines': True, 'joblib': True,
                }
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
@@ -403,7 +403,8 @@ class Task(_Task):
                     raise UsageError(
                         "Current task already created "
                         "and requested {field} '{default}' does not match current {field} '{current}'. "
-                        "If you wish to create additional tasks use `Task.create`".format(
+                        "If you wish to create additional tasks use `Task.create`, "
+                        "or close the current task with `task.close()` before calling `Task.init(...)`".format(
                             field=field,
                             default=default,
                             current=current,
@@ -544,13 +545,17 @@ class Task(_Task):
                 is_auto_connect_frameworks_bool = not isinstance(auto_connect_frameworks, dict)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('hydra', True):
                     PatchHydra.update_current_task(task)
-                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('scikit', True):
+                if is_auto_connect_frameworks_bool or (
+                        auto_connect_frameworks.get('scikit', True) and
+                        auto_connect_frameworks.get('joblib', True)):
                     PatchedJoblib.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('matplotlib', True):
                     PatchedMatplotlib.update_current_task(Task.__main_task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('tensorflow', True) \
                         or auto_connect_frameworks.get('tensorboard', True):
-                    PatchAbsl.update_current_task(Task.__main_task)
+                    # allow to disable tfdefines
+                    if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('tfdefines', True):
+                        PatchAbsl.update_current_task(Task.__main_task)
                     TensorflowBinding.update_current_task(
                         task,
                         patch_reporting=(is_auto_connect_frameworks_bool
@@ -627,22 +632,22 @@ class Task(_Task):
     @classmethod
     def create(
         cls,
-        project_name=None,  # Optional[str]
-        task_name=None,  # Optional[str]
-        task_type=None,  # Optional[str]
-        repo=None,  # Optional[str]
-        branch=None,  # Optional[str]
-        commit=None,  # Optional[str]
-        script=None,  # Optional[str]
-        working_directory=None,  # Optional[str]
-        packages=None,  # Optional[Union[bool, Sequence[str]]]
-        requirements_file=None,  # Optional[Union[str, Path]]
-        docker=None,  # Optional[str]
-        docker_args=None,  # Optional[str]
-        docker_bash_setup_script=None,  # Optional[str]
-        argparse_args=None,  # Optional[Sequence[Tuple[str, str]]]
-        base_task_id=None,  # Optional[str]
-        add_task_init_call=True,  # bool
+        project_name=None,   # type: Optional[str]
+        task_name=None,  # type: Optional[str]
+        task_type=None,  # type: Optional[str]
+        repo=None,  # type: Optional[str]
+        branch=None,  # type: Optional[str]
+        commit=None,  # type: Optional[str]
+        script=None,  # type: Optional[str]
+        working_directory=None,  # type: Optional[str]
+        packages=None,  # type: Optional[Union[bool, Sequence[str]]]
+        requirements_file=None,  # type: Optional[Union[str, Path]]
+        docker=None,  # type: Optional[str]
+        docker_args=None,  # type: Optional[str]
+        docker_bash_setup_script=None,  # type: Optional[str]
+        argparse_args=None,  # type: Optional[Sequence[Tuple[str, str]]]
+        base_task_id=None,  # type: Optional[str]
+        add_task_init_call=True,  # type: bool
     ):
         # type: (...) -> Task
         """
@@ -998,6 +1003,8 @@ class Task(_Task):
 
         req = tasks.EnqueueRequest(task=task_id, queue=queue_id)
         res = cls._send(session=session, req=req)
+        if not res.ok():
+            raise ValueError(res.response)
         resp = res.response
         return resp
 
@@ -1083,7 +1090,7 @@ class Task(_Task):
             - Class type - A Class type, storing all class properties (excluding '_' prefix properties)
             - Object - A class instance, storing all instance properties (excluding '_' prefix properties)
 
-        :param str name: A section name associated with the connected object. Default: 'General'
+        :param str name: A section name associated with the connected object, if 'name' is None defaults to 'General'
             Currently only supported for `dict` / `TaskParameter` objects
             Examples:
             name='General' will put the connected dictionary under the General section in the hyper-parameters
@@ -1119,7 +1126,7 @@ class Task(_Task):
         raise Exception('Unsupported mutable type %s: no connect function found' % type(mutable).__name__)
 
     def connect_configuration(self, configuration, name=None, description=None):
-        # type: (Union[Mapping, Path, str], Optional[str], Optional[str]) -> Union[dict, Path, str]
+        # type: (Union[Mapping, list, Path, str], Optional[str], Optional[str]) -> Union[dict, Path, str]
         """
         Connect a configuration dictionary or configuration file (pathlib.Path / str) to a Task object.
         This method should be called before reading the configuration file.
@@ -1134,7 +1141,7 @@ class Task(_Task):
            config_file = task.connect_configuration(config_file)
            my_params = json.load(open(config_file,'rt'))
 
-        A parameter dictionary:
+        A parameter dictionary/list:
 
         .. code-block:: py
 
@@ -1143,7 +1150,7 @@ class Task(_Task):
         :param configuration: The configuration. This is usually the configuration used in the model training process.
             Specify one of the following:
 
-            - A dictionary - A dictionary containing the configuration. ClearML stores the configuration in
+            - A dictionary/list - A dictionary containing the configuration. ClearML stores the configuration in
               the **ClearML Server** (backend), in a HOCON format (JSON-like format) which is editable.
             - A ``pathlib2.Path`` string - A path to the configuration file. ClearML stores the content of the file.
               A local path must be relative path. When executing a Task remotely in a worker, the contents brought
@@ -1158,7 +1165,7 @@ class Task(_Task):
             specified, then a path to a local configuration file is returned. Configuration object.
         """
         pathlib_Path = None  # noqa
-        if not isinstance(configuration, (dict, Path, six.string_types)):
+        if not isinstance(configuration, (dict, list, Path, six.string_types)):
             try:
                 from pathlib import Path as pathlib_Path  # noqa
             except ImportError:
@@ -1176,7 +1183,7 @@ class Task(_Task):
                              "please upgrade to the latest version")
 
         # parameter dictionary
-        if isinstance(configuration, dict):
+        if isinstance(configuration, (dict, list,)):
             def _update_config_dict(task, config_dict):
                 if multi_config_support:
                     # noinspection PyProtectedMember
@@ -1192,7 +1199,8 @@ class Task(_Task):
                         name=name, description=description, config_type='dictionary', config_dict=configuration)
                 else:
                     self._set_model_config(config_dict=configuration)
-                configuration = ProxyDictPostWrite(self, _update_config_dict, **configuration)
+                if isinstance(configuration, dict):
+                    configuration = ProxyDictPostWrite(self, _update_config_dict, **configuration)
             else:
                 # noinspection PyBroadException
                 try:
@@ -1212,9 +1220,14 @@ class Task(_Task):
                             config_type='dictionary', config_dict=configuration)
                     return configuration
 
-                configuration.clear()
-                configuration.update(remote_configuration)
-                configuration = ProxyDictPreWrite(False, False, **configuration)
+                if isinstance(configuration, dict):
+                    configuration.clear()
+                    configuration.update(remote_configuration)
+                    configuration = ProxyDictPreWrite(False, False, **configuration)
+                elif isinstance(configuration, list):
+                    configuration.clear()
+                    configuration.extend(remote_configuration)
+
             return configuration
 
         # it is a path to a local file
@@ -1440,7 +1453,7 @@ class Task(_Task):
         """
         Register (add) an artifact for the current Task. Registered artifacts are dynamically sychronized with the
         **ClearML Server** (backend). If a registered artifact is updated, the update is stored in the
-        **ClearML Server** (backend). Registered artifacts are primarily used for Data Audition.
+        **ClearML Server** (backend). Registered artifacts are primarily used for Data Auditing.
 
         The currently supported registered artifact object type is a pandas.DataFrame.
 
@@ -1847,15 +1860,23 @@ class Task(_Task):
 
         return self._hyper_params_manager.delete_hyper_params(*iterables)
 
-    def set_base_docker(self, docker_cmd, docker_arguments=None, docker_setup_bash_script=None):
-        # type: (str, Optional[Union[str, Sequence[str]]], Optional[Union[str, Sequence[str]]]) -> ()
+    def set_base_docker(
+            self,
+            docker_cmd=None,  # type: Optional[str]
+            docker_image=None,  # type: Optional[str]
+            docker_arguments=None,  # type: Optional[Union[str, Sequence[str]]]
+            docker_setup_bash_script=None  # type: Optional[Union[str, Sequence[str]]]
+    ):
+        # type: (...) -> ()
         """
         Set the base docker image for this experiment
         If provided, this value will be used by clearml-agent to execute this experiment
         inside the provided docker image.
         When running remotely the call is ignored
 
-        :param docker_cmd: docker container image (example: 'nvidia/cuda:11.1')
+        :param docker_cmd: Deprecated! compound docker container image + arguments
+            (example: 'nvidia/cuda:11.1 -e test=1') Deprecated, use specific arguments.
+        :param docker_image: docker container image (example: 'nvidia/cuda:11.1')
         :param docker_arguments: docker execution parameters (example: '-e ENV=1')
         :param docker_setup_bash_script: bash script to run at the
             beginning of the docker before launching the Task itself. example: ['apt update', 'apt-get install -y gcc']
@@ -1864,7 +1885,7 @@ class Task(_Task):
             return
 
         super(Task, self).set_base_docker(
-            docker_cmd=docker_cmd,
+            docker_cmd=docker_cmd or docker_image,
             docker_arguments=docker_arguments,
             docker_setup_bash_script=docker_setup_bash_script
         )
@@ -1968,6 +1989,8 @@ class Task(_Task):
             # Remove the development system tag
             system_tags = [t for t in task.get_system_tags() if t != self._development_tag]
             self.set_system_tags(system_tags)
+            # if we leave the Task out there, it makes sense to make it editable.
+            self.reset(force=True)
 
         # leave this process.
         if exit_process:
@@ -2226,7 +2249,7 @@ class Task(_Task):
         Metrics.report_offline_session(task, session_folder)
         # print imported results page
         print('ClearML results page: {}'.format(task.get_output_log_web_page()))
-        task.completed()
+        task.mark_completed()
         # close task
         task.close()
 
@@ -3043,13 +3066,14 @@ class Task(_Task):
                 elif task_status[0] == 'failed':
                     self.mark_failed(status_reason=task_status[1])
                 elif task_status[0] == 'completed':
-                    self.completed()
+                    self.mark_completed()
                 elif task_status[0] == 'stopped':
                     self.stopped()
 
             # this is so in theory we can close a main task and start a new one
             if self.is_main_task():
                 Task.__main_task = None
+                Task.__update_master_pid_task(task=None)
         except Exception:
             # make sure we do not interrupt the exit process
             pass
@@ -3523,3 +3547,20 @@ class Task(_Task):
 
             return True
         return False
+
+    def __getstate__(self):
+        # type: () -> dict
+        return {'main': self.is_main_task(), 'id': self.id, 'offline': self.is_offline()}
+
+    def __setstate__(self, state):
+        if state['main'] and not self.__main_task:
+            Task.__forked_proc_main_pid = None
+            Task.__update_master_pid_task(task=state['id'])
+        if state['offline']:
+            Task.set_offline(offline_mode=state['offline'])
+
+        task = Task.init(
+            continue_last_task=state['id'],
+            auto_connect_frameworks={'detect_repository': False}) \
+            if state['main'] else Task.get_task(task_id=state['id'])
+        self.__dict__ = task.__dict__

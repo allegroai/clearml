@@ -5,6 +5,8 @@ from __future__ import print_function, division, absolute_import
 import os
 import codecs
 
+import six
+
 from .reqs import project_import_modules, is_std_or_local_lib, is_base_module
 from .utils import lines_diff
 from .log import logger
@@ -104,7 +106,9 @@ class GenerateReqs(object):
                     continue
 
                 # if this is a folder of our project, we can safely ignore it
-                if os.path.commonpath([project_path]) == os.path.commonpath([project_path, mod_path]):
+                if (six.PY3 and os.path.commonpath([project_path]) == os.path.commonpath([project_path, mod_path])) or \
+                        (six.PY2 and
+                         os.path.commonprefix([project_path]) == os.path.commonprefix([project_path, mod_path])):
                     continue
 
                 relpath = os.path.relpath(self._local_mods[name], self._project_path)

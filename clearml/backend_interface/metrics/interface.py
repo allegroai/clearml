@@ -9,7 +9,7 @@ from pathlib2 import Path
 
 from ...backend_api.services import events as api_events
 from ..base import InterfaceBase
-from ...config import config
+from ...config import config, deferred_config
 from ...debugging import get_logger
 from ...storage.helper import StorageHelper
 
@@ -17,17 +17,18 @@ from .events import MetricsEventAdapter
 from ...utilities.process.mp import SingletonLock
 
 
-log = get_logger('metrics')
-
-
 class Metrics(InterfaceBase):
     """ Metrics manager and batch writer """
     _storage_lock = SingletonLock()
-    _file_upload_starvation_warning_sec = config.get('network.metrics.file_upload_starvation_warning_sec', None)
+    _file_upload_starvation_warning_sec = deferred_config('network.metrics.file_upload_starvation_warning_sec', None)
     _file_upload_retries = 3
     _upload_pool = None
     _file_upload_pool = None
     __offline_filename = 'metrics.jsonl'
+
+    @classmethod
+    def _get_logger(cls):
+        return get_logger('metrics')
 
     @property
     def storage_key_prefix(self):
@@ -42,7 +43,7 @@ class Metrics(InterfaceBase):
             storage_uri = storage_uri or self._storage_uri
             return StorageHelper.get(storage_uri)
         except Exception as e:
-            log.error('Failed getting storage helper for %s: %s' % (storage_uri, str(e)))
+            self._get_logger().error('Failed getting storage helper for %s: %s' % (storage_uri, str(e)))
         finally:
             self._storage_lock.release()
 
@@ -153,7 +154,7 @@ class Metrics(InterfaceBase):
                 if e:
                     entries.append(e)
             except Exception as ex:
-                log.warning(str(ex))
+                self._get_logger().warning(str(ex))
                 events.remove(ev)
 
         # upload the needed files
@@ -171,7 +172,7 @@ class Metrics(InterfaceBase):
                         url = storage.upload_from_stream(e.stream, e.url, retries=retries)
                     e.event.update(url=url)
                 except Exception as exp:
-                    log.warning("Failed uploading to {} ({})".format(
+                    self._get_logger().warning("Failed uploading to {} ({})".format(
                         upload_uri if upload_uri else "(Could not calculate upload uri)",
                         exp,
                     ))
@@ -196,15 +197,16 @@ class Metrics(InterfaceBase):
         t_f, t_u, t_ref = \
             (self._file_related_event_time, self._file_upload_time, self._file_upload_starvation_warning_sec)
         if t_f and t_u and t_ref and (t_f - t_u) > t_ref:
-            log.warning('Possible metrics file upload starvation: '
-                        'files were not uploaded for {} seconds'.format(t_ref))
+            self._get_logger().warning(
+                'Possible metrics file upload starvation: '
+                'files were not uploaded for {} seconds'.format(t_ref))
 
         # send the events in a batched request
         good_events = [ev for ev in events if ev.upload_exception is None]
         error_events = [ev for ev in events if ev.upload_exception is not None]
 
         if error_events:
-            log.error("Not uploading {}/{} events because the data upload failed".format(
+            self._get_logger().error("Not uploading {}/{} events because the data upload failed".format(
                 len(error_events),
                 len(events),
             ))

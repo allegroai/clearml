@@ -179,6 +179,22 @@ class Lock(object):
                 pass
             self.fh = None
 
+    def delete_lock_file(self):
+        # type: () -> bool
+        """
+        Remove the local file used for locking (fail if file is locked)
+
+        :return: True is successful
+        """
+        if self.fh:
+            return False
+        # noinspection PyBroadException
+        try:
+            os.unlink(path=self.filename)
+        except BaseException:
+            return False
+        return True
+
     def _get_fh(self):
         '''Get a new filehandle'''
         return open(self.filename, self.mode, **self.file_open_kwargs)
@@ -233,6 +249,18 @@ class RLock(Lock):
 
     def acquire(self, timeout=None, check_interval=None, fail_when_locked=None):
         if self._lock:
+            # cleanup bad python behaviour when forking while lock is acquired
+            # see Issue https://github.com/allegroai/clearml-agent/issues/73
+            # and https://bugs.python.org/issue6721
+            if self._pid != os.getpid():
+                # noinspection PyBroadException
+                try:
+                    if self._lock._semlock._count():  # noqa
+                        # this should never happen unless python forgot calling _after_fork
+                        self._lock._semlock._after_fork()  # noqa
+                except BaseException:
+                    pass
+
             if not self._lock.acquire(block=timeout != 0, timeout=timeout):
                 # We got a timeout... reraising
                 raise exceptions.LockException()

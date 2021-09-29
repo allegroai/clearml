@@ -12,7 +12,7 @@ def main():
 
     # Connecting ClearML with the current process,
     # from here on everything is logged automatically
-    task = Task.init(project_name="examples", task_name="pytorch with tensorboardX")
+    task = Task.init(project_name="examples", task_name="pytorch with video tensorboardX")
 
     writer = SummaryWriter("runs")
     writer.add_text("TEXT", "This is some text", 0)

@@ -12,14 +12,23 @@ from six.moves.urllib.parse import urlparse, urlunparse
 
 from .callresult import CallResult
 from .defs import (
-    ENV_VERBOSE, ENV_HOST, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_WEB_HOST,
-    ENV_FILES_HOST, ENV_OFFLINE_MODE, ENV_TRAINS_NO_DEFAULT_SERVER, ENV_AUTH_TOKEN, )
+    ENV_VERBOSE,
+    ENV_HOST,
+    ENV_ACCESS_KEY,
+    ENV_SECRET_KEY,
+    ENV_WEB_HOST,
+    ENV_FILES_HOST,
+    ENV_OFFLINE_MODE,
+    ENV_CLEARML_NO_DEFAULT_SERVER,
+    ENV_AUTH_TOKEN,
+    ENV_DISABLE_VAULT_SUPPORT,
+)
 from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
 from ..config import load
 from ..utils import get_http_session_with_retry, urllib_log_warning_setup
 from ...debugging import get_logger
-from ...utilities.pyhocon import ConfigTree
+from ...utilities.pyhocon import ConfigTree, ConfigFactory
 from ...version import __version__
 
 try:
@@ -59,6 +68,7 @@ class Session(TokenManager):
 
     api_version = '2.1'
     max_api_version = '2.1'
+    feature_set = 'basic'
     default_demo_host = "https://demoapi.demo.clear.ml"
     default_host = default_demo_host
     default_web = "https://demoapp.demo.clear.ml"
@@ -82,6 +92,10 @@ class Session(TokenManager):
     @property
     def secret_key(self):
         return self.__secret_key
+
+    @property
+    def auth_token(self):
+        return self.__auth_token
 
     @property
     def host(self):
@@ -152,9 +166,11 @@ class Session(TokenManager):
         if not host:
             raise ValueError("host is required in init or config")
 
-        if ENV_TRAINS_NO_DEFAULT_SERVER.get() and host == self.default_demo_host:
+        if ENV_CLEARML_NO_DEFAULT_SERVER.get() and host == self.default_demo_host:
             raise ValueError(
-                "Configuration file or environment could not be located and default demo server is disabled"
+                "ClearML configuration could not be found (missing `~/clearml.conf` or Environment CLEARML_API_HOST)\n"
+                "To get started with ClearML: setup your own `clearml-server`, "
+                "or create a free account at https://app.community.clear.ml"
             )
 
         self._ssl_error_count_verbosity = self.config.get(
@@ -192,6 +208,7 @@ class Session(TokenManager):
                     Session._client.append(('clearml-server', token_dict.get('server_version'), ))
 
             Session.max_api_version = Session.api_version = str(api_version)
+            Session.feature_set = str(token_dict.get('feature_set', self.feature_set) or "basic")
         except (jwt.DecodeError, ValueError):
             (self._logger or get_logger()).warning(
                 "Failed parsing server API level, defaulting to {}".format(Session.api_version))
@@ -205,6 +222,40 @@ class Session(TokenManager):
 
         if self.force_max_api_version and self.check_min_api_version(self.force_max_api_version):
             Session.max_api_version = Session.api_version = str(self.force_max_api_version)
+
+        self._load_vaults()
+
+    def _load_vaults(self):
+        if not self.check_min_api_version("2.15") or self.feature_set == "basic":
+            return
+
+        if ENV_DISABLE_VAULT_SUPPORT.get():
+            print("Vault support is disabled")
+            return
+
+        def parse(vault):
+            # noinspection PyBroadException
+            try:
+                d = vault.get('data', None)
+                if d:
+                    r = ConfigFactory.parse_string(d)
+                    if isinstance(r, (ConfigTree, dict)):
+                        return r
+            except Exception as e:
+                print("Failed parsing vault {}: {}".format(vault.get("description", "<unknown>"), e))
+
+        # noinspection PyBroadException
+        try:
+            res = self.send_request("users", "get_vaults", json={"enabled": True, "types": ["config"]})
+            if res.ok:
+                vaults = res.json().get("data", {}).get("vaults", [])
+                data = list(filter(None, map(parse, vaults)))
+                if data:
+                    self.config.set_overrides(*data)
+            elif res.status_code != 404:
+                raise Exception(res.json().get("meta", {}).get("result_msg", res.text))
+        except Exception as ex:
+            print("Failed getting vaults: {}".format(ex))
 
     def _send_request(
         self,

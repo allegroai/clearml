@@ -254,7 +254,7 @@ class TaskHandler(BufferingHandler):
         _background_log = self._background_log
         self._background_log = None
         if _background_log:
-            if not _background_log.is_subprocess() or _background_log.is_alive():
+            if not _background_log.is_subprocess_mode() or _background_log.is_alive():
                 _background_log.stop()
                 if wait:
                     # noinspection PyBroadException

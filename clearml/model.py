@@ -49,6 +49,7 @@ class Framework(Options):
     xgboost = 'XGBoost'
     lightgbm = 'LightGBM'
     parquet = 'Parquet'
+    megengine = 'MegEngine'
 
     __file_extensions_mapping = {
         '.pb': (tensorflow, tensorflowjs, onnx, ),
@@ -75,7 +76,7 @@ class Framework(Options):
         '.t7': (torch, ),
         '.cfg': (darknet, ),
         '__model__': (paddlepaddle, ),
-        '.pkl': (scikitlearn, keras, xgboost),
+        '.pkl': (scikitlearn, keras, xgboost, megengine),
         '.parquet': (parquet, ),
     }
 

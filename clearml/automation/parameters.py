@@ -171,6 +171,19 @@ class UniformParameterRange(Parameter):
         return [{self.name: v} for v in values]
 
 
+class LogUniformParameterRange(UniformParameterRange):
+    def __init__(self, name, min_value, max_value, step_size=None, include_max_value=True):
+        super().__init__(name, min_value, max_value, step_size=step_size, include_max_value=include_max_value)
+    
+    def get_value(self):
+        values_dict = super().get_value()
+        return {self.name: self.base**v for v in values_dict.values()}
+    
+    def to_list(self):
+        values_list = super().to_list()
+        return [{self.name: self.base**v[self.name]} for v in values_list]
+    
+
 class UniformIntegerParameterRange(Parameter):
     """
     Uniform randomly sampled integer Hyper-Parameter object.

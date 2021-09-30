@@ -2,7 +2,8 @@ from time import sleep
 from typing import Any, Optional, Sequence
 
 from ..optimization import Objective, SearchStrategy
-from ..parameters import (DiscreteParameterRange, Parameter, UniformIntegerParameterRange, UniformParameterRange)
+from ..parameters import (DiscreteParameterRange, Parameter, UniformIntegerParameterRange, UniformParameterRange,
+                          LogUniformParameterRange)
 from ...task import Task
 
 try:
@@ -193,7 +194,10 @@ class OptimizerOptuna(SearchStrategy):
         # type: () -> dict
         cs = {}
         for p in self._hyper_parameters:
-            if isinstance(p, UniformParameterRange):
+            if isinstance(p, LogUniformParameterRange):
+                hp_type = 'suggest_float'
+                hp_params = dict(low=p.min_value, high=p.max_value, log=True, step=None)
+            elif isinstance(p, UniformParameterRange):
                 if p.include_max and p.step_size:
                     hp_type = 'suggest_discrete_uniform'
                     hp_params = dict(low=p.min_value, high=p.max_value, q=p.step_size)

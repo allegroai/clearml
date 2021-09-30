@@ -94,7 +94,7 @@ def train(dataloader, args):
 
 
 def main():
-    task = Task.init(project_name='megengine', task_name='mge mnist train')  # noqa
+    task = Task.init(project_name='examples', task_name='megengine mnist train')  # noqa
 
     parser = argparse.ArgumentParser(description='MegEngine MNIST Example')
     parser.add_argument(

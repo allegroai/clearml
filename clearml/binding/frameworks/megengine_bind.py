@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding:utf-8 -*-
-
 import sys
 
 import six
@@ -15,6 +12,7 @@ from ...model import Framework
 class PatchMegEngineModelIO(PatchBaseModelIO):
     __main_task = None
     __patched = None
+
     # __patched_lightning = None
 
     @staticmethod
@@ -37,7 +35,7 @@ class PatchMegEngineModelIO(PatchBaseModelIO):
 
         # noinspection PyBroadException
         try:
-            import megengine  as mge  # noqa
+            import megengine as mge  # noqa
             mge.save = _patched_call(mge.save, PatchMegEngineModelIO._save)
             mge.load = _patched_call(mge.load, PatchMegEngineModelIO._load)
 

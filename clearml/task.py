@@ -359,6 +359,7 @@ class Task(_Task):
                    'matplotlib': True, 'tensorflow': True, 'tensorboard': True, 'pytorch': True,
                    'xgboost': True, 'scikit': True, 'fastai': True, 'lightgbm': True,
                    'hydra': True, 'detect_repository': True, 'tfdefines': True, 'joblib': True,
+                   'megengine': True,
                }
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots

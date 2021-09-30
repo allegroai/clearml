@@ -618,7 +618,7 @@ if __name__ == '__main__':
             function_name=function_name,
             function_return=function_return)
 
-        temp_dir = repo if repo and Path(repo).is_dir() else None
+        temp_dir = repo if repo and os.path.isdir(repo) else None
         with tempfile.NamedTemporaryFile('w', suffix='.py', dir=temp_dir) as temp_file:
             temp_file.write(task_template)
             temp_file.flush()

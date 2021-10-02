@@ -114,8 +114,8 @@ def cli():
                            '\'/mnt/shared/folder/data\'')
     sync.add_argument('--skip-close', action='store_true', default=False,
                       help='Do not auto close dataset after syncing folders')
-    sync.add_argument('--chunk-size', default=-1, type=int,
-                      help='Set dataset artifact chunk size in MB. Default -1, unlimited size. '
+    sync.add_argument('--chunk-size', default=512, type=int,
+                      help='Set dataset artifact chunk size in MB. Default 512mb, (pass -1 for a single chunk). '
                            'Example: 512, dataset will be split and uploaded in 512mb chunks.')
     sync.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
     sync.set_defaults(func=ds_sync)
@@ -139,8 +139,8 @@ def cli():
                         help='Remote storage to use for the dataset files (default: files_server). '
                              'Examples: \'s3://bucket/data\', \'gs://bucket/data\', \'azure://bucket/data\', '
                              '\'/mnt/shared/folder/data\'')
-    upload.add_argument('--chunk-size', default=-1, type=int,
-                        help='Set dataset artifact chunk size in MB. Default -1, unlimited size. '
+    upload.add_argument('--chunk-size', default=512, type=int,
+                        help='Set dataset artifact chunk size in MB. Default 512, (pass -1 for a single chunk). '
                              'Example: 512, dataset will be split and uploaded in 512mb chunks.')
     upload.add_argument('--verbose', default=False, action='store_true', help='Verbose reporting')
     upload.set_defaults(func=ds_upload)
@@ -154,8 +154,8 @@ def cli():
                                '\'/mnt/shared/folder/data\'')
     finalize.add_argument('--disable-upload', action='store_true', default=False,
                           help='Disable automatic upload when closing the dataset')
-    finalize.add_argument('--chunk-size', default=-1, type=int,
-                          help='Set dataset artifact chunk size in MB. Default -1, unlimited size. '
+    finalize.add_argument('--chunk-size', default=512, type=int,
+                          help='Set dataset artifact chunk size in MB. Default 512, (pass -1 for a single chunk). '
                                'Example: 512, dataset will be split and uploaded in 512mb chunks.')
     finalize.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
     finalize.set_defaults(func=ds_close)

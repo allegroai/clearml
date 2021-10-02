@@ -341,6 +341,7 @@ class Artifacts(object):
             except Exception:
                 pass
 
+        store_as_pickle = False
         artifact_type_data = tasks.ArtifactTypeData()
         artifact_type_data.preview = ''
         override_filename_in_uri = None
@@ -380,21 +381,32 @@ class Artifacts(object):
         elif isinstance(artifact_object, dict):
             artifact_type = 'JSON'
             artifact_type_data.content_type = 'application/json'
-            json_text = json.dumps(artifact_object, sort_keys=True, indent=4)
-            override_filename_ext_in_uri = '.json'
-            override_filename_in_uri = name + override_filename_ext_in_uri
-            fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
-            os.write(fd, bytes(json_text.encode()))
-            os.close(fd)
-            preview = preview or json_text
-            if len(preview) < self.max_preview_size_bytes:
-                artifact_type_data.preview = preview
-            else:
-                artifact_type_data.preview = '# full json too large to store, storing first {}kb\n{}'.format(
-                    self.max_preview_size_bytes//1024, preview[:self.max_preview_size_bytes]
-                )
+            # noinspection PyBroadException
+            try:
+                json_text = json.dumps(artifact_object, sort_keys=True, indent=4)
+            except Exception:
+                if not auto_pickle:
+                    raise
+                LoggerRoot.get_base_logger().warning(
+                    "JSON serialization of artifact \'{}\' failed, reverting to pickle".format(name))
+                store_as_pickle = True
+                json_text = None
 
-            delete_after_upload = True
+            if json_text is not None:
+                override_filename_ext_in_uri = '.json'
+                override_filename_in_uri = name + override_filename_ext_in_uri
+                fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
+                os.write(fd, bytes(json_text.encode()))
+                os.close(fd)
+                preview = preview or json_text
+                if len(preview) < self.max_preview_size_bytes:
+                    artifact_type_data.preview = preview
+                else:
+                    artifact_type_data.preview = '# full json too large to store, storing first {}kb\n{}'.format(
+                        self.max_preview_size_bytes//1024, preview[:self.max_preview_size_bytes]
+                    )
+
+                delete_after_upload = True
         elif isinstance(artifact_object, pathlib_types):
             # check if single file
             artifact_object = Path(artifact_object)
@@ -532,6 +544,13 @@ class Artifacts(object):
                 os.unlink(local_filename)
                 raise
         elif auto_pickle:
+            # revert to pickling the object
+            store_as_pickle = True
+        else:
+            raise ValueError("Artifact type {} not supported".format(type(artifact_object)))
+
+        # revert to serializing the object with pickle
+        if store_as_pickle:
             # if we are here it means we do not know what to do with the object, so we serialize it with pickle.
             artifact_type = 'pickle'
             artifact_type_data.content_type = 'application/pickle'
@@ -553,8 +572,6 @@ class Artifacts(object):
                 # cleanup and raise exception
                 os.unlink(local_filename)
                 raise
-        else:
-            raise ValueError("Artifact type {} not supported".format(type(artifact_object)))
 
         # verify preview not out of scope:
         if artifact_type_data.preview and len(artifact_type_data.preview) > (self.max_preview_size_bytes+1024):

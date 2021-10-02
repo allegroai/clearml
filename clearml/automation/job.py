@@ -1,4 +1,5 @@
 import hashlib
+import json
 import os
 import subprocess
 import sys
@@ -299,8 +300,8 @@ class BaseJob(object):
         cls._hashing_callback = a_function
 
     @classmethod
-    def _create_task_hash(cls, task, section_overrides=None, params_override=None):
-        # type: (Task, Optional[dict], Optional[dict]) -> Optional[str]
+    def _create_task_hash(cls, task, section_overrides=None, params_override=None, configurations_override=None):
+        # type: (Task, Optional[dict], Optional[dict], Optional[dict]) -> Optional[str]
         """
         Create Hash (str) representing the state of the Task
 
@@ -308,6 +309,7 @@ class BaseJob(object):
         :param section_overrides: optional dict (keys are Task's section names) with task overrides.
         :param params_override: Alternative to the entire Task's hyper parameters section
         (notice this should not be a nested dict but a flat key/value)
+        :param configurations_override: dictionary of configuration override objects (tasks.ConfigurationItem)
 
         :return: str hash of the Task configuration
         """
@@ -328,7 +330,7 @@ class BaseJob(object):
         script.pop("requirements", None)
 
         hyper_params = task.get_parameters() if params_override is None else params_override
-        configs = task.get_configuration_objects()
+        configs = task.get_configuration_objects() if configurations_override is None else configurations_override
         # currently we do not add the docker image to the hash (only args and setup script),
         # because default docker image will cause the step to change
         docker = None
@@ -340,8 +342,9 @@ class BaseJob(object):
 
         # make sure that if we only have docker args/bash,
         # we use encode it, otherwise we revert to the original encoding (excluding docker altogether)
-        repr_dict = dict(script=script, hyper_params=hyper_params, configs=configs, docker=docker) \
-            if docker else dict(script=script, hyper_params=hyper_params, configs=configs)
+        repr_dict = dict(script=script, hyper_params=hyper_params, configs=configs)
+        if docker:
+            repr_dict['docker'] = docker
 
         # callback for modifying the representation dict
         if cls._hashing_callback:
@@ -408,6 +411,7 @@ class ClearmlJob(BaseJob):
             base_task_id,  # type: str
             parameter_override=None,  # type: Optional[Mapping[str, str]]
             task_overrides=None,  # type: Optional[Mapping[str, str]]
+            configuration_overrides=None,  # type: Optional[Mapping[str, Union[str, Mapping]]]
             tags=None,  # type: Optional[Sequence[str]]
             parent=None,  # type: Optional[str]
             disable_clone_task=False,  # type: bool
@@ -423,6 +427,12 @@ class ClearmlJob(BaseJob):
         :param dict parameter_override: dictionary of parameters and values to set fo the cloned task
         :param dict task_overrides:  Task object specific overrides.
             for example {'script.version_num': None, 'script.branch': 'main'}
+        :param configuration_overrides: Optional, override Task configuration objects.
+            Expected dictionary of configuration object name and configuration object content.
+            Examples:
+                {'config_section': dict(key='value')}
+                {'config_file': 'configuration file content'}
+                {'OmegaConf': YAML.dumps(full_hydra_dict)}
         :param list tags: additional tags to add to the newly cloned task
         :param str parent: Set newly created Task parent task field, default: base_tak_id.
         :param dict kwargs: additional Task creation parameters
@@ -454,6 +464,22 @@ class ClearmlJob(BaseJob):
             task_params.update(parameter_override)
             self.task_parameter_override = dict(**parameter_override)
 
+        task_configurations = None
+        if configuration_overrides:
+            task_configurations = deepcopy(base_temp_task.data.configuration or {})
+            for k, v in configuration_overrides.items():
+                if not isinstance(v, (str, dict)):
+                    raise ValueError('Configuration override dictionary value must be wither str or dict, '
+                                     'got {} instead'.format(type(v)))
+                value = v if isinstance(v, str) else json.dumps(v)
+                if k in task_configurations:
+                    task_configurations[k].value = value
+                else:
+                    task_configurations[k] = tasks_service.ConfigurationItem(
+                        name=str(k), value=value, description=None, type='json' if isinstance(v, dict) else None
+                    )
+            configuration_overrides = {k: v.value for k, v in task_configurations.items()}
+
         sections = {}
         if task_overrides:
             # set values inside the Task
@@ -471,7 +497,11 @@ class ClearmlJob(BaseJob):
             # look for a cached copy of the Task
             # get parameters + task_overrides + as dict and hash it.
             task_hash = self._create_task_hash(
-                base_temp_task, section_overrides=sections, params_override=task_params)
+                base_temp_task,
+                section_overrides=sections,
+                params_override=task_params,
+                configurations_override=configuration_overrides or None,
+            )
             task = self._get_cached_task(task_hash)
             # if we found a task, just use
             if task:
@@ -509,6 +539,11 @@ class ClearmlJob(BaseJob):
 
         if task_params:
             self.task.set_parameters(task_params)
+
+        # store back Task configuration object into backend
+        if task_configurations:
+            # noinspection PyProtectedMember
+            self.task._edit(configuration=task_configurations)
 
         if task_overrides and sections:
             # store back Task parameters into backend

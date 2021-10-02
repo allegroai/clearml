@@ -51,6 +51,7 @@ class PipelineController(object):
         parents = attrib(type=list, default=[])  # list of parent DAG steps
         timeout = attrib(type=float, default=None)  # execution timeout limit
         parameters = attrib(type=dict, default={})  # Task hyper parameters to change
+        configurations = attrib(type=dict, default={})  # Task configuration objects to change
         task_overrides = attrib(type=dict, default={})  # Task overrides to change
         executed = attrib(type=str, default=None)  # The actual executed Task ID (None if not executed yet)
         clone_task = attrib(type=bool, default=True)  # If True cline the base_task_id, then execute the cloned Task
@@ -172,6 +173,7 @@ class PipelineController(object):
             base_task_id=None,  # type: Optional[str]
             parents=None,  # type: Optional[Sequence[str]]
             parameter_override=None,  # type: Optional[Mapping[str, Any]]
+            configuration_overrides=None,  # type: Optional[Mapping[str, Union[str, Mapping]]]
             task_overrides=None,  # type: Optional[Mapping[str, Any]]
             execution_queue=None,  # type: Optional[str]
             monitor_metrics=None,  # type: Optional[List[Union[Tuple[str, str], Tuple[(str, str), (str, str)]]]]
@@ -208,15 +210,23 @@ class PipelineController(object):
                 parameter_override={'Args/input_file': '${stage3.parameters.Args/input_file}' }
             - Task ID
                 parameter_override={'Args/input_file': '${stage3.id}' }
+        :param configuration_overrides: Optional, override Task configuration objects.
+            Expected dictionary of configuration object name and configuration object content.
+            Examples:
+                {'General': dict(key='value')}
+                {'General': 'configuration file content'}
+                {'OmegaConf': YAML.dumps(full_hydra_dict)}
         :param task_overrides: Optional task section overriding dictionary.
             The dict values can reference a previously executed step using the following form '${step_name}'
             Examples:
-            - clear git repository commit ID
-                parameter_override={'script.version_num': '' }
-            - git repository commit branch
-                parameter_override={'script.branch': '${stage1.script.branch}' }
-            - container image
-                parameter_override={'container.image': '${stage1.container.image}' }
+            - get the latest commit from a specific branch
+                task_overrides={'script.version_num': '', 'script.branch': 'main'}
+            - match git repository branch to a previous step
+                task_overrides={'script.branch': '${stage1.script.branch}', 'script.version_num': ''}
+            - change container image
+                task_overrides={'container.image': '${stage1.container.image}'}
+            - match container image to a previous step
+                task_overrides={'container.image': '${stage1.container.image}'}
         :param execution_queue: Optional, the queue to use for executing this specific step.
             If not provided, the task will be sent to the default execution queue, as defined on the class
         :param monitor_metrics: Optional, log the step's metrics on the pipeline Task.
@@ -327,10 +337,18 @@ class PipelineController(object):
                         base_task_project, base_task_name))
             base_task_id = base_task.id
 
+        if configuration_overrides is not None:
+            # verify we have a dict or a string on all values
+            if not isinstance(configuration_overrides, dict) or \
+                    not all(isinstance(v, (str, dict)) for v in configuration_overrides.values()):
+                raise ValueError("configuration_overrides must be a dictionary, with all values "
+                                 "either dicts or strings, got \'{}\' instead".format(configuration_overrides))
+
         self._nodes[name] = self.Node(
             name=name, base_task_id=base_task_id, parents=parents or [],
             queue=execution_queue, timeout=time_limit,
             parameters=parameter_override or {},
+            configurations=configuration_overrides,
             clone_task=clone_base_task,
             task_overrides=task_overrides,
             cache_executed_step=cache_executed_step,
@@ -1191,7 +1209,7 @@ class PipelineController(object):
         # if we do not clone the Task, only merge the parts we can override.
         for name in list(self._nodes.keys()):
             if not self._nodes[name].clone_task and name in dag_dict and not dag_dict[name].get('clone_task'):
-                for k in ('queue', 'parents', 'timeout', 'parameters', 'task_overrides'):
+                for k in ('queue', 'parents', 'timeout', 'parameters', 'configurations', 'task_overrides'):
                     setattr(self._nodes[name], k, dag_dict[name].get(k) or type(getattr(self._nodes[name], k))())
 
         # if we do clone the Task deserialize everything, except the function creating
@@ -1249,6 +1267,10 @@ class PipelineController(object):
             raise ValueError("Node '{}', base_task_id={} is invalid".format(node.name, node.base_task_id))
 
         pattern = self._step_ref_pattern
+
+        # verify original node parents
+        if node.parents and not all(isinstance(p, str) and p in self._nodes for p in node.parents):
+            raise ValueError("Node '{}', parents={} is invalid".format(node.name, node.parents))
 
         parents = set()
         for k, v in node.parameters.items():
@@ -1371,7 +1393,9 @@ class PipelineController(object):
             disable_clone_task = True
 
         node.job = self._clearml_job_class(
-            base_task_id=task_id, parameter_override=updated_hyper_parameters,
+            base_task_id=task_id,
+            parameter_override=updated_hyper_parameters,
+            configuration_overrides=node.configurations,
             tags=['pipe: {}'.format(self._task.id)] if self._add_pipeline_tags and self._task else None,
             parent=self._task.id if self._task else None,
             disable_clone_task=disable_clone_task,
@@ -1673,6 +1697,7 @@ class PipelineController(object):
                     print('Parameters:\n{}'.format(
                         self._nodes[name].job.task_parameter_override if self._nodes[name].job
                         else self._nodes[name].parameters))
+                    print('Configurations:\n{}'.format(self._nodes[name].configurations))
                     print('Overrides:\n{}'.format(self._nodes[name].task_overrides))
                     launched_nodes.add(name)
                     # check if node is cached do not wait for event but run the loop again

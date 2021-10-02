@@ -8,7 +8,7 @@ from clearml import Task
 
 def main():
     # Getting the task we want to get the artifacts from
-    artifacts_task = Task.get_task(project_name='ClearML Examples', task_name='artifacts example')
+    artifacts_task = Task.get_task(project_name='examples', task_name='artifacts example')
 
     # getting the numpy object back
     numpy_artifact = artifacts_task.artifacts['Numpy Eye'].get()

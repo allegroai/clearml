@@ -1016,9 +1016,6 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
             parameters.update(new_parameters)
 
-            # force cast all variables to strings (so that we can later edit them in UI)
-            parameters = {k: stringify(v) for k, v in parameters.items()}
-
             if use_hyperparams:
                 # build nested dict from flat parameters dict:
                 org_hyperparams = self.data.hyperparams or {}
@@ -1032,7 +1029,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     if org_legacy_section.get(k, tasks.ParamsItem()).type == 'legacy':
                         section = hyperparams.get(legacy_name, dict())
                         section[k] = copy(org_legacy_section[k])
-                        section[k].value = str(v) if v else v
+                        section[k].value = stringify(v)
                         description = descriptions.get(k)
                         if description:
                             section[k].description = description
@@ -1045,13 +1042,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     section_name, key = k.split('/', 1)
                     section = hyperparams.get(section_name, dict())
                     org_param = org_hyperparams.get(section_name, dict()).get(key, tasks.ParamsItem())
-                    param_type = params_types[org_k] if org_k in params_types else org_param.type
+                    param_type = params_types[org_k] if org_k in params_types else (
+                            org_param.type or (type(v) if v is not None else None)
+                    )
                     if param_type and not isinstance(param_type, str):
                         param_type = param_type.__name__ if hasattr(param_type, '__name__') else str(param_type)
 
                     section[key] = tasks.ParamsItem(
                         section=section_name, name=key,
-                        value=str(v) if v else v,
+                        value=stringify(v),
                         description=descriptions[org_k] if org_k in descriptions else org_param.description,
                         type=param_type,
                     )
@@ -1060,6 +1059,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 self._edit(hyperparams=hyperparams)
                 self.data.hyperparams = hyperparams
             else:
+                # force cast all variables to strings (so that we can later edit them in UI)
+                parameters = {k: stringify(v) for k, v in parameters.items()}
+
                 execution = self.data.execution
                 if execution is None:
                     execution = tasks.Execution(

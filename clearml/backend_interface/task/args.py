@@ -464,7 +464,15 @@ class _Arguments(object):
             prefix = prefix.strip(self._prefix_sep) + self._prefix_sep
             parameters = dict([(k[len(prefix):], v) for k, v in self._task.get_parameters().items()
                                if k.startswith(prefix)])
+            # noinspection PyProtectedMember
+            parameters_type = {
+                k: p.type
+                for k, p in ((self._task._get_task_property('hyperparams', raise_on_error=False) or {}).get(
+                    prefix[:-len(self._prefix_sep)]) or {}).items()
+                if p.type
+            }
         else:
+            parameters_type = {}
             parameters = dict([(k, v) for k, v in self._task.get_parameters().items()
                                if not k.startswith(self._prefix_tf_defines)])
 
@@ -478,10 +486,20 @@ class _Arguments(object):
             param = parameters.get(k, None)
             if param is None:
                 continue
-            v_type = type(v)
+
+            # if default value is not specified, allow casting based on what we have on the Task
+            if v is not None:
+                v_type = type(v)
+            elif parameters_type.get(k):
+                v_type_str = parameters_type.get(k)
+                v_type = next((t for t in (bool, int, float, str, list, tuple) if t.__name__ == v_type_str), str)
+            else:
+                # this will be type(None), we deal with it later
+                v_type = type(v)
+
             # assume more general purpose type int -> float
             if v_type == int:
-                if int(v) != float(v):
+                if v is not None and int(v) != float(v):
                     v_type = float
             elif v_type == bool:
                 # cast based on string or int

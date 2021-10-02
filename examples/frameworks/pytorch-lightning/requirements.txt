@@ -1,4 +1,4 @@
 clearml
-pytorch_lightning ~= 1.1.2
+pytorch_lightning >= 1.1.2
 torch
 torchvision

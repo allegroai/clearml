@@ -780,6 +780,11 @@ class Dataset(object):
         if any(not p.is_final() for p in parent_datasets):
             raise ValueError("Cannot inherit from a parent that was not finalized/closed")
 
+        # if dataset name + project are None, default to use current_task
+        if dataset_project is None and dataset_name is None and not use_current_task:
+            LoggerRoot.get_base_logger().info('New dataset project/name not provided, storing on Current Task')
+            use_current_task = True
+
         # get project name
         if not dataset_project and not use_current_task:
             if not parent_datasets:

@@ -1511,7 +1511,7 @@ class Dataset(object):
         #         self._dependency_graph.keys())
         #     return dict(chunks_lookup)
         chunks_lookup = map(
-            lambda d: (d, Dataset.get(dataset_id=d).get_num_chunks()),
+            lambda d: (d, (self if d == self.id else Dataset.get(dataset_id=d)).get_num_chunks(include_parents=False)),
             self._dependency_graph.keys())
         return dict(chunks_lookup)
 

@@ -26,23 +26,23 @@ scheduler.add_task(
 
 # a few more Examples:
 #         Launch every 15 minutes
-#             add_task(task_id='1235', queue='default', minute=15)
+#             add_task(schedule_task_id='1235', queue='default', minute=15)
 #         Launch every 1 hour
-#             add_task(task_id='1235', queue='default', hour=1)
+#             add_task(schedule_task_id='1235', queue='default', hour=1)
 #         Launch every 1 hour and at hour:30 minutes (i.e. 1:30, 2:30 etc.)
-#             add_task(task_id='1235', queue='default', hour=1, minute=30)
+#             add_task(schedule_task_id='1235', queue='default', hour=1, minute=30)
 #         Launch every day at 22:30 (10:30 pm)
-#             add_task(task_id='1235', queue='default', minute=30, hour=22, day=1)
+#             add_task(schedule_task_id='1235', queue='default', minute=30, hour=22, day=1)
 #         Launch every other day at 7:30 (7:30 am)
-#             add_task(task_id='1235', queue='default', minute=30, hour=7, day=2)
+#             add_task(schedule_task_id='1235', queue='default', minute=30, hour=7, day=2)
 #         Launch every Saturday at 8:30am (notice `day=0`)
-#             add_task(task_id='1235', queue='default', minute=30, hour=8, day=0, weekdays=['saturday'])
+#             add_task(schedule_task_id='1235', queue='default', minute=30, hour=8, day=0, weekdays=['saturday'])
 #         Launch every 2 hours on the weekends Saturday/Sunday (notice `day` is not passed)
-#             add_task(task_id='1235', queue='default', hour=2, weekdays=['saturday', 'sunday'])
+#             add_task(schedule_task_id='1235', queue='default', hour=2, weekdays=['saturday', 'sunday'])
 #         Launch once a month at the 5th of each month
-#             add_task(task_id='1235', queue='default', month=1, day=5)
+#             add_task(schedule_task_id='1235', queue='default', month=1, day=5)
 #         Launch once a year on March 4th of each year
-#             add_task(task_id='1235', queue='default', year=1, month=3, day=4)
+#             add_task(schedule_task_id='1235', queue='default', year=1, month=3, day=4)
 
 
 # Run a simple logic function, every 2 hours, at minute 30 of every hour, only on business days (mon-fri)

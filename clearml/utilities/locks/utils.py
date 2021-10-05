@@ -197,6 +197,11 @@ class Lock(object):
 
     def _get_fh(self):
         '''Get a new filehandle'''
+        # Create the parent directory if it doesn't exist
+        path, name = os.path.split(self.filename)
+        if path and not os.path.isdir(path):  # pragma: no cover
+            os.makedirs(path, exist_ok=True)
+
         return open(self.filename, self.mode, **self.file_open_kwargs)
 
     def _get_lock(self, fh):

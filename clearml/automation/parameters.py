@@ -186,10 +186,31 @@ class LogUniformParameterRange(UniformParameterRange):
             include_max_value=True  # type: bool
     ):
         # type: (...) -> ()
+        """
+        Create a parameter to be sampled by the SearchStrategy
+
+        :param str name: The parameter name. Match the Task hyper-parameter name.
+        :param float min_value: The minimum exponent sample to use for uniform random sampling.
+        :param float max_value: The maximum exponent sample to use for uniform random sampling.
+        :param float base: The base used to raise the sampled exponent.
+        :param float step_size: If not ``None``, set step size (quantization) for value sampling.
+        :param bool include_max_value: Range includes the ``max_value``
+
+            The values are:
+
+            - ``True`` - The range includes the ``max_value`` (Default)
+            - ``False`` -  Does not include.
+
+        """
         super().__init__(name, min_value, max_value, step_size=step_size, include_max_value=include_max_value)
         self.base = base
         
     def get_value(self):
+        """
+        Return uniformly logarithmic sampled value based on object sampling definitions.
+
+        :return: {self.name: random value self.base^[self.min_value, self.max_value)}
+        """
         values_dict = super().get_value()
         return {self.name: self.base**v for v in values_dict.values()}
     

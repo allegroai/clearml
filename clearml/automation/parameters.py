@@ -172,9 +172,23 @@ class UniformParameterRange(Parameter):
 
 
 class LogUniformParameterRange(UniformParameterRange):
-    def __init__(self, name, min_value, max_value, step_size=None, include_max_value=True):
+    """
+    Logarithmic uniform randomly sampled hyper-parameter object.
+    """
+
+    def __init__(
+            self,
+            name,  # type: str
+            min_value,  # type: float
+            max_value,  # type: float
+            base=10,  # type: float
+            step_size=None,  # type: Optional[float]
+            include_max_value=True  # type: bool
+    ):
+        # type: (...) -> ()
         super().__init__(name, min_value, max_value, step_size=step_size, include_max_value=include_max_value)
-    
+        self.base = base
+        
     def get_value(self):
         values_dict = super().get_value()
         return {self.name: self.base**v for v in values_dict.values()}

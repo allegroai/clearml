@@ -196,7 +196,7 @@ class OptimizerOptuna(SearchStrategy):
         for p in self._hyper_parameters:
             if isinstance(p, LogUniformParameterRange):
                 hp_type = 'suggest_float'
-                hp_params = dict(low=p.min_value, high=p.max_value, log=True, step=None)
+                hp_params = dict(low=p.base**p.min_value, high=p.base**p.max_value, log=True, step=None)
             elif isinstance(p, UniformParameterRange):
                 if p.include_max and p.step_size:
                     hp_type = 'suggest_discrete_uniform'

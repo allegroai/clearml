@@ -67,8 +67,20 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
       
 #### [Start using ClearML](https://clear.ml/docs/latest/docs/getting_started/ds/ds_first_steps) 
 
+
+First, sign up for free to the [ClearML Hosted Service](https://app.community.clear.ml) (alternatively, you can set up your own server, see [here](https://clear.ml/docs/latest/docs/deploying_clearml/clearml_server)).
+
+Install the `clearml` python package:
+
 ```bash
 pip install clearml
+```
+
+Connect your computer to the server by [creating credentials](https://app.community.clear.ml/profile), then execute the command
+below and follow the instructions: 
+
+```bash
+clearml-init
 ```
 
 Add two lines to your code:
@@ -78,7 +90,8 @@ task = Task.init(project_name='examples', task_name='hello world')
 ```
 
 You are done, everything your process outputs is now automagically logged into ClearML.
-<br>Next step automation! **Learn more on ClearML two clicks automation [here](https://clear.ml/docs/latest/docs/getting_started/mlops/mlops_first_steps)** 
+
+<br>Next step, automation! **Learn more about ClearML's two-click automation [here](https://clear.ml/docs/latest/docs/getting_started/mlops/mlops_first_steps)**. 
 
 ## ClearML Architecture
 

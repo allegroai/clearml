@@ -91,7 +91,7 @@ task = Task.init(project_name='examples', task_name='hello world')
 
 You are done, everything your process outputs is now automagically logged into ClearML.
 
-<br>Next step, automation! **Learn more about ClearML's two-click automation [here](https://clear.ml/docs/latest/docs/getting_started/mlops/mlops_first_steps)**. 
+Next step, automation! **Learn more about ClearML's two-click automation [here](https://clear.ml/docs/latest/docs/getting_started/mlops/mlops_first_steps)**. 
 
 ## ClearML Architecture
 

@@ -671,14 +671,16 @@ class PipelineController(object):
 
         return True
 
-    def start_locally(self, run_pipeline_steps_locally=True):
+    def start_locally(self, run_pipeline_steps_locally=False):
         # type: (bool) -> None
         """
         Start the current pipeline locally, in most cases for debug purposes.
         By default it will be running the DAG itself locally, as sub-processes.
         Notice: running the DAG locally assumes the local code execution (i.e. it will not clone & apply git diff)
 
-        :param run_pipeline_steps_locally: If True, run the pipeline steps locally as a subprocess
+        :param run_pipeline_steps_locally: (default False) If True, run the
+        pipeline steps themselves locally as a subprocess (use for debugging the pipeline locally,
+        notice the pipeline code is expected to be available on the local machine)
         """
         if not self._task:
             raise ValueError(

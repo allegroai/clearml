@@ -76,7 +76,7 @@ Install the `clearml` python package:
 pip install clearml
 ```
 
-Connect your computer to the server by [creating credentials](https://app.community.clear.ml/profile), then execute the command
+Connect the ClearML SDK to the server by [creating credentials](https://app.community.clear.ml/profile), then execute the command
 below and follow the instructions: 
 
 ```bash

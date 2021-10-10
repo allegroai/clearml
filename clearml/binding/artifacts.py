@@ -24,6 +24,7 @@ from ..backend_interface.metrics.events import UploadEvent
 from ..debugging.log import LoggerRoot
 from ..storage.helper import remote_driver_schemes
 from ..storage.util import sha256sum, format_size, get_common_path
+from ..utilities.proxy_object import LazyEvalWrapper
 
 try:
     import pandas as pd
@@ -320,6 +321,11 @@ class Artifacts(object):
         # cast preview to string
         if preview:
             preview = str(preview)
+
+        # evaluate lazy proxy object
+        if isinstance(artifact_object, LazyEvalWrapper):
+            # noinspection PyProtectedMember
+            artifact_object = LazyEvalWrapper._load_object(artifact_object)
 
         pathlib_types = (Path, pathlib_Path,) if pathlib_Path is not None else (Path,)
 

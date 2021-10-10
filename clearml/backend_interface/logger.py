@@ -204,7 +204,14 @@ class PrintPatchLogger(object):
                         self._terminal.write(message)
 
                 do_flush = '\n' in message
+                # check for CR character
                 do_cr = '\r' in message
+                # check for "Escape Arrow-Up" character (tqdm's way of clearing a line)
+                if '\x1b[A' in message:
+                    do_cr = True
+                    # replace it with \r so it is more standard
+                    message = message.replace('\x1b[A', '\r')
+
                 self._cur_line += message
 
                 if not do_flush and do_cr and PrintPatchLogger.cr_flush_period and self._force_lf_flush:

@@ -11,7 +11,7 @@ Pillow>=4.1.1
 psutil>=3.4.2
 pyparsing>=2.0.3
 python-dateutil>=2.6.1
-pyjwt>=1.6.4,<3.0.0
+pyjwt>=1.6.4,<=2.1.0
 PyYAML>=3.12
 requests>=2.20.0
 six>=1.11.0

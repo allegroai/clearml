@@ -519,6 +519,75 @@ class SearchStrategy(object):
             additional_filters={'page_size': int(top_k), 'page': 0})
         return top_tasks
 
+    def get_top_experiments_id_metrics_pair(self, top_k, all_metrics=False):
+        # type: (int, bool) -> Sequence[(str, dict)]
+        """
+        Return a list of pairs (Task ID, scalar metric dict) of the top performing experiments.
+        Order is based on the controller ``Objective`` object.
+
+        :param int top_k: The number of Tasks (experiments) to return.
+        :param all_metrics: Default False, only return the objective metric on the metrics dictionary.
+            If True, return all scalar metrics of the experiment
+
+        :return: A list of pairs (Task ID, metric values dict), ordered by performance,
+        where index 0 is the best performing Task.
+        Example w/ all_metrics=False:
+
+            [
+                ('0593b76dc7234c65a13a301f731958fa',
+                    {
+                        'accuracy per class/cat': {
+                            'metric': 'accuracy per class',
+                            'variant': 'cat',
+                            'value': 0.119,
+                            'min_value': 0.119,
+                            'max_value': 0.782
+                        },
+                    }
+                ),
+            ]
+
+        Example w/ all_metrics=True:
+
+            [
+                ('0593b76dc7234c65a13a301f731958fa',
+                    {
+                        'accuracy per class/cat': {
+                            'metric': 'accuracy per class',
+                            'variant': 'cat',
+                            'value': 0.119,
+                            'min_value': 0.119,
+                            'max_value': 0.782
+                        },
+                        'accuracy per class/deer': {
+                            'metric': 'accuracy per class',
+                            'variant': 'deer',
+                            'value': 0.219,
+                            'min_value': 0.219,
+                            'max_value': 0.282
+                        },
+                    }
+                ),
+            ]
+        """
+        top_tasks_ids_metric = self._get_child_tasks_ids(
+            parent_task_id=self._job_parent_id or self._base_task_id,
+            order_by=self._objective_metric._get_last_metrics_encode_field(),
+            additional_filters={'page_size': int(top_k), 'page': 0},
+            additional_fields=['last_metrics']
+        )
+
+        if all_metrics:
+            return [(i, {'{}/{}'.format(v['metric'], v['variant']): v
+                         for variant in metric.values() for v in variant.values()}
+                     ) for i, metric in top_tasks_ids_metric]
+
+        title, series = self._objective_metric.get_objective_metric()
+        return [(i, {'{}/{}'.format(v['metric'], v['variant']): v
+                     for variant in metric.values() for v in variant.values()
+                     if v['metric'] == title and v['variant'] == series}
+                 ) for i, metric in top_tasks_ids_metric]
+
     def get_objective_metric(self):
         # type: () -> (str, str)
         """
@@ -656,9 +725,10 @@ class SearchStrategy(object):
             parent_task_id,  # type: str
             status=None,  # type: Optional[Union[Task.TaskStatusEnum], Sequence[Task.TaskStatusEnum]]
             order_by=None,  # type: Optional[str]
-            additional_filters=None  # type: Optional[dict]
+            additional_fields=None,  # type: Optional[Sequence[str]]
+            additional_filters=None,  # type: Optional[dict]
     ):
-        # type: (...) -> (Sequence[str])
+        # type: (...) -> (Union[Sequence[str], Sequence[List]])
         """
         Helper function. Return a list of tasks is tagged automl, with specific ``status``, ordered by ``sort_field``.
 
@@ -676,6 +746,8 @@ class SearchStrategy(object):
                 "execution.parameters.name"
                 "updated"
 
+        :param additional_fields: Optional, list of fields (str) to return next to the Task ID,
+            this implies return value is a list of pairs
         :param dict additional_filters: The additional task filters.
         :return: A list of Task IDs (str)
         """
@@ -702,9 +774,14 @@ class SearchStrategy(object):
         if order_by:
             task_filter['order_by'] = [order_by]
 
+        if additional_fields:
+            task_filter['only_fields'] = list(set(list(additional_fields) + ['id']))
+
         # noinspection PyProtectedMember
         task_objects = Task._query_tasks(**task_filter)
-        return [t.id for t in task_objects]
+        if not additional_fields:
+            return [t.id for t in task_objects]
+        return [[t.id]+[getattr(t, f, None) for f in additional_fields] for t in task_objects]
 
     @classmethod
     def _get_child_tasks(

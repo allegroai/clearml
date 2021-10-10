@@ -70,10 +70,18 @@ class TokenManager(object):
     @classmethod
     def get_decoded_token(cls, token):
         """ Get token expiration time. If not present, assume forever """
+        if hasattr(jwt, '__version__') and jwt.__version__[0] == '1':
+            return jwt.decode(
+                token,
+                verify=False,
+                algorithms=get_default_algorithms(),
+            )
+
         return jwt.decode(
-            token, verify=False,
+            token,
             options=dict(verify_signature=False),
-            algorithms=get_default_algorithms())
+            algorithms=get_default_algorithms(),
+        )
 
     @classmethod
     def _get_token_exp(cls, token):

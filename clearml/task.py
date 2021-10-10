@@ -2985,6 +2985,10 @@ class Task(_Task):
                         except Exception:
                             pass
 
+                        # check if this is Jupyter interactive session, do not mark as exception
+                        if 'IPython' in sys.modules:
+                            is_exception = None
+
                     # only if we have an exception (and not ctrl-break) or signal is not SIGTERM / SIGINT
                     if (is_exception and not isinstance(is_exception, KeyboardInterrupt)
                         and is_exception != KeyboardInterrupt) \

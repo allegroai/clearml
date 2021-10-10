@@ -68,26 +68,30 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
 #### [Start using ClearML](https://clear.ml/docs/latest/docs/getting_started/ds/ds_first_steps) 
 
 
-First, sign up for free to the [ClearML Hosted Service](https://app.community.clear.ml) (alternatively, you can set up your own server, see [here](https://clear.ml/docs/latest/docs/deploying_clearml/clearml_server)).
+1. Sign up for free to the [ClearML Hosted Service](https://app.community.clear.ml) (alternatively, you can set up your own server, see [here](https://clear.ml/docs/latest/docs/deploying_clearml/clearml_server)).
 
-Install the `clearml` python package:
+    > **_ClearML Demo Server:_** ClearML no longer uses the demo server by default. To enable the demo server, set the `CLEARML_NO_DEFAULT_SERVER=0`
+    > environment variable. Credentials aren't needed, but experiments launched to the demo server are public, so make sure not 
+    > to launch sensitive experiments if using the demo server.
 
-```bash
-pip install clearml
-```
+1. Install the `clearml` python package:
 
-Connect the ClearML SDK to the server by [creating credentials](https://app.community.clear.ml/profile), then execute the command
+    ```bash
+    pip install clearml
+    ```
+
+1. Connect the ClearML SDK to the server by [creating credentials](https://app.community.clear.ml/profile), then execute the command
 below and follow the instructions: 
 
-```bash
-clearml-init
-```
+    ```bash
+    clearml-init
+    ```
 
-Add two lines to your code:
-```python
-from clearml import Task
-task = Task.init(project_name='examples', task_name='hello world')
-```
+1. Add two lines to your code:
+    ```python
+    from clearml import Task
+    task = Task.init(project_name='examples', task_name='hello world')
+    ```
 
 You are done, everything your process outputs is now automagically logged into ClearML.
 

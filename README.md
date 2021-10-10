@@ -70,11 +70,9 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
 
 First, sign up for free to the [ClearML Hosted Service](https://app.community.clear.ml) (alternatively, you can set up your own server, see [here](https://clear.ml/docs/latest/docs/deploying_clearml/clearml_server)).
 
-:::note ClearML Demo Server
-ClearML no longer uses the demo server by default. In order to enable the demo server, set the `CLEARML_NO_DEFAULT_SERVER=0` 
+> **_ClearML Demo Server:_** ClearML no longer uses the demo server by default. In order to enable the demo server, set the `CLEARML_NO_DEFAULT_SERVER=0` 
 environment variable. Credentials aren't needed for the demo server, but experiments launched to it are public,
 so make sure not to launch sensitive experiments if using the demo server.
-:::
 
 Install the `clearml` python package:
 

@@ -761,7 +761,7 @@ class Dataset(object):
             parent_datasets=None,  # type: Optional[Sequence[Union[str, Dataset]]]
             use_current_task=False  # type: bool
     ):
-        # type: (...) -> Dataset
+        # type: (...) -> "Dataset"
         """
         Create a new dataset. Multiple dataset parents are supported.
         Merging of parent datasets is done based on the order,
@@ -895,7 +895,7 @@ class Dataset(object):
             only_completed=False,  # type: bool
             only_published=False  # type: bool
     ):
-        # type: (...) -> Dataset
+        # type: (...) -> "Dataset"
         """
         Get a specific Dataset. If only dataset_project is given, return the last Dataset in the Dataset project
 
@@ -976,8 +976,14 @@ class Dataset(object):
         return sum(self._get_dependency_chunk_lookup().values())
 
     @classmethod
-    def squash(cls, dataset_name, dataset_ids=None, dataset_project_name_pairs=None, output_url=None):
-        # type: (str, Optional[Sequence[Union[str, Dataset]]],Optional[Sequence[(str, str)]], Optional[str]) -> Dataset
+    def squash(
+            cls,
+            dataset_name,  # type: str
+            dataset_ids=None,  # type: Optional[Sequence[Union[str, Dataset]]]
+            dataset_project_name_pairs=None,  # type: Optional[Sequence[(str, str)]]
+            output_url=None,  # type: Optional[str]
+    ):
+        # type: (...) -> "Dataset"
         """
         Generate a new dataset from the squashed set of dataset versions.
         If a single version is given it will squash to the root (i.e. create single standalone version)
@@ -1451,7 +1457,7 @@ class Dataset(object):
 
     @classmethod
     def _deserialize(cls, stored_state, task):
-        # type: (Union[dict, str, Path, _Path], Task) -> Dataset
+        # type: (Union[dict, str, Path, _Path], Task) -> "Dataset"
         """
         reload a dataset state from the stored_state object
         :param task: Task object associated with the dataset

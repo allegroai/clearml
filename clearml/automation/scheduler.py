@@ -533,10 +533,10 @@ class TaskScheduler(BaseScheduler):
         Notice, it is recommended to give the schedule entry a descriptive unique name,
         if not provided, a name is randomly generated.
 
-        When timespec parameters are specified exclusively, they define the period between task launches (except for
-        `year` and `weekdays`). When multiple timespec parameter are specified, the parameter representing the longest
-        time period defines the period between task launches, and the shorter timespec parameters define
-        specific times.
+        When timespec parameters are specified exclusively, they define the time between task launches (see
+        `year` and `weekdays` exceptions). When multiple timespec parameter are specified, the parameter representing
+        the longest duration defines the time between task launches, and the shorter timespec parameters define specific
+        times.
 
         Examples:
         Launch every 15 minutes
@@ -565,16 +565,16 @@ class TaskScheduler(BaseScheduler):
         :param queue: Name or ID of queue to put the Task into (i.e. schedule)
         :param name: Name or description for the cron Task (should be unique if provided, otherwise randomly generated)
         :param target_project: Specify target project to put the cloned scheduled Task in.
-        :param minute: Period (in minutes) between task launches. If specified together with `hour`, `day`, `month`,
+        :param minute: Time (in minutes) between task launches. If specified together with `hour`, `day`, `month`,
             and / or  `year`, it defines the minute of the hour
-        :param hour: Period (in hours) between task launches. If specified together with `day`, `month`, and / or
+        :param hour: Time (in hours) between task launches. If specified together with `day`, `month`, and / or
             `year`, it defines the hour of day.
-        :param day: Period (in days) between task executions. If specified together with  `month` and / or `year`,
+        :param day: Time (in days) between task executions. If specified together with  `month` and / or `year`,
             it defines the day of month
         :param weekdays: Days of week to launch task (accepted inputs: 'monday', 'tuesday', 'wednesday',
             'thursday', 'friday', 'saturday', 'sunday')
-        :param month: Period (in months) between task launches. If specified with `year`, it defines a specific month
-        :param year: Specific year if value >= current year. Period (in years) between task launches if
+        :param month: Time (in months) between task launches. If specified with `year`, it defines a specific month
+        :param year: Specific year if value >= current year. Time (in years) between task launches if
             value <= 100
         :param limit_execution_time: Limit the execution time (in hours) of the specific job.
         :param single_instance: If True, do not launch the Task job if the previous instance is still running

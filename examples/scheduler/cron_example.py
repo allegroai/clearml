@@ -29,7 +29,7 @@ scheduler.add_task(
 #             add_task(schedule_task_id='1235', queue='default', minute=15)
 #         Launch every 1 hour
 #             add_task(schedule_task_id='1235', queue='default', hour=1)
-#         Launch every 1 hour and at hour:30 minutes (i.e. 1:30, 2:30 etc.)
+#         Launch every 1 hour at hour:30 minutes (i.e. 1:30, 2:30 etc.)
 #             add_task(schedule_task_id='1235', queue='default', hour=1, minute=30)
 #         Launch every day at 22:30 (10:30 pm)
 #             add_task(schedule_task_id='1235', queue='default', minute=30, hour=22, day=1)

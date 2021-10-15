@@ -529,16 +529,21 @@ class TaskScheduler(BaseScheduler):
     ):
         # type: (...) -> bool
         """
-        Create a cron job alike scheduling for a pre existing Task.
-        Notice it is recommended to give the schedule entry a descriptive unique name,
-        if not provided a task ID is used.
+        Create a cron job-like scheduling for a pre-existing Task.
+        Notice, it is recommended to give the schedule entry a descriptive unique name,
+        if not provided, a name is randomly generated.
+
+        When timespec parameters are specified exclusively, they define the time between task launches (see
+        `year` and `weekdays` exceptions). When multiple timespec parameter are specified, the parameter representing
+        the longest duration defines the time between task launches, and the shorter timespec parameters define specific
+        times.
 
         Examples:
         Launch every 15 minutes
             add_task(schedule_task_id='1235', queue='default', minute=15)
         Launch every 1 hour
             add_task(schedule_task_id='1235', queue='default', hour=1)
-        Launch every 1 hour and at hour:30 minutes (i.e. 1:30, 2:30 etc.)
+        Launch every 1 hour at hour:30 minutes (i.e. 1:30, 2:30 etc.)
             add_task(schedule_task_id='1235', queue='default', hour=1, minute=30)
         Launch every day at 22:30 (10:30 pm)
             add_task(schedule_task_id='1235', queue='default', minute=30, hour=22, day=1)
@@ -550,22 +555,27 @@ class TaskScheduler(BaseScheduler):
             add_task(schedule_task_id='1235', queue='default', hour=2, weekdays=['saturday', 'sunday'])
         Launch once a month at the 5th of each month
             add_task(schedule_task_id='1235', queue='default', month=1, day=5)
-        Launch once a year on March 4th of each year
+        Launch once a year on March 4th
             add_task(schedule_task_id='1235', queue='default', year=1, month=3, day=4)
 
-        :param schedule_task_id: Task/task ID to be cloned and scheduled for execution
+        :param schedule_task_id: ID of Task to be cloned and scheduled for execution
         :param schedule_function: Optional, instead of providing Task ID to be scheduled,
             provide a function to be called. Notice the function is called from the scheduler context
             (i.e. running on the same machine as the scheduler)
-        :param queue: Queue name or ID to put the Task into (i.e. schedule)
-        :param name: Name or description for the cron Task (should be unique if provided otherwise randomly generated)
+        :param queue: Name or ID of queue to put the Task into (i.e. schedule)
+        :param name: Name or description for the cron Task (should be unique if provided, otherwise randomly generated)
         :param target_project: Specify target project to put the cloned scheduled Task in.
-        :param minute: If specified launch Task at a specific minute of the day (Valid values 0-60)
-        :param hour: If specified launch Task at a specific hour (24h) of the day (Valid values 0-24)
-        :param day: If specified launch Task at a specific day (Valid values 1-31)
-        :param weekdays: If specified a list of week days to schedule the Task in (assuming day, not given)
-        :param month: If specified launch Task at a specific month (Valid values 1-12)
-        :param year: If specified launch Task at a specific year
+        :param minute: Time (in minutes) between task launches. If specified together with `hour`, `day`, `month`,
+            and / or  `year`, it defines the minute of the hour
+        :param hour: Time (in hours) between task launches. If specified together with `day`, `month`, and / or
+            `year`, it defines the hour of day.
+        :param day: Time (in days) between task executions. If specified together with  `month` and / or `year`,
+            it defines the day of month
+        :param weekdays: Days of week to launch task (accepted inputs: 'monday', 'tuesday', 'wednesday',
+            'thursday', 'friday', 'saturday', 'sunday')
+        :param month: Time (in months) between task launches. If specified with `year`, it defines a specific month
+        :param year: Specific year if value >= current year. Time (in years) between task launches if
+            value <= 100
         :param limit_execution_time: Limit the execution time (in hours) of the specific job.
         :param single_instance: If True, do not launch the Task job if the previous instance is still running
         (skip until the next scheduled time period). Default False.

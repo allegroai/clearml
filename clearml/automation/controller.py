@@ -1394,17 +1394,21 @@ class PipelineController(object):
             task_id = task_factory_func_task.id
             disable_clone_task = True
 
-        node.job = self._clearml_job_class(
-            base_task_id=task_id,
-            parameter_override=updated_hyper_parameters,
-            configuration_overrides=node.configurations,
-            tags=['pipe: {}'.format(self._task.id)] if self._add_pipeline_tags and self._task else None,
-            parent=self._task.id if self._task else None,
-            disable_clone_task=disable_clone_task,
-            task_overrides=task_overrides,
-            allow_caching=node.cache_executed_step,
-            **extra_args
-        )
+        try:
+            node.job = self._clearml_job_class(
+                base_task_id=task_id,
+                parameter_override=updated_hyper_parameters,
+                configuration_overrides=node.configurations,
+                tags=['pipe: {}'.format(self._task.id)] if self._add_pipeline_tags and self._task else None,
+                parent=self._task.id if self._task else None,
+                disable_clone_task=disable_clone_task,
+                task_overrides=task_overrides,
+                allow_caching=node.cache_executed_step,
+                **extra_args
+            )
+        except Exception:
+            self._pipeline_task_status_failed = True
+            raise
 
         if self._experiment_created_cb:
             skip_node = self._experiment_created_cb(self, node, updated_hyper_parameters)

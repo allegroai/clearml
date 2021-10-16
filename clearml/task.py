@@ -2932,7 +2932,8 @@ class Task(_Task):
                 kill_ourselves.terminate()
 
     def _dev_mode_setup_worker(self):
-        if running_remotely() or not self.is_main_task() or self._at_exit_called or self._offline_mode:
+        if (running_remotely() and not DEBUG_SIMULATE_REMOTE_TASK.get()) \
+                or not self.is_main_task() or self._at_exit_called or self._offline_mode:
             return
 
         if self._dev_worker:

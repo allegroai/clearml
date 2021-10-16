@@ -328,13 +328,19 @@ class Task(_Task):
             - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
                 arguments. The dictionary keys are argparse variable names and the values are booleans.
                 The ``False`` value excludes the specified argument from the Task's parameter section.
-                Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
+                Keys missing from the dictionary default to ``True``, you can change it to be ``False`` by adding
+                ``*`` key as ``False`` to the dictionary.
+                An empty dictionary defaults to ``False``.
 
             For example:
 
             .. code-block:: py
 
                auto_connect_arg_parser={'do_not_include_me': False, }
+
+            .. code-block:: py
+
+               auto_connect_arg_parser={"only_include_me": True, "*": False}
 
             .. note::
                To manually connect an argparse, use :meth:`Task.connect`.

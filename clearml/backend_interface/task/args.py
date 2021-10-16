@@ -179,15 +179,16 @@ class _Arguments(object):
 
         # Skip excluded arguments, Add prefix.
         if Session.check_min_api_version('2.9'):
+            include_all = self._exclude_parser_args.get("*", True)
             task_defaults = dict(
                 [(self._prefix_args + k, v) for k, v in task_defaults.items()
-                 if self._exclude_parser_args.get(k, True)])
+                 if self._exclude_parser_args.get(k, include_all)])
             task_defaults_descriptions = dict(
                 [(self._prefix_args + k, v) for k, v in task_defaults_descriptions.items()
-                 if self._exclude_parser_args.get(k, True)])
+                 if self._exclude_parser_args.get(k, include_all)])
             task_defaults_types = dict(
                 [(self._prefix_args + k, v) for k, v in task_defaults_types.items()
-                 if self._exclude_parser_args.get(k, True)])
+                 if self._exclude_parser_args.get(k, include_all)])
         else:
             task_defaults = dict(
                 [(k, v) for k, v in task_defaults.items() if self._exclude_parser_args.get(k, True)])

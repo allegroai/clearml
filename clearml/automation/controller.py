@@ -1638,6 +1638,8 @@ class PipelineController(object):
                 return "blue"  # completed job
             elif node.job.is_failed():
                 return "red"  # failed job
+            elif node.job.is_stopped():
+                return "royalblue"  # aborted job
             else:
                 return "green"  # running job
         elif node.skip_job:
@@ -1777,7 +1779,7 @@ class PipelineController(object):
             if node.executed is False and not node.continue_on_fail:
                 self._pipeline_task_status_failed = True
 
-            if node.job and node.executed and not node.job.is_stopped():
+            if node.job and not node.job.is_stopped():
                 node.job.abort()
             elif not node.job and not node.executed:
                 # mark Node as skipped if it has no Job object and it is not executed
@@ -2308,7 +2310,7 @@ class PipelineDecorator(PipelineController):
             if node.executed is False and not node.continue_on_fail:
                 self._pipeline_task_status_failed = True
 
-            if node.job and node.executed and not node.job.is_stopped():
+            if node.job and not node.job.is_stopped():
                 node.job.abort()
             elif not node.job and not node.executed:
                 # mark Node as skipped if it has no Job object and it is not executed

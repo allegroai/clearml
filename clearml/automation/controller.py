@@ -2423,7 +2423,7 @@ class PipelineDecorator(PipelineController):
             helper_functions=None,  # type: Optional[Sequence[Callable]]
             monitor_metrics=None,  # type: Optional[List[Union[Tuple[str, str], Tuple[(str, str), (str, str)]]]]
             monitor_artifacts=None,  # type: Optional[List[Union[str, Tuple[str, str]]]]
-            monitor_models=None,  # type: Optional[List[Union[str, Tuple[str, str]]]]
+            monitor_models=None  # type: Optional[List[Union[str, Tuple[str, str]]]]
     ):
         # type: (...) -> Callable
         """
@@ -2706,7 +2706,7 @@ class PipelineDecorator(PipelineController):
             pool_frequency=0.2,  # type: float
             add_pipeline_tags=False,  # type: bool
             target_project=None,  # type: Optional[str]
-            pipeline_execution_queue='services',  # type: Optional[str]
+            pipeline_execution_queue='services'  # type: Optional[str]
     ):
         # type: (...) -> Callable
         """

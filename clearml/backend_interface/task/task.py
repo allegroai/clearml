@@ -553,10 +553,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """ The signal that this Task started. """
         return self.send(tasks.StartedRequest(self.id, force=force), ignore_errors=ignore_errors)
 
-    def stopped(self, ignore_errors=True, force=False):
-        # type: (bool, bool) -> ()
+    def stopped(self, ignore_errors=True, force=False, status_reason=None):
+        # type: (bool, bool, Optional[str]) -> ()
         """ The signal that this Task stopped. """
-        return self.send(tasks.StoppedRequest(self.id, force=force), ignore_errors=ignore_errors)
+        return self.send(
+            tasks.StoppedRequest(self.id, force=force, status_reason=status_reason),
+            ignore_errors=ignore_errors
+        )
 
     def completed(self, ignore_errors=True):
         # type: (bool) -> ()

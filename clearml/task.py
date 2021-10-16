@@ -2883,7 +2883,7 @@ class Task(_Task):
             )
         )
         self.flush(wait_for_uploads=True)
-        self.stopped()
+        self.stopped(status_reason='USER ABORTED')
 
         if self._dev_worker:
             self._dev_worker.unregister()

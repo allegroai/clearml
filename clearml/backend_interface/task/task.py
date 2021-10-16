@@ -566,12 +566,18 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         warnings.warn("'completed' is deprecated; use 'mark_completed' instead.", DeprecationWarning)
         return self.mark_completed(ignore_errors=ignore_errors)
 
-    def mark_completed(self, ignore_errors=True):
-        # type: (bool) -> ()
+    def mark_completed(self, ignore_errors=True, status_message=None, force=False):
+        # type: (bool, Optional[str], bool) -> ()
         """ The signal indicating that this Task completed. """
         if hasattr(tasks, 'CompletedRequest') and callable(tasks.CompletedRequest):
-            return self.send(tasks.CompletedRequest(self.id, status_reason='completed'), ignore_errors=ignore_errors)
-        return self.send(tasks.StoppedRequest(self.id, status_reason='completed'), ignore_errors=ignore_errors)
+            return self.send(
+                tasks.CompletedRequest(self.id, status_reason='completed', status_message=status_message, force=force),
+                ignore_errors=ignore_errors
+            )
+        return self.send(
+            tasks.StoppedRequest(self.id, status_reason='completed', status_message=status_message, force=force),
+            ignore_errors=ignore_errors
+        )
 
     def mark_failed(self, ignore_errors=True, status_reason=None, status_message=None, force=False):
         # type: (bool, Optional[str], Optional[str], bool) -> ()

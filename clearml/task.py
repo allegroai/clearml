@@ -693,7 +693,7 @@ class Task(_Task):
         :param docker: Select the docker image to be executed in by the remote session
         :param docker_args: Add docker arguments, pass a single string
         :param docker_bash_setup_script: Add bash script to be executed
-            inside the docker before setting up the Task's environement
+            inside the docker before setting up the Task's environment
         :param argparse_args: Arguments to pass to the remote execution, list of string pairs (argument, value)
             Notice, only supported if the codebase itself uses argparse.ArgumentParser
         :param base_task_id: Use a pre-existing task in the system, instead of a local repo/script.
@@ -1853,6 +1853,60 @@ class Task(_Task):
             replace='none',
             force_section="properties",
         )
+
+    def get_script(self):
+        # type: (...) -> Mapping[str, Optional[str]]
+        """
+        Get task's script details.
+
+        Returns a dictionary containing the script details.
+        :return: Dictionary with script properties e.g.
+                {
+                'working_dir': 'examples/reporting',
+                'entry_point': 'artifacts.py',
+                'branch': 'master',
+                'repository': 'https://github.com/allegroai/clearml.git'
+                }
+        """
+        script = self.data.script
+        return {
+            "working_dir": script.working_dir,
+            "entry_point": script.entry_point,
+            "branch": script.branch,
+            "repository": script.repository
+        }
+
+    def set_script(
+            self,
+            repository=NotSet,  # type: Optional[str]
+            branch=NotSet,  # type: Optional[str]
+            working_dir=NotSet,  # type: Optional[str]
+            entry_point=NotSet,  # type: Optional[str]
+            **kwargs  # type: Any
+    ):
+        # type: (...) -> None
+        """
+        Set task's script.
+
+        Examples:
+            task.set_script(repository="https://github.com/allegroai/clearml.git",
+                            branch="master",
+                            working_dir="examples/reporting",
+                            entry_point="artifacts.py")
+
+        :param repository: URL of remote repository.
+        :param branch: Select specific repository branch / tag.
+        :param working_dir: Working directory to launch the script from.
+        :param entry_point: Path to execute within the repository.
+
+        """
+        script = self.data.script
+        script.repository = script.repository if repository is self.NotSet else repository
+        script.branch = script.branch if branch is self.NotSet else branch
+        script.working_dir = script.working_dir if working_dir is self.NotSet else working_dir
+        script.entry_point = script.entry_point if entry_point is self.NotSet else entry_point
+        # noinspection PyProtectedMember
+        self._update_script(script=script)
 
     def delete_user_properties(self, *iterables):
         # type: (Iterable[Union[dict, Iterable[str, str]]]) -> bool

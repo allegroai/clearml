@@ -81,7 +81,7 @@ class Monitor(object):
     def monitor_step(self):
         # type: () -> ()
         """
-        Implement the main query / interface of he monitor class.
+        Implement the main query / interface of the monitor class.
         In order to combine multiple Monitor objects, call `monitor_step` manually.
         If Tasks are detected in this call,
 
@@ -130,7 +130,7 @@ class Monitor(object):
         # type: (Task) -> ()
         Abstract function
 
-        Called on every Task that we monitor. For example monitoring failed Task,
+        Called on every Task that we monitor. For example, monitoring failed Task,
         will call this Task the first time the Task was detected as failed.
 
         :return: None

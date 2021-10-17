@@ -436,7 +436,7 @@ class ClearmlJob(BaseJob):
     ):
         # type: (...) -> ()
         """
-        Create a new Task based in a base_task_id with a different set of parameters
+        Create a new Task based on a base_task_id with a different set of parameters
 
         :param str base_task_id: base task id to clone from
         :param dict parameter_override: dictionary of parameters and values to set fo the cloned task

@@ -460,7 +460,7 @@ class CreateAndPopulate(object):
 class CreateFromFunction(object):
     kwargs_section = 'kwargs'
     input_artifact_section = 'kwargs_artifacts'
-    task_template = """from clearml import Task
+    task_template = """from clearml import Task, TaskTypes
 from clearml.automation.controller import PipelineDecorator
 
 

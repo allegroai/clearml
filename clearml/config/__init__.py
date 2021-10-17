@@ -113,6 +113,35 @@ def get_log_to_backend(default=None):
     return LOG_TO_BACKEND_ENV_VAR.get(default=default)  # noqa: F405
 
 
+def get_node_count():
+    # noinspection PyBroadException
+    try:
+        mpi_world_rank = int(os.environ.get('OMPI_COMM_WORLD_NODE_RANK', os.environ.get('PMI_RANK')))
+        return mpi_world_rank
+    except Exception:
+        pass
+
+    # noinspection PyBroadException
+    try:
+        mpi_rank = int(os.environ.get('OMPI_COMM_WORLD_RANK', os.environ.get('SLURM_JOB_NUM_NODES')))
+        return mpi_rank
+    except Exception:
+        pass
+
+    # check if we have pyTorch node/worker ID (only if torch was already imported)
+    if 'torch' in sys.modules:
+        # noinspection PyBroadException
+        try:
+            from torch.utils.data.dataloader import get_worker_info  # noqa
+            worker_info = get_worker_info()
+            if worker_info:
+                return int(worker_info.num_workers)
+        except Exception:
+            pass
+
+    return None
+
+
 def get_node_id(default=0):
     node_id = NODE_ID_ENV_VAR.get()  # noqa: F405
 
@@ -124,7 +153,9 @@ def get_node_id(default=0):
 
     # noinspection PyBroadException
     try:
-        mpi_rank = int(os.environ.get('OMPI_COMM_WORLD_RANK', os.environ.get('SLURM_PROCID')))
+        mpi_rank = int(os.environ.get(
+            'OMPI_COMM_WORLD_RANK', os.environ.get('SLURM_PROCID', os.environ.get('SLURM_NODEID')))
+        )
     except Exception:
         mpi_rank = None
 

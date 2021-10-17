@@ -91,9 +91,8 @@ def verify_basic_type(a_dict_list, basic_types=None):
                all(verify_basic_type(v) for v in a_dict_list.values())
 
 
-def flatten_dictionary(a_dict, prefix=''):
+def flatten_dictionary(a_dict, prefix='', sep='/'):
     flat_dict = {}
-    sep = '/'
     basic_types = (float, int, bool, six.string_types, )
     for k, v in a_dict.items():
         k = str(k)
@@ -102,7 +101,7 @@ def flatten_dictionary(a_dict, prefix=''):
         elif isinstance(v, (list, tuple)) and all([isinstance(i, basic_types) for i in v]):
             flat_dict[prefix + k] = v
         elif isinstance(v, dict):
-            nested_flat_dict = flatten_dictionary(v, prefix=prefix + k + sep)
+            nested_flat_dict = flatten_dictionary(v, prefix=prefix + k + sep, sep=sep)
             if nested_flat_dict:
                 flat_dict.update(nested_flat_dict)
             else:
@@ -114,9 +113,8 @@ def flatten_dictionary(a_dict, prefix=''):
     return flat_dict
 
 
-def nested_from_flat_dictionary(a_dict, flat_dict, prefix=''):
+def nested_from_flat_dictionary(a_dict, flat_dict, prefix='', sep='/'):
     basic_types = (float, int, bool, six.string_types, )
-    sep = '/'
     org_dict = copy(a_dict)
     for k, v in org_dict.items():
         k = str(k)
@@ -125,7 +123,7 @@ def nested_from_flat_dictionary(a_dict, flat_dict, prefix=''):
         elif isinstance(v, (list, tuple)) and all([isinstance(i, basic_types) for i in v]):
             a_dict[k] = flat_dict.get(prefix + k, v)
         elif isinstance(v, dict):
-            a_dict[k] = nested_from_flat_dictionary(v, flat_dict, prefix=prefix + k + sep) or v
+            a_dict[k] = nested_from_flat_dictionary(v, flat_dict, prefix=prefix + k + sep, sep=sep) or v
         else:
             # this is a mixture of list and dict, or any other object,
             # leave it as is, we have nothing to do with it.
@@ -145,7 +143,7 @@ def naive_nested_from_flat_dictionary(flat_dict, sep='/'):
                     k[len(sub_prefix) + 1:]: v
                     for k, v in bucket
                     if len(k) > len(sub_prefix)
-                }
+                }, sep=sep
             )
         )
         for sub_prefix, bucket in (

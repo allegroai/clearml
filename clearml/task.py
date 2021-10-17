@@ -328,13 +328,19 @@ class Task(_Task):
             - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
                 arguments. The dictionary keys are argparse variable names and the values are booleans.
                 The ``False`` value excludes the specified argument from the Task's parameter section.
-                Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
+                Keys missing from the dictionary default to ``True``, you can change it to be ``False`` by adding
+                ``*`` key as ``False`` to the dictionary.
+                An empty dictionary defaults to ``False``.
 
             For example:
 
             .. code-block:: py
 
                auto_connect_arg_parser={'do_not_include_me': False, }
+
+            .. code-block:: py
+
+               auto_connect_arg_parser={"only_include_me": True, "*": False}
 
             .. note::
                To manually connect an argparse, use :meth:`Task.connect`.
@@ -687,7 +693,7 @@ class Task(_Task):
         :param docker: Select the docker image to be executed in by the remote session
         :param docker_args: Add docker arguments, pass a single string
         :param docker_bash_setup_script: Add bash script to be executed
-            inside the docker before setting up the Task's environement
+            inside the docker before setting up the Task's environment
         :param argparse_args: Arguments to pass to the remote execution, list of string pairs (argument, value)
             Notice, only supported if the codebase itself uses argparse.ArgumentParser
         :param base_task_id: Use a pre-existing task in the system, instead of a local repo/script.
@@ -1848,6 +1854,60 @@ class Task(_Task):
             force_section="properties",
         )
 
+    def get_script(self):
+        # type: (...) -> Mapping[str, Optional[str]]
+        """
+        Get task's script details.
+
+        Returns a dictionary containing the script details.
+        :return: Dictionary with script properties e.g.
+                {
+                'working_dir': 'examples/reporting',
+                'entry_point': 'artifacts.py',
+                'branch': 'master',
+                'repository': 'https://github.com/allegroai/clearml.git'
+                }
+        """
+        script = self.data.script
+        return {
+            "working_dir": script.working_dir,
+            "entry_point": script.entry_point,
+            "branch": script.branch,
+            "repository": script.repository
+        }
+
+    def set_script(
+            self,
+            repository=NotSet,  # type: Optional[str]
+            branch=NotSet,  # type: Optional[str]
+            working_dir=NotSet,  # type: Optional[str]
+            entry_point=NotSet,  # type: Optional[str]
+            **kwargs  # type: Any
+    ):
+        # type: (...) -> None
+        """
+        Set task's script.
+
+        Examples:
+            task.set_script(repository="https://github.com/allegroai/clearml.git",
+                            branch="master",
+                            working_dir="examples/reporting",
+                            entry_point="artifacts.py")
+
+        :param repository: URL of remote repository.
+        :param branch: Select specific repository branch / tag.
+        :param working_dir: Working directory to launch the script from.
+        :param entry_point: Path to execute within the repository.
+
+        """
+        script = self.data.script
+        script.repository = script.repository if repository is self.NotSet else repository
+        script.branch = script.branch if branch is self.NotSet else branch
+        script.working_dir = script.working_dir if working_dir is self.NotSet else working_dir
+        script.entry_point = script.entry_point if entry_point is self.NotSet else entry_point
+        # noinspection PyProtectedMember
+        self._update_script(script=script)
+
     def delete_user_properties(self, *iterables):
         # type: (Iterable[Union[dict, Iterable[str, str]]]) -> bool
         """
@@ -2823,7 +2883,7 @@ class Task(_Task):
             )
         )
         self.flush(wait_for_uploads=True)
-        self.stopped()
+        self.stopped(status_reason='USER ABORTED')
 
         if self._dev_worker:
             self._dev_worker.unregister()
@@ -2872,7 +2932,8 @@ class Task(_Task):
                 kill_ourselves.terminate()
 
     def _dev_mode_setup_worker(self):
-        if running_remotely() or not self.is_main_task() or self._at_exit_called or self._offline_mode:
+        if (running_remotely() and not DEBUG_SIMULATE_REMOTE_TASK.get()) \
+                or not self.is_main_task() or self._at_exit_called or self._offline_mode:
             return
 
         if self._dev_worker:

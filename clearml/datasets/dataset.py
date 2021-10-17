@@ -84,7 +84,9 @@ class Dataset(object):
             if str(task_status) in ('created', 'in_progress'):
                 if str(task.task_type) != str(Task.TaskTypes.data_processing):
                     task.set_task_type(task_type=Task.TaskTypes.data_processing)
-                task.set_system_tags((task.get_system_tags() or []) + [self.__tag])
+                task_system_tags = task.get_system_tags() or []
+                if self.__tag not in task_system_tags:
+                    task.set_system_tags(task_system_tags + [self.__tag])
                 if dataset_tags:
                     task.set_tags((task.get_tags() or []) + list(dataset_tags))
         else:

@@ -580,7 +580,7 @@ class TaskScheduler(BaseScheduler):
         :param single_instance: If True, do not launch the Task job if the previous instance is still running
         (skip until the next scheduled time period). Default False.
         :param recurring: If False only launch the Task once (default: True, repeat)
-        :param execute_immediately: If True, schedule the Task to be execute immediately
+        :param execute_immediately: If True, schedule the Task to be executed immediately
         then recurring based on the timing schedule arguments. Default False.
         :param reuse_task: If True, re-enqueue the same Task (i.e. do not clone it) every time, default False.
         :param task_parameters: Configuration parameters to the executed Task.

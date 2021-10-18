@@ -40,7 +40,7 @@ class S3BucketConfig(object):
         self.use_credentials_chain = use_credentials_chain
 
     def is_valid(self):
-        return self.key and self.secret
+        return (self.key and self.secret) or self.use_credentials_chain
 
     def get_bucket_host(self):
         return self.bucket, self.host

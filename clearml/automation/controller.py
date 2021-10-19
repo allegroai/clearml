@@ -665,7 +665,7 @@ class PipelineController(object):
                 ):
                     pass
         :param wait: If True (default), start the pipeline controller, return only
-        after the pipeline is done (completed/aborted/failed)
+            after the pipeline is done (completed/aborted/failed)
 
         :return: True, if the controller started. False, if the controller did not start.
 
@@ -690,7 +690,6 @@ class PipelineController(object):
                 step_task_completed_callback=step_task_completed_callback,
                 wait=wait
             )
-            leave_process(0)
 
         return True
 
@@ -2793,7 +2792,7 @@ class PipelineDecorator(PipelineController):
             add_pipeline_tags=False,  # type: bool
             target_project=None,  # type: Optional[str]
             abort_on_failure=False,  # type: bool
-            pipeline_execution_queue='services',  # type: Optional[str]
+            pipeline_execution_queue='services'  # type: Optional[str]
     ):
         # type: (...) -> Callable
         """

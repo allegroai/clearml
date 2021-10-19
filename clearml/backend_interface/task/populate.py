@@ -476,7 +476,7 @@ if __name__ == '__main__':
         if not v or not k.startswith('{input_artifact_section}/'):
             continue
         k = k.replace('{input_artifact_section}/', '', 1)
-        task_id, artifact_name = v.split('.', 1) 
+        task_id, artifact_name = v.split('.', 1)
         kwargs[k] = Task.get_task(task_id=task_id).artifacts[artifact_name].get()
     results = {function_name}(**kwargs)
     result_names = {function_return}
@@ -484,7 +484,7 @@ if __name__ == '__main__':
         if not isinstance(results, (tuple, list)) or (len(result_names) == 1 and len(results) != 1):
             results = [results]
         for name, artifact in zip(result_names, results):
-            task.upload_artifact(name=name, artifact_object=artifact) 
+            task.upload_artifact(name=name, artifact_object=artifact)
 """
 
     @classmethod

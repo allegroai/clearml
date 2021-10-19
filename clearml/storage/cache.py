@@ -174,9 +174,9 @@ class CacheManager(object):
 
                 # check if someone else holds the lock file
                 locks = lock_files.get(f.name, [])
-                for l in locks:
+                for lck in locks:
                     try:
-                        a_lock = FileLock(filename=l)
+                        a_lock = FileLock(filename=lck)
                         a_lock.acquire(timeout=0)
                         a_lock.release()
                         a_lock.delete_lock_file()

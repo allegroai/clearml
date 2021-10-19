@@ -40,24 +40,26 @@ class Unparser:
         self.f.flush()
 
     def fill(self, text=""):
-        "Indent a piece of text, according to the current indentation level"
+        """Indent a piece of text, according to the current indentation level"""
         self.f.write("\n" + "    " * self._indent + text)
 
     def write(self, text):
-        "Append a piece of text to the current line."
+        """Append a piece of text to the current line."""
         self.f.write(six.text_type(text))
 
     def enter(self):
-        "Print ':', and increase the indentation."
+        """Print ':', and increase the indentation."""
         self.write(":")
         self._indent += 1
 
     def leave(self):
-        "Decrease the indentation level."
+        """Decrease the indentation level."""
         self._indent -= 1
 
     def dispatch(self, tree):
-        "Dispatcher function, dispatching tree type T to method _T."
+        """
+        Dispatcher function, dispatching tree type T to method _T.
+        """
         if isinstance(tree, list):
             for t in tree:
                 self.dispatch(t)
@@ -65,12 +67,14 @@ class Unparser:
         meth = getattr(self, "_" + tree.__class__.__name__)
         meth(tree)
 
+    """
     ############### Unparsing methods ######################
     # There should be one method per concrete grammar type #
     # Constructors should be grouped by sum type. Ideally, #
     # this would follow the order in the grammar, but      #
     # currently doesn't.                                   #
     ########################################################
+    """
 
     def _Module(self, tree):
         for stmt in tree.body:

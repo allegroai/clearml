@@ -204,7 +204,7 @@ class LogUniformParameterRange(UniformParameterRange):
         """
         super().__init__(name, min_value, max_value, step_size=step_size, include_max_value=include_max_value)
         self.base = base
-        
+
     def get_value(self):
         """
         Return uniformly logarithmic sampled value based on object sampling definitions.
@@ -213,11 +213,11 @@ class LogUniformParameterRange(UniformParameterRange):
         """
         values_dict = super().get_value()
         return {self.name: self.base**v for v in values_dict.values()}
-    
+
     def to_list(self):
         values_list = super().to_list()
         return [{self.name: self.base**v[self.name]} for v in values_list]
-    
+
 
 class UniformIntegerParameterRange(Parameter):
     """

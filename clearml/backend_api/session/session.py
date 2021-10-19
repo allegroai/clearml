@@ -265,7 +265,7 @@ class Session(TokenManager):
             print("Failed getting vaults: {}".format(ex))
 
     def _apply_config_sections(self, local_logger):
-        # type: (_LocalLogger) -> None
+        # type: (_LocalLogger) -> None  # noqa: F821
         default = self.config.get("sdk.apply_environment", False)
         if ENV_ENABLE_ENV_CONFIG_SECTION.get(default=default):
             try:
@@ -753,8 +753,8 @@ class Session(TokenManager):
         )
 
     class _LocalLogger:
-        def __init__(self, l):
-            self.logger = l
+        def __init__(self, local_logger):
+            self.logger = local_logger
 
         def __call__(self):
             if not self.logger:

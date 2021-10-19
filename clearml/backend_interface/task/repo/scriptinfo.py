@@ -13,7 +13,7 @@ from threading import Thread, Event
 
 from .util import get_command_output, remove_user_pass_from_url
 from ....backend_api import Session
-from ....config import config, deferred_config
+from ....config import deferred_config
 from ....debugging import get_logger
 from .detectors import GitEnvDetector, GitDetector, HgEnvDetector, HgDetector, Result as DetectionResult
 

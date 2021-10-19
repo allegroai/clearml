@@ -1798,7 +1798,7 @@ class Dataset(object):
         if self._dependency_chunk_lookup is None:
             self._dependency_chunk_lookup = self._build_dependency_chunk_lookup()
         return self._dependency_chunk_lookup
-    
+
     def _build_chunk_selection(self, part, num_parts):
         # type: (int, int) -> Dict[str, int]
         """
@@ -1806,11 +1806,11 @@ class Dataset(object):
         Notice that for a specific part, one can only get the chunks from parent versions (not including this one)
         :param part: Current part index (between 0 and num_parts-1)
         :param num_parts: Total number of parts to divide the dataset into
-        :return: Dict of Dataset ID and their respected chunks used for this part number 
+        :return: Dict of Dataset ID and their respected chunks used for this part number
         """
         # get the chunk dependencies
         dependency_chunk_lookup = self._get_dependency_chunk_lookup()
-            
+
         # first collect the total number of chunks
         total_chunks = sum(dependency_chunk_lookup.values())
 

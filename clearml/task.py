@@ -50,8 +50,8 @@ from .binding.matplotlib_bind import PatchedMatplotlib
 from .binding.hydra_bind import PatchHydra
 from .binding.click_bind import PatchClick
 from .config import (
-    config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, PROC_MASTER_ID_ENV_VAR,
-    DEV_DEFAULT_OUTPUT_URI, deferred_config, )
+    config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, DEV_DEFAULT_OUTPUT_URI,
+    deferred_config, )
 from .config import running_remotely, get_remote_task_id
 from .config.cache import SessionCache
 from .debugging.log import LoggerRoot
@@ -1889,10 +1889,10 @@ class Task(_Task):
         Set task's script.
 
         Examples:
-            task.set_script(repository="https://github.com/allegroai/clearml.git",
-                            branch="master",
-                            working_dir="examples/reporting",
-                            entry_point="artifacts.py")
+            task.set_script(repository='https://github.com/allegroai/clearml.git,
+                            branch='master',
+                            working_dir='examples/reporting',
+                            entry_point='artifacts.py')
 
         :param repository: URL of remote repository.
         :param branch: Select specific repository branch / tag.

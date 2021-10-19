@@ -660,7 +660,7 @@ class LocalClearmlJob(ClearmlJob):
 
             if not user_aborted:
                 self.task.mark_failed(force=True)
-            
+
         return exit_code
 
     def status(self, force=False):

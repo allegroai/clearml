@@ -3,6 +3,7 @@ import json
 import os
 import re
 import tempfile
+from sys import platform
 from functools import reduce
 from logging import getLogger
 from typing import Optional, Sequence, Union, Tuple, List, Callable, Dict, Any
@@ -270,8 +271,12 @@ class CreateAndPopulate(object):
                     "Use --requirements or --packages".format(reqs_txt_file.as_posix()))
 
         if self.add_task_init_call:
-            script_entry = os.path.abspath('/' + task_state['script'].get('working_dir', '.') +
-                                           '/' + task_state['script']['entry_point'])
+            script_entry = ('/' + task_state['script'].get('working_dir', '.')
+                            + '/' + task_state['script']['entry_point'])
+            if platform == "win32":
+                script_entry = os.path.normpath(script_entry).replace('\\', '/')
+            else:
+                script_entry = os.path.abspath(script_entry)
             idx_a = 0
             # find the right entry for the patch if we have a local file (basically after __future__
             if local_entry_file:

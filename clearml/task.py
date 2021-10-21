@@ -1878,11 +1878,12 @@ class Task(_Task):
 
     def set_script(
             self,
-            repository=NotSet,  # type: Optional[str]
-            branch=NotSet,  # type: Optional[str]
-            working_dir=NotSet,  # type: Optional[str]
-            entry_point=NotSet,  # type: Optional[str]
-            **kwargs  # type: Any
+            repository=None,  # type: Optional[str]
+            branch=None,  # type: Optional[str]
+            commit=None,  # type: Optional[str]
+            diff=None,  # type: Optional[str]
+            working_dir=None,  # type: Optional[str]
+            entry_point=None,  # type: Optional[str]
     ):
         # type: (...) -> None
         """
@@ -1890,21 +1891,34 @@ class Task(_Task):
 
         Examples:
             task.set_script(repository='https://github.com/allegroai/clearml.git,
-                            branch='master',
+                            branch='main',
                             working_dir='examples/reporting',
                             entry_point='artifacts.py')
 
-        :param repository: URL of remote repository.
-        :param branch: Select specific repository branch / tag.
-        :param working_dir: Working directory to launch the script from.
-        :param entry_point: Path to execute within the repository.
+        :param repository: Optional, URL of remote repository. use empty string ("") to clear repository entry.
+        :param branch: Optional, Select specific repository branch / tag. use empty string ("") to clear branch entry.
+        :param commit: Optional, set specific git commit id. use empty string ("") to clear commit id entry.
+        :param diff: Optional, set "git diff" section. use empty string ("") to clear git-diff entry.
+        :param working_dir: Optional, Working directory to launch the script from.
+        :param entry_point: Optional, Path to execute within the repository.
 
         """
+        self.reload()
         script = self.data.script
-        script.repository = script.repository if repository is self.NotSet else repository
-        script.branch = script.branch if branch is self.NotSet else branch
-        script.working_dir = script.working_dir if working_dir is self.NotSet else working_dir
-        script.entry_point = script.entry_point if entry_point is self.NotSet else entry_point
+        if repository is not None:
+            script.repository = str(repository) or None
+        if branch is not None:
+            script.branch = str(branch) or None
+            if script.tag:
+                script.tag = None
+        if commit is not None:
+            script.version_num = str(commit) or None
+        if diff is not None:
+            script.diff = str(diff) or None
+        if working_dir is not None:
+            script.working_dir = str(working_dir)
+        if entry_point is not None:
+            script.entry_point = str(entry_point)
         # noinspection PyProtectedMember
         self._update_script(script=script)
 

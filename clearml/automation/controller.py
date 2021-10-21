@@ -2505,61 +2505,66 @@ class PipelineDecorator(PipelineController):
         :param _func: wrapper function
         :param return_values: Provide a list of names for all the results.
             Notice! If not provided no results will be stored as artifacts.
-        :param name: Set the name of the remote task. Required if base_task_id is None.
+        :param name: Optional, set the name of the pipeline component task.
+            If not provided, the wrapped function name is used as the pipeline component name
         :param cache: If True, before launching the new step,
             after updating with the latest configuration, check if an exact Task with the same parameter/code
-            was already executed. If it was found, use it instead of launching a new Task.
-            Default: False, a new cloned copy of base_task is always used.
-            Notice: If the git repo reference does not have a specific commit ID, the Task will never be used.
+            was already executed. If it was found, use it instead of launching a new Task. Default: False
         :param packages: Manually specify a list of required packages or a local requirements.txt file.
             Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
-            If not provided, packages are automatically added based on the imports used in the function.
+            If not provided, packages are automatically added based on the imports used inside the wrapped function.
         :param parents: Optional list of parent nodes in the DAG.
             The current step in the pipeline will be sent for execution only after all the parent nodes
             have been executed successfully.
         :param execution_queue: Optional, the queue to use for executing this specific step.
-            If not provided, the task will be sent to the default execution queue, as defined on the class
-        :param continue_on_fail: (default False). If True, failed step will not cause the pipeline to stop
+            If not provided, the task will be sent to the pipeline's default execution queue
+        :param continue_on_fail: (default False). If True, a failed step will not cause the pipeline to stop
             (or marked as failed). Notice, that steps that are connected (or indirectly connected)
             to the failed step will be skipped.
-        :param docker: Select the docker image to be executed in by the remote session
-        :param docker_args: Add docker arguments, pass a single string
-        :param docker_bash_setup_script: Add bash script to be executed
-            inside the docker before setting up the Task's environment
+        :param docker: Specify the docker image to be used when executing the pipeline step remotely
+        :param docker_args: Add docker execution arguments for the remote execution
+            (use single string for all docker arguments).
+        :param docker_bash_setup_script: Add a bash script to be executed inside the docker before
+            setting up the Task's environment
         :param task_type: Optional, The task type to be created. Supported values: 'training', 'testing', 'inference',
             'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc', 'custom'
-        :param repo: Optional, specify a repository to attach to the function, when remotely executing.
-            Allow users to execute the function inside the specified repository, enabling to load modules/script
-            from a repository Notice the execution work directory will be the repository root folder.
-            Supports both git repo url link, and local repository path.
+        :param repo: Optional, specify a repository to attach to the function, when remotely executing. Allow users to execute the function inside the specified repository, enabling them to load modules/script from the repository. Notice the execution work directory will be the repository root folder.
+            Supports both git repo url link, and local repository path (automatically converted into the remote git/commit as is currently checkout).
             Example remote url: 'https://github.com/user/repo.git'
             Example local repo copy: './repo' -> will automatically store the remote
             repo url and commit ID based on the locally cloned copy
         :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
         :param repo_commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
         :param helper_functions: Optional, a list of helper functions to make available
-            for the standalone pipeline step function Task.
-        :param monitor_metrics: Optional, log the step's metrics on the pipeline Task.
-            Format is a list of pairs metric (title, series) to log:
+            for the standalone pipeline step function Task. By default the pipeline step function has
+            no access to any of the other functions, by specifying additional functions here, the remote pipeline step
+            could call the additional functions.
+            Example, assuming we have two functions parse_data(), and load_data(): [parse_data, load_data]
+        :param monitor_metrics: Optional, Automatically log the step's reported metrics also on the pipeline Task.
+            The expected format is a list of pairs metric (title, series) to log:
                 [(step_metric_title, step_metric_series), ]
                 Example: [('test', 'accuracy'), ]
-            Or a list of tuple pairs, to specify a different target metric for to use on the pipeline Task:
+            Or a list of tuple pairs, to specify a different target metric to use on the pipeline Task:
                 [((step_metric_title, step_metric_series), (target_metric_title, target_metric_series)), ]
                 Example: [[('test', 'accuracy'), ('model', 'accuracy')], ]
-        :param monitor_artifacts: Optional, log the step's artifacts on the pipeline Task.
-            Provided a list of artifact names existing on the step's Task, they will also appear on the Pipeline itself.
-            Example: [('processed_data', 'final_processed_data'), ]
-            Alternatively user can also provide a list of artifacts to monitor
-            (target artifact name will be the same as original artifact name)
+        :param monitor_artifacts: Optional, Automatically log the step's artifacts on the pipeline Task.
+            Provided a list of artifact names created by the step function, these artifacts will be logged
+            automatically also on the Pipeline Task itself.
             Example: ['processed_data', ]
-        :param monitor_models: Optional, log the step's output models on the pipeline Task.
-            Provided a list of model names existing on the step's Task, they will also appear on the Pipeline itself.
-            Example: [('model_weights', 'final_model_weights'), ]
-            Alternatively user can also provide a list of models to monitor
-            (target models name will be the same as original model)
+            (target artifact name on the Pipeline Task will hav ethe same name as the original artifact)
+            Alternatively, provide a list of pairs (source_artifact_name, target_artifact_name):
+            where the first string is the artifact name as it appears on the component Task,
+            and the second is the target artifact name to put on the Pipeline Task
+            Example: [('processed_data', 'final_processed_data'), ]
+        :param monitor_models: Optional, Automatically log the step's output models on the pipeline Task.
+            Provided a list of model names created by the step's Task, they will also appear on the Pipeline itself.
             Example: ['model_weights', ]
             To select the latest (lexicographic) model use "model_*", or the last created model with just "*"
             Example:  ['model_weights_*', ]
+            Alternatively, provide a list of pairs (source_model_name, target_model_name):
+            where the first string is the model name as it appears on the component Task,
+            and the second is the target model name to put on the Pipeline Task
+            Example: [('model_weights', 'final_model_weights'), ]
 
         :return: function wrapper
         """

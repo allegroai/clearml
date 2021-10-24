@@ -10,6 +10,7 @@ from time import time
 from typing import Sequence, Optional, Mapping, Callable, Any, List, Dict, Union, Tuple
 
 from attr import attrib, attrs
+from pathlib2 import Path
 
 from .job import LocalClearmlJob, RunningJob
 from .. import Logger
@@ -17,7 +18,7 @@ from ..automation import ClearmlJob
 from ..backend_interface.task.populate import CreateFromFunction
 from ..backend_interface.util import get_or_create_project, exact_match_regex
 from ..debugging.log import LoggerRoot
-from ..model import BaseModel
+from ..model import BaseModel, OutputModel
 from ..task import Task
 from ..utilities.process.mp import leave_process
 from ..utilities.proxy_object import LazyEvalWrapper, flatten_dictionary
@@ -752,6 +753,29 @@ class PipelineController(object):
         return cls._get_pipeline_task().get_logger()
 
     @classmethod
+    def upload_model(cls, model_name, model_local_path):
+        # type: (str, str) -> OutputModel
+        """
+        Upload (add) a model to the main Pipeline Task object.
+        This function can be called from any pipeline component to directly add models into the main pipeline Task
+
+        The model file/path will be uploaded to the Pipeline Task and registered on the model repository.
+
+        Raise ValueError if main Pipeline task could not be located.
+
+        :param model_name: Model name as will appear in the model registry (in the pipeline's project)
+        :param model_local_path: Path to the local model file or directory to be uploaded.
+            If a local directory is provided the content of the folder (recursively) will be
+            packaged into a zip file and uploaded
+        """
+        task = cls._get_pipeline_task()
+        model_name = str(model_name)
+        model_local_path = Path(model_local_path)
+        out_model = OutputModel(task=task, name=model_name)
+        out_model.update_weights(weights_filename=model_local_path.as_posix())
+        return out_model
+
+    @classmethod
     def upload_artifact(
         cls,
         name,  # type: str
@@ -765,6 +789,7 @@ class PipelineController(object):
         # type: (...) -> bool
         """
         Upload (add) an artifact to the main Pipeline Task object.
+        This function can be called from any pipeline component to directly add artifacts into the main pipeline Task
 
         The artifact can be uploaded by any function/tasks executed by the pipeline, in order to report
         directly to the pipeline Task itself. It can also be called from the main pipeline control Task.

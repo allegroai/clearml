@@ -35,7 +35,7 @@ class ModelsList(UserList):
 
 
 class TaskModels(UserDict):
-    _input_models_re = re.compile(r"((?i)(Using model id: )(\w+)?)")
+    _input_models_re = re.compile(pattern=r"((?i)(Using model id: )(\w+)?)", flags=0)
 
     @property
     def input(self):

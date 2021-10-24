@@ -41,14 +41,17 @@ class EnvironmentBind(object):
             return
 
         env_param = dict()
-        for match in (environ_log or []):
+        for match in environ_log:
             match = match.strip()
             if match == '*':
                 env_param.update({k: os.environ.get(k) for k in os.environ
                                   if not k.startswith('TRAINS_') and not k.startswith('CLEARML_')})
             elif match.endswith('*'):
-                match = match.strip('*')
+                match = match.rstrip('*')
                 env_param.update({k: os.environ.get(k) for k in os.environ if k.startswith(match)})
+            elif match.startswith('*'):
+                match = match.lstrip('*')
+                env_param.update({k: os.environ.get(k) for k in os.environ if k.endswith(match)})
             elif match in os.environ:
                 env_param.update({match: os.environ.get(match)})
         # store os environments

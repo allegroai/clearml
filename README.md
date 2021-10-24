@@ -11,6 +11,7 @@
 [![PyPI version shields.io](https://img.shields.io/pypi/v/clearml.svg)](https://img.shields.io/pypi/v/clearml.svg)
 [![Optuna](https://img.shields.io/badge/Optuna-integrated-blue)](https://optuna.org)
 [![Slack Channel](https://img.shields.io/badge/slack-%23clearml--community-blueviolet?logo=slack)](https://join.slack.com/t/clearml/shared_invite/zt-c0t13pty-aVUZZW1TSSSg2vyIGVPBhg)
+[![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/allegroai)](https://artifacthub.io/packages/search?repo=allegroai)
 
 </div>
 
@@ -46,10 +47,10 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
     * Full source control info including non-committed local changes
     * Execution environment (including specific packages & versions)
     * Hyper-parameters
-        * ArgParser for command line parameters with currently used values
+        * ArgParser/[Click](https://github.com/pallets/click/) for command line parameters with currently used values
         * Explicit parameters dictionary
         * Tensorflow Defines (absl-py)
-        * Hydra configuration and overrides
+        * [Hydra](https://github.com/facebookresearch/hydra) configuration and overrides
     * Initial model weights file
 * Full experiment output automatic capture
     * stdout and stderr

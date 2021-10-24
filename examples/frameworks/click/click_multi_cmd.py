@@ -14,7 +14,7 @@ def cli():
 def hello(count, name):
     """Simple program that greets NAME for a total of COUNT times."""
     for x in range(count):
-        click.echo(f"Hello {name}!")
+        click.echo("Hello {}!".format(name))
     print('done')
 
 
@@ -27,7 +27,7 @@ CONTEXT_SETTINGS = dict(
 @click.option('--port', default=8000)
 @click.option('--name', help='service name')
 def runserver(port, name):
-    click.echo(f"Serving on http://127.0.0.1:{port} {name}/")
+    click.echo("Serving on http://127.0.0.1:{} {}/".format(port, name))
 
 
 if __name__ == '__main__':

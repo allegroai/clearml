@@ -42,6 +42,8 @@ ENV_CONFIG_PATH_OVERRIDE_VAR = EnvEntry("CLEARML_CONFIG_PATH", "TRAINS_CONFIG_PA
 Environment-related config path override environment variable. If this is set, no other env config path will be used.
 """
 
+CONFIG_VERBOSE = EnvEntry("CLEARML_CONFIG_VERBOSE", type=bool)
+
 
 class Environment(object):
     """ Supported environment names """

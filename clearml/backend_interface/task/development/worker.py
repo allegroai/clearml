@@ -3,7 +3,7 @@ from threading import Thread, Event
 
 from time import time
 
-from ....config import config
+from ....config import config, deferred_config
 from ....backend_interface.task.development.stop_signal import TaskStopSignal
 from ....backend_api.services import tasks
 
@@ -11,9 +11,13 @@ from ....backend_api.services import tasks
 class DevWorker(object):
     prefix = attr.ib(type=str, default="MANUAL:")
 
-    report_period = float(max(config.get('development.worker.report_period_sec', 30.), 1.))
-    report_stdout = bool(config.get('development.worker.log_stdout', True))
-    ping_period = float(max(config.get('development.worker.ping_period_sec', 30.), 1.))
+    report_stdout = deferred_config('development.worker.log_stdout', True)
+    report_period = deferred_config(
+        'development.worker.report_period_sec', 30.,
+        transform=lambda x: float(max(x, 1.0)))
+    ping_period = deferred_config(
+        'development.worker.ping_period_sec', 30.,
+        transform=lambda x: float(max(x, 1.0)))
 
     def __init__(self):
         self._dev_stop_signal = None

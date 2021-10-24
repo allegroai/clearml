@@ -12,7 +12,7 @@ from PIL import Image
 from six.moves.urllib.parse import urlparse, urlunparse
 
 from ...backend_api.services import events
-from ...config import config
+from ...config import deferred_config
 from ...storage.util import quote_url
 from ...utilities.attrs import attrs
 from ...utilities.process.mp import SingletonLock
@@ -196,14 +196,17 @@ class ImageEventNoUpload(MetricsEventAdapter):
 
 class UploadEvent(MetricsEventAdapter):
     """ Image event adapter """
-    _format = '.' + str(config.get('metrics.images.format', 'JPEG')).upper().lstrip('.')
-    _quality = int(config.get('metrics.images.quality', 87))
-    _subsampling = int(config.get('metrics.images.subsampling', 0))
+    _format = deferred_config(
+        'metrics.images.format', 'JPEG',
+        transform=lambda x: '.' + str(x).upper().lstrip('.')
+    )
+    _quality = deferred_config('metrics.images.quality', 87, transform=int)
+    _subsampling = deferred_config('metrics.images.subsampling', 0, transform=int)
+    _file_history_size = deferred_config('metrics.file_history_size', 5, transform=int)
     _upload_retries = 3
 
     _metric_counters = {}
     _metric_counters_lock = SingletonLock()
-    _file_history_size = int(config.get('metrics.file_history_size', 5))
 
     @staticmethod
     def _replace_slash(part):
@@ -226,7 +229,7 @@ class UploadEvent(MetricsEventAdapter):
         self._key = None
         self._count = self._get_metric_count(metric, variant)
         if not file_history_size:
-            file_history_size = self._file_history_size
+            file_history_size = int(self._file_history_size)
         self._filename = kwargs.pop('override_filename', None)
         if not self._filename:
             if file_history_size < 1:
@@ -245,7 +248,7 @@ class UploadEvent(MetricsEventAdapter):
         # e.g.: image.png -> .png or image.raw.gz -> .raw.gz
         filename_ext = kwargs.pop('override_filename_ext', None)
         if filename_ext is None:
-            filename_ext = self._format.lower() if self._image_data is not None else \
+            filename_ext = str(self._format).lower() if self._image_data is not None else \
                 '.' + '.'.join(pathlib2.Path(self._local_image_path).parts[-1].split('.')[1:])
         # always add file extension to the uploaded target file
         if filename_ext and filename_ext[0] != '.':
@@ -285,11 +288,16 @@ class UploadEvent(MetricsEventAdapter):
 
     def get_file_entry(self):
         local_file = None
-        # don't provide file in case this event is out of the history window
-        last_count = self._get_metric_count(self.metric, self.variant, next=False)
-        if abs(self._count - last_count) > self._file_history_size:
-            output = None
-        elif isinstance(self._image_data, (six.StringIO, six.BytesIO)):
+
+        # Notice that in case we are running with reporter in subprocess,
+        # when we are here, the cls._metric_counters is actually empty,
+        # since it was updated on the main process and this function is running from the subprocess.
+        #
+        # In the future, if we want to support multi processes reporting images with the same title/series,
+        # we should move the _count & _filename selection into the subprocess, not the main process.
+        # For the time being, this will remain a limitation of the Image reporting mechanism.
+
+        if isinstance(self._image_data, (six.StringIO, six.BytesIO)):
             output = self._image_data
         elif self._image_data is not None:
             image_data = self._image_data
@@ -310,8 +318,8 @@ class UploadEvent(MetricsEventAdapter):
             # serialize image
             image = Image.fromarray(image_data)
             output = six.BytesIO()
-            image_format = Image.registered_extensions().get(self._format.lower(), 'JPEG')
-            image.save(output, format=image_format, quality=self._quality)
+            image_format = Image.registered_extensions().get(str(self._format).lower(), 'JPEG')
+            image.save(output, format=image_format, quality=int(self._quality))
             output.seek(0)
         else:
             # noinspection PyBroadException

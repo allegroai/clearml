@@ -176,9 +176,11 @@ class PrintPatchLogger(object):
     patched = False
     lock = threading.Lock()
     recursion_protect_lock = threading.RLock()
-    cr_flush_period = config.get("development.worker.console_cr_flush_period", 0)
+    cr_flush_period = None
 
     def __init__(self, stream, logger=None, level=logging.INFO):
+        if PrintPatchLogger.cr_flush_period is None:
+            PrintPatchLogger.cr_flush_period = config.get("development.worker.console_cr_flush_period", 0)
         PrintPatchLogger.patched = True
         self._terminal = stream
         self._log = logger

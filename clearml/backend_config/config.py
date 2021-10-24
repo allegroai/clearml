@@ -29,6 +29,7 @@ from .defs import (
     LOCAL_CONFIG_FILES,
     LOCAL_CONFIG_FILE_OVERRIDE_VAR,
     ENV_CONFIG_PATH_OVERRIDE_VAR,
+    CONFIG_VERBOSE,
 )
 from .defs import is_config_file
 from .entry import Entry, NotSet
@@ -64,12 +65,6 @@ class ConfigEntry(Entry):
 
 
 class Config(object):
-    """
-    Represents a server configuration.
-    If watch=True, will watch configuration folders for changes and reload itself.
-    NOTE: will not watch folders that were created after initialization.
-    """
-
     # used in place of None in Config.get as default value because None is a valid value
     _MISSING = object()
 
@@ -77,20 +72,21 @@ class Config(object):
         self,
         config_folder=None,
         env=None,
-        verbose=True,
+        verbose=None,
         relative_to=None,
         app=None,
         is_server=False,
         **_
     ):
         self._app = app
-        self._verbose = verbose
+        self._verbose = verbose if verbose is not None else CONFIG_VERBOSE.get()
         self._folder_name = config_folder or DEFAULT_CONFIG_FOLDER
         self._roots = []
         self._config = ConfigTree()
         self._env = env or os.environ.get("CLEARML_ENV", os.environ.get("TRAINS_ENV", Environment.default))
         self.config_paths = set()
         self.is_server = is_server
+        self._overrides_configs = None
 
         if self._verbose:
             print("Config env:%s" % str(self._env))
@@ -179,6 +175,15 @@ class Config(object):
                     copy_trees=True,
                 ),
                 local_config_files,
+                config,
+            )
+
+        if self._overrides_configs:
+            config = functools.reduce(
+                lambda cfg, override: ConfigTree.merge_configs(
+                    cfg, override, copy_trees=True
+                ),
+                self._overrides_configs,
                 config,
             )
 
@@ -406,3 +411,10 @@ class Config(object):
             bucket=bucket,
             host=host,
         )
+
+    def set_overrides(self, *dicts):
+        """ Set several override dictionaries or ConfigTree objects which should be merged onto the configuration """
+        self._overrides_configs = [
+            d if isinstance(d, ConfigTree) else ConfigFactory.from_dict(d) for d in dicts
+        ]
+        self.reload()

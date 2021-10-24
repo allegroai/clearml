@@ -13,11 +13,9 @@ from threading import Thread, Event
 
 from .util import get_command_output, remove_user_pass_from_url
 from ....backend_api import Session
-from ....config import config
+from ....config import config, deferred_config
 from ....debugging import get_logger
 from .detectors import GitEnvDetector, GitDetector, HgEnvDetector, HgDetector, Result as DetectionResult
-
-_logger = get_logger("Repository Detection")
 
 
 class ScriptInfoError(Exception):
@@ -25,14 +23,20 @@ class ScriptInfoError(Exception):
 
 
 class ScriptRequirements(object):
+    _detailed_import_report = deferred_config('development.detailed_import_report', False)
     _max_requirements_size = 512 * 1024
     _packages_remove_version = ('setuptools', )
     _ignore_packages = set()
 
+    @classmethod
+    def _get_logger(cls):
+        return get_logger("Repository Detection")
+
     def __init__(self, root_folder):
         self._root_folder = root_folder
 
-    def get_requirements(self, entry_point_filename=None):
+    def get_requirements(self, entry_point_filename=None, add_missing_installed_packages=False,
+                         detailed_req_report=None):
         # noinspection PyBroadException
         try:
             from ....utilities.pigar.reqs import get_installed_pkgs_detail
@@ -44,9 +48,13 @@ class ScriptRequirements(object):
                                        'site-packages', 'dist-packages'])
             reqs, try_imports, guess, local_pks = gr.extract_reqs(
                 module_callback=ScriptRequirements.add_trains_used_packages, entry_point_filename=entry_point_filename)
-            return self.create_requirements_txt(reqs, local_pks)
+            if add_missing_installed_packages and guess:
+                for k in guess:
+                    if k not in reqs:
+                        reqs[k] = guess[k]
+            return self.create_requirements_txt(reqs, local_pks, detailed=detailed_req_report)
         except Exception as ex:
-            _logger.warning("Failed auto-generating package requirements: {}".format(ex))
+            self._get_logger().warning("Failed auto-generating package requirements: {}".format(ex))
             return '', ''
 
     @staticmethod
@@ -111,8 +119,11 @@ class ScriptRequirements(object):
         return modules
 
     @staticmethod
-    def create_requirements_txt(reqs, local_pks=None):
+    def create_requirements_txt(reqs, local_pks=None, detailed=None):
         # write requirements.txt
+        if detailed is None:
+            detailed = ScriptRequirements._detailed_import_report
+
         # noinspection PyBroadException
         try:
             conda_requirements = ''
@@ -177,39 +188,42 @@ class ScriptRequirements(object):
         for k, v in reqs.sorted_items():
             if k in ignored_packages or k.lower() in ignored_packages:
                 continue
-            version = v.version
+            version = v.version if v else None
             if k in forced_packages:
                 forced_version = forced_packages.pop(k, None)
                 if forced_version is not None:
                     version = forced_version
             # requirements_txt += ''.join(['# {0}\n'.format(c) for c in v.comments.sorted_items()])
-            requirements_txt += ScriptRequirements._make_req_line(k, version)
+            requirements_txt += ScriptRequirements._make_req_line(k, version or None)
 
         # add forced requirements that we could not find installed on the system
         for k in sorted(forced_packages.keys()):
             requirements_txt += ScriptRequirements._make_req_line(k, forced_packages.get(k))
 
-        requirements_txt_packages_only = \
-            requirements_txt + '\n# Skipping detailed import analysis, it is too large\n'
+        if detailed:
+            requirements_txt_packages_only = \
+                requirements_txt + '\n# Skipping detailed import analysis, it is too large\n'
 
-        # requirements details (in comments)
-        requirements_txt += '\n' + \
-                            '# Detailed import analysis\n' \
-                            '# **************************\n'
+            # requirements details (in comments)
+            requirements_txt += '\n' + \
+                                '# Detailed import analysis\n' \
+                                '# **************************\n'
 
-        if local_pks:
-            for k, v in local_pks.sorted_items():
+            if local_pks:
+                for k, v in local_pks.sorted_items():
+                    requirements_txt += '\n'
+                    requirements_txt += '# IMPORT LOCAL PACKAGE {0}\n'.format(k)
+                    requirements_txt += ''.join(['# {0}\n'.format(c) for c in v.comments.sorted_items()])
+
+            for k, v in reqs.sorted_items():
+                if not v:
+                    continue
                 requirements_txt += '\n'
-                requirements_txt += '# IMPORT LOCAL PACKAGE {0}\n'.format(k)
+                if k == '-e':
+                    requirements_txt += '# IMPORT PACKAGE {0} {1}\n'.format(k, v.version)
+                else:
+                    requirements_txt += '# IMPORT PACKAGE {0}\n'.format(k)
                 requirements_txt += ''.join(['# {0}\n'.format(c) for c in v.comments.sorted_items()])
-
-        for k, v in reqs.sorted_items():
-            requirements_txt += '\n'
-            if k == '-e':
-                requirements_txt += '# IMPORT PACKAGE {0} {1}\n'.format(k, v.version)
-            else:
-                requirements_txt += '# IMPORT PACKAGE {0}\n'.format(k)
-            requirements_txt += ''.join(['# {0}\n'.format(c) for c in v.comments.sorted_items()])
 
         # make sure we do not exceed the size a size limit
         return (requirements_txt if len(requirements_txt) < ScriptRequirements._max_requirements_size
@@ -246,7 +260,11 @@ class _JupyterObserver(object):
     _sample_frequency = 30.
     _first_sample_frequency = 3.
     _jupyter_history_logger = None
-    _store_notebook_artifact = config.get('development.store_jupyter_notebook_artifact', True)
+    _store_notebook_artifact = deferred_config('development.store_jupyter_notebook_artifact', True)
+
+    @classmethod
+    def _get_logger(cls):
+        return get_logger("Repository Detection")
 
     @classmethod
     def observer(cls, jupyter_notebook_filename, log_history):
@@ -290,7 +308,7 @@ class _JupyterObserver(object):
             from nbconvert.exporters.script import ScriptExporter
             _script_exporter = ScriptExporter()
         except Exception as ex:
-            _logger.warning('Could not read Jupyter Notebook: {}'.format(ex))
+            cls._get_logger().warning('Could not read Jupyter Notebook: {}'.format(ex))
             return
         # load pigar
         # noinspection PyBroadException
@@ -333,8 +351,10 @@ class _JupyterObserver(object):
         try:
             import re
             replace_ipython_pattern = re.compile(r'\n([ \t]*)get_ipython\(\)')
+            replace_ipython_display_pattern = re.compile(r'\n([ \t]*)display\(')
         except Exception:
             replace_ipython_pattern = None
+            replace_ipython_display_pattern = None
 
         # main observer loop, check if we need to exit
         while not cls._exit_event.wait(timeout=0.):
@@ -401,7 +421,7 @@ class _JupyterObserver(object):
                             from nbconvert.exporters import HTMLExporter  # noqa
                             html, _ = HTMLExporter().from_filename(filename=local_jupyter_filename)
                             local_html = Path(gettempdir()) / 'notebook_{}.html'.format(task.id)
-                            with open(local_html.as_posix(), 'wt') as f:
+                            with open(local_html.as_posix(), 'wt', encoding="utf-8") as f:
                                 f.write(html)
                             task.upload_artifact(
                                 name='notebook preview', artifact_object=local_html,
@@ -421,6 +441,8 @@ class _JupyterObserver(object):
                 # we will not be able to run them anyhow
                 if replace_ipython_pattern:
                     script_code = replace_ipython_pattern.sub(r'\n# \g<1>get_ipython()', script_code)
+                if replace_ipython_display_pattern:
+                    script_code = replace_ipython_display_pattern.sub(r'\n\g<1>print(', script_code)
 
                 requirements_txt = ''
                 conda_requirements = ''
@@ -475,6 +497,10 @@ class ScriptInfo(object):
 
     plugins = [GitEnvDetector(), HgEnvDetector(), HgDetector(), GitDetector()]
     """ Script info detection plugins, in order of priority """
+
+    @classmethod
+    def _get_logger(cls):
+        return get_logger("Repository Detection")
 
     @classmethod
     def _jupyter_install_post_store_hook(cls, jupyter_notebook_filename, log_history=False):
@@ -532,7 +558,7 @@ class ScriptInfo(object):
                 from ....config import config
                 password = config.get('development.jupyter_server_password', '')
                 if not password:
-                    _logger.warning(
+                    cls._get_logger().warning(
                         'Password protected Jupyter Notebook server was found! '
                         'Add `sdk.development.jupyter_server_password=<jupyter_password>` to ~/clearml.conf')
                     return os.path.join(os.getcwd(), 'error_notebook_not_found.py')
@@ -565,7 +591,7 @@ class ScriptInfo(object):
             try:
                 r.raise_for_status()
             except Exception as ex:
-                _logger.warning('Failed accessing the jupyter server{}: {}'.format(
+                cls._get_logger().warning('Failed accessing the jupyter server{}: {}'.format(
                     ' [password={}]'.format(password) if server_info.get('password') else '', ex))
                 return os.path.join(os.getcwd(), 'error_notebook_not_found.py')
 
@@ -620,7 +646,7 @@ class ScriptInfo(object):
                         if entry_point_alternative.exists():
                             entry_point = entry_point_alternative
                     except Exception as ex:
-                        _logger.warning('Failed accessing jupyter notebook {}: {}'.format(notebook_path, ex))
+                        cls._get_logger().warning('Failed accessing jupyter notebook {}: {}'.format(notebook_path, ex))
 
                 # get local ipynb for observer
                 local_ipynb_file = entry_point.as_posix()
@@ -704,16 +730,18 @@ class ScriptInfo(object):
     @classmethod
     def _get_script_info(
             cls, filepaths, check_uncommitted=True, create_requirements=True, log=None,
-            uncommitted_from_remote=False, detect_jupyter_notebook=True):
+            uncommitted_from_remote=False, detect_jupyter_notebook=True,
+            add_missing_installed_packages=False, detailed_req_report=None):
         jupyter_filepath = cls._get_jupyter_notebook_filename() if detect_jupyter_notebook else None
         if jupyter_filepath:
             scripts_path = [Path(os.path.normpath(jupyter_filepath)).absolute()]
         else:
             cwd = cls._cwd()
             scripts_path = [Path(cls._absolute_path(os.path.normpath(f), cwd)) for f in filepaths if f]
-            if all(not f.is_file() for f in scripts_path):
+            scripts_path = [f for f in scripts_path if f.exists()]
+            if not scripts_path:
                 raise ScriptInfoError(
-                    "Script file {} could not be found".format(scripts_path)
+                    "Script file {} could not be found".format(filepaths)
                 )
 
         scripts_dir = [f.parent for f in scripts_path]
@@ -727,10 +755,11 @@ class ScriptInfo(object):
                 )
             )
 
-        plugin = next((p for p in cls.plugins if any(p.exists(d) for d in scripts_dir)), None)
-        repo_info = DetectionResult()
         script_dir = scripts_dir[0]
         script_path = scripts_path[0]
+        plugin = next((p for p in cls.plugins if p.exists(script_dir)), None)
+
+        repo_info = DetectionResult()
         messages = []
         auxiliary_git_diff = None
 
@@ -739,13 +768,8 @@ class ScriptInfo(object):
                 log.info("No repository found, storing script code instead")
         else:
             try:
-                for i, d in enumerate(scripts_dir):
-                    repo_info = plugin.get_info(
-                        str(d), include_diff=check_uncommitted, diff_from_remote=uncommitted_from_remote)
-                    if not repo_info.is_empty():
-                        script_dir = d
-                        script_path = scripts_path[i]
-                        break
+                repo_info = plugin.get_info(
+                    str(script_dir), include_diff=check_uncommitted, diff_from_remote=uncommitted_from_remote)
             except SystemExit:
                 raise
             except Exception as ex:
@@ -786,7 +810,12 @@ class ScriptInfo(object):
             script_requirements = ScriptRequirements(
                 Path(repo_root).as_posix() if repo_info.url else script_path.as_posix())
             if create_requirements:
-                requirements, conda_requirements = script_requirements.get_requirements()
+                requirements, conda_requirements = script_requirements.get_requirements(
+                    entry_point_filename=script_path.as_posix()
+                    if not repo_info.url and script_path.is_file() else None,
+                    add_missing_installed_packages=add_missing_installed_packages,
+                    detailed_req_report=detailed_req_report,
+                )
         else:
             script_requirements = None
 
@@ -818,7 +847,8 @@ class ScriptInfo(object):
 
     @classmethod
     def get(cls, filepaths=None, check_uncommitted=True, create_requirements=True, log=None,
-            uncommitted_from_remote=False, detect_jupyter_notebook=True):
+            uncommitted_from_remote=False, detect_jupyter_notebook=True, add_missing_installed_packages=False,
+            detailed_req_report=None):
         try:
             if not filepaths:
                 filepaths = [sys.argv[0], ]
@@ -828,6 +858,8 @@ class ScriptInfo(object):
                 create_requirements=create_requirements, log=log,
                 uncommitted_from_remote=uncommitted_from_remote,
                 detect_jupyter_notebook=detect_jupyter_notebook,
+                add_missing_installed_packages=add_missing_installed_packages,
+                detailed_req_report=detailed_req_report,
             )
         except SystemExit:
             pass

@@ -5,14 +5,71 @@ import sys
 from os.path import expandvars, expanduser
 
 from ..backend_api import load_config
+from ..backend_config import Config
 from ..backend_config.bucket_config import S3BucketConfigurations
 
 from .defs import *  # noqa: F403
 from .remote import running_remotely_task_id as _running_remotely_task_id
 
-config_obj = load_config(Path(__file__).parent)  # noqa: F405
-config_obj.initialize_logging()
-config = config_obj.get("sdk")
+# config_obj = load_config(Path(__file__).parent)  # noqa: F405
+# config_obj.initialize_logging()
+# config = config_obj.get("sdk")
+from ..utilities.proxy_object import LazyEvalWrapper
+
+
+class ConfigWrapper(object):
+    _config = None
+
+    @classmethod
+    def _init(cls):
+        if cls._config is None:
+            cls._config = load_config(Path(__file__).parent)  # noqa: F405
+            cls._config.initialize_logging()
+
+    @classmethod
+    def get(cls, *args, **kwargs):
+        cls._init()
+        return cls._config.get(*args, **kwargs)
+
+    @classmethod
+    def set_overrides(cls, *args, **kwargs):
+        cls._init()
+        return cls._config.set_overrides(*args, **kwargs)
+
+
+class ConfigSDKWrapper(object):
+    _config_sdk = None
+
+    @classmethod
+    def _init(cls):
+        if cls._config_sdk is None:
+            cls._config_sdk = ConfigWrapper.get("sdk")
+
+    @classmethod
+    def get(cls, *args, **kwargs):
+        cls._init()
+        return cls._config_sdk.get(*args, **kwargs)
+
+    @classmethod
+    def set_overrides(cls, *args, **kwargs):
+        cls._init()
+        return cls._config_sdk.set_overrides(*args, **kwargs)
+
+
+def deferred_config(key=None, default=Config._MISSING, transform=None, multi=None):
+    return LazyEvalWrapper(
+        callback=lambda:
+        (ConfigSDKWrapper.get(key, default) if not multi else
+         next((ConfigSDKWrapper.get(*a) for a in multi if ConfigSDKWrapper.get(*a)), None))
+        if transform is None
+        else (transform() if key is None else transform(ConfigSDKWrapper.get(key, default) if not multi else  # noqa
+                  next((ConfigSDKWrapper.get(*a) for a in multi if ConfigSDKWrapper.get(*a)), None)))
+    )
+
+
+config_obj = ConfigWrapper
+config = ConfigSDKWrapper
+
 """ Configuration object reflecting the merged SDK section of all available configuration files """
 
 
@@ -20,7 +77,7 @@ def get_cache_dir():
     cache_base_dir = Path(  # noqa: F405
         expandvars(
             expanduser(
-                TRAINS_CACHE_DIR.get() or  # noqa: F405
+                CLEARML_CACHE_DIR.get() or  # noqa: F405
                 config.get("storage.cache.default_base_dir") or
                 DEFAULT_CACHE_DIR  # noqa: F405
             )

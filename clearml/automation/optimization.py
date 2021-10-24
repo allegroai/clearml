@@ -407,8 +407,10 @@ class SearchStrategy(object):
             new_job = self.create_job()
             if not new_job:
                 break
+            if not new_job.launch(self._execution_queue):
+                # error enqueuing Job, something wrong here
+                continue
             self._num_jobs += 1
-            new_job.launch(self._execution_queue)
             self._current_jobs.append(new_job)
             self._pending_jobs.append(new_job)
 

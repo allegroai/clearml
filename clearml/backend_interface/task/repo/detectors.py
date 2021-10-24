@@ -18,8 +18,6 @@ from ....config.defs import (
 from ....debugging import get_logger
 from .util import get_command_output
 
-_logger = get_logger("Repository Detection")
-
 
 class DetectionError(Exception):
     pass
@@ -52,6 +50,10 @@ class Detector(object):
 
     _fallback = '_fallback'
     _remote = '_remote'
+
+    @classmethod
+    def _get_logger(cls):
+        return get_logger("Repository Detection")
 
     @attr.s
     class Commands(object):
@@ -93,9 +95,9 @@ class Detector(object):
                         return get_command_output(fallback_command, path, strip=strip)
                     except (CalledProcessError, UnicodeDecodeError):
                         pass
-            _logger.warning("Can't get {} information for {} repo in {}".format(name, self.type_name, path))
+            self._get_logger().warning("Can't get {} information for {} repo in {}".format(name, self.type_name, path))
             # full details only in debug
-            _logger.debug(
+            self._get_logger().debug(
                 "Can't get {} information for {} repo in {}: {}".format(
                     name, self.type_name, path, str(ex)
                 )
@@ -180,7 +182,7 @@ class Detector(object):
                     == 0
                 )
         except CalledProcessError:
-            _logger.warning("Can't get {} status".format(self.type_name))
+            self._get_logger().warning("Can't get {} status".format(self.type_name))
         except (OSError, EnvironmentError, IOError):
             # File not found or can't be executed
             pass
@@ -238,6 +240,33 @@ class GitDetector(Detector):
             commit_remote=["git", "rev-parse", ],
             diff_fallback_remote=["git", "diff", ],
         )
+
+    def get_info(self, path, include_diff=False, diff_from_remote=False):
+        """
+        Get repository information.
+        :param path: Path to repository
+        :param include_diff: Whether to include the diff command's output (if available)
+        :param diff_from_remote: Whether to store the remote diff/commit based on the remote commit (not local commit)
+        :return: RepoInfo instance
+        """
+        info = super(GitDetector, self).get_info(
+            path=path, include_diff=include_diff, diff_from_remote=diff_from_remote)
+        # we could not locate the git because of some configuration issue, we need to try a more complex command
+        if info and info.url == "origin":
+            # noinspection PyBroadException
+            try:
+                url = get_command_output(["git", "remote", "-v"], path, strip=True)
+                url = url.split('\n')[0].split('\t', 1)[1]
+                if url.endswith('(fetch)'):
+                    url = url[:-len('(fetch)')]
+                elif url.endswith('(pull)'):
+                    url = url[:-len('(pull)')]
+                info.url = url.strip()
+            except Exception:
+                # not sure what happened, just skip it.
+                pass
+
+        return info
 
     def _post_process_info(self, info):
         # Deprecated code: this was intended to make sure git repository names always

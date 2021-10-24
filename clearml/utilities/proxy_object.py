@@ -156,3 +156,147 @@ def naive_nested_from_flat_dictionary(flat_dict, sep='/'):
             )
         )
     }
+
+
+class WrapperBase(type):
+
+    # This metaclass is heavily inspired by the Object Proxying python recipe
+    # (http://code.activestate.com/recipes/496741/). It adds special methods
+    # to the wrapper class so it can proxy the wrapped class. In addition, it
+    # adds a field __overrides__ in the wrapper class dictionary, containing
+    # all attributes decorated to be overriden.
+
+    _special_names = [
+        '__abs__', '__add__', '__and__', '__call__', '__cmp__', '__coerce__',
+        '__contains__', '__delitem__', '__delslice__', '__div__', '__divmod__',
+        '__eq__', '__float__', '__floordiv__', '__ge__', '__getitem__',
+        '__getslice__', '__gt__', '__hash__', '__hex__', '__iadd__', '__iand__',
+        '__idiv__', '__idivmod__', '__ifloordiv__', '__ilshift__', '__imod__',
+        '__imul__', '__int__', '__invert__', '__ior__', '__ipow__', '__irshift__',
+        '__isub__', '__iter__', '__itruediv__', '__ixor__', '__le__', '__len__',
+        '__long__', '__lshift__', '__lt__', '__mod__', '__mul__', '__ne__',
+        '__neg__', '__oct__', '__or__', '__pos__', '__pow__', '__radd__',
+        '__rand__', '__rdiv__', '__rdivmod__', '__reduce__', '__reduce_ex__',
+        '__repr__', '__reversed__', '__rfloorfiv__', '__rlshift__', '__rmod__',
+        '__rmul__', '__ror__', '__rpow__', '__rrshift__', '__rshift__', '__rsub__',
+        '__rtruediv__', '__rxor__', '__setitem__', '__setslice__', '__sub__',
+        '__truediv__', '__xor__', 'next', '__str__', '__repr__',
+    ]
+
+    def __new__(mcs, classname, bases, attrs):
+        def make_method(name):
+            def method(self, *args, **kwargs):
+                obj = object.__getattribute__(self, "_wrapped")
+                if obj is None:
+                    cb = object.__getattribute__(self, "_callback")
+                    obj = cb()
+                    object.__setattr__(self, '_wrapped', obj)
+
+                # we have to convert the instance to the real type
+                if args and len(args) == 1 and (
+                        type(args[0]) == LazyEvalWrapper or hasattr(type(args[0]), '_base_class_')):
+                    try:
+                        int(args[0])  # force loading the instance
+                    except:  # noqa
+                        pass
+                    args = (object.__getattribute__(args[0], "_wrapped"), )
+
+                mtd = getattr(obj, name)
+                return mtd(*args, **kwargs)
+            return method
+
+        typed_class = attrs.get('_base_class_')
+        for name in mcs._special_names:
+            if not typed_class or hasattr(typed_class, name):
+                attrs[name] = make_method(name)
+
+        overrides = attrs.get('__overrides__', [])
+        # overrides.extend(k for k, v in attrs.items() if isinstance(v, lazy))
+        attrs['__overrides__'] = overrides
+        return type.__new__(mcs, classname, bases, attrs)
+
+
+class LazyEvalWrapper(six.with_metaclass(WrapperBase)):
+
+    # This class acts as a proxy for the wrapped instance it is passed. All
+    # access to its attributes are delegated to the wrapped class, except
+    # those contained in __overrides__.
+
+    __slots__ = ['_wrapped', '_callback', '_remote_reference', '__weakref__']
+
+    _remote_reference_calls = []
+
+    def __init__(self, callback, remote_reference=None):
+        object.__setattr__(self, '_wrapped', None)
+        object.__setattr__(self, '_callback', callback)
+        object.__setattr__(self, '_remote_reference', remote_reference)
+        if remote_reference:
+            LazyEvalWrapper._remote_reference_calls.append(remote_reference)
+
+    def _remoteref(self):
+        func = object.__getattribute__(self, "_remote_reference")
+        if func and func in LazyEvalWrapper._remote_reference_calls:
+            LazyEvalWrapper._remote_reference_calls.remove(func)
+
+        return func() if callable(func) else func
+
+    def __getattribute__(self, attr):
+        if attr in ('__isabstractmethod__', ):
+            return None
+        if attr in ('_remoteref', '_remote_reference'):
+            return object.__getattribute__(self, attr)
+        return getattr(LazyEvalWrapper._load_object(self), attr)
+
+    def __setattr__(self, attr, value):
+        setattr(LazyEvalWrapper._load_object(self), attr, value)
+
+    def __delattr__(self, attr):
+        delattr(LazyEvalWrapper._load_object(self), attr)
+
+    def __nonzero__(self):
+        return bool(LazyEvalWrapper._load_object(self))
+
+    def __bool__(self):
+        return bool(LazyEvalWrapper._load_object(self))
+
+    @staticmethod
+    def _load_object(self):
+        obj = object.__getattribute__(self, "_wrapped")
+        if obj is None:
+            cb = object.__getattribute__(self, "_callback")
+            obj = cb()
+            object.__setattr__(self, '_wrapped', obj)
+        return obj
+
+    @classmethod
+    def trigger_all_remote_references(cls):
+        for func in cls._remote_reference_calls:
+            if callable(func):
+                func()
+        cls._remote_reference_calls = []
+
+
+def lazy_eval_wrapper_spec_class(class_type):
+    class TypedLazyEvalWrapper(six.with_metaclass(WrapperBase)):
+        _base_class_ = class_type
+        __slots__ = ['_wrapped', '_callback', '__weakref__']
+
+        def __init__(self, callback):
+            object.__setattr__(self, '_wrapped', None)
+            object.__setattr__(self, '_callback', callback)
+
+        def __nonzero__(self):
+            return bool(LazyEvalWrapper._load_object(self))
+
+        def __bool__(self):
+            return bool(LazyEvalWrapper._load_object(self))
+
+        def __getattribute__(self, attr):
+            if attr == '__isabstractmethod__':
+                return None
+            if attr == '__class__':
+                return class_type
+
+            return getattr(LazyEvalWrapper._load_object(self), attr)
+
+    return TypedLazyEvalWrapper

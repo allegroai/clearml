@@ -27,7 +27,7 @@ class OptunaObjective(object):
         self._config_space = config_space
 
     def objective(self, trial):
-        # type: (optuna.Trial) -> float
+        # type: (optuna.Trial) -> Optional[float]
         """
         return metric value for a specified set of parameter, pulled from the trail object
 
@@ -42,7 +42,9 @@ class OptunaObjective(object):
         current_job = self.optimizer.helper_create_job(self.base_task_id, parameter_override=parameter_override)
         # noinspection PyProtectedMember
         self.optimizer._current_jobs.append(current_job)
-        current_job.launch(self.queue_name)
+        if not current_job.launch(self.queue_name):
+            # failed launching the job
+            return None
         iteration_value = None
         is_pending = True
         while True:

@@ -4,6 +4,7 @@ import logging
 import math
 from multiprocessing import Semaphore
 from threading import Event as TrEvent
+from time import sleep
 
 import numpy as np
 import six
@@ -60,16 +61,21 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
     def stop(self):
         if isinstance(self._queue, PrQueue):
             self._queue.close(self._event)
-        if not self.is_subprocess() or self.is_subprocess_alive():
+        if not self.is_subprocess_mode() or self.is_subprocess_alive():
             self._exit_event.set()
         super(BackgroundReportService, self).stop()
 
     def flush(self):
         self._queue_size = 0
-        if not self.is_subprocess() or self.is_subprocess_alive():
+        if not self.is_subprocess_mode() or self.is_subprocess_alive():
             self._event.set()
 
     def wait_for_events(self, timeout=None):
+        # noinspection PyProtectedMember
+        if self._is_subprocess_mode_and_not_parent_process():
+            while self._queue and not self._queue.empty():
+                sleep(0.1)
+            return
         self._empty_state_event.clear()
         return self._empty_state_event.wait(timeout)
 
@@ -161,6 +167,9 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         """
         log = metrics.log.getChild('reporter')
         log.setLevel(log.level)
+        if self.__class__.max_float_num_digits == -1:
+            self.__class__.max_float_num_digits = config.get('metrics.plot_max_num_digits', None)
+
         super(Reporter, self).__init__(session=metrics.session, log=log)
         self._metrics = metrics
         self._bucket_config = None
@@ -179,7 +188,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._report_service.set_storage_uri(self._storage_uri)
 
     storage_uri = property(None, _set_storage_uri)
-    max_float_num_digits = config.get('metrics.plot_max_num_digits', None)
+    max_float_num_digits = -1
 
     @property
     def async_enable(self):
@@ -218,7 +227,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             return
         report_service = self._report_service
         self._report_service = None
-        if not report_service.is_subprocess() or report_service.is_alive():
+        if not report_service.is_subprocess_mode() or report_service.is_alive():
             report_service.stop()
             report_service.wait()
         else:
@@ -283,7 +292,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             logger=logger,
         )
 
-    def report_plot(self, title, series, plot, iter, round_digits=None):
+    def report_plot(self, title, series, plot, iter, round_digits=None, nan_as_null=True):
         """
         Report a Plotly chart
         :param title: Title (AKA metric)
@@ -295,13 +304,15 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param iter: Iteration number
         :param round_digits: number of digits after the dot to leave
         :type round_digits: int
+        :param nan_as_null: If True, Convert NaN to None (null), otherwise use 'nan'
+        :type nan_as_null: bool
         """
         inf_value = math.inf if six.PY3 else float("inf")
 
         def to_base_type(o):
             if isinstance(o, float):
                 if o != o:
-                    return 'nan'
+                    return None if nan_as_null else 'nan'
                 elif o == inf_value:
                     return 'inf'
                 elif o == -inf_value:
@@ -501,6 +512,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=self._normalize_name(series),
             plot=plotly_dict,
             iter=iter,
+            nan_as_null=False,
         )
 
     def report_table(self, title, series, table, iteration, layout_config=None):
@@ -525,6 +537,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             plot=table_output,
             iter=iteration,
             round_digits=False,
+            nan_as_null=False,
         )
 
     def report_line_plot(self, title, series, iter, xtitle, ytitle, mode='lines', reverse_xaxis=False,
@@ -568,6 +581,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series='',
             plot=plotly_dict,
             iter=iter,
+            nan_as_null=False,
         )
 
     def report_2d_scatter(self, title, series, data, iter, mode='lines', xtitle=None, ytitle=None, labels=None,
@@ -609,6 +623,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=self._normalize_name(series),
             plot=plotly_dict,
             iter=iter,
+            nan_as_null=False,
         )
 
     def report_3d_scatter(self, title, series, data, iter, labels=None, mode='lines', color=((217, 217, 217, 0.14),),
@@ -679,6 +694,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=self._normalize_name(series) if not isinstance(series, list) else None,
             plot=plotly_obj,
             iter=iter,
+            nan_as_null=False,
         )
 
     def report_value_matrix(self, title, series, data, iter, xtitle=None, ytitle=None, xlabels=None, ylabels=None,
@@ -722,6 +738,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=self._normalize_name(series),
             plot=plotly_dict,
             iter=iter,
+            nan_as_null=False,
         )
 
     def report_value_surface(self, title, series, data, iter, xlabels=None, ylabels=None,
@@ -767,6 +784,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=self._normalize_name(series),
             plot=plotly_dict,
             iter=iter,
+            nan_as_null=False,
         )
 
     def report_image_plot_and_upload(self, title, series, iter, path=None, matrix=None,
@@ -835,6 +853,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             series=self._normalize_name(series),
             plot=plotly_dict,
             iter=iter,
+            nan_as_null=False,
         )
 
     def report_console(self, message, level=logging.INFO):

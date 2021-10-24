@@ -187,7 +187,7 @@ class Task(_Task):
         # check if we have no main Task, but the main process created one.
         if not cls.__main_task and cls.__get_master_id_task_id():
             # initialize the Task, connect to stdout
-            Task.init()
+            cls.init()
         # return main Task
         return cls.__main_task
 
@@ -519,7 +519,7 @@ class Task(_Task):
                     cls.__update_master_pid_task(task=task)
                 else:
                     # subprocess should get back the task info
-                    task = Task.get_task(task_id=is_sub_process_task_id)
+                    task = cls.get_task(task_id=is_sub_process_task_id)
             else:
                 # if this is the main process, create the task
                 if not is_sub_process_task_id:
@@ -539,7 +539,7 @@ class Task(_Task):
                         task.set_initial_iteration(int(task.data.last_iteration) + 1)
                 else:
                     # subprocess should get back the task info
-                    task = Task.get_task(task_id=is_sub_process_task_id)
+                    task = cls.get_task(task_id=is_sub_process_task_id)
         except Exception:
             raise
         else:

@@ -1,22 +1,21 @@
 # ClearML - example of ClearML torch distributed support
 # notice all nodes will be reporting to the master Task (experiment)
-
 import os
 import subprocess
 import sys
 from argparse import ArgumentParser
+from datetime import timedelta
 from math import ceil
 from random import Random
 
 import torch as th
-import torch.nn as nn
 import torch.distributed as dist
+import torch.nn as nn
 import torch.nn.functional as F
 from torch import optim
 from torchvision import datasets, transforms
 
 from clearml import Task
-
 
 local_dataset_path = './MNIST_data'
 
@@ -159,7 +158,12 @@ if __name__ == "__main__":
         exit(0)
 
     if os.environ.get('MASTER_ADDR'):
-        dist.init_process_group(backend='gloo', rank=args.rank, world_size=args.nodes)
+        # Use a large timeout value since in Windows timeout issues may cause
+        #   pg = ProcessGroupGloo(prefix_store, rank, world_size, timeout=timeout)
+        #   RuntimeError: Socket TimeoutSocket
+        dist.init_process_group(
+            backend='gloo', rank=args.rank, world_size=args.nodes, timeout=timedelta(days=1)
+        )
         run(args.workers_in_node)
     else:
         # first let's download the dataset, if we have multiple machines,

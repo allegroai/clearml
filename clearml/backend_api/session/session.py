@@ -237,7 +237,7 @@ class Session(TokenManager):
             return
 
         if ENV_DISABLE_VAULT_SUPPORT.get():
-            print("Vault support is disabled")
+            # (self._logger or get_logger()).debug("Vault support is disabled")
             return
 
         def parse(vault):
@@ -249,7 +249,8 @@ class Session(TokenManager):
                     if isinstance(r, (ConfigTree, dict)):
                         return r
             except Exception as e:
-                print("Failed parsing vault {}: {}".format(vault.get("description", "<unknown>"), e))
+                (self._logger or get_logger()).warning("Failed parsing vault {}: {}".format(
+                    vault.get("description", "<unknown>"), e))
 
         # noinspection PyBroadException
         try:
@@ -262,7 +263,7 @@ class Session(TokenManager):
             elif res.status_code != 404:
                 raise Exception(res.json().get("meta", {}).get("result_msg", res.text))
         except Exception as ex:
-            print("Failed getting vaults: {}".format(ex))
+            (self._logger or get_logger()).warning("Failed getting vaults: {}".format(ex))
 
     def _apply_config_sections(self, local_logger):
         # type: (_LocalLogger) -> None  # noqa: F821

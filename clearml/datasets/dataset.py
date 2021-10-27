@@ -918,9 +918,9 @@ class Dataset(object):
             task_ids=[dataset_id] if dataset_id else None,
             project_name=dataset_project,
             task_name=exact_match_regex(dataset_name) if dataset_name else None,
+            tags=dataset_tags,
             task_filter=dict(
                 system_tags=[cls.__tag, '-archived'], order_by=['-created'],
-                tags=dataset_tags,
                 type=[str(Task.TaskTypes.data_processing)],
                 page_size=1, page=0,
                 status=['published'] if only_published else

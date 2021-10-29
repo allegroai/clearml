@@ -171,7 +171,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 self.name = task_name
         else:
             # this is an existing task, let's try to verify stuff
-            self._validate()
+            self._validate(check_output_dest_credentials=False)
 
         if self.data is None:
             raise ValueError("Task ID \"{}\" could not be found".format(self.id))
@@ -184,7 +184,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._artifacts_manager = Artifacts(self)
         self._hyper_params_manager = HyperParams(self)
 
-    def _validate(self, check_output_dest_credentials=True):
+    def _validate(self, check_output_dest_credentials=False):
+        if not self._is_remote_main_task():
+            self._storage_uri = self.get_output_destination(raise_on_error=False, log_on_error=False) or None
+            return
+
         raise_errors = self._raise_on_validation_errors
         output_dest = self.get_output_destination(raise_on_error=False, log_on_error=False)
         if output_dest and check_output_dest_credentials:

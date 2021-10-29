@@ -206,7 +206,7 @@ class Task(_Task):
         auto_resource_monitoring=True,  # type: bool
         auto_connect_streams=True,  # type: Union[bool, Mapping[str, bool]]
     ):
-        # type: (...) -> Task
+        # type: (...) -> "Task"
         """
         Creates a new Task (experiment) if:
 
@@ -2983,10 +2983,6 @@ class Task(_Task):
         else:
             self._connect_dictionary(a_dict, name)
             return an_object
-
-    def _validate(self, check_output_dest_credentials=False):
-        if running_remotely():
-            super(Task, self)._validate(check_output_dest_credentials=False)
 
     def _dev_mode_stop_task(self, stop_reason, pid=None):
         # make sure we do not get called (by a daemon thread) after at_exit

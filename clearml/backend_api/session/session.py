@@ -169,7 +169,7 @@ class Session(TokenManager):
         if not host:
             raise ValueError("host is required in init or config")
 
-        if ENV_CLEARML_NO_DEFAULT_SERVER.get() and host == self.default_demo_host:
+        if not self._offline_mode and ENV_CLEARML_NO_DEFAULT_SERVER.get() and host == self.default_demo_host:
             raise ValueError(
                 "ClearML configuration could not be found (missing `~/clearml.conf` or Environment CLEARML_API_HOST)\n"
                 "To get started with ClearML: setup your own `clearml-server`, "

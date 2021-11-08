@@ -1054,9 +1054,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                         k = '{}/{}'.format(self._default_configuration_section_name, k)
                     section_name, key = k.split('/', 1)
                     section = hyperparams.get(section_name, dict())
-                    org_param = org_hyperparams.get(section_name, dict()).get(key, tasks.ParamsItem())
+                    org_param = org_hyperparams.get(section_name, dict()).get(key, None)
                     param_type = params_types[org_k] if org_k in params_types else (
-                            org_param.type or (type(v) if v is not None else None)
+                        org_param.type if org_param is not None else type(v) if v is not None else None
                     )
                     if param_type and not isinstance(param_type, str):
                         param_type = param_type.__name__ if hasattr(param_type, '__name__') else str(param_type)
@@ -1064,7 +1064,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     section[key] = tasks.ParamsItem(
                         section=section_name, name=key,
                         value=stringify(v),
-                        description=descriptions[org_k] if org_k in descriptions else org_param.description,
+                        description=descriptions[org_k] if org_k in descriptions else (
+                            org_param.description if org_param is not None else None
+                        ),
                         type=param_type,
                     )
                     hyperparams[section_name] = section

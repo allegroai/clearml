@@ -215,11 +215,13 @@ class PipelineController(object):
             The dict values can reference a previously executed step using the following form '${step_name}'
             Examples:
             - Artifact access
-                parameter_override={'Args/input_file': '${stage1.artifacts.mydata.url}' }
+                parameter_override={'Args/input_file': '${<step_name>.artifacts.<artifact_name>.url}' }
             - Model access (last model used)
-                parameter_override={'Args/input_file': '${stage1.models.output.-1.url}' }
+                parameter_override={'Args/input_file': '${<step_name>.models.output.-1.url}' }
             - Parameter access
-                parameter_override={'Args/input_file': '${stage3.parameters.Args/input_file}' }
+                parameter_override={'Args/input_file': '${<step_name>.parameters.Args/input_file}' }
+            - Pipeline Task argument (see `Pipeline.add_parameter`)
+                parameter_override={'Args/input_file': '${pipeline.<pipeline_parameter>}' }
             - Task ID
                 parameter_override={'Args/input_file': '${stage3.id}' }
         :param configuration_overrides: Optional, override Task configuration objects.

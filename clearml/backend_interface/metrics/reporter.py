@@ -4,7 +4,7 @@ import logging
 import math
 from multiprocessing import Semaphore
 from threading import Event as TrEvent
-from time import sleep
+from time import sleep, time
 
 import numpy as np
 import six
@@ -76,8 +76,20 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
             while self._queue and not self._queue.empty():
                 sleep(0.1)
             return
+
         self._empty_state_event.clear()
-        return self._empty_state_event.wait(timeout)
+        if isinstance(self._empty_state_event, TrEvent):
+            tic = time()
+            while self._thread and self._thread.is_alive() and (not timeout or time()-tic < timeout):
+                if self._empty_state_event.wait(timeout=1.0):
+                    break
+        elif isinstance(self._empty_state_event, SafeEvent):
+            tic = time()
+            while self.is_subprocess_alive() and (not timeout or time()-tic < timeout):
+                if self._empty_state_event.wait(timeout=1.0):
+                    break
+
+        return
 
     def add_event(self, ev):
         if not self._queue:

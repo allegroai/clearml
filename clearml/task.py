@@ -470,7 +470,7 @@ class Task(_Task):
             is_sub_process_task_id = cls.__get_master_id_task_id()
             # we could not find a task ID, revert to old stub behaviour
             if not is_sub_process_task_id:
-                return _TaskStub()
+                return _TaskStub()  # noqa
 
         elif running_remotely() and not get_is_master_node():
             # make sure we only do it once per process
@@ -867,7 +867,6 @@ class Task(_Task):
         :param str task_name: The full name or partial name of the Tasks to match within the specified
             ``project_name`` (or all projects if ``project_name`` is ``None``).
             This method supports regular expressions for name matching. (Optional)
-        :param list(str) task_ids: list of unique task id string (if exists other parameters are ignored)
         :param str project_name: project name (str) the task belongs to (use None for all projects)
         :param str task_name: task name (str) in within the selected project
             Return any partial match of task_name, regular expressions matching is also supported
@@ -3119,17 +3118,24 @@ class Task(_Task):
         """
         # protect sub-process at_exit
         if self._at_exit_called:
+            is_sub_process = self.__is_subprocess()
             # if we are called twice (signal in the middle of the shutdown),
-            # make sure we flush stdout, this is the best we can do.
-            if self._at_exit_called == get_current_thread_id() and self._logger and self.__is_subprocess():
-                self._logger.set_flush_period(None)
-                # noinspection PyProtectedMember
-                self._logger._close_stdout_handler(wait=True)
+            _nested_shutdown_call = bool(self._at_exit_called == get_current_thread_id())
+            if _nested_shutdown_call and not is_sub_process:
+                # if we were called again in the main thread on the main process, let's try again
+                # make sure we only do this once
                 self._at_exit_called = True
-            return
-
-        # from here only a single thread can re-enter
-        self._at_exit_called = get_current_thread_id()
+            else:
+                # make sure we flush stdout, this is the best we can do.
+                if _nested_shutdown_call and self._logger and is_sub_process:
+                    # noinspection PyProtectedMember
+                    self._logger._close_stdout_handler(wait=True)
+                    self._at_exit_called = True
+                # if we get here, we should do nothing and leave
+                return
+        else:
+            # from here only a single thread can re-enter
+            self._at_exit_called = get_current_thread_id()
 
         # disable lock on signal callbacks, to avoid deadlocks.
         if self.__exit_hook and self.__exit_hook.signal is not None:

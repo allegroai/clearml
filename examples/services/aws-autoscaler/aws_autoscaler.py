@@ -2,25 +2,44 @@ import json
 from argparse import ArgumentParser
 from collections import defaultdict
 from itertools import chain
+from pathlib import Path
 from typing import Tuple
 
 import yaml
-from pathlib2 import Path
-from six.moves import input
 
 from clearml import Task
-from clearml.automation.aws_auto_scaler import AwsAutoScaler
+from clearml.automation.auto_scaler import AutoScaler, ScalerConfig
+from clearml.automation.aws_driver import AWSDriver
 from clearml.config import running_remotely
 from clearml.utilities.wizard.user_input import (
-    get_input,
-    input_int,
-    input_bool,
-    multiline_input,
-    input_list,
+    get_input, input_bool, input_int, input_list, multiline_input
 )
 
-CONF_FILE = "aws_autoscaler.yaml"
 DEFAULT_DOCKER_IMAGE = "nvidia/cuda:10.1-runtime-ubuntu18.04"
+
+
+default_config = {
+    'hyper_params': {
+        'git_user': '',
+        'git_pass': '',
+        'cloud_credentials_key': '',
+        'cloud_credentials_secret': '',
+        'cloud_credentials_region': None,
+        'default_docker_image': 'nvidia/cuda',
+        'max_idle_time_min': 15,
+        'polling_interval_time_min': 5,
+        'max_spin_up_time_min': 30,
+        'workers_prefix': 'dynamic_worker',
+        'cloud_provider': '',
+    },
+    'configurations': {
+        'resource_configurations': None,
+        'queues': None,
+        'extra_trains_conf': '',
+        'extra_clearml_conf': '',
+        'extra_vm_bash_script': '',
+    },
+}
 
 
 def main():
@@ -37,11 +56,16 @@ def main():
         action="store_true",
         default=False,
     )
+    parser.add_argument(
+        "--config-file",
+        help="Configuration file name",
+        type=Path,
+        default=Path("aws_autoscaler.yaml"),
+    )
     args = parser.parse_args()
 
     if running_remotely():
-        hyper_params = AwsAutoScaler.Settings().as_dict()
-        configurations = AwsAutoScaler.Configuration().as_dict()
+        conf = default_config
     else:
         print("AWS Autoscaler setup wizard\n"
               "---------------------------\n"
@@ -49,30 +73,26 @@ def main():
               "Once completed, you will be able to view and change the configuration in the clearml-server web UI.\n"
               "It means there is no need to worry about typos or mistakes :)\n")
 
-        config_file = Path(CONF_FILE).absolute()
-        if config_file.exists() and input_bool(
-            "Load configurations from config file '{}' [Y/n]? ".format(str(CONF_FILE)),
+        if args.config_file.exists() and input_bool(
+            "Load configurations from config file '{}' [Y/n]? ".format(args.config_file),
             default=True,
         ):
-            with config_file.open("r") as f:
+            with args.config_file.open("r") as f:
                 conf = yaml.load(f, Loader=yaml.SafeLoader)
-            hyper_params = conf["hyper_params"]
-            configurations = conf["configurations"]
         else:
             configurations, hyper_params = run_wizard()
-
+            conf = {
+                "hyper_params": hyper_params,
+                "configurations": configurations,
+            }
             # noinspection PyBroadException
             try:
-                with config_file.open("w+") as f:
-                    conf = {
-                        "hyper_params": hyper_params,
-                        "configurations": configurations,
-                    }
+                with args.config_file.open("w+") as f:
                     yaml.safe_dump(conf, f)
             except Exception:
                 print(
                     "Error! Could not write configuration file at: {}".format(
-                        str(CONF_FILE)
+                        args.config_file
                     )
                 )
                 return
@@ -80,7 +100,8 @@ def main():
     # Connecting ClearML with the current process,
     # from here on everything is logged automatically
     task = Task.init(project_name="DevOps", task_name="AWS Auto-Scaler", task_type=Task.TaskTypes.service)
-    task.connect(hyper_params)
+    task.connect(conf['hyper_params'])
+    configurations = conf['configurations']
     configurations.update(json.loads(task.get_configuration_object(name="General") or "{}"))
     task.set_configuration_object(name="General", config_text=json.dumps(configurations, indent=2))
 
@@ -92,7 +113,9 @@ def main():
         # the clearml-agent services will pick it up and execute it for us.
         task.execute_remotely(queue_name='services')
 
-    autoscaler = AwsAutoScaler(hyper_params, configurations)
+    driver = AWSDriver.from_config(conf)
+    conf = ScalerConfig.from_config(conf)
+    autoscaler = AutoScaler(conf, driver)
     if running_remotely() or args.run:
         autoscaler.start()
 
@@ -100,14 +123,14 @@ def main():
 def run_wizard():
     # type: () -> Tuple[dict, dict]
 
-    hyper_params = AwsAutoScaler.Settings()
-    configurations = AwsAutoScaler.Configuration()
+    hyper_params = default_config['hyper_params']
+    configurations = default_config['configurations']
 
-    hyper_params.cloud_credentials_key = get_input("AWS Access Key ID", required=True)
-    hyper_params.cloud_credentials_secret = get_input(
+    hyper_params['cloud_credentials_key'] = get_input("AWS Access Key ID", required=True)
+    hyper_params['cloud_credentials_secret'] = get_input(
         "AWS Secret Access Key", required=True
     )
-    hyper_params.cloud_credentials_region = get_input(
+    hyper_params['cloud_credentials_region'] = get_input(
         "AWS region name",
         "[us-east-1]",
         default='us-east-1')
@@ -127,13 +150,13 @@ def run_wizard():
             )
         )
     else:
-        git_user = None
-        git_pass = None
+        git_user = ''
+        git_pass = ''
 
-    hyper_params.git_user = git_user
-    hyper_params.git_pass = git_pass
+    hyper_params['git_user'] = git_user
+    hyper_params['git_pass'] = git_pass
 
-    hyper_params.default_docker_image = get_input(
+    hyper_params['default_docker_image'] = get_input(
         "default docker image/parameters",
         "to use [{}]".format(DEFAULT_DOCKER_IMAGE),
         default=DEFAULT_DOCKER_IMAGE,
@@ -204,21 +227,21 @@ def run_wizard():
         if not input_bool("\nDefine another instance type? [y/N]"):
             break
 
-    configurations.resource_configurations = resource_configurations
+    configurations['resource_configurations'] = resource_configurations
 
-    configurations.extra_vm_bash_script, num_lines_bash_script = multiline_input(
+    configurations['extra_vm_bash_script'], num_lines_bash_script = multiline_input(
         "\nEnter any pre-execution bash script to be executed on the newly created instances []"
     )
     print("Entered {} lines of pre-execution bash script".format(num_lines_bash_script))
 
-    configurations.extra_clearml_conf, num_lines_clearml_conf = multiline_input(
+    configurations['extra_clearml_conf'], num_lines_clearml_conf = multiline_input(
         "\nEnter anything you'd like to include in your clearml.conf file []"
     )
     print("Entered {} extra lines for clearml.conf file".format(num_lines_clearml_conf))
 
     print("\nDefine the machines budget:")
     print("-----------------------------")
-    resource_configurations_names = list(configurations.resource_configurations.keys())
+    resource_configurations_names = list(configurations['resource_configurations'].keys())
     queues = defaultdict(list)
     while True:
         while True:
@@ -238,9 +261,9 @@ def run_wizard():
                     question="Select",
                     required=True,
                 )
-                if queue_type not in configurations.resource_configurations:
+                if queue_type not in configurations['resource_configurations']:
                     print("\tError: instance type '{}' not in predefined instances {}!".format(
-                        queue_type, list(configurations.resource_configurations.keys())))
+                        queue_type, resource_configurations_names))
                     continue
 
                 if queue_type in (q[0] for q in queues[queue_name]):
@@ -252,8 +275,8 @@ def run_wizard():
                     queue_type_new = '{}_{}'.format(queue_type, queue_name)
                     print("\tInstance type '{}' already used, renaming instance to {}".format(
                         queue_type, queue_type_new))
-                    configurations.resource_configurations[queue_type_new] = \
-                        dict(**configurations.resource_configurations[queue_type])
+                    configurations['resource_configurations'][queue_type_new] = \
+                        dict(**configurations['resource_configurations'][queue_type])
                     queue_type = queue_type_new
 
                     # make sure the renamed name is not reused
@@ -269,7 +292,7 @@ def run_wizard():
             )
 
             queues[queue_name].append((queue_type, max_instances))
-            valid_instances = [k for k in configurations.resource_configurations.keys()
+            valid_instances = [k for k in configurations['resource_configurations'].keys()
                                if k not in (q[0] for q in queues[queue_name])]
             if not valid_instances:
                 break
@@ -278,19 +301,19 @@ def run_wizard():
                 break
         if not input_bool("\nAdd another queue? [y/N]"):
             break
-    configurations.queues = dict(queues)
+    configurations['queues'] = dict(queues)
 
-    hyper_params.max_idle_time_min = input_int(
+    hyper_params['max_idle_time_min'] = input_int(
         "maximum idle time",
         "for the auto-scaler to spin down an instance (in minutes) [15]",
         default=15,
         new_line=True,
     )
-    hyper_params.polling_interval_time_min = input_int(
+    hyper_params['polling_interval_time_min'] = input_int(
         "instances polling interval", "for the auto-scaler (in minutes) [5]", default=5,
     )
 
-    return configurations.as_dict(), hyper_params.as_dict()
+    return configurations, hyper_params
 
 
 if __name__ == "__main__":

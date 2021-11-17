@@ -1,0 +1,6 @@
+-r requirements.txt
+
+flake8-bugbear~=21.4
+flake8~=3.9
+pytest~=6.2
+mock~=3.0 ; python_version < '3'

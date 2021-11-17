@@ -10,6 +10,7 @@ __pycache__
 build/
 dist/
 *.egg-info
+.env
 
 # example data
 examples/runs/

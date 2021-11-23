@@ -151,6 +151,17 @@ will always upgrade with you.
 
 Apache License, Version 2.0 (see the [LICENSE](https://www.apache.org/licenses/LICENSE-2.0.html) for more information)
 
+If ClearML is part of your development process / project / publication, please cite us :heart: : 
+```
+@misc{clearml,
+title = {ClearML - Your entire MLOps stack in one open-source tool},
+year = {2019},
+note = {Software available from http://github.com/allegroai/clearml},
+url={https://clear.ml/},
+author = {ClearML},
+}
+```
+
 ## Documentation, Community & Support
 
 More information in the [official documentation](https://clear.ml/docs) and [on YouTube](https://www.youtube.com/c/ClearML).

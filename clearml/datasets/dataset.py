@@ -77,6 +77,9 @@ class Dataset(object):
             task_status = task.data.status
             # if we are continuing aborted Task, force the state
             if str(task_status) == 'stopped':
+                # print warning that we are opening a stopped dataset:
+                LoggerRoot.get_base_logger().warning(
+                    'Reopening aborted Dataset, any change will clear and overwrite current state')
                 task.mark_started(force=True)
                 task_status = 'in_progress'
 
@@ -603,7 +606,7 @@ class Dataset(object):
         # type: (Optional[str], bool, Optional[str]) -> List[str]
         """
         returns a list of files in the current dataset
-        If dataset_id is give, return a list of files that remained unchanged since the specified dataset_version
+        If dataset_id is provided, return a list of files that remained unchanged since the specified dataset_version
 
         :param dataset_path: Only match files matching the dataset_path (including wildcards).
             Example: 'folder/sub/*.json'

@@ -519,8 +519,8 @@ class SearchStrategy(object):
             additional_filters={'page_size': int(top_k), 'page': 0})
         return top_tasks
 
-    def get_top_experiments_id_metrics_pair(self, top_k, all_metrics=False):
-        # type: (int, bool) -> Sequence[(str, dict)]
+    def get_top_experiments_id_metrics_pair(self, top_k, all_metrics=False, only_completed=False):
+        # type: (int, bool, bool) -> Sequence[(str, dict)]
         """
         Return a list of pairs (Task ID, scalar metric dict) of the top performing experiments.
         Order is based on the controller ``Objective`` object.
@@ -528,6 +528,7 @@ class SearchStrategy(object):
         :param int top_k: The number of Tasks (experiments) to return.
         :param all_metrics: Default False, only return the objective metric on the metrics dictionary.
             If True, return all scalar metrics of the experiment
+        :param only_completed: return only completed Tasks. Default False.
 
         :return: A list of pairs (Task ID, metric values dict), ordered by performance,
         where index 0 is the best performing Task.
@@ -570,23 +571,120 @@ class SearchStrategy(object):
                 ),
             ]
         """
+        additional_filters = dict(page_size=int(top_k), page=0)
+        if only_completed:
+            additional_filters['status'] = ["completed"]
+
+        # noinspection PyProtectedMember
         top_tasks_ids_metric = self._get_child_tasks_ids(
             parent_task_id=self._job_parent_id or self._base_task_id,
             order_by=self._objective_metric._get_last_metrics_encode_field(),
-            additional_filters={'page_size': int(top_k), 'page': 0},
+            additional_filters=additional_filters,
             additional_fields=['last_metrics']
         )
 
-        if all_metrics:
-            return [(i, {'{}/{}'.format(v['metric'], v['variant']): v
-                         for variant in metric.values() for v in variant.values()}
-                     ) for i, metric in top_tasks_ids_metric]
-
-        title, series = self._objective_metric.get_objective_metric()
+        title, series = self._objective_metric.get_objective_metric() if not all_metrics else (None, None)
         return [(i, {'{}/{}'.format(v['metric'], v['variant']): v
                      for variant in metric.values() for v in variant.values()
-                     if v['metric'] == title and v['variant'] == series}
+                     if all_metrics or v['metric'] == title and v['variant'] == series}
                  ) for i, metric in top_tasks_ids_metric]
+
+    def get_top_experiments_details(
+            self,
+            top_k,
+            all_metrics=False,
+            all_hyper_parameters=False,
+            only_completed=False
+    ):
+        # type: (int, bool, bool, bool) -> Sequence[(str, dict)]
+        """
+        Return a list of dictionaries of the top performing experiments.
+        Example: [
+            {'task_id': Task-ID, 'metrics': scalar-metric-dict, 'hyper_parameters': Hyper-Parameters},
+        ]
+        Order is based on the controller ``Objective`` object.
+
+        :param int top_k: The number of Tasks (experiments) to return.
+        :param all_metrics: Default False, only return the objective metric on the metrics dictionary.
+            If True, return all scalar metrics of the experiment
+        :param all_hyper_parameters: Default False. If True return all the hyper-parameters from all the sections.
+        :param only_completed: return only completed Tasks. Default False.
+
+        :return: A list of dictionaries ({task_id: '', hyper_parameters: {}, metrics: {}}), ordered by performance,
+            where index 0 is the best performing Task.
+            Example w/ all_metrics=False:
+
+            [
+                {
+                    task_id: '0593b76dc7234c65a13a301f731958fa',
+                    hyper_parameters: {'General/lr': '0.03', 'General/batch_size': '32'},
+                    metrics: {
+                        'accuracy per class/cat': {
+                            'metric': 'accuracy per class',
+                            'variant': 'cat',
+                            'value': 0.119,
+                            'min_value': 0.119,
+                            'max_value': 0.782
+                        },
+                    }
+                },
+            ]
+
+        Example w/ all_metrics=True:
+
+            [
+                {
+                    task_id: '0593b76dc7234c65a13a301f731958fa',
+                    hyper_parameters: {'General/lr': '0.03', 'General/batch_size': '32'},
+                    metrics: {
+                        'accuracy per class/cat': {
+                            'metric': 'accuracy per class',
+                            'variant': 'cat',
+                            'value': 0.119,
+                            'min_value': 0.119,
+                            'max_value': 0.782
+                        },
+                        'accuracy per class/deer': {
+                            'metric': 'accuracy per class',
+                            'variant': 'deer',
+                            'value': 0.219,
+                            'min_value': 0.219,
+                            'max_value': 0.282
+                        },
+                    }
+                },
+            ]
+        """
+        additional_filters = dict(page_size=int(top_k), page=0)
+        if only_completed:
+            additional_filters['status'] = ["completed"]
+
+        # noinspection PyProtectedMember
+        top_tasks_ids_metric_params = self._get_child_tasks_ids(
+            parent_task_id=self._job_parent_id or self._base_task_id,
+            order_by=self._objective_metric._get_last_metrics_encode_field(),
+            additional_filters=additional_filters,
+            additional_fields=['last_metrics', 'hyperparams']
+        )
+
+        # get hp_parameters:
+        hp_params = set(p.name for p in self._hyper_parameters)
+
+        title, series = self._objective_metric.get_objective_metric() if not all_metrics else (None, None)
+        return [
+            {
+                'task_id': tid,
+                'hyper_parameters': {
+                    '{}/{}'.format(p.section, p.name): p.value
+                    for params in (param_sections or {}).values() for p in (params or {}).values()
+                    if all_hyper_parameters or '{}/{}'.format(p.section, p.name) in hp_params
+                },
+                'metrics': {
+                    '{}/{}'.format(v['metric'], v['variant']): v for variant in metric.values()
+                    for v in variant.values() if all_metrics or v['metric'] == title and v['variant'] == series
+                }
+            } for tid, metric, param_sections in top_tasks_ids_metric_params
+        ]
 
     def get_objective_metric(self):
         # type: () -> (str, str)
@@ -1091,6 +1189,8 @@ class HyperParameterOptimizer(object):
 
         # create a new Task, if we do not have one already
         self._task = auto_connect_task if isinstance(auto_connect_task, Task) else Task.current_task()
+        self._readonly_task = \
+            isinstance(auto_connect_task, Task) and str(self._task.status) not in ('created', 'in_progress')
         if not self._task and always_create_task:
             base_task = Task.get_task(task_id=base_task_id)
             self._task = Task.init(
@@ -1110,7 +1210,7 @@ class HyperParameterOptimizer(object):
             compute_time_limit=compute_time_limit,
             optimizer_kwargs=optimizer_kwargs)
         # make sure all the created tasks are our children, as we are creating them
-        if self._task:
+        if self._task and not self._readonly_task:
             self._task.add_tags([self._tag])
             if auto_connect_task:
                 optimizer_class, hyper_parameters, opts = self._connect_args(
@@ -1369,6 +1469,80 @@ class HyperParameterOptimizer(object):
             return []
         return self.optimizer.get_top_experiments(top_k=top_k)
 
+    def get_top_experiments_details(
+            self,
+            top_k,
+            all_metrics=False,
+            all_hyper_parameters=False,
+            only_completed=False
+    ):
+        # type: (int, bool, bool, bool) -> Sequence[(str, dict)]
+        """
+        Return a list of dictionaries of the top performing experiments.
+        Example: [
+            {'task_id': Task-ID, 'metrics': scalar-metric-dict, 'hyper_parameters': Hyper-Parameters},
+        ]
+        Order is based on the controller ``Objective`` object.
+
+        :param int top_k: The number of Tasks (experiments) to return.
+        :param all_metrics: Default False, only return the objective metric on the metrics dictionary.
+            If True, return all scalar metrics of the experiment
+        :param all_hyper_parameters: Default False. If True return all the hyper-parameters from all the sections.
+        :param only_completed: return only completed Tasks. Default False.
+
+        :return: A list of dictionaries ({task_id: '', hyper_parameters: {}, metrics: {}}), ordered by performance,
+            where index 0 is the best performing Task.
+            Example w/ all_metrics=False:
+
+            [
+                {
+                    task_id: '0593b76dc7234c65a13a301f731958fa',
+                    hyper_parameters: {'General/lr': '0.03', 'General/batch_size': '32'},
+                    metrics: {
+                        'accuracy per class/cat': {
+                            'metric': 'accuracy per class',
+                            'variant': 'cat',
+                            'value': 0.119,
+                            'min_value': 0.119,
+                            'max_value': 0.782
+                        },
+                    }
+                },
+            ]
+
+        Example w/ all_metrics=True:
+
+            [
+                {
+                    task_id: '0593b76dc7234c65a13a301f731958fa',
+                    hyper_parameters: {'General/lr': '0.03', 'General/batch_size': '32'},
+                    metrics: {
+                        'accuracy per class/cat': {
+                            'metric': 'accuracy per class',
+                            'variant': 'cat',
+                            'value': 0.119,
+                            'min_value': 0.119,
+                            'max_value': 0.782
+                        },
+                        'accuracy per class/deer': {
+                            'metric': 'accuracy per class',
+                            'variant': 'deer',
+                            'value': 0.219,
+                            'min_value': 0.219,
+                            'max_value': 0.282
+                        },
+                    }
+                },
+            ]
+        """
+        if not self.optimizer:
+            return []
+        return self.optimizer.get_top_experiments_details(
+            top_k=top_k,
+            all_metrics=all_metrics,
+            all_hyper_parameters=all_hyper_parameters,
+            only_completed=only_completed)
+
     def get_optimizer(self):
         # type: () -> SearchStrategy
         """
@@ -1432,7 +1606,7 @@ class HyperParameterOptimizer(object):
 
     def _connect_args(self, optimizer_class=None, hyper_param_configuration=None, **kwargs):
         # type: (SearchStrategy, dict, Any) -> (SearchStrategy, list, dict)
-        if not self._task:
+        if not self._task or self._readonly_task:
             logger.warning('Auto Connect turned on but no Task was found, '
                            'hyper-parameter optimization argument logging disabled')
             return optimizer_class, hyper_param_configuration, kwargs
@@ -1540,7 +1714,7 @@ class HyperParameterOptimizer(object):
 
             # get task to report on.
             cur_task = self._task or Task.current_task()
-            if cur_task:
+            if cur_task and not self._readonly_task:
                 task_logger = cur_task.get_logger()
 
                 # do some reporting
@@ -1557,19 +1731,22 @@ class HyperParameterOptimizer(object):
                     {j.task_id() for j in self.optimizer.get_running_jobs()}
                 self._report_completed_status(completed_jobs, cur_completed_jobs, task_logger, title)
                 self._report_completed_tasks_best_results(set(completed_jobs.keys()), task_logger, title, counter)
-                self._auto_archive_low_performance_tasks(completed_jobs)
+
+            self._auto_archive_low_performance_tasks(completed_jobs)
+
             # if we should leave, stop everything now.
             if timeout < 0:
                 # we should leave
                 self.stop(wait_for_reporter=False)
                 return
-        if task_logger and counter:
+        if task_logger and counter and not self._readonly_task:
             counter += 1
             self._report_remaining_budget(task_logger, counter)
             self._report_resources(task_logger, counter)
             self._report_completed_status(completed_jobs, cur_completed_jobs, task_logger, title, force=True)
             self._report_completed_tasks_best_results(set(completed_jobs.keys()), task_logger, title, counter)
-            self._auto_archive_low_performance_tasks(completed_jobs)
+
+        self._auto_archive_low_performance_tasks(completed_jobs)
 
     def _report_completed_status(self, completed_jobs, cur_completed_jobs, task_logger, title, force=False):
         job_ids_sorted_by_objective = self.__sort_jobs_by_objective(completed_jobs)

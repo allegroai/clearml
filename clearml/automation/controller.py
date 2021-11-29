@@ -2840,7 +2840,7 @@ class PipelineDecorator(PipelineController):
             target_project=None,  # type: Optional[str]
             abort_on_failure=False,  # type: bool
             pipeline_execution_queue='services',  # type: Optional[str]
-            multi_instance_support=False,
+            multi_instance_support=False
     ):
         # type: (...) -> Callable
         """

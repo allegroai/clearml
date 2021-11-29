@@ -685,8 +685,7 @@ class StorageHelper(object):
             # if driver supports download with callback, use it (it might be faster)
             if hasattr(self._driver, 'download_object'):
                 # callback
-                cb = DownloadProgressReport(total_size_mb, verbose,
-                                            remote_path, self._log, chunk_size_mb)
+                cb = DownloadProgressReport(total_size_mb, verbose, remote_path, self._log)
                 self._driver.download_object(obj, temp_local_path, callback=cb)
                 download_reported = bool(cb.last_reported)
                 dl_total_mb = cb.current_status_mb

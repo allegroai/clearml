@@ -135,6 +135,10 @@ class ScriptRequirements(object):
                 conda_packages_json = json.loads(conda_packages_json)
                 reqs_lower = {k.lower(): (k, v) for k, v in reqs.items()}
                 for r in conda_packages_json:
+                    # the exception is cudatoolkit which we want to log anyhow
+                    if r.get('name') == 'cudatoolkit' and r.get('version'):
+                        conda_requirements += '{0} {1} {2}\n'.format(r.get('name'), '==', r.get('version'))
+                        continue
                     # check if this is a pypi package, if it is, leave it outside
                     if not r.get('channel') or r.get('channel') == 'pypi':
                         continue
@@ -200,6 +204,7 @@ class ScriptRequirements(object):
         for k in sorted(forced_packages.keys()):
             requirements_txt += ScriptRequirements._make_req_line(k, forced_packages.get(k))
 
+        requirements_txt_packages_only = requirements_txt
         if detailed:
             requirements_txt_packages_only = \
                 requirements_txt + '\n# Skipping detailed import analysis, it is too large\n'
@@ -524,6 +529,8 @@ class ScriptInfo(object):
                 or len(sys.argv) < 3 or not sys.argv[2].endswith('.json'):
             return None
 
+        server_info = None
+
         # we can safely assume that we can import the notebook package here
         # noinspection PyBroadException
         try:
@@ -687,7 +694,7 @@ class ScriptInfo(object):
             # noinspection PyBroadException
             try:
                 # noinspection PyPackageRequirements
-                import hydra
+                import hydra  # noqa
                 return Path(hydra.utils.get_original_cwd()).absolute()
             except Exception:
                 pass

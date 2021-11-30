@@ -29,7 +29,7 @@ from ..utilities.proxy_object import LazyEvalWrapper, flatten_dictionary
 class PipelineController(object):
     """
     Pipeline controller.
-    Pipeline is a DAG of base tasks, each task will be cloned (arguments changed as required) executed and monitored
+    Pipeline is a DAG of base tasks, each task will be cloned (arguments changed as required), executed, and monitored.
     The pipeline process (task) itself can be executed manually or by the clearml-agent services queue.
     Notice: The pipeline controller lives as long as the pipeline itself is being executed.
     """
@@ -111,7 +111,7 @@ class PipelineController(object):
             (with any difference from the current one), the current pipeline version will be bumped to a new version
             version bump examples: 1.0.0 -> 1.0.1 , 1.2 -> 1.3, 10 -> 11 etc.
         :param bool abort_on_failure: If False (default), failed pipeline steps will not cause the pipeline
-            to stop immediately, instead any step that is not connected (or indeirectly connected) to the failed step,
+            to stop immediately, instead any step that is not connected (or indirectly connected) to the failed step,
             will still be executed. Nonetheless the pipeline itself will be marked failed, unless the failed step
             was specifically defined with "continue_on_fail=True".
             If True, any failed step will cause the pipeline to immediately abort, stop all running steps,
@@ -166,7 +166,7 @@ class PipelineController(object):
     def set_default_execution_queue(self, default_execution_queue):
         # type: (Optional[str]) -> None
         """
-        Set the default execution queue for if pipeline step does not specify an execution queue
+        Set the default execution queue if pipeline step does not specify an execution queue
 
         :param default_execution_queue: The execution queue to use if no execution queue is provided
         """
@@ -637,8 +637,8 @@ class PipelineController(object):
     ):
         # type: (...) -> bool
         """
-        Start the current pipeline remotely (on the selected services queue)
-        The current process will be stopped if exit_process is True.
+        Start the current pipeline remotely (on the selected services queue).
+        The current process will be stopped and launched remotely.
 
         :param queue: queue name to launch the pipeline on
         :param Callable step_task_created_callback: Callback function, called when a step (Task) is created
@@ -795,7 +795,7 @@ class PipelineController(object):
         # type: (...) -> bool
         """
         Upload (add) an artifact to the main Pipeline Task object.
-        This function can be called from any pipeline component to directly add artifacts into the main pipeline Task
+        This function can be called from any pipeline component to directly add artifacts into the main pipeline Task.
 
         The artifact can be uploaded by any function/tasks executed by the pipeline, in order to report
         directly to the pipeline Task itself. It can also be called from the main pipeline control Task.
@@ -850,7 +850,7 @@ class PipelineController(object):
         """
         Stop the pipeline controller and the optimization thread.
         If mark_failed and mark_aborted are False (default) mark the pipeline as completed,
-        unless one of the steps failed, then mark the pipeline as failed
+        unless one of the steps failed, then mark the pipeline as failed.
 
         :param timeout: Wait timeout for the optimization thread to exit (minutes).
             The default is ``None``, indicating do not wait terminate immediately.
@@ -2222,7 +2222,7 @@ class PipelineDecorator(PipelineController):
             steps (Tasks) created by this pipeline.
         :param str target_project: If provided, all pipeline steps are cloned into the target project
         :param bool abort_on_failure: If False (default), failed pipeline steps will not cause the pipeline
-            to stop immediately, instead any step that is not connected (or indeirectly connected) to the failed step,
+            to stop immediately, instead any step that is not connected (or indirectly connected) to the failed step,
             will still be executed. Nonetheless the pipeline itself will be marked failed, unless the failed step
             was specifically defined with "continue_on_fail=True".
             If True, any failed step will cause the pipeline to immediately abort, stop all running steps,
@@ -2982,7 +2982,7 @@ class PipelineDecorator(PipelineController):
     def set_default_execution_queue(cls, default_execution_queue):
         # type: (Optional[str]) -> None
         """
-        Set the default execution queue for if pipeline step does not specify an execution queue
+        Set the default execution queue if pipeline step does not specify an execution queue
 
         :param default_execution_queue: The execution queue to use if no execution queue is provided
         """

@@ -1537,7 +1537,7 @@ class Task(NonStrictDataModel):
             "container": {
                 "type": "object",
                 "description": "Docker container parameters",
-                "additionalProperties": {"type": "string"},
+                "additionalProperties": {"type": ["string", "null"]},
             },
             "created": {
                 "description": "Task creation time (UTC) ",
@@ -3142,7 +3142,7 @@ class CloneRequest(Request):
                 "type": "object",
             },
             "new_task_container": {
-                "additionalProperties": {"type": "string"},
+                "additionalProperties": {"type": ["string", "null"]},
                 "description": "The docker container properties for the new task. If not provided then taken from the original task",
                 "type": "object",
             },
@@ -4103,7 +4103,7 @@ class CreateRequest(Request):
             "container": {
                 "type": "object",
                 "description": "Docker container parameters",
-                "additionalProperties": {"type": "string"},
+                "additionalProperties": {"type": ["string", "null"]},
             },
             "execution": {
                 "$ref": "#/definitions/execution",
@@ -6123,7 +6123,7 @@ class EditRequest(Request):
             "container": {
                 "type": "object",
                 "description": "Docker container parameters",
-                "additionalProperties": {"type": "string"},
+                "additionalProperties": {"type": ["string", "null"]},
             },
             "execution": {
                 "$ref": "#/definitions/execution",
@@ -8166,7 +8166,7 @@ class GetAllResponse(Response):
                     "container": {
                         "type": "object",
                         "description": "Docker container parameters",
-                        "additionalProperties": {"type": "string"},
+                        "additionalProperties": {"type": ["string", "null"]},
                     },
                     "created": {
                         "description": "Task creation time (UTC) ",
@@ -8700,7 +8700,7 @@ class GetByIdResponse(Response):
                     "container": {
                         "type": "object",
                         "description": "Docker container parameters",
-                        "additionalProperties": {"type": "string"},
+                        "additionalProperties": {"type": ["string", "null"]},
                     },
                     "created": {
                         "description": "Task creation time (UTC) ",
@@ -12187,7 +12187,7 @@ class ValidateRequest(Request):
             "container": {
                 "type": "object",
                 "description": "Docker container parameters",
-                "additionalProperties": {"type": "string"},
+                "additionalProperties": {"type": ["string", "null"]},
             },
             "execution": {
                 "$ref": "#/definitions/execution",

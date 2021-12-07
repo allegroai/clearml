@@ -1,4 +1,4 @@
-# ClearML - Example of Pytorch mnist training integration
+# Example of MNIST training with PyTorch and abseil integration
 
 from __future__ import print_function
 
@@ -113,7 +113,7 @@ def test(args, model, device, test_loader, epoch):
 def main(_):
     # Connecting ClearML with the current process,
     # from here on everything is logged automatically
-    task = Task.init(project_name="examples", task_name="pytorch mnist train")
+    task = Task.init(project_name="examples", task_name="pytorch mnist train with abseil")
 
     use_cuda = FLAGS.cuda and torch.cuda.is_available()
 

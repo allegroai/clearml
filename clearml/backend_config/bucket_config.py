@@ -221,6 +221,8 @@ class GSBucketConfig(object):
     subdir = attrib(type=str, converter=_url_stripper, default="")
     project = attrib(type=str, default=None)
     credentials_json = attrib(type=str, default=None)
+    pool_connections = attrib(type=int, default=None)
+    pool_maxsize = attrib(type=int, default=None)
 
     def update(self, **kwargs):
         for item in kwargs:
@@ -231,10 +233,19 @@ class GSBucketConfig(object):
 
 
 class GSBucketConfigurations(BaseBucketConfigurations):
-    def __init__(self, buckets=None, default_project=None, default_credentials=None):
+    def __init__(
+            self,
+            buckets=None,
+            default_project=None,
+            default_credentials=None,
+            default_pool_connections=None,
+            default_pool_maxsize=None
+    ):
         super(GSBucketConfigurations, self).__init__(buckets)
         self._default_project = default_project
         self._default_credentials = default_credentials
+        self._default_pool_connections = default_pool_connections
+        self._default_pool_maxsize = default_pool_maxsize
 
         self._update_prefixes()
 
@@ -250,8 +261,12 @@ class GSBucketConfigurations(BaseBucketConfigurations):
 
         default_project = gs_configuration.get("project", None) or {}
         default_credentials = gs_configuration.get("credentials_json", None) or default_credentials
+        default_pool_connections = gs_configuration.get("pool_connections", None)
+        default_pool_maxsize = gs_configuration.get("pool_maxsize", None)
 
-        return cls(buckets_configs, default_project, default_credentials)
+        return cls(
+            buckets_configs, default_project, default_credentials, default_pool_connections, default_pool_maxsize
+        )
 
     def add_config(self, bucket_config):
         self._buckets.insert(0, bucket_config)
@@ -266,6 +281,8 @@ class GSBucketConfigurations(BaseBucketConfigurations):
             project=bucket_config.project or self._default_project,
             credentials_json=bucket_config.credentials_json
             or self._default_credentials,
+            pool_connections=bucket_config.pool_connections or self._default_pool_connections,
+            pool_maxsize=bucket_config.pool_maxsize or self._default_pool_maxsize
         )
 
     def get_config_by_uri(self, uri):
@@ -293,6 +310,8 @@ class GSBucketConfigurations(BaseBucketConfigurations):
             subdir=str(parsed.path),
             project=self._default_project,
             credentials_json=self._default_credentials,
+            pool_connections=self._default_pool_connections,
+            pool_maxsize=self._default_pool_maxsize
         )
 
     def _get_prefix_from_bucket_config(self, config):

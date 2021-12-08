@@ -1615,6 +1615,53 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         return response.response_data
 
+    def get_reported_plots(
+            self,
+            max_iterations=None
+    ):
+        # type: (...) -> List[dict]
+        """
+        Return a list of all the plots reported for this Task,
+        Notice the plot data is plotly compatible.
+
+        .. note::
+           This call is not cached, any call will retrieve all the plot reports from the back-end.
+           If the Task has many plots reported, it might take long for the call to return.
+
+        Example:
+
+        .. code-block:: py
+
+          [{
+            'timestamp': 1636921296370,
+            'type': 'plot',
+            'task': '0ce5e89bbe484f428e43e767f1e2bb11',
+            'iter': 0,
+            'metric': 'Manual Reporting',
+            'variant': 'Just a plot',
+            'plot_str': '{"data": [{"type": "scatter", "mode": "markers", "name": null,
+                                    "x": [0.2620246750155817], "y": [0.2620246750155817]}]}',
+            '@timestamp': '2021-11-14T20:21:42.387Z',
+            'worker': 'machine-ml',
+            'plot_len': 6135,
+          },]
+        :param int max_iterations: Maximum number of historic plots (iterations from end) to return.
+        :return: list: List of dicts, each one represents a single plot
+        """
+        # send request
+        res = self.send(
+            events.GetTaskPlotsRequest(task=self.id, iters=max_iterations or 1),
+            raise_on_errors=False,
+            ignore_errors=True,
+        )
+        if not res:
+            return []
+        response = res.wait()
+        if not response.ok() or not response.response_data:
+            return []
+
+        return response.response_data.get('plots', [])
+
     def get_reported_console_output(self, number_of_reports=1):
         # type: (int) -> Sequence[str]
         """

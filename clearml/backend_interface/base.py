@@ -89,7 +89,7 @@ class InterfaceBase(SessionInterface):
                         'Field %s contains illegal schema: %s', '.'.join(e.path), str(e.message)
                     )
                 if raise_on_errors:
-                    raise ValidationError(f"Field {'.'.join(e.path)} contains illegal schema: {e.message}")
+                    raise ValidationError("Field %s contains illegal schema: %s" % ('.'.join(e.path), e.message))
                 # We do not want to retry
                 return None
             except Exception as e:

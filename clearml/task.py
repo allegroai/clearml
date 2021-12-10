@@ -1509,7 +1509,7 @@ class Task(_Task):
             - ``False`` - Do not force (default)
         """
         if not running_remotely() or not self.is_main_task() or force:
-            super(Task, self).reset(set_started_on_success=set_started_on_success)
+            super(Task, self).reset(set_started_on_success=set_started_on_success, force=force)
 
     def close(self):
         """

@@ -536,14 +536,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             res = self.send(tasks.GetByIdRequest(task=self.id))
             return res.response.task
 
-    def reset(self, set_started_on_success=True):
-        # type: (bool) -> ()
+    def reset(self, set_started_on_success=True, force=False):
+        # type: (bool, bool) -> ()
         """
         Reset the task. Task will be reloaded following a successful reset.
 
-        :param  set_started_on_success: If True automatically set Task status to started after resetting it.
+        :param set_started_on_success: If True automatically set Task status to started after resetting it.
+        :param force: If not true, call fails if the task status is 'completed'
         """
-        self.send(tasks.ResetRequest(task=self.id))
+        self.send(tasks.ResetRequest(task=self.id, force=force))
         if set_started_on_success:
             self.started()
         elif self._data:

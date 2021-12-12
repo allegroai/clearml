@@ -863,7 +863,8 @@ class Task(_Task):
         # type: (...) -> Union[List[str], List[Dict[str, str]]]
         """
         Get a list of Tasks ID matching the specific query/filter.
-        Notice, if `return_fields` is specified, returns a list of dictionaries with requested fields (dict per Task)
+        Notice, if `additional_return_fields` is specified, returns a list of
+        dictionaries with requested fields (dict per Task)
 
         :param str project_name: The project name of the Tasks to get. To get the experiment
             in all projects, use the default value of ``None``. (Optional)
@@ -2706,7 +2707,9 @@ class Task(_Task):
                     )
 
                     # instead of resting the previously used task we are continuing the training with it.
-                    if task and (continue_last_task or isinstance(continue_last_task, int)):
+                    if task and \
+                            (continue_last_task or
+                             (isinstance(continue_last_task, int) and not isinstance(continue_last_task, bool))):
                         task.reload()
                         task.mark_started(force=True)
                         # allow to disable the

@@ -49,6 +49,7 @@ from .binding.joblib_bind import PatchedJoblib
 from .binding.matplotlib_bind import PatchedMatplotlib
 from .binding.hydra_bind import PatchHydra
 from .binding.click_bind import PatchClick
+from .binding.jsonargs_bind import PatchJsonArgParse
 from .config import (
     config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, DEV_DEFAULT_OUTPUT_URI,
     deferred_config, TASK_SET_ITERATION_OFFSET, )
@@ -369,7 +370,7 @@ class Task(_Task):
                    'matplotlib': True, 'tensorflow': True, 'tensorboard': True, 'pytorch': True,
                    'xgboost': True, 'scikit': True, 'fastai': True, 'lightgbm': True,
                    'hydra': True, 'detect_repository': True, 'tfdefines': True, 'joblib': True,
-                   'megengine': True,
+                   'megengine': True, 'jsonargparse': True,
                }
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
@@ -557,6 +558,8 @@ class Task(_Task):
                 is_auto_connect_frameworks_bool = not isinstance(auto_connect_frameworks, dict)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('hydra', True):
                     PatchHydra.update_current_task(task)
+                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('jsonargparse', True):
+                    PatchJsonArgParse.update_current_task(task)
                 if is_auto_connect_frameworks_bool or (
                         auto_connect_frameworks.get('scikit', True) and
                         auto_connect_frameworks.get('joblib', True)):

@@ -67,10 +67,19 @@ def main():
     print(description, end='')
     sentinel = ''
     parse_input = ''
-    for line in iter(input, sentinel):
-        parse_input += line+'\n'
-        if line.rstrip() == '}':
-            break
+    # COLAB_GPU will always be available, even when running on CPU
+    if os.environ.get('COLAB_GPU'):
+        # When running from a colab instance and calling clearml-init
+        # colab will squish the api credentials into a single line
+        # The regex splits this single line based on 2 spaces or more
+        import re
+        api_input = input()
+        parse_input = '\n'.join(re.split(r" {2,}", api_input))
+    else:
+        for line in iter(input, sentinel):
+            parse_input += line+'\n'
+            if line.rstrip() == '}':
+                break
     credentials = None
     api_server = None
     web_server = None

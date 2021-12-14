@@ -54,10 +54,6 @@ def main():
         default=default_config_file,
         type=validate_file
     )
-    p.add_argument(
-        "--colab", "-c", help="Add if running from a colab instance, input parsing is different",
-        action='store_true'
-    )
 
     args = p.parse_args()
 
@@ -71,7 +67,8 @@ def main():
     print(description, end='')
     sentinel = ''
     parse_input = ''
-    if args.colab:
+    # COLAB_GPU will always be available, even when running on CPU
+    if os.environ.get('COLAB_GPU'):
         # When running from a colab instance and calling clearml-init
         # colab will squish the api credentials into a single line
         # The regex splits this single line based on 2 spaces or more

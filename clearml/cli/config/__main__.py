@@ -54,6 +54,10 @@ def main():
         default=default_config_file,
         type=validate_file
     )
+    p.add_argument(
+        "--colab", "-c", help="Add if running from a colab instance, input parsing is different",
+        action='store_true'
+    )
 
     args = p.parse_args()
 
@@ -67,10 +71,18 @@ def main():
     print(description, end='')
     sentinel = ''
     parse_input = ''
-    for line in iter(input, sentinel):
-        parse_input += line+'\n'
-        if line.rstrip() == '}':
-            break
+    if args.colab:
+        # When running from a colab instance and calling clearml-init
+        # colab will squish the api credentials into a single line
+        # The regex splits this single line based on 2 spaces or more
+        import re
+        api_input = input()
+        parse_input = '\n'.join(re.split(r" {2,}", api_input))
+    else:
+        for line in iter(input, sentinel):
+            parse_input += line+'\n'
+            if line.rstrip() == '}':
+                break
     credentials = None
     api_server = None
     web_server = None

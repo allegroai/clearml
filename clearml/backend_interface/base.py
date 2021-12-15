@@ -2,6 +2,7 @@ import abc
 
 import requests.exceptions
 import six
+import jsonschema
 
 from ..backend_api import Session, CallResult
 from ..backend_api.session.session import MaxRequestSizeError
@@ -13,6 +14,10 @@ from ..config import config_obj
 from ..config.defs import LOG_LEVEL_ENV_VAR
 from ..debugging import get_logger
 from .session import SendError, SessionInterface
+
+
+class ValidationError(ValueError):
+    pass
 
 
 class InterfaceBase(SessionInterface):
@@ -78,6 +83,15 @@ class InterfaceBase(SessionInterface):
                 if raise_on_errors:
                     raise
                 res = None
+            except jsonschema.ValidationError as e:
+                if log:
+                    log.error(
+                        'Field %s contains illegal schema: %s', '.'.join(e.path), str(e.message)
+                    )
+                if raise_on_errors:
+                    raise ValidationError("Field %s contains illegal schema: %s" % ('.'.join(e.path), e.message))
+                # We do not want to retry
+                return None
             except Exception as e:
                 res = None
                 if log and num_retries >= cls._num_retry_warning_display:

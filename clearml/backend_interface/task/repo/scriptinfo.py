@@ -13,7 +13,7 @@ from threading import Thread, Event
 
 from .util import get_command_output, remove_user_pass_from_url
 from ....backend_api import Session
-from ....config import deferred_config
+from ....config import deferred_config, VCS_WORK_DIR
 from ....debugging import get_logger
 from .detectors import GitEnvDetector, GitDetector, HgEnvDetector, HgDetector, Result as DetectionResult
 
@@ -790,7 +790,10 @@ class ScriptInfo(object):
             working_dir = '.'
             entry_point = str(script_path.name)
         else:
-            working_dir = cls._get_working_dir(repo_root)
+            # allow to override the VCS working directory (notice relative to the git repo)
+            # because we can have a sync folder on remote pycharm sessions
+            # not syncing from the Git repo, but from a subfolder, so the pycharm plugin need to pass the override
+            working_dir = VCS_WORK_DIR.get() if VCS_WORK_DIR.get() else cls._get_working_dir(repo_root)
             entry_point = cls._get_entry_point(repo_root, script_path)
 
         if check_uncommitted:

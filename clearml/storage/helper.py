@@ -1512,6 +1512,12 @@ class _GoogleCloudStorageDriver(_Driver):
                 credentials = None
 
             self.client = storage.Client(project=cfg.project, credentials=credentials)
+            for adapter in self.client._http.adapters.values():
+                if cfg.pool_connections:
+                    adapter._pool_connections = cfg.pool_connections
+                if cfg.pool_maxsize:
+                    adapter._pool_maxsize = cfg.pool_maxsize
+
             self.config = cfg
             self.bucket = self.client.bucket(self.name)
 

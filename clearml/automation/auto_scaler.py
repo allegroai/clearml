@@ -333,7 +333,8 @@ class AutoScaler(object):
             if not task:
                 if worker.id not in idle_workers:
                     resource_name = WorkerId(worker.id).instance_type
-                    idle_workers[worker.id] = (time(), resource_name, worker)
+                    worker_time = worker_last_time(worker)
+                    idle_workers[worker.id] = (worker_time, resource_name, worker)
             elif worker.id in idle_workers:
                 idle_workers.pop(worker.id, None)
 
@@ -373,3 +374,14 @@ def has_duplicate_resource(queues: dict):
             return True
         seen.add(name)
     return False
+
+
+def worker_last_time(worker):
+    """Last time we heard from a worker. Current time if we can't find"""
+    time_attrs = [
+        'register_time',
+        'last_activity_time',
+        'last_report_time',
+    ]
+    times = [getattr(worker, attr).timestamp() for attr in time_attrs if getattr(worker, attr)]
+    return max(times) if times else time()

@@ -711,7 +711,20 @@ class StorageHelper(object):
                     pass
 
             # rename temp file to local_file
-            os.rename(temp_local_path, local_path)
+            # noinspection PyBroadException
+            try:
+                os.rename(temp_local_path, local_path)
+            except Exception:
+                # noinspection PyBroadException
+                try:
+                    os.unlink(temp_local_path)
+                except Exception:
+                    pass
+                # file was downloaded by a parallel process, check we have the final output and delete the partial copy
+                path_local_path = Path(local_path)
+                if not path_local_path.is_file() or path_local_path.stat().st_size <= 0:
+                    raise Exception('Failed renaming partial file, downloaded file exists and a 0-sized file')
+
             # report download if we are on the second chunk
             if verbose or download_reported:
                 self._log.info(

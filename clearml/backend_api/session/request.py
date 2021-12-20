@@ -8,7 +8,7 @@ from .datamodel import DataModel
 
 
 class Request(ApiModel):
-    _method = 'get'
+    _method = 'post'
 
     def __init__(self, **kwargs):
         allow_extra_fields = kwargs.pop("_allow_extra_fields_", False)

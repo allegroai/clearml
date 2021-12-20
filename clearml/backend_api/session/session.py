@@ -709,6 +709,7 @@ class Session(TokenManager):
         try:
             data = {"expiration_sec": exp} if exp else {}
             res = self._send_request(
+                method="post",
                 service="auth",
                 action="login",
                 auth=auth,

@@ -503,8 +503,19 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def _get_output_destination_suffix(self, extra_path=None):
         # type: (Optional[str]) -> str
+        # limit path to support various storage infrastructure limits (such as max path pn posix or object storage)
+        # project path limit to 256 (including subproject names), and task name limit to 128.
+        def limit_folder_name(a_name, uuid, max_length, always_add_uuid):
+            if always_add_uuid:
+                return '{}.{}'.format(a_name[:max(2, max_length-len(uuid)-1)], uuid)
+            if len(a_name) < max_length:
+                return a_name
+            return '{}.{}'.format(a_name[:max(2, max_length-len(uuid)-1)], uuid)
+
         return '/'.join(quote(x, safe="'[]{}()$^,.; -_+-=") for x in
-                        (self.get_project_name(), '%s.%s' % (self.name, self.data.id), extra_path) if x)
+                        (limit_folder_name(self.get_project_name(), str(self.project), 256, False),
+                         limit_folder_name(self.name, str(self.data.id), 128, True),
+                         extra_path) if x)
 
     def _reload(self):
         # type: () -> Any

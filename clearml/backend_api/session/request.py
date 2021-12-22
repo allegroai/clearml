@@ -11,6 +11,10 @@ from .defs import ENV_API_DEFAULT_REQ_METHOD
 
 class Request(ApiModel):
     _method = ENV_API_DEFAULT_REQ_METHOD.get()
+    if _method.upper() not in ("GET", "POST"):
+        raise ValueError(
+            "CLEARML_API_DEFAULT_REQ_METHOD environment variable must be 'get' or 'post' (any case is allowed)."
+        )
 
     def __init__(self, **kwargs):
         allow_extra_fields = kwargs.pop("_allow_extra_fields_", False)

@@ -4,7 +4,7 @@ import struct
 import sys
 from functools import partial
 from multiprocessing import Lock, Event as ProcessEvent
-from threading import Thread, Event as TrEvent
+from threading import Thread, Event as TrEvent, RLock as ThreadRLock
 from time import sleep, time
 from typing import List, Dict, Optional
 from multiprocessing import Process
@@ -31,6 +31,39 @@ try:
 except ImportError:
     def get_context(*args, **kwargs):
         return False
+
+
+class ForkSafeRLock(object):
+    def __init__(self):
+        self._lock = None
+        self._instance_pid = None
+
+    def acquire(self, *args, **kwargs):
+        self.create()
+        return self._lock.acquire(*args, **kwargs)
+
+    def release(self, *args, **kwargs):
+        if self._lock is None:
+            return None
+        return self._lock.release(*args, **kwargs)
+
+    def create(self):
+        # this part is not atomic, and there is not a lot we can do about it.
+        if self._instance_pid != os.getpid() or not self._lock:
+            self._lock = ThreadRLock()
+            self._instance_pid = os.getpid()
+
+    def __enter__(self):
+        """Return `self` upon entering the runtime context."""
+        self.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Raise any exception triggered within the runtime context."""
+        # Do whatever cleanup.
+        self.release()
+        if any((exc_type, exc_value, traceback,)):
+            raise (exc_type, exc_value, traceback)
 
 
 class ThreadCalls(object):
@@ -528,6 +561,16 @@ class BackgroundMonitor(object):
                    and self._start_ev.is_set() and not self._done_ev.is_set()
         else:
             return isinstance(self._thread, Thread) and self._thread.is_alive()
+
+    @classmethod
+    def _fast_is_subprocess_alive(cls):
+        if not cls._main_process:
+            return False
+        # noinspection PyBroadException
+        try:
+            return psutil.pid_exists(cls._main_process)
+        except Exception:
+            return False
 
     @classmethod
     def is_subprocess_alive(cls, task=None):

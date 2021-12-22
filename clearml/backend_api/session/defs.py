@@ -17,4 +17,12 @@ ENV_CLEARML_NO_DEFAULT_SERVER = EnvEntry("CLEARML_NO_DEFAULT_SERVER", "TRAINS_NO
 ENV_DISABLE_VAULT_SUPPORT = EnvEntry('CLEARML_DISABLE_VAULT_SUPPORT', type=bool)
 ENV_ENABLE_ENV_CONFIG_SECTION = EnvEntry('CLEARML_ENABLE_ENV_CONFIG_SECTION', type=bool)
 ENV_ENABLE_FILES_CONFIG_SECTION = EnvEntry('CLEARML_ENABLE_FILES_CONFIG_SECTION', type=bool)
+
+"""
+Experimental option to set the request method for all API requests and auth login.
+This could be useful when GET requests with payloads are blocked by a server as
+POST requests can be used instead.
+
+However this has not been vigorously tested and may have unintended consequences.
+"""
 ENV_API_DEFAULT_REQ_METHOD = EnvEntry("CLEARML_API_DEFAULT_REQ_METHOD", default="get")

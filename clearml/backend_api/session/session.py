@@ -1,4 +1,5 @@
 import json as json_lib
+import os
 import sys
 import types
 from socket import gethostname
@@ -709,7 +710,7 @@ class Session(TokenManager):
         try:
             data = {"expiration_sec": exp} if exp else {}
             res = self._send_request(
-                method="post",
+                method=os.environ.get("CLEARML_HTTP_REQUEST_METHOD", "get"),
                 service="auth",
                 action="login",
                 auth=auth,

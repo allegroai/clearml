@@ -59,6 +59,10 @@ class Monitor(object):
         :param float pool_period: pool period in seconds
         :return: Function will never return
         """
+
+        # if this is the first time, we call _setup() if we need to create something
+        self._setup()
+
         self._timestamp = time()
         last_report = self._timestamp
 
@@ -173,3 +177,11 @@ class Monitor(object):
         if not self._clearml_apiclient:
             self._clearml_apiclient = APIClient()
         return self._clearml_apiclient
+
+    def _setup(self):
+        # type: () -> ()
+        """
+        Optional add one time setup process, before starting the monitoring loop
+        :return:
+        """
+        pass

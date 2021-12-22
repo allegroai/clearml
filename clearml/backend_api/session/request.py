@@ -6,10 +6,11 @@ import six
 
 from .apimodel import ApiModel
 from .datamodel import DataModel
+from .defs import ENV_API_DEFAULT_REQ_METHOD
 
 
 class Request(ApiModel):
-    _method = os.environ.get("CLEARML_HTTP_REQUEST_METHOD", "get")
+    _method = ENV_API_DEFAULT_REQ_METHOD.get()
 
     def __init__(self, **kwargs):
         allow_extra_fields = kwargs.pop("_allow_extra_fields_", False)

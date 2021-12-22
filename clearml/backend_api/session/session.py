@@ -25,6 +25,7 @@ from .defs import (
     ENV_DISABLE_VAULT_SUPPORT,
     ENV_ENABLE_ENV_CONFIG_SECTION,
     ENV_ENABLE_FILES_CONFIG_SECTION,
+    ENV_API_DEFAULT_REQ_METHOD,
 )
 from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
@@ -710,7 +711,7 @@ class Session(TokenManager):
         try:
             data = {"expiration_sec": exp} if exp else {}
             res = self._send_request(
-                method=os.environ.get("CLEARML_HTTP_REQUEST_METHOD", "get"),
+                method=ENV_API_DEFAULT_REQ_METHOD.get(),
                 service="auth",
                 action="login",
                 auth=auth,

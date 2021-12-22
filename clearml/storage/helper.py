@@ -999,7 +999,8 @@ class StorageHelper(object):
 class _HttpDriver(_Driver):
     """ LibCloud http/https adapter (simple, enough for now) """
 
-    timeout = (5.0, 30.)
+    timeout_connection = deferred_config('http.timeout.connection', 30)
+    timeout_total = deferred_config('http.timeout.total', 30)
     min_kbps_speed = 50
 
     schemes = ('http', 'https')
@@ -1042,7 +1043,7 @@ class _HttpDriver(_Driver):
         url_path = object_name[len(url) + 1:]
         full_url = container.name + url
         # when sending data in post, there is no connection timeout, just an entire upload timeout
-        timeout = self.timeout[-1]
+        timeout = int(self.timeout_total)
         stream_size = 0
         if hasattr(iterator, 'tell') and hasattr(iterator, 'seek'):
             pos = iterator.tell()
@@ -1091,7 +1092,9 @@ class _HttpDriver(_Driver):
         container = self._containers[obj.container_name]
         # set stream flag before we send the request
         container.session.stream = obj.is_stream
-        res = container.session.get(obj.url, timeout=self.timeout, headers=container.get_headers(obj.url))
+        res = container.session.get(
+            obj.url, timeout=(int(self.timeout_connection), int(self.timeout_total)),
+            headers=container.get_headers(obj.url))
         if res.status_code != requests.codes.ok:
             raise ValueError('Failed getting object %s (%d): %s' % (obj.object_name, res.status_code, res.text))
         return res

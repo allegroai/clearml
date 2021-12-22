@@ -1,6 +1,7 @@
 import abc
 
 import jsonschema
+import os
 import six
 
 from .apimodel import ApiModel
@@ -8,7 +9,7 @@ from .datamodel import DataModel
 
 
 class Request(ApiModel):
-    _method = 'post'
+    _method = os.environ.get("CLEARML_HTTP_REQUEST_METHOD", "get")
 
     def __init__(self, **kwargs):
         allow_extra_fields = kwargs.pop("_allow_extra_fields_", False)

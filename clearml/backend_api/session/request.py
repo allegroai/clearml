@@ -10,9 +10,9 @@ from .defs import ENV_API_DEFAULT_REQ_METHOD
 
 
 if ENV_API_DEFAULT_REQ_METHOD.get().upper() not in ("GET", "POST"):
-        raise ValueError(
-            "CLEARML_API_DEFAULT_REQ_METHOD environment variable must be 'get' or 'post' (any case is allowed)."
-        )
+    raise ValueError(
+        "CLEARML_API_DEFAULT_REQ_METHOD environment variable must be 'get' or 'post' (any case is allowed)."
+    )
 
 class Request(ApiModel):
     _method = ENV_API_DEFAULT_REQ_METHOD.get(default="get")

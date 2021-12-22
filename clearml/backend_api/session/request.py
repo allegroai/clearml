@@ -9,13 +9,14 @@ from .datamodel import DataModel
 from .defs import ENV_API_DEFAULT_REQ_METHOD
 
 
-class Request(ApiModel):
-    _method = ENV_API_DEFAULT_REQ_METHOD.get()
-    if _method.upper() not in ("GET", "POST"):
+if ENV_API_DEFAULT_REQ_METHOD.get().upper() not in ("GET", "POST"):
         raise ValueError(
             "CLEARML_API_DEFAULT_REQ_METHOD environment variable must be 'get' or 'post' (any case is allowed)."
         )
 
+class Request(ApiModel):
+    _method = ENV_API_DEFAULT_REQ_METHOD.get()
+    
     def __init__(self, **kwargs):
         allow_extra_fields = kwargs.pop("_allow_extra_fields_", False)
         if not allow_extra_fields and kwargs:

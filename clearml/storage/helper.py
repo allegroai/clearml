@@ -2201,6 +2201,8 @@ class _FileStorageDriver(_Driver):
 
         :return: True on success.
         """
+        if not obj:
+            return False
 
         path = self.get_object_cdn_url(obj)
 

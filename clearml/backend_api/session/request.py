@@ -15,7 +15,7 @@ if ENV_API_DEFAULT_REQ_METHOD.get().upper() not in ("GET", "POST"):
         )
 
 class Request(ApiModel):
-    _method = ENV_API_DEFAULT_REQ_METHOD.get()
+    _method = ENV_API_DEFAULT_REQ_METHOD.get(default="get")
     
     def __init__(self, **kwargs):
         allow_extra_fields = kwargs.pop("_allow_extra_fields_", False)

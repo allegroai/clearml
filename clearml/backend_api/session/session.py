@@ -711,7 +711,7 @@ class Session(TokenManager):
         try:
             data = {"expiration_sec": exp} if exp else {}
             res = self._send_request(
-                method=ENV_API_DEFAULT_REQ_METHOD.get(),
+                method=ENV_API_DEFAULT_REQ_METHOD.get(default="get"),
                 service="auth",
                 action="login",
                 auth=auth,

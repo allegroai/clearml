@@ -25,4 +25,4 @@ POST requests can be used instead.
 
 However this has not been vigorously tested and may have unintended consequences.
 """
-ENV_API_DEFAULT_REQ_METHOD = EnvEntry("CLEARML_API_DEFAULT_REQ_METHOD", default="get")
+ENV_API_DEFAULT_REQ_METHOD = EnvEntry("CLEARML_API_DEFAULT_REQ_METHOD")

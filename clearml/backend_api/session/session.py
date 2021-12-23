@@ -1,4 +1,5 @@
 import json as json_lib
+import os
 import sys
 import types
 from socket import gethostname
@@ -24,6 +25,7 @@ from .defs import (
     ENV_DISABLE_VAULT_SUPPORT,
     ENV_ENABLE_ENV_CONFIG_SECTION,
     ENV_ENABLE_FILES_CONFIG_SECTION,
+    ENV_API_DEFAULT_REQ_METHOD,
 )
 from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
@@ -709,6 +711,7 @@ class Session(TokenManager):
         try:
             data = {"expiration_sec": exp} if exp else {}
             res = self._send_request(
+                method=ENV_API_DEFAULT_REQ_METHOD.get(default="get"),
                 service="auth",
                 action="login",
                 auth=auth,

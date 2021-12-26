@@ -99,6 +99,8 @@ class BackgroundLogService(BackgroundMonitor):
             # start background thread
             self._thread = None
             self._start()
+            getLogger('clearml.log').warning(
+                'Event reporting sub-process lost, switching to thread based reporting')
 
         self._queue.put(record)
 

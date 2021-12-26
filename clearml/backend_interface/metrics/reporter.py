@@ -113,6 +113,8 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
             # start background thread
             self._thread = None
             self._start()
+            logging.getLogger('clearml.reporter').warning(
+                'Event reporting sub-process lost, switching to thread based reporting')
 
         self._queue.put(ev)
         self._queue_size += 1

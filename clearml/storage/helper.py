@@ -37,6 +37,7 @@ from ..backend_config.bucket_config import S3BucketConfigurations, GSBucketConfi
 from ..config import config, deferred_config
 from ..debugging import get_logger
 from ..errors import UsageError
+from ..utilities.process.mp import ForkSafeRLock
 
 
 class StorageError(Exception):
@@ -184,9 +185,10 @@ class StorageHelper(object):
     _helpers = {}  # cache of helper instances
 
     # global terminate event for async upload threads
-    _terminate = threading.Event()
+    # _terminate = threading.Event()
     _async_upload_threads = set()
     _upload_pool = None
+    _upload_pool_pid = None
 
     # collect all bucket credentials that aren't empty (ignore entries with an empty key or secret)
     _s3_configurations = deferred_config('aws.s3', {}, transform=S3BucketConfigurations.from_config)
@@ -365,7 +367,7 @@ class StorageHelper(object):
             # since async uploaders are daemon threads, we can just return and let them close by themselves
             return
         # signal all threads to terminate and give them a chance for 'timeout' seconds (total, not per-thread)
-        cls._terminate.set()
+        # cls._terminate.set()
         remaining_timeout = timeout
         for thread in cls._async_upload_threads:
             t = time()
@@ -685,8 +687,7 @@ class StorageHelper(object):
             # if driver supports download with callback, use it (it might be faster)
             if hasattr(self._driver, 'download_object'):
                 # callback
-                cb = DownloadProgressReport(total_size_mb, verbose,
-                                            remote_path, self._log, chunk_size_mb)
+                cb = DownloadProgressReport(total_size_mb, verbose, remote_path, self._log)
                 self._driver.download_object(obj, temp_local_path, callback=cb)
                 download_reported = bool(cb.last_reported)
                 dl_total_mb = cb.current_status_mb
@@ -712,7 +713,20 @@ class StorageHelper(object):
                     pass
 
             # rename temp file to local_file
-            os.rename(temp_local_path, local_path)
+            # noinspection PyBroadException
+            try:
+                os.rename(temp_local_path, local_path)
+            except Exception:
+                # noinspection PyBroadException
+                try:
+                    os.unlink(temp_local_path)
+                except Exception:
+                    pass
+                # file was downloaded by a parallel process, check we have the final output and delete the partial copy
+                path_local_path = Path(local_path)
+                if not path_local_path.is_file() or path_local_path.stat().st_size <= 0:
+                    raise Exception('Failed renaming partial file, downloaded file exists and a 0-sized file')
+
             # report download if we are on the second chunk
             if verbose or download_reported:
                 self._log.info(
@@ -968,7 +982,8 @@ class StorageHelper(object):
 
     @staticmethod
     def _initialize_upload_pool():
-        if not StorageHelper._upload_pool:
+        if not StorageHelper._upload_pool or StorageHelper._upload_pool_pid != os.getpid():
+            StorageHelper._upload_pool_pid = os.getpid()
             StorageHelper._upload_pool = ThreadPool(processes=1)
 
     @staticmethod
@@ -987,7 +1002,8 @@ class StorageHelper(object):
 class _HttpDriver(_Driver):
     """ LibCloud http/https adapter (simple, enough for now) """
 
-    timeout = (5.0, 30.)
+    timeout_connection = deferred_config('http.timeout.connection', 30)
+    timeout_total = deferred_config('http.timeout.total', 30)
     min_kbps_speed = 50
 
     schemes = ('http', 'https')
@@ -1030,7 +1046,7 @@ class _HttpDriver(_Driver):
         url_path = object_name[len(url) + 1:]
         full_url = container.name + url
         # when sending data in post, there is no connection timeout, just an entire upload timeout
-        timeout = self.timeout[-1]
+        timeout = int(self.timeout_total)
         stream_size = 0
         if hasattr(iterator, 'tell') and hasattr(iterator, 'seek'):
             pos = iterator.tell()
@@ -1079,7 +1095,9 @@ class _HttpDriver(_Driver):
         container = self._containers[obj.container_name]
         # set stream flag before we send the request
         container.session.stream = obj.is_stream
-        res = container.session.get(obj.url, timeout=self.timeout, headers=container.get_headers(obj.url))
+        res = container.session.get(
+            obj.url, timeout=(int(self.timeout_connection), int(self.timeout_total)),
+            headers=container.get_headers(obj.url))
         if res.status_code != requests.codes.ok:
             raise ValueError('Failed getting object %s (%d): %s' % (obj.object_name, res.status_code, res.text))
         return res
@@ -1220,9 +1238,12 @@ class _Boto3Driver(_Driver):
     _min_pool_connections = 512
     _max_multipart_concurrency = deferred_config('aws.boto3.max_multipart_concurrency', 16)
     _pool_connections = deferred_config('aws.boto3.pool_connections', 512)
+    _connect_timeout = deferred_config('aws.boto3.connect_timeout', 60)
+    _read_timeout = deferred_config('aws.boto3.read_timeout', 60)
 
     _stream_download_pool_connections = 128
     _stream_download_pool = None
+    _stream_download_pool_pid = None
 
     _containers = {}
 
@@ -1232,7 +1253,7 @@ class _Boto3Driver(_Driver):
     _bucket_location_failure_reported = set()
 
     class _Container(object):
-        _creation_lock = threading.Lock()
+        _creation_lock = ForkSafeRLock()
 
         def __init__(self, name, cfg):
             try:
@@ -1257,8 +1278,10 @@ class _Boto3Driver(_Driver):
                     "verify": cfg.verify,
                     "config": botocore.client.Config(
                         max_pool_connections=max(
-                            _Boto3Driver._min_pool_connections,
-                            _Boto3Driver._pool_connections)
+                            int(_Boto3Driver._min_pool_connections),
+                            int(_Boto3Driver._pool_connections)),
+                        connect_timeout=int(_Boto3Driver._connect_timeout),
+                        read_timeout=int(_Boto3Driver._read_timeout),
                     )
                 }
                 if not cfg.use_credentials_chain:
@@ -1282,7 +1305,8 @@ class _Boto3Driver(_Driver):
         pass
 
     def _get_stream_download_pool(self):
-        if self._stream_download_pool is None:
+        if self._stream_download_pool is None or self._stream_download_pool_pid != os.getpid():
+            self._stream_download_pool_pid = os.getpid()
             self._stream_download_pool = ThreadPoolExecutor(max_workers=self._stream_download_pool_connections)
         return self._stream_download_pool
 
@@ -1375,12 +1399,12 @@ class _Boto3Driver(_Driver):
             self.get_logger().warning('failed saving after download: overwrite=False and file exists (%s)' % str(p))
             return
         container = self._containers[obj.container_name]
-        obj.download_file(str(p),
-                          Callback=callback,
-                          Config=boto3.s3.transfer.TransferConfig(
-                              use_threads=container.config.multipart,
-                              max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
-                              num_download_attempts=container.config.retries))
+        Config = boto3.s3.transfer.TransferConfig(
+            use_threads=container.config.multipart,
+            max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
+            num_download_attempts=container.config.retries
+        )
+        obj.download_file(str(p), Callback=callback, Config=Config)
 
     @classmethod
     def _test_bucket_config(cls, conf, log, test_path='', raise_on_error=True, log_on_error=True):
@@ -1488,6 +1512,7 @@ class _GoogleCloudStorageDriver(_Driver):
 
     _stream_download_pool_connections = 128
     _stream_download_pool = None
+    _stream_download_pool_pid = None
 
     _containers = {}
 
@@ -1513,11 +1538,18 @@ class _GoogleCloudStorageDriver(_Driver):
                 credentials = None
 
             self.client = storage.Client(project=cfg.project, credentials=credentials)
+            for adapter in self.client._http.adapters.values():
+                if cfg.pool_connections:
+                    adapter._pool_connections = cfg.pool_connections
+                if cfg.pool_maxsize:
+                    adapter._pool_maxsize = cfg.pool_maxsize
+
             self.config = cfg
             self.bucket = self.client.bucket(self.name)
 
     def _get_stream_download_pool(self):
-        if self._stream_download_pool is None:
+        if self._stream_download_pool is None or self._stream_download_pool_pid != os.getpid():
+            self._stream_download_pool_pid = os.getpid()
             self._stream_download_pool = ThreadPoolExecutor(max_workers=self._stream_download_pool_connections)
         return self._stream_download_pool
 
@@ -2180,6 +2212,8 @@ class _FileStorageDriver(_Driver):
 
         :return: True on success.
         """
+        if not obj:
+            return False
 
         path = self.get_object_cdn_url(obj)
 

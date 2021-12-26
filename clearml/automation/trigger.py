@@ -89,11 +89,16 @@ class DatasetTrigger(BaseTrigger):
 
     def build_query(self, ref_time):
         query = super(DatasetTrigger, self).build_query(ref_time)
-        if self.on_publish:
-            query.update({'status': ['published']})
+        query.update({
+            'system_tags': list(set(query.get('system_tags', []) + ['dataset'])),
+            'task_types': list(set(query.get('task_types', []) + [str(Task.TaskTypes.data_processing)])),
+            'status': ['published' if self.on_publish else 'completed']
+        })
+
         if self.on_archive:
             system_tags = list(set(query.get('system_tags', []) + ['archived']))
             query.update({'system_tags': system_tags})
+            
         return query
 
 

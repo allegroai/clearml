@@ -1,10 +1,11 @@
-<div align="center">
+<p align="center" style="text-align: center">
+  <img align="center" src="docs/clearml-logo.svg#gh-light-mode-only" alt="Clear|ML"><img align="center" src="docs/clearml-logo-dark.svg#gh-dark-mode-only" alt="Clear|ML">
+</p>
 
-<a href="https://app.community.clear.ml"><img src="https://github.com/allegroai/clearml/blob/master/docs/clearml-logo.svg?raw=true" width="250px"></a>
+<div align="center" style="text-align: center">
 
-
-**ClearML - Auto-Magical Suite of tools to streamline your ML workflow 
-</br>Experiment Manager, ML-Ops and Data-Management**
+**[ClearML](https://clear.ml) - Auto-Magical Suite of tools to streamline your ML workflow
+</br>Experiment Manager, MLOps and Data-Management**
 
 [![GitHub license](https://img.shields.io/github/license/allegroai/clearml.svg)](https://img.shields.io/github/license/allegroai/clearml.svg)
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/clearml.svg)](https://img.shields.io/pypi/pyversions/clearml.svg)
@@ -12,7 +13,7 @@
 [![Optuna](https://img.shields.io/badge/Optuna-integrated-blue)](https://optuna.org)
 [![Slack Channel](https://img.shields.io/badge/slack-%23clearml--community-blueviolet?logo=slack)](https://join.slack.com/t/clearml/shared_invite/zt-c0t13pty-aVUZZW1TSSSg2vyIGVPBhg)
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/allegroai)](https://artifacthub.io/packages/search?repo=allegroai)
-
+[![Signup](https://img.shields.io/badge/Clear%7CML-Signup-blueviolet)](https://app.community.clear.ml)
 </div>
 
 ---
@@ -150,6 +151,17 @@ will always upgrade with you.
 ## License
 
 Apache License, Version 2.0 (see the [LICENSE](https://www.apache.org/licenses/LICENSE-2.0.html) for more information)
+
+If ClearML is part of your development process / project / publication, please cite us :heart: : 
+```
+@misc{clearml,
+title = {ClearML - Your entire MLOps stack in one open-source tool},
+year = {2019},
+note = {Software available from http://github.com/allegroai/clearml},
+url={https://clear.ml/},
+author = {ClearML},
+}
+```
 
 ## Documentation, Community & Support
 

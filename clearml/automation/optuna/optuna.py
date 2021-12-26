@@ -106,9 +106,9 @@ class OptimizerOptuna(SearchStrategy):
     ):
         # type: (...) -> None
         """
-        Initialize am Optuna search strategy optimizer
+        Initialize an Optuna search strategy optimizer
         Optuna performs robust and efficient hyperparameter optimization at scale by combining.
-        Specific hyper-parameter pruning strategy can be selected via `sampler` and `pruner` arguments
+        Specific hyperparameter pruning strategy can be selected via `sampler` and `pruner` arguments
 
         :param str base_task_id: Task ID (str)
         :param list hyper_parameters: list of Parameter objects to optimize over

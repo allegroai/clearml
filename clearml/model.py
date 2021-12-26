@@ -21,6 +21,7 @@ from .storage.util import get_common_path
 from .utilities.enum import Options
 from .backend_interface import Task as _Task
 from .backend_interface.model import create_dummy_model, Model as _Model
+from .backend_interface.session import SendError
 from .config import running_remotely, get_cache_dir
 
 
@@ -286,7 +287,7 @@ class BaseModel(object):
         return self._get_base_model().download_model_weights(raise_on_error=raise_on_error)
 
     def get_weights_package(self, return_path=False, raise_on_error=False):
-        # type: (bool, bool) -> Union[str, List[Path]]
+        # type: (bool, bool) -> Optional[Union[str, List[Path]]]
         """
         Download the base model package into a temporary directory (extract the files), or return a list of the
         locally stored filenames.
@@ -300,6 +301,7 @@ class BaseModel(object):
             raise ValueError, otherwise return None on failure and output log warning.
 
         :return: The model weights, or a list of the locally stored filenames.
+            if raise_on_error=False, returns None on error.
         """
         # check if model was packaged
         if not self._is_package():
@@ -307,6 +309,11 @@ class BaseModel(object):
 
         # download packaged model
         packed_file = self.get_weights(raise_on_error=raise_on_error)
+
+        if not packed_file:
+            if raise_on_error:
+                raise ValueError('Model package \'{}\' could not be downloaded'.format(self.url))
+            return None
 
         # unpack
         target_folder = mkdtemp(prefix='model_package_')
@@ -505,6 +512,71 @@ class Model(BaseModel):
     def id(self):
         # type: () -> str
         return self._base_model_id if self._base_model_id else super(Model, self).id
+
+    @classmethod
+    def remove(cls, model, delete_weights_file=True, force=False, raise_on_errors=False):
+        # type: (Union[str, Model], bool, bool, bool) -> bool
+        """
+        Remove a model from the model repository.
+        Optional, delete the model weights file from the remote storage.
+
+        :param model: Model ID or Model object to remove
+        :param delete_weights_file: If True (default) delete the weights file from the remote storage
+        :param force: If True, remove model even if other Tasks are using this model. default False.
+        :param raise_on_errors: If True, throw ValueError if something went wrong, default False.
+        :return: True if Model was removed successfully
+            partial removal returns False, i.e. Model was deleted but weights file deletion failed
+        """
+        if isinstance(model, str):
+            model = Model(model_id=model)
+
+        # noinspection PyBroadException
+        try:
+            weights_url = model.url
+        except Exception:
+            if raise_on_errors:
+                raise ValueError("Could not find model id={}".format(model.id))
+            return False
+
+        try:
+            # noinspection PyProtectedMember
+            res = _Model._get_default_session().send(
+                models.DeleteRequest(model.id, force=force),
+            )
+            response = res.wait()
+            if not response.ok():
+                if raise_on_errors:
+                    raise ValueError("Could not remove model id={}: {}".format(model.id, response.meta))
+                return False
+        except SendError as ex:
+            if raise_on_errors:
+                raise ValueError("Could not remove model id={}: {}".format(model.id, ex))
+            return False
+        except ValueError:
+            if raise_on_errors:
+                raise
+            return False
+        except Exception as ex:
+            if raise_on_errors:
+                raise ValueError("Could not remove model id={}: {}".format(model.id, ex))
+            return False
+
+        if not delete_weights_file:
+            return True
+
+        helper = StorageHelper.get(url=weights_url)
+        try:
+            if not helper.delete(weights_url):
+                if raise_on_errors:
+                    raise ValueError("Could not remove model id={} weights file: {}".format(model.id, weights_url))
+                return False
+        except Exception as ex:
+            if raise_on_errors:
+                raise ValueError("Could not remove model id={} weights file \'{}\': {}".format(
+                    model.id, weights_url, ex))
+            return False
+
+        return True
 
 
 class InputModel(Model):

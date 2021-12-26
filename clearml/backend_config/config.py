@@ -11,7 +11,6 @@ from typing import Any
 
 import six
 from pathlib2 import Path
-from ..utilities.pyhocon import ConfigTree, ConfigFactory
 from pyparsing import (
     ParseFatalException,
     ParseException,
@@ -36,6 +35,7 @@ from .entry import Entry, NotSet
 from .errors import ConfigurationError
 from .log import initialize as initialize_log, logger
 from .utils import get_options
+from ..utilities.pyhocon import ConfigTree, ConfigFactory
 
 try:
     from typing import Text

@@ -148,8 +148,12 @@ class Logger(object):
 
         .. code-block:: py
 
+           logger = Logger.current_logger()
            scalar_series = [random.randint(0,10) for i in range(10)]
-           logger.report_scalar(title='scalar metrics','series', value=scalar_series[iteration], iteration=0)
+           for iteration in range(10):
+               logger.report_scalar(
+                   title='scalar metrics', series='series', value=scalar_series[iteration], iteration=iteration
+               )
 
         You can view the scalar plots in the **ClearML Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab.
 

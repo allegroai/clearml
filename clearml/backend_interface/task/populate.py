@@ -3,6 +3,7 @@ import json
 import os
 import re
 import tempfile
+from sys import platform
 from functools import reduce
 from logging import getLogger
 from typing import Optional, Sequence, Union, Tuple, List, Callable, Dict, Any
@@ -270,8 +271,12 @@ class CreateAndPopulate(object):
                     "Use --requirements or --packages".format(reqs_txt_file.as_posix()))
 
         if self.add_task_init_call:
-            script_entry = os.path.abspath('/' + task_state['script'].get('working_dir', '.') +
-                                           '/' + task_state['script']['entry_point'])
+            script_entry = ('/' + task_state['script'].get('working_dir', '.')
+                            + '/' + task_state['script']['entry_point'])
+            if platform == "win32":
+                script_entry = os.path.normpath(script_entry).replace('\\', '/')
+            else:
+                script_entry = os.path.abspath(script_entry)
             idx_a = 0
             # find the right entry for the patch if we have a local file (basically after __future__
             if local_entry_file:
@@ -460,7 +465,7 @@ class CreateAndPopulate(object):
 class CreateFromFunction(object):
     kwargs_section = 'kwargs'
     input_artifact_section = 'kwargs_artifacts'
-    task_template = """from clearml import Task
+    task_template = """from clearml import Task, TaskTypes
 from clearml.automation.controller import PipelineDecorator
 
 
@@ -476,7 +481,7 @@ if __name__ == '__main__':
         if not v or not k.startswith('{input_artifact_section}/'):
             continue
         k = k.replace('{input_artifact_section}/', '', 1)
-        task_id, artifact_name = v.split('.', 1) 
+        task_id, artifact_name = v.split('.', 1)
         kwargs[k] = Task.get_task(task_id=task_id).artifacts[artifact_name].get()
     results = {function_name}(**kwargs)
     result_names = {function_return}
@@ -484,7 +489,7 @@ if __name__ == '__main__':
         if not isinstance(results, (tuple, list)) or (len(result_names) == 1 and len(results) != 1):
             results = [results]
         for name, artifact in zip(result_names, results):
-            task.upload_artifact(name=name, artifact_object=artifact) 
+            task.upload_artifact(name=name, artifact_object=artifact)
 """
 
     @classmethod

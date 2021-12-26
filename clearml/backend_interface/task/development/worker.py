@@ -3,7 +3,7 @@ from threading import Thread, Event
 
 from time import time
 
-from ....config import config, deferred_config
+from ....config import deferred_config
 from ....backend_interface.task.development.stop_signal import TaskStopSignal
 from ....backend_api.services import tasks
 

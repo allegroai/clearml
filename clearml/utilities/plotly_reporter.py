@@ -1,3 +1,4 @@
+import json
 import numpy as np
 
 from ..errors import UsageError
@@ -501,7 +502,7 @@ def create_plotly_table(table_plot, title, series, layout_config=None):
             )
         index_added = not isinstance(table_plot.index, pd.RangeIndex)
         headers_values = list([col] for col in table_plot.columns)
-        cells_values = table_plot.T.values.tolist()
+        cells_values = json.loads(table_plot.T.to_json(orient='values', date_format='iso'))
         if index_added:
             if isinstance(table_plot.index, pd.MultiIndex):
                 headers_values = [n or "" for n in (table_plot.index.names or [])] + headers_values

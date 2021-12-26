@@ -1,4 +1,4 @@
-from ....config import config, deferred_config
+from ....config import deferred_config
 
 
 class TaskStopReason(object):

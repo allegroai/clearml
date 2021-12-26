@@ -171,7 +171,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 self.name = task_name
         else:
             # this is an existing task, let's try to verify stuff
-            self._validate()
+            self._validate(check_output_dest_credentials=False)
 
         if self.data is None:
             raise ValueError("Task ID \"{}\" could not be found".format(self.id))
@@ -184,7 +184,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._artifacts_manager = Artifacts(self)
         self._hyper_params_manager = HyperParams(self)
 
-    def _validate(self, check_output_dest_credentials=True):
+    def _validate(self, check_output_dest_credentials=False):
+        if not self._is_remote_main_task():
+            self._storage_uri = self.get_output_destination(raise_on_error=False, log_on_error=False) or None
+            return
+
         raise_errors = self._raise_on_validation_errors
         output_dest = self.get_output_destination(raise_on_error=False, log_on_error=False)
         if output_dest and check_output_dest_credentials:
@@ -499,8 +503,19 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def _get_output_destination_suffix(self, extra_path=None):
         # type: (Optional[str]) -> str
+        # limit path to support various storage infrastructure limits (such as max path pn posix or object storage)
+        # project path limit to 256 (including subproject names), and task name limit to 128.
+        def limit_folder_name(a_name, uuid, max_length, always_add_uuid):
+            if always_add_uuid:
+                return '{}.{}'.format(a_name[:max(2, max_length-len(uuid)-1)], uuid)
+            if len(a_name) < max_length:
+                return a_name
+            return '{}.{}'.format(a_name[:max(2, max_length-len(uuid)-1)], uuid)
+
         return '/'.join(quote(x, safe="'[]{}()$^,.; -_+-=") for x in
-                        (self.get_project_name(), '%s.%s' % (self.name, self.data.id), extra_path) if x)
+                        (limit_folder_name(self.get_project_name(), str(self.project), 256, False),
+                         limit_folder_name(self.name, str(self.data.id), 128, True),
+                         extra_path) if x)
 
     def _reload(self):
         # type: () -> Any
@@ -532,14 +547,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             res = self.send(tasks.GetByIdRequest(task=self.id))
             return res.response.task
 
-    def reset(self, set_started_on_success=True):
-        # type: (bool) -> ()
+    def reset(self, set_started_on_success=True, force=False):
+        # type: (bool, bool) -> ()
         """
         Reset the task. Task will be reloaded following a successful reset.
 
-        :param  set_started_on_success: If True automatically set Task status to started after resetting it.
+        :param set_started_on_success: If True automatically set Task status to started after resetting it.
+        :param force: If not true, call fails if the task status is 'completed'
         """
-        self.send(tasks.ResetRequest(task=self.id))
+        self.send(tasks.ResetRequest(task=self.id, force=force))
         if set_started_on_success:
             self.started()
         elif self._data:
@@ -553,10 +569,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """ The signal that this Task started. """
         return self.send(tasks.StartedRequest(self.id, force=force), ignore_errors=ignore_errors)
 
-    def stopped(self, ignore_errors=True, force=False):
-        # type: (bool, bool) -> ()
+    def stopped(self, ignore_errors=True, force=False, status_reason=None):
+        # type: (bool, bool, Optional[str]) -> ()
         """ The signal that this Task stopped. """
-        return self.send(tasks.StoppedRequest(self.id, force=force), ignore_errors=ignore_errors)
+        return self.send(
+            tasks.StoppedRequest(self.id, force=force, status_reason=status_reason),
+            ignore_errors=ignore_errors
+        )
 
     def completed(self, ignore_errors=True):
         # type: (bool) -> ()
@@ -566,12 +585,18 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         warnings.warn("'completed' is deprecated; use 'mark_completed' instead.", DeprecationWarning)
         return self.mark_completed(ignore_errors=ignore_errors)
 
-    def mark_completed(self, ignore_errors=True):
-        # type: (bool) -> ()
+    def mark_completed(self, ignore_errors=True, status_message=None, force=False):
+        # type: (bool, Optional[str], bool) -> ()
         """ The signal indicating that this Task completed. """
         if hasattr(tasks, 'CompletedRequest') and callable(tasks.CompletedRequest):
-            return self.send(tasks.CompletedRequest(self.id, status_reason='completed'), ignore_errors=ignore_errors)
-        return self.send(tasks.StoppedRequest(self.id, status_reason='completed'), ignore_errors=ignore_errors)
+            return self.send(
+                tasks.CompletedRequest(self.id, status_reason='completed', status_message=status_message, force=force),
+                ignore_errors=ignore_errors
+            )
+        return self.send(
+            tasks.StoppedRequest(self.id, status_reason='completed', status_message=status_message, force=force),
+            ignore_errors=ignore_errors
+        )
 
     def mark_failed(self, ignore_errors=True, status_reason=None, status_message=None, force=False):
         # type: (bool, Optional[str], Optional[str], bool) -> ()
@@ -1041,9 +1066,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                         k = '{}/{}'.format(self._default_configuration_section_name, k)
                     section_name, key = k.split('/', 1)
                     section = hyperparams.get(section_name, dict())
-                    org_param = org_hyperparams.get(section_name, dict()).get(key, tasks.ParamsItem())
+                    org_param = org_hyperparams.get(section_name, dict()).get(key, None)
                     param_type = params_types[org_k] if org_k in params_types else (
-                            org_param.type or (type(v) if v is not None else None)
+                        org_param.type if org_param is not None else type(v) if v is not None else None
                     )
                     if param_type and not isinstance(param_type, str):
                         param_type = param_type.__name__ if hasattr(param_type, '__name__') else str(param_type)
@@ -1051,7 +1076,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     section[key] = tasks.ParamsItem(
                         section=section_name, name=key,
                         value=stringify(v),
-                        description=descriptions[org_k] if org_k in descriptions else org_param.description,
+                        description=descriptions[org_k] if org_k in descriptions else (
+                            org_param.description if org_param is not None else None
+                        ),
                         type=param_type,
                     )
                     hyperparams[section_name] = section
@@ -1599,6 +1626,53 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return {}
 
         return response.response_data
+
+    def get_reported_plots(
+            self,
+            max_iterations=None
+    ):
+        # type: (...) -> List[dict]
+        """
+        Return a list of all the plots reported for this Task,
+        Notice the plot data is plotly compatible.
+
+        .. note::
+           This call is not cached, any call will retrieve all the plot reports from the back-end.
+           If the Task has many plots reported, it might take long for the call to return.
+
+        Example:
+
+        .. code-block:: py
+
+          [{
+            'timestamp': 1636921296370,
+            'type': 'plot',
+            'task': '0ce5e89bbe484f428e43e767f1e2bb11',
+            'iter': 0,
+            'metric': 'Manual Reporting',
+            'variant': 'Just a plot',
+            'plot_str': '{"data": [{"type": "scatter", "mode": "markers", "name": null,
+                                    "x": [0.2620246750155817], "y": [0.2620246750155817]}]}',
+            '@timestamp': '2021-11-14T20:21:42.387Z',
+            'worker': 'machine-ml',
+            'plot_len': 6135,
+          },]
+        :param int max_iterations: Maximum number of historic plots (iterations from end) to return.
+        :return: list: List of dicts, each one represents a single plot
+        """
+        # send request
+        res = self.send(
+            events.GetTaskPlotsRequest(task=self.id, iters=max_iterations or 1),
+            raise_on_errors=False,
+            ignore_errors=True,
+        )
+        if not res:
+            return []
+        response = res.wait()
+        if not response.ok() or not response.response_data:
+            return []
+
+        return response.response_data.get('plots', [])
 
     def get_reported_console_output(self, number_of_reports=1):
         # type: (int) -> Sequence[str]

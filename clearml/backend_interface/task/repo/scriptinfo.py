@@ -13,7 +13,7 @@ from threading import Thread, Event
 
 from .util import get_command_output, remove_user_pass_from_url
 from ....backend_api import Session
-from ....config import config, deferred_config
+from ....config import deferred_config, VCS_WORK_DIR
 from ....debugging import get_logger
 from .detectors import GitEnvDetector, GitDetector, HgEnvDetector, HgDetector, Result as DetectionResult
 
@@ -135,6 +135,10 @@ class ScriptRequirements(object):
                 conda_packages_json = json.loads(conda_packages_json)
                 reqs_lower = {k.lower(): (k, v) for k, v in reqs.items()}
                 for r in conda_packages_json:
+                    # the exception is cudatoolkit which we want to log anyhow
+                    if r.get('name') == 'cudatoolkit' and r.get('version'):
+                        conda_requirements += '{0} {1} {2}\n'.format(r.get('name'), '==', r.get('version'))
+                        continue
                     # check if this is a pypi package, if it is, leave it outside
                     if not r.get('channel') or r.get('channel') == 'pypi':
                         continue
@@ -200,6 +204,7 @@ class ScriptRequirements(object):
         for k in sorted(forced_packages.keys()):
             requirements_txt += ScriptRequirements._make_req_line(k, forced_packages.get(k))
 
+        requirements_txt_packages_only = requirements_txt
         if detailed:
             requirements_txt_packages_only = \
                 requirements_txt + '\n# Skipping detailed import analysis, it is too large\n'
@@ -524,6 +529,8 @@ class ScriptInfo(object):
                 or len(sys.argv) < 3 or not sys.argv[2].endswith('.json'):
             return None
 
+        server_info = None
+
         # we can safely assume that we can import the notebook package here
         # noinspection PyBroadException
         try:
@@ -687,7 +694,7 @@ class ScriptInfo(object):
             # noinspection PyBroadException
             try:
                 # noinspection PyPackageRequirements
-                import hydra
+                import hydra  # noqa
                 return Path(hydra.utils.get_original_cwd()).absolute()
             except Exception:
                 pass
@@ -783,7 +790,10 @@ class ScriptInfo(object):
             working_dir = '.'
             entry_point = str(script_path.name)
         else:
-            working_dir = cls._get_working_dir(repo_root)
+            # allow to override the VCS working directory (notice relative to the git repo)
+            # because we can have a sync folder on remote pycharm sessions
+            # not syncing from the Git repo, but from a subfolder, so the pycharm plugin need to pass the override
+            working_dir = VCS_WORK_DIR.get() if VCS_WORK_DIR.get() else cls._get_working_dir(repo_root)
             entry_point = cls._get_entry_point(repo_root, script_path)
 
         if check_uncommitted:

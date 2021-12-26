@@ -15,13 +15,19 @@ class AccessMixin(object):
     log = abstractproperty()
 
     def _get_task_property(self, prop_path, raise_on_error=True, log_on_error=True, default=None):
-        obj = self.data
+        return self._get_data_property(
+            prop_path=prop_path, raise_on_error=raise_on_error, log_on_error=log_on_error,
+            default=default, data=self.data, log=self.log)
+
+    @classmethod
+    def _get_data_property(cls, prop_path, raise_on_error=True, log_on_error=True, default=None, data=None, log=None):
+        obj = data
         props = prop_path.split('.')
         for i in range(len(props)):
             if not hasattr(obj, props[i]) and (not isinstance(obj, dict) or props[i] not in obj):
                 msg = 'Task has no %s section defined' % '.'.join(props[:i + 1])
-                if log_on_error:
-                    self.log.info(msg)
+                if log_on_error and log:
+                    log.info(msg)
                 if raise_on_error:
                     raise ValueError(msg)
                 return default

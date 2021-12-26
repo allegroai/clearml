@@ -59,6 +59,10 @@ class Monitor(object):
         :param float pool_period: pool period in seconds
         :return: Function will never return
         """
+
+        # if this is the first time, we call _setup() if we need to create something
+        self._setup()
+
         self._timestamp = time()
         last_report = self._timestamp
 
@@ -81,7 +85,7 @@ class Monitor(object):
     def monitor_step(self):
         # type: () -> ()
         """
-        Implement the main query / interface of he monitor class.
+        Implement the main query / interface of the monitor class.
         In order to combine multiple Monitor objects, call `monitor_step` manually.
         If Tasks are detected in this call,
 
@@ -91,15 +95,14 @@ class Monitor(object):
         timestamp = time()
         try:
             # retrieve experiments orders by last update time
-            task_filter = self.get_query_parameters()
-            task_filter.update(
-                {
-                    'page_size': 100,
-                    'page': 0,
-                    'status_changed': ['>{}'.format(datetime.utcfromtimestamp(previous_timestamp)), ],
-                    'project': self._get_projects_ids(),
-                }
-            )
+            task_filter = {
+                'page_size': 100,
+                'page': 0,
+                'status_changed': ['>{}'.format(datetime.utcfromtimestamp(previous_timestamp)), ],
+                'project': self._get_projects_ids(),
+            }
+            task_filter.update(self.get_query_parameters())
+
             queried_tasks = Task.get_tasks(task_name=self._task_name_filter, task_filter=task_filter)
         except Exception as ex:
             # do not update the previous timestamp
@@ -130,7 +133,7 @@ class Monitor(object):
         # type: (Task) -> ()
         Abstract function
 
-        Called on every Task that we monitor. For example monitoring failed Task,
+        Called on every Task that we monitor. For example, monitoring failed Task,
         will call this Task the first time the Task was detected as failed.
 
         :return: None
@@ -174,3 +177,11 @@ class Monitor(object):
         if not self._clearml_apiclient:
             self._clearml_apiclient = APIClient()
         return self._clearml_apiclient
+
+    def _setup(self):
+        # type: () -> ()
+        """
+        Optional add one time setup process, before starting the monitoring loop
+        :return:
+        """
+        pass

@@ -4,7 +4,7 @@ import logging
 import math
 from multiprocessing import Semaphore
 from threading import Event as TrEvent
-from time import sleep
+from time import sleep, time
 
 import numpy as np
 import six
@@ -76,12 +76,44 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
             while self._queue and not self._queue.empty():
                 sleep(0.1)
             return
+
         self._empty_state_event.clear()
-        return self._empty_state_event.wait(timeout)
+        if isinstance(self._empty_state_event, TrEvent):
+            tic = time()
+            while self._thread and self._thread.is_alive() and (not timeout or time()-tic < timeout):
+                if self._empty_state_event.wait(timeout=1.0):
+                    break
+        elif isinstance(self._empty_state_event, SafeEvent):
+            tic = time()
+            while self.is_subprocess_alive() and (not timeout or time()-tic < timeout):
+                if self._empty_state_event.wait(timeout=1.0):
+                    break
+
+        return
 
     def add_event(self, ev):
         if not self._queue:
             return
+        # check that we did not loose the reporter sub-process
+        if self.is_subprocess_mode() and not self._fast_is_subprocess_alive():
+            # we lost the reporting subprocess, let's switch to thread mode
+            # gel all data, work on local queue:
+            self._write()
+            # replace queue:
+            self._queue = TrQueue()
+            self._queue_size = 0
+            self._event = TrEvent()
+            self._done_ev = TrEvent()
+            self._start_ev = TrEvent()
+            self._exit_event = TrEvent()
+            self._empty_state_event = TrEvent()
+            self._res_waiting = Semaphore()
+            # set thread mode
+            self._subprocess = False
+            # start background thread
+            self._thread = None
+            self._start()
+
         self._queue.put(ev)
         self._queue_size += 1
         if self._queue_size >= self._flush_threshold:
@@ -91,12 +123,16 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
         while not self._exit_event.wait(0):
             self._event.wait(self._wait_timeout)
             self._event.clear()
+            # lock state
             self._res_waiting.acquire()
             self._write()
             # wait for all reports
             if self.get_num_results() > 0:
                 self.wait_for_results()
-            self._empty_state_event.set()
+            # set empty flag only if we are not waiting for exit signal
+            if not self._exit_event.wait(0):
+                self._empty_state_event.set()
+            # unlock state
             self._res_waiting.release()
         # make sure we flushed everything
         self._async_enable = False

@@ -1,15 +1,19 @@
+import atexit
 import functools
 import inspect
 import json
+import os
 import re
 from copy import copy, deepcopy
 from datetime import datetime
 from logging import getLogger
+from multiprocessing import Process, Queue
 from threading import Thread, Event, RLock
 from time import time
 from typing import Sequence, Optional, Mapping, Callable, Any, List, Dict, Union, Tuple
 
 from attr import attrib, attrs
+from pathlib2 import Path
 
 from .job import LocalClearmlJob, RunningJob
 from .. import Logger
@@ -17,20 +21,20 @@ from ..automation import ClearmlJob
 from ..backend_interface.task.populate import CreateFromFunction
 from ..backend_interface.util import get_or_create_project, exact_match_regex
 from ..debugging.log import LoggerRoot
-from ..model import BaseModel
+from ..model import BaseModel, OutputModel
 from ..task import Task
-from ..utilities.process.mp import leave_process
-from ..utilities.proxy_object import LazyEvalWrapper
+from ..utilities.proxy_object import LazyEvalWrapper, flatten_dictionary
 
 
 class PipelineController(object):
     """
     Pipeline controller.
-    Pipeline is a DAG of base tasks, each task will be cloned (arguments changed as required) executed and monitored
+    Pipeline is a DAG of base tasks, each task will be cloned (arguments changed as required), executed, and monitored.
     The pipeline process (task) itself can be executed manually or by the clearml-agent services queue.
     Notice: The pipeline controller lives as long as the pipeline itself is being executed.
     """
     _tag = 'pipeline'
+    _node_tag_prefix = 'pipe:'
     _step_pattern = r"\${[^}]*}"
     _config_section = 'Pipeline'
     _args_section = 'Args'
@@ -41,6 +45,8 @@ class PipelineController(object):
     _clearml_job_class = ClearmlJob
     _update_execution_plot_interval = 5.*60
     _monitor_node_interval = 5.*60
+    _report_plot_execution_flow = dict(title='Pipeline', series='Execution Flow')
+    _report_plot_execution_details = dict(title='Pipeline Details', series='Execution Details')
 
     @attrs
     class Node(object):
@@ -57,6 +63,7 @@ class PipelineController(object):
         clone_task = attrib(type=bool, default=True)  # If True cline the base_task_id, then execute the cloned Task
         job = attrib(type=ClearmlJob, default=None)  # ClearMLJob object
         skip_job = attrib(type=bool, default=False)  # if True, this step should be skipped
+        continue_on_fail = attrib(type=bool, default=False)  # if True, the pipeline continues even if the step failed
         cache_executed_step = attrib(type=bool, default=False)  # if True this pipeline step should be cached
         return_artifacts = attrib(type=list, default=[])  # List of artifact names returned by the step
         monitor_metrics = attrib(type=list, default=[])  # List of metric title/series to monitor
@@ -86,6 +93,7 @@ class PipelineController(object):
             add_pipeline_tags=False,  # type: bool
             target_project=None,  # type: Optional[str]
             auto_version_bump=True,  # type: bool
+            abort_on_failure=False,  # type: bool
     ):
         # type: (...) -> None
         """
@@ -102,6 +110,12 @@ class PipelineController(object):
         :param bool auto_version_bump: If True (default), if the same pipeline version already exists
             (with any difference from the current one), the current pipeline version will be bumped to a new version
             version bump examples: 1.0.0 -> 1.0.1 , 1.2 -> 1.3, 10 -> 11 etc.
+        :param bool abort_on_failure: If False (default), failed pipeline steps will not cause the pipeline
+            to stop immediately, instead any step that is not connected (or indirectly connected) to the failed step,
+            will still be executed. Nonetheless the pipeline itself will be marked failed, unless the failed step
+            was specifically defined with "continue_on_fail=True".
+            If True, any failed step will cause the pipeline to immediately abort, stop all running steps,
+            and mark the pipeline as failed.
         """
         self._nodes = {}
         self._running_nodes = []
@@ -147,11 +161,12 @@ class PipelineController(object):
             self._task.add_tags([self._tag])
 
         self._monitored_nodes = {}  # type: Dict[str, dict]
+        self._abort_running_steps_on_failure = abort_on_failure
 
     def set_default_execution_queue(self, default_execution_queue):
         # type: (Optional[str]) -> None
         """
-        Set the default execution queue for if pipeline step does not specify an execution queue
+        Set the default execution queue if pipeline step does not specify an execution queue
 
         :param default_execution_queue: The execution queue to use if no execution queue is provided
         """
@@ -183,6 +198,7 @@ class PipelineController(object):
             base_task_project=None,  # type: Optional[str]
             base_task_name=None,  # type: Optional[str]
             clone_base_task=True,  # type: bool
+            continue_on_fail=False,  # type: bool
             pre_execute_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node, dict], bool]]  # noqa
             post_execute_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node], None]]  # noqa
             cache_executed_step=False,  # type: bool
@@ -203,11 +219,13 @@ class PipelineController(object):
             The dict values can reference a previously executed step using the following form '${step_name}'
             Examples:
             - Artifact access
-                parameter_override={'Args/input_file': '${stage1.artifacts.mydata.url}' }
+                parameter_override={'Args/input_file': '${<step_name>.artifacts.<artifact_name>.url}' }
             - Model access (last model used)
-                parameter_override={'Args/input_file': '${stage1.models.output.-1.url}' }
+                parameter_override={'Args/input_file': '${<step_name>.models.output.-1.url}' }
             - Parameter access
-                parameter_override={'Args/input_file': '${stage3.parameters.Args/input_file}' }
+                parameter_override={'Args/input_file': '${<step_name>.parameters.Args/input_file}' }
+            - Pipeline Task argument (see `Pipeline.add_parameter`)
+                parameter_override={'Args/input_file': '${pipeline.<pipeline_parameter>}' }
             - Task ID
                 parameter_override={'Args/input_file': '${stage3.id}' }
         :param configuration_overrides: Optional, override Task configuration objects.
@@ -258,6 +276,9 @@ class PipelineController(object):
             use the base_task_project and base_task_name combination to retrieve the base_task_id to use for the step.
         :param clone_base_task: If True (default) the pipeline will clone the base task, and modify/enqueue
             the cloned Task. If False, the base-task is used directly, notice it has to be in draft-mode (created).
+        :param continue_on_fail: (default False). If True, failed step will not cause the pipeline to stop
+            (or marked as failed). Notice, that steps that are connected (or indirectly connected)
+            to the failed step will be skipped.
         :param pre_execute_callback: Callback function, called when the step (Task) is created
             and before it is sent for execution. Allows a user to modify the Task before launch.
             Use `node.job` to access the ClearmlJob object, or `node.job.task` to directly access the Task object.
@@ -344,6 +365,9 @@ class PipelineController(object):
                 raise ValueError("configuration_overrides must be a dictionary, with all values "
                                  "either dicts or strings, got \'{}\' instead".format(configuration_overrides))
 
+        if task_overrides:
+            task_overrides = flatten_dictionary(task_overrides, sep='.')
+
         self._nodes[name] = self.Node(
             name=name, base_task_id=base_task_id, parents=parents or [],
             queue=execution_queue, timeout=time_limit,
@@ -352,6 +376,7 @@ class PipelineController(object):
             clone_task=clone_base_task,
             task_overrides=task_overrides,
             cache_executed_step=cache_executed_step,
+            continue_on_fail=continue_on_fail,
             task_factory_func=base_task_factory,
             monitor_metrics=monitor_metrics or [],
             monitor_artifacts=monitor_artifacts or [],
@@ -386,6 +411,7 @@ class PipelineController(object):
             monitor_artifacts=None,  # type: Optional[List[Union[str, Tuple[str, str]]]]
             monitor_models=None,  # type: Optional[List[Union[str, Tuple[str, str]]]]
             time_limit=None,  # type: Optional[float]
+            continue_on_fail=False,  # type: bool
             pre_execute_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node, dict], bool]]  # noqa
             post_execute_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node], None]]  # noqa
             cache_executed_step=False,  # type: bool
@@ -474,6 +500,9 @@ class PipelineController(object):
             Example:  ['model_weights_*', ]
         :param time_limit: Default None, no time limit.
             Step execution time limit, if exceeded the Task is aborted and the pipeline is stopped and marked failed.
+        :param continue_on_fail: (default False). If True, failed step will not cause the pipeline to stop
+            (or marked as failed). Notice, that steps that are connected (or indirectly connected)
+            to the failed step will be skipped.
         :param pre_execute_callback: Callback function, called when the step (Task) is created
             and before it is sent for execution. Allows a user to modify the Task before launch.
             Use `node.job` to access the ClearmlJob object, or `node.job.task` to directly access the Task object.
@@ -587,6 +616,7 @@ class PipelineController(object):
             clone_task=False,
             cache_executed_step=cache_executed_step,
             task_factory_func=_create_task,
+            continue_on_fail=continue_on_fail,
             return_artifacts=function_return,
             monitor_artifacts=monitor_artifacts,
             monitor_metrics=monitor_metrics,
@@ -607,8 +637,8 @@ class PipelineController(object):
     ):
         # type: (...) -> bool
         """
-        Start the current pipeline remotely (on the selected services queue)
-        The current process will be stopped if exit_process is True.
+        Start the current pipeline remotely (on the selected services queue).
+        The current process will be stopped and launched remotely.
 
         :param queue: queue name to launch the pipeline on
         :param Callable step_task_created_callback: Callback function, called when a step (Task) is created
@@ -642,7 +672,7 @@ class PipelineController(object):
                 ):
                     pass
         :param wait: If True (default), start the pipeline controller, return only
-        after the pipeline is done (completed/aborted/failed)
+            after the pipeline is done (completed/aborted/failed)
 
         :return: True, if the controller started. False, if the controller did not start.
 
@@ -667,16 +697,18 @@ class PipelineController(object):
                 step_task_completed_callback=step_task_completed_callback,
                 wait=wait
             )
-            leave_process(0)
 
         return True
 
     def start_locally(self, run_pipeline_steps_locally=False):
         # type: (bool) -> None
         """
-        Start the current pipeline locally, in most cases for debug purposes.
-        By default it will be running the DAG itself locally, as sub-processes.
-        Notice: running the DAG locally assumes the local code execution (i.e. it will not clone & apply git diff)
+        Start the current pipeline locally, meaning the pipeline logic is running on the current machine,
+        instead of on the `services` queue.
+
+        Using run_pipeline_steps_locally=True you can run all the pipeline steps locally as sub-processes.
+        Notice: when running pipeline steps locally, it assumes local code execution
+        (i.e. it is running the local code as is, regardless of the git commit/diff on the pipeline steps Task)
 
         :param run_pipeline_steps_locally: (default False) If True, run the
         pipeline steps themselves locally as a subprocess (use for debugging the pipeline locally,
@@ -727,6 +759,29 @@ class PipelineController(object):
         return cls._get_pipeline_task().get_logger()
 
     @classmethod
+    def upload_model(cls, model_name, model_local_path):
+        # type: (str, str) -> OutputModel
+        """
+        Upload (add) a model to the main Pipeline Task object.
+        This function can be called from any pipeline component to directly add models into the main pipeline Task
+
+        The model file/path will be uploaded to the Pipeline Task and registered on the model repository.
+
+        Raise ValueError if main Pipeline task could not be located.
+
+        :param model_name: Model name as will appear in the model registry (in the pipeline's project)
+        :param model_local_path: Path to the local model file or directory to be uploaded.
+            If a local directory is provided the content of the folder (recursively) will be
+            packaged into a zip file and uploaded
+        """
+        task = cls._get_pipeline_task()
+        model_name = str(model_name)
+        model_local_path = Path(model_local_path)
+        out_model = OutputModel(task=task, name=model_name)
+        out_model.update_weights(weights_filename=model_local_path.as_posix())
+        return out_model
+
+    @classmethod
     def upload_artifact(
         cls,
         name,  # type: str
@@ -740,6 +795,7 @@ class PipelineController(object):
         # type: (...) -> bool
         """
         Upload (add) an artifact to the main Pipeline Task object.
+        This function can be called from any pipeline component to directly add artifacts into the main pipeline Task.
 
         The artifact can be uploaded by any function/tasks executed by the pipeline, in order to report
         directly to the pipeline Task itself. It can also be called from the main pipeline control Task.
@@ -789,20 +845,31 @@ class PipelineController(object):
             name=name, artifact_object=artifact_object, metadata=metadata, delete_after_upload=delete_after_upload,
             auto_pickle=auto_pickle, preview=preview, wait_on_upload=wait_on_upload)
 
-    def stop(self, timeout=None):
-        # type: (Optional[float]) -> ()
+    def stop(self, timeout=None, mark_failed=False, mark_aborted=False):
+        # type: (Optional[float], bool, bool) -> ()
         """
         Stop the pipeline controller and the optimization thread.
+        If mark_failed and mark_aborted are False (default) mark the pipeline as completed,
+        unless one of the steps failed, then mark the pipeline as failed.
 
-        :param float timeout: Wait timeout for the optimization thread to exit (minutes).
+        :param timeout: Wait timeout for the optimization thread to exit (minutes).
             The default is ``None``, indicating do not wait terminate immediately.
+        :param mark_failed: If True, mark the pipeline task as failed. (default False)
+        :param mark_aborted: If False, mark the pipeline task as aborted. (default False)
         """
         self._stop_event.set()
 
         self.wait(timeout=timeout)
-        if self._task and self._pipeline_task_status_failed:
+        if not self._task:
+            return
+
+        self._task.close()
+        if mark_failed:
+            self._task.mark_failed(status_reason='Pipeline aborted and failed', force=True)
+        elif mark_aborted:
+            self._task.mark_aborted(status_reason='Pipeline aborted', force=True)
+        elif self._pipeline_task_status_failed:
             print('Setting pipeline controller Task as failed (due to failed steps) !')
-            self._task.close()
             self._task.mark_failed(status_reason='Pipeline step failed', force=True)
 
     def wait(self, timeout=None):
@@ -1394,17 +1461,22 @@ class PipelineController(object):
             task_id = task_factory_func_task.id
             disable_clone_task = True
 
-        node.job = self._clearml_job_class(
-            base_task_id=task_id,
-            parameter_override=updated_hyper_parameters,
-            configuration_overrides=node.configurations,
-            tags=['pipe: {}'.format(self._task.id)] if self._add_pipeline_tags and self._task else None,
-            parent=self._task.id if self._task else None,
-            disable_clone_task=disable_clone_task,
-            task_overrides=task_overrides,
-            allow_caching=node.cache_executed_step,
-            **extra_args
-        )
+        try:
+            node.job = self._clearml_job_class(
+                base_task_id=task_id,
+                parameter_override=updated_hyper_parameters,
+                configuration_overrides=node.configurations,
+                tags=['{} {}'.format(self._node_tag_prefix, self._task.id)]
+                if self._add_pipeline_tags and self._task else None,
+                parent=self._task.id if self._task else None,
+                disable_clone_task=disable_clone_task,
+                task_overrides=task_overrides,
+                allow_caching=node.cache_executed_step,
+                **extra_args
+            )
+        except Exception:
+            self._pipeline_task_status_failed = True
+            raise
 
         if self._experiment_created_cb:
             skip_node = self._experiment_created_cb(self, node, updated_hyper_parameters)
@@ -1530,10 +1602,14 @@ class PipelineController(object):
 
         # report DAG
         self._task.get_logger().report_plotly(
-            title='Pipeline', series='Execution Flow', iteration=0, figure=fig)
+            title=self._report_plot_execution_flow['title'],
+            series=self._report_plot_execution_flow['series'],
+            iteration=0, figure=fig)
         # report detailed table
         self._task.get_logger().report_table(
-            title='Pipeline Details', series='Execution Details', iteration=0, table_plot=table_values)
+            title=self._report_plot_execution_details['title'],
+            series=self._report_plot_execution_details['series'],
+            iteration=0, table_plot=table_values)
 
     def _build_table_report(self, node_params, visited):
         # type: (List, List) -> List[List]
@@ -1596,6 +1672,10 @@ class PipelineController(object):
                 return "#bdf5bd"  # lightgreen, pending in queue
             elif node.job.is_completed():
                 return "blue"  # completed job
+            elif node.job.is_failed():
+                return "red"  # failed job
+            elif node.job.is_stopped():
+                return "royalblue"  # aborted job
             else:
                 return "green"  # running job
         elif node.skip_job:
@@ -1635,15 +1715,20 @@ class PipelineController(object):
             # if no a job ended, continue
             completed_jobs = []
             force_execution_plot_update = False
+            nodes_failed_stop_pipeline = []
             for j in self._running_nodes:
                 node = self._nodes[j]
                 if not node.job:
                     continue
                 if node.job.is_stopped():
                     completed_jobs.append(j)
-                    node.executed = node.job.task_id() if not node.job.is_failed() else False
+                    node_failed = node.job.is_failed()
+                    node.executed = node.job.task_id() if not node_failed else False
                     if j in launched_nodes:
                         launched_nodes.remove(j)
+                    # check if we need to stop all running steps
+                    if node_failed and self._abort_running_steps_on_failure and not node.continue_on_fail:
+                        nodes_failed_stop_pipeline.append(node.name)
                 elif node.timeout:
                     started = node.job.task.data.started
                     if (datetime.now().astimezone(started.tzinfo) - started).total_seconds() > node.timeout:
@@ -1681,6 +1766,12 @@ class PipelineController(object):
                         self._experiment_completed_cb(self, job_node)
                     if self._post_step_callbacks.get(job_node.name):
                         self._post_step_callbacks[job_node.name](self, job_node)
+
+            # check if we need to stop the pipeline, and abort all running steps
+            if nodes_failed_stop_pipeline:
+                print('Aborting pipeline and stopping all running steps, node {} failed'.format(
+                    nodes_failed_stop_pipeline))
+                break
 
             # Pull the next jobs in the pipeline, based on the completed list
             next_nodes = []
@@ -1721,9 +1812,10 @@ class PipelineController(object):
 
         # stop all currently running jobs:
         for node in list(self._nodes.values()):
-            if node.executed is False:
+            if node.executed is False and not node.continue_on_fail:
                 self._pipeline_task_status_failed = True
-            if node.job and node.executed and not node.job.is_stopped():
+
+            if node.job and not node.job.is_stopped():
                 node.job.abort()
             elif not node.job and not node.executed:
                 # mark Node as skipped if it has no Job object and it is not executed
@@ -2104,6 +2196,8 @@ class PipelineDecorator(PipelineController):
     _debug_execute_step_process = False
     _debug_execute_step_function = False
     _default_execution_queue = None
+    _multi_pipeline_instances = []
+    _atexit_registered = False
 
     def __init__(
             self,
@@ -2113,6 +2207,7 @@ class PipelineDecorator(PipelineController):
             pool_frequency=0.2,  # type: float
             add_pipeline_tags=False,  # type: bool
             target_project=None,  # type: Optional[str]
+            abort_on_failure=False,  # type: bool
     ):
         # type: (...) -> ()
         """
@@ -2126,6 +2221,12 @@ class PipelineDecorator(PipelineController):
         :param bool add_pipeline_tags: (default: False) if True, add `pipe: <pipeline_task_id>` tag to all
             steps (Tasks) created by this pipeline.
         :param str target_project: If provided, all pipeline steps are cloned into the target project
+        :param bool abort_on_failure: If False (default), failed pipeline steps will not cause the pipeline
+            to stop immediately, instead any step that is not connected (or indirectly connected) to the failed step,
+            will still be executed. Nonetheless the pipeline itself will be marked failed, unless the failed step
+            was specifically defined with "continue_on_fail=True".
+            If True, any failed step will cause the pipeline to immediately abort, stop all running steps,
+            and mark the pipeline as failed.
         """
         super(PipelineDecorator, self).__init__(
             name=name,
@@ -2134,6 +2235,7 @@ class PipelineDecorator(PipelineController):
             pool_frequency=pool_frequency,
             add_pipeline_tags=add_pipeline_tags,
             target_project=target_project,
+            abort_on_failure=abort_on_failure,
         )
 
         # if we are in eager execution, make sure parent class knows it
@@ -2177,6 +2279,7 @@ class PipelineDecorator(PipelineController):
             # check the state of all current jobs
             # if no a job ended, continue
             completed_jobs = []
+            nodes_failed_stop_pipeline = []
             force_execution_plot_update = False
             for j in self._running_nodes:
                 node = self._nodes[j]
@@ -2184,9 +2287,13 @@ class PipelineDecorator(PipelineController):
                     continue
                 if node.job.is_stopped():
                     completed_jobs.append(j)
-                    node.executed = node.job.task_id() if not node.job.is_failed() else False
+                    node_failed = node.job.is_failed()
+                    node.executed = node.job.task_id() if not node_failed else False
                     if j in launched_nodes:
                         launched_nodes.remove(j)
+                    # check if we need to stop all running steps
+                    if node_failed and self._abort_running_steps_on_failure and not node.continue_on_fail:
+                        nodes_failed_stop_pipeline.append(node.name)
                 elif node.timeout:
                     started = node.job.task.data.started
                     if (datetime.now().astimezone(started.tzinfo) - started).total_seconds() > node.timeout:
@@ -2225,6 +2332,12 @@ class PipelineDecorator(PipelineController):
                     if self._post_step_callbacks.get(job_node.name):
                         self._post_step_callbacks[job_node.name](self, job_node)
 
+            # check if we need to stop the pipeline, and abort all running steps
+            if nodes_failed_stop_pipeline:
+                print('Aborting pipeline and stopping all running steps, node {} failed'.format(
+                    nodes_failed_stop_pipeline))
+                break
+
             # update current state (in configuration, so that we could later continue an aborted pipeline)
             self._force_task_configuration_update()
 
@@ -2233,9 +2346,10 @@ class PipelineDecorator(PipelineController):
 
         # stop all currently running jobs, protect against changes while iterating):
         for node in list(self._nodes.values()):
-            if node.executed is False:
+            if node.executed is False and not node.continue_on_fail:
                 self._pipeline_task_status_failed = True
-            if node.job and node.executed and not node.job.is_stopped():
+
+            if node.job and not node.job.is_stopped():
                 node.job.abort()
             elif not node.job and not node.executed:
                 # mark Node as skipped if it has no Job object and it is not executed
@@ -2409,6 +2523,7 @@ class PipelineDecorator(PipelineController):
             packages=None,  # type: Optional[Union[str, Sequence[str]]]
             parents=None,  # type:  Optional[List[str]]
             execution_queue=None,  # type: Optional[str]
+            continue_on_fail=False,  # type: bool
             docker=None,  # type: Optional[str]
             docker_args=None,  # type: Optional[str]
             docker_bash_setup_script=None,  # type: Optional[str]
@@ -2419,7 +2534,7 @@ class PipelineDecorator(PipelineController):
             helper_functions=None,  # type: Optional[Sequence[Callable]]
             monitor_metrics=None,  # type: Optional[List[Union[Tuple[str, str], Tuple[(str, str), (str, str)]]]]
             monitor_artifacts=None,  # type: Optional[List[Union[str, Tuple[str, str]]]]
-            monitor_models=None,  # type: Optional[List[Union[str, Tuple[str, str]]]]
+            monitor_models=None  # type: Optional[List[Union[str, Tuple[str, str]]]]
     ):
         # type: (...) -> Callable
         """
@@ -2428,58 +2543,69 @@ class PipelineDecorator(PipelineController):
         :param _func: wrapper function
         :param return_values: Provide a list of names for all the results.
             Notice! If not provided no results will be stored as artifacts.
-        :param name: Set the name of the remote task. Required if base_task_id is None.
+        :param name: Optional, set the name of the pipeline component task.
+            If not provided, the wrapped function name is used as the pipeline component name
         :param cache: If True, before launching the new step,
             after updating with the latest configuration, check if an exact Task with the same parameter/code
-            was already executed. If it was found, use it instead of launching a new Task.
-            Default: False, a new cloned copy of base_task is always used.
-            Notice: If the git repo reference does not have a specific commit ID, the Task will never be used.
+            was already executed. If it was found, use it instead of launching a new Task. Default: False
         :param packages: Manually specify a list of required packages or a local requirements.txt file.
             Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
-            If not provided, packages are automatically added based on the imports used in the function.
+            If not provided, packages are automatically added based on the imports used inside the wrapped function.
         :param parents: Optional list of parent nodes in the DAG.
             The current step in the pipeline will be sent for execution only after all the parent nodes
             have been executed successfully.
         :param execution_queue: Optional, the queue to use for executing this specific step.
-            If not provided, the task will be sent to the default execution queue, as defined on the class
-        :param docker: Select the docker image to be executed in by the remote session
-        :param docker_args: Add docker arguments, pass a single string
-        :param docker_bash_setup_script: Add bash script to be executed
-            inside the docker before setting up the Task's environment
+            If not provided, the task will be sent to the pipeline's default execution queue
+        :param continue_on_fail: (default False). If True, a failed step will not cause the pipeline to stop
+            (or marked as failed). Notice, that steps that are connected (or indirectly connected)
+            to the failed step will be skipped.
+        :param docker: Specify the docker image to be used when executing the pipeline step remotely
+        :param docker_args: Add docker execution arguments for the remote execution
+            (use single string for all docker arguments).
+        :param docker_bash_setup_script: Add a bash script to be executed inside the docker before
+            setting up the Task's environment
         :param task_type: Optional, The task type to be created. Supported values: 'training', 'testing', 'inference',
             'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc', 'custom'
         :param repo: Optional, specify a repository to attach to the function, when remotely executing.
-            Allow users to execute the function inside the specified repository, enabling to load modules/script
-            from a repository Notice the execution work directory will be the repository root folder.
-            Supports both git repo url link, and local repository path.
+            Allow users to execute the function inside the specified repository, enabling them to load modules/script
+            from the repository. Notice the execution work directory will be the repository root folder.
+            Supports both git repo url link, and local repository path (automatically converted into the remote
+            git/commit as is currently checkout).
             Example remote url: 'https://github.com/user/repo.git'
             Example local repo copy: './repo' -> will automatically store the remote
             repo url and commit ID based on the locally cloned copy
         :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
         :param repo_commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
         :param helper_functions: Optional, a list of helper functions to make available
-            for the standalone pipeline step function Task.
-        :param monitor_metrics: Optional, log the step's metrics on the pipeline Task.
-            Format is a list of pairs metric (title, series) to log:
+            for the standalone pipeline step function Task. By default the pipeline step function has
+            no access to any of the other functions, by specifying additional functions here, the remote pipeline step
+            could call the additional functions.
+            Example, assuming we have two functions parse_data(), and load_data(): [parse_data, load_data]
+        :param monitor_metrics: Optional, Automatically log the step's reported metrics also on the pipeline Task.
+            The expected format is a list of pairs metric (title, series) to log:
                 [(step_metric_title, step_metric_series), ]
                 Example: [('test', 'accuracy'), ]
-            Or a list of tuple pairs, to specify a different target metric for to use on the pipeline Task:
+            Or a list of tuple pairs, to specify a different target metric to use on the pipeline Task:
                 [((step_metric_title, step_metric_series), (target_metric_title, target_metric_series)), ]
                 Example: [[('test', 'accuracy'), ('model', 'accuracy')], ]
-        :param monitor_artifacts: Optional, log the step's artifacts on the pipeline Task.
-            Provided a list of artifact names existing on the step's Task, they will also appear on the Pipeline itself.
-            Example: [('processed_data', 'final_processed_data'), ]
-            Alternatively user can also provide a list of artifacts to monitor
-            (target artifact name will be the same as original artifact name)
+        :param monitor_artifacts: Optional, Automatically log the step's artifacts on the pipeline Task.
+            Provided a list of artifact names created by the step function, these artifacts will be logged
+            automatically also on the Pipeline Task itself.
             Example: ['processed_data', ]
-        :param monitor_models: Optional, log the step's output models on the pipeline Task.
-            Provided a list of model names existing on the step's Task, they will also appear on the Pipeline itself.
-            Example: [('model_weights', 'final_model_weights'), ]
-            Alternatively user can also provide a list of models to monitor
-            (target models name will be the same as original model)
+            (target artifact name on the Pipeline Task will hav ethe same name as the original artifact)
+            Alternatively, provide a list of pairs (source_artifact_name, target_artifact_name):
+            where the first string is the artifact name as it appears on the component Task,
+            and the second is the target artifact name to put on the Pipeline Task
+            Example: [('processed_data', 'final_processed_data'), ]
+        :param monitor_models: Optional, Automatically log the step's output models on the pipeline Task.
+            Provided a list of model names created by the step's Task, they will also appear on the Pipeline itself.
             Example: ['model_weights', ]
             To select the latest (lexicographic) model use "model_*", or the last created model with just "*"
             Example:  ['model_weights_*', ]
+            Alternatively, provide a list of pairs (source_model_name, target_model_name):
+            where the first string is the model name as it appears on the component Task,
+            and the second is the target model name to put on the Pipeline Task
+            Example: [('model_weights', 'final_model_weights'), ]
 
         :return: function wrapper
         """
@@ -2505,6 +2631,7 @@ class PipelineDecorator(PipelineController):
                 packages=packages,
                 parents=parents,
                 execution_queue=execution_queue,
+                continue_on_fail=continue_on_fail,
                 docker=docker,
                 docker_args=docker_args,
                 docker_bash_setup_script=docker_bash_setup_script,
@@ -2640,6 +2767,14 @@ class PipelineDecorator(PipelineController):
                 cls._singleton._launch_node(_node)
                 # check if we generated the pipeline we need to update the new eager step
                 if PipelineDecorator._eager_execution_instance and _node.job:
+                    # check if we need to add the pipeline tag on the new node
+                    pipeline_tags = [t for t in Task.current_task().get_tags() or []
+                                     if str(t).startswith(cls._node_tag_prefix)]
+                    if pipeline_tags and _node.job and _node.job.task:
+                        pipeline_tags = list(set((_node.job.task.get_tags() or []) + pipeline_tags))
+                        _node.job.task.set_tags(pipeline_tags)
+                    # force parent task as pipeline
+                    _node.job.task._edit(parent=Task.current_task().parent)
                     # store the new generated node, so we can later serialize it
                     pipeline_dag = cls._singleton._serialize()
                     # check if node is cached
@@ -2664,7 +2799,7 @@ class PipelineDecorator(PipelineController):
                 def results_reference(return_name):
                     # wait until job is completed
                     _node.job.wait(pool_period=0.2)
-                    if _node.job.is_failed():
+                    if _node.job.is_failed() and not _node.continue_on_fail:
                         raise ValueError(
                             'Pipeline step "{}", Task ID={} failed'.format(_node.name, _node.job.task_id()))
 
@@ -2698,11 +2833,14 @@ class PipelineDecorator(PipelineController):
             name,  # type: str
             project,  # type: str
             version,  # type: str
+            return_value=None,  # type: Optional[str]
             default_queue=None,  # type: Optional[str]
             pool_frequency=0.2,  # type: float
             add_pipeline_tags=False,  # type: bool
             target_project=None,  # type: Optional[str]
+            abort_on_failure=False,  # type: bool
             pipeline_execution_queue='services',  # type: Optional[str]
+            multi_instance_support=False
     ):
         # type: (...) -> Callable
         """
@@ -2712,13 +2850,28 @@ class PipelineDecorator(PipelineController):
         :param project: Provide project storing the pipeline (if main Task exists  it overrides its project)
         :param version: Must provide pipeline version. This version allows to uniquely identify the pipeline
             template execution. Examples for semantic versions: version='1.0.1' , version='23', version='1.2'
+        :param return_value: Optional, Provide an artifact name to store the pipeline function return object
+            Notice, If not provided the pipeline will not store the pipeline function return value.
         :param default_queue: default pipeline step queue
         :param float pool_frequency: The pooling frequency (in minutes) for monitoring experiments / states.
         :param bool add_pipeline_tags: (default: False) if True, add `pipe: <pipeline_task_id>` tag to all
             steps (Tasks) created by this pipeline.
         :param str target_project: If provided, all pipeline steps are cloned into the target project
+        :param bool abort_on_failure: If False (default), failed pipeline steps will not cause the pipeline
+            to stop immediately, instead any step that is not connected (or indirectly connected) to the failed step,
+            will still be executed. Nonetheless the pipeline itself will be marked failed, unless the failed step
+            was specifically defined with "continue_on_fail=True".
+            If True, any failed step will cause the pipeline to immediately abort, stop all running steps,
+            and mark the pipeline as failed.
         :param pipeline_execution_queue: remote pipeline execution queue (default 'services' queue).
             If None is passed, execute the pipeline logic locally (pipeline steps are still executed remotely)
+        :param multi_instance_support: If True, allow multiple calls to the same pipeline function,
+            each call creating a new Pipeline Task. Notice it is recommended to create an additional Task on the
+            "main process" acting as a master pipeline, automatically collecting the execution plots.
+            If multi_instance_support=='parallel' then the pipeline calls are executed in parallel,
+            in the `parallel` case the function calls return None, to collect all pipeline results call
+            `PipelineDecorator.wait_for_multi_pipelines()`.
+            Default False, no multi instance pipeline support.
         """
         def decorator_wrap(func):
 
@@ -2755,6 +2908,7 @@ class PipelineDecorator(PipelineController):
                     pool_frequency=pool_frequency,
                     add_pipeline_tags=add_pipeline_tags,
                     target_project=target_project,
+                    abort_on_failure=abort_on_failure,
                 )
 
                 if PipelineDecorator._debug_execute_step_process:
@@ -2782,8 +2936,18 @@ class PipelineDecorator(PipelineController):
                     # when we get here it means we are running remotely
 
                 # this time the pipeline is executed only on the remote machine
-                func(**pipeline_kwargs)
-                LazyEvalWrapper.trigger_all_remote_references()
+                try:
+                    pipeline_result = func(**pipeline_kwargs)
+                except Exception:
+                    a_pipeline.stop(mark_failed=True)
+                    raise
+
+                triggered_exception = None
+                try:
+                    LazyEvalWrapper.trigger_all_remote_references()
+                except Exception as ex:
+                    triggered_exception = ex
+
                 # make sure we wait for all nodes to finish
                 waited = True
                 while waited:
@@ -2793,9 +2957,22 @@ class PipelineDecorator(PipelineController):
                             continue
                         node.job.wait(pool_period=15)
                         waited = True
+                # store the pipeline result of we have any:
+                if return_value and pipeline_result is not None:
+                    a_pipeline._task.upload_artifact(
+                        name=str(return_value), artifact_object=pipeline_result, wait_on_upload=True
+                    )
+
                 # now we can stop the pipeline
                 a_pipeline.stop()
-                return
+                # now we can raise the exception
+                if triggered_exception:
+                    raise triggered_exception
+                return pipeline_result
+
+            if multi_instance_support:
+                return cls._multi_pipeline_wrapper(
+                    func=internal_decorator, parallel=bool(multi_instance_support == 'parallel'))
 
             return internal_decorator
 
@@ -2805,22 +2982,189 @@ class PipelineDecorator(PipelineController):
     def set_default_execution_queue(cls, default_execution_queue):
         # type: (Optional[str]) -> None
         """
-        Set the default execution queue for if pipeline step does not specify an execution queue
+        Set the default execution queue if pipeline step does not specify an execution queue
 
         :param default_execution_queue: The execution queue to use if no execution queue is provided
         """
         cls._default_execution_queue = str(default_execution_queue) if default_execution_queue else None
 
     @classmethod
-    def debug_pipeline(cls, execute_steps_as_functions=False):
-        # type: (bool) -> ()
+    def run_locally(cls):
+        # type: () -> ()
         """
-        Set debugging mode, run all functions locally as subprocess or serially as functions
+        Set local mode, run all functions locally as subprocess or serially as functions
+
         Run the full pipeline DAG locally, where steps are executed as sub-processes Tasks
         Notice: running the DAG locally assumes the local code execution (i.e. it will not clone & apply git diff)
 
-        :param execute_steps_as_functions: If True, run the pipeline steps locally
-            as a function (no Task will be created). Default False.
         """
         cls._debug_execute_step_process = True
-        cls._debug_execute_step_function = execute_steps_as_functions
+        cls._debug_execute_step_function = False
+
+    @classmethod
+    def debug_pipeline(cls):
+        # type: () -> ()
+        """
+        Set debugging mode, run all functions locally as functions
+        Run the full pipeline DAG locally, where steps are executed as functions
+        Notice:
+            running the DAG locally assumes the local code execution (i.e. it will not clone & apply git diff)
+            Pipeline steps are executed as functions (no Task will be created), fo ease debugging J
+        """
+        cls._debug_execute_step_process = True
+        cls._debug_execute_step_function = True
+
+    @classmethod
+    def _multi_pipeline_wrapper(
+            cls,
+            func=None,  # type: Callable
+            parallel=False,  # type: bool
+    ):
+        # type: (...) -> Callable
+        """
+        Add support for multiple pipeline function calls,
+        enabling execute multiple instances of the same pipeline from a single script.
+
+        .. code-block:: python
+
+            @PipelineDecorator.pipeline(
+                multi_instance_support=True, name="custom pipeline logic", project="examples", version="1.0")
+            def pipeline(parameter=1):
+                print(f"running with parameter={parameter}")
+
+            # run both pipeline (if multi_instance_support=='parallel', run pipelines in parallel)
+            pipeline(parameter=1)
+            pipeline(parameter=2)
+
+        :param parallel: If True, the pipeline is running in the background, which implies calling
+            the pipeline twice means running the pipelines in parallel.
+            Default: False, pipeline function returns when pipeline completes
+        :return: Return wrapped pipeline function.
+            Notice the return value of the pipeline wrapped function:
+            if parallel==True, return will be None, otherwise expect the return of the pipeline wrapped function
+        """
+
+        def internal_decorator(*args, **kwargs):
+            # if this is a debug run just call the function (no parallelization).
+            if cls._debug_execute_step_function:
+                return func(*args, **kwargs)
+
+            def sanitized_env(a_queue, *a_args, **a_kwargs):
+                os.environ.pop('CLEARML_PROC_MASTER_ID', None)
+                os.environ.pop('TRAINS_PROC_MASTER_ID', None)
+                os.environ.pop('CLEARML_TASK_ID', None)
+                os.environ.pop('TRAINS_TASK_ID', None)
+                if Task.current_task():
+                    # noinspection PyProtectedMember
+                    Task.current_task()._reset_current_task_obj()
+                a_result = func(*a_args, **a_kwargs)
+                if a_queue is not None:
+                    task_id = Task.current_task().id if Task.current_task() else None
+                    a_queue.put((task_id, a_result))
+                return a_result
+
+            queue = Queue()
+
+            p = Process(target=sanitized_env, args=(queue, ) + args, kwargs=kwargs)
+            # make sure we wait for the subprocess.
+            p.daemon = False
+            p.start()
+            if parallel:
+                cls._multi_pipeline_instances.append((p, queue))
+                return
+            else:
+                p.join()
+                # noinspection PyBroadException
+                try:
+                    pipeline_task, result = queue.get_nowait()
+                except Exception:
+                    return None
+
+                # we should update the master Task plot:
+                if pipeline_task and Task.current_task():
+                    cls._add_pipeline_plots(pipeline_task)
+
+                return result
+
+        if parallel and not cls._atexit_registered:
+            cls._atexit_registered = True
+            atexit.register(cls._wait_for_multi_pipelines)
+
+        return internal_decorator
+
+    @classmethod
+    def get_current_pipeline(cls):
+        # type: () -> "PipelineDecorator"
+        """
+        Return the currently running pipeline instance
+        """
+        return cls._singleton
+
+    @classmethod
+    def wait_for_multi_pipelines(cls):
+        # type () -> List[Any]
+        """
+        Wait until all background multi pipeline execution is completed.
+        Returns all the pipeline results in call order (first pipeline call at index 0)
+
+        :return: List of return values from executed pipeline, based on call order.
+        """
+        return cls._wait_for_multi_pipelines()
+
+    @classmethod
+    def _wait_for_multi_pipelines(cls):
+        results = []
+        if not cls._multi_pipeline_instances:
+            return results
+        print('Waiting for background pipelines to finish')
+        for p, queue in cls._multi_pipeline_instances:
+            try:
+                p.join()
+            except:  # noqa
+                pass
+            # noinspection PyBroadException
+            try:
+                pipeline_task, result = queue.get_nowait()
+                results.append(result)
+                cls._add_pipeline_plots(pipeline_task)
+            except Exception:
+                pass
+        cls._multi_pipeline_instances = []
+        return results
+
+    @classmethod
+    def _add_pipeline_plots(cls, pipeline_task_id):
+        if not Task.current_task():
+            return
+        from clearml.backend_api.services import events
+        res = Task.current_task().send(
+            events.GetTaskPlotsRequest(task=pipeline_task_id, iters=1),
+            raise_on_errors=False,
+            ignore_errors=True,
+        )
+        execution_flow = None
+        execution_details = None
+        for p in res.response.plots:
+            try:
+                if p['metric'] == cls._report_plot_execution_flow['title'] and \
+                        p['variant'] == cls._report_plot_execution_flow['series']:
+                    execution_flow = json.loads(p['plot_str'])
+
+                elif p['metric'] == cls._report_plot_execution_details['title'] and \
+                        p['variant'] == cls._report_plot_execution_details['series']:
+                    execution_details = json.loads(p['plot_str'])
+                    execution_details['layout']['name'] += ' - ' + str(pipeline_task_id)
+            except Exception as ex:
+                getLogger('clearml.automation.controller').warning(
+                        'Multi-pipeline plot update failed: {}'.format(ex))
+
+        if execution_flow:
+            Task.current_task().get_logger().report_plotly(
+                title=cls._report_plot_execution_flow['title'],
+                series='{} - {}'.format(cls._report_plot_execution_flow['series'], pipeline_task_id),
+                iteration=0, figure=execution_flow)
+        if execution_details:
+            Task.current_task().get_logger().report_plotly(
+                title=cls._report_plot_execution_details['title'],
+                series='{} - {}'.format(cls._report_plot_execution_details['series'], pipeline_task_id),
+                iteration=0, figure=execution_details)

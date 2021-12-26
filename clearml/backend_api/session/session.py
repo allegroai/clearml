@@ -1,4 +1,5 @@
 import json as json_lib
+import os
 import sys
 import types
 from socket import gethostname
@@ -22,6 +23,9 @@ from .defs import (
     ENV_CLEARML_NO_DEFAULT_SERVER,
     ENV_AUTH_TOKEN,
     ENV_DISABLE_VAULT_SUPPORT,
+    ENV_ENABLE_ENV_CONFIG_SECTION,
+    ENV_ENABLE_FILES_CONFIG_SECTION,
+    ENV_API_DEFAULT_REQ_METHOD,
 )
 from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
@@ -30,6 +34,7 @@ from ..utils import get_http_session_with_retry, urllib_log_warning_setup
 from ...debugging import get_logger
 from ...utilities.pyhocon import ConfigTree, ConfigFactory
 from ...version import __version__
+from ...backend_config.utils import apply_files, apply_environment
 
 try:
     from OpenSSL.SSL import Error as SSLError
@@ -166,7 +171,7 @@ class Session(TokenManager):
         if not host:
             raise ValueError("host is required in init or config")
 
-        if ENV_CLEARML_NO_DEFAULT_SERVER.get() and host == self.default_demo_host:
+        if not self._offline_mode and ENV_CLEARML_NO_DEFAULT_SERVER.get() and host == self.default_demo_host:
             raise ValueError(
                 "ClearML configuration could not be found (missing `~/clearml.conf` or Environment CLEARML_API_HOST)\n"
                 "To get started with ClearML: setup your own `clearml-server`, "
@@ -197,6 +202,8 @@ class Session(TokenManager):
 
         self.refresh_token()
 
+        local_logger = self._LocalLogger(self._logger)
+
         # update api version from server response
         try:
             token_dict = TokenManager.get_decoded_token(self.token)
@@ -210,7 +217,7 @@ class Session(TokenManager):
             Session.max_api_version = Session.api_version = str(api_version)
             Session.feature_set = str(token_dict.get('feature_set', self.feature_set) or "basic")
         except (jwt.DecodeError, ValueError):
-            (self._logger or get_logger()).warning(
+            local_logger().warning(
                 "Failed parsing server API level, defaulting to {}".format(Session.api_version))
 
         # now setup the session reporting, so one consecutive retries will show warning
@@ -225,12 +232,14 @@ class Session(TokenManager):
 
         self._load_vaults()
 
+        self._apply_config_sections(local_logger)
+
     def _load_vaults(self):
         if not self.check_min_api_version("2.15") or self.feature_set == "basic":
             return
 
         if ENV_DISABLE_VAULT_SUPPORT.get():
-            print("Vault support is disabled")
+            # (self._logger or get_logger()).debug("Vault support is disabled")
             return
 
         def parse(vault):
@@ -242,7 +251,8 @@ class Session(TokenManager):
                     if isinstance(r, (ConfigTree, dict)):
                         return r
             except Exception as e:
-                print("Failed parsing vault {}: {}".format(vault.get("description", "<unknown>"), e))
+                (self._logger or get_logger()).warning("Failed parsing vault {}: {}".format(
+                    vault.get("description", "<unknown>"), e))
 
         # noinspection PyBroadException
         try:
@@ -255,7 +265,25 @@ class Session(TokenManager):
             elif res.status_code != 404:
                 raise Exception(res.json().get("meta", {}).get("result_msg", res.text))
         except Exception as ex:
-            print("Failed getting vaults: {}".format(ex))
+            (self._logger or get_logger()).warning("Failed getting vaults: {}".format(ex))
+
+    def _apply_config_sections(self, local_logger):
+        # type: (_LocalLogger) -> None  # noqa: F821
+        default = self.config.get("sdk.apply_environment", False)
+        if ENV_ENABLE_ENV_CONFIG_SECTION.get(default=default):
+            try:
+                keys = apply_environment(self.config)
+                if keys:
+                    print("Environment variables set from configuration: {}".format(keys))
+            except Exception as ex:
+                local_logger().warning("Failed applying environment from configuration: {}".format(ex))
+
+        default = self.config.get("sdk.apply_files", default=False)
+        if ENV_ENABLE_FILES_CONFIG_SECTION.get(default=default):
+            try:
+                apply_files(self.config)
+            except Exception as ex:
+                local_logger().warning("Failed applying files from configuration: {}".format(ex))
 
     def _send_request(
         self,
@@ -683,6 +711,7 @@ class Session(TokenManager):
         try:
             data = {"expiration_sec": exp} if exp else {}
             res = self._send_request(
+                method=ENV_API_DEFAULT_REQ_METHOD.get(default="get"),
                 service="auth",
                 action="login",
                 auth=auth,
@@ -726,3 +755,12 @@ class Session(TokenManager):
         return "{self.__class__.__name__}[{self.host}, {self.access_key}/{secret_key}]".format(
             self=self, secret_key=self.secret_key[:5] + "*" * (len(self.secret_key) - 5)
         )
+
+    class _LocalLogger:
+        def __init__(self, local_logger):
+            self.logger = local_logger
+
+        def __call__(self):
+            if not self.logger:
+                self.logger = get_logger()
+            return self.logger

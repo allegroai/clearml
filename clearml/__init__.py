@@ -12,7 +12,7 @@ from .datasets import Dataset
 TaskTypes = Task.TaskTypes
 
 if not PY2:
-    from .automation.controller import PipelineController
+    from .automation.controller import PipelineController, PipelineDecorator  # noqa: F401
 
     __all__ = [
         "__version__",
@@ -26,6 +26,7 @@ if not PY2:
         "UsageError",
         "Dataset",
         "PipelineController",
+        "PipelineDecorator",
     ]
 else:
     __all__ = [

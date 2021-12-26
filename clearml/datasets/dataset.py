@@ -77,6 +77,9 @@ class Dataset(object):
             task_status = task.data.status
             # if we are continuing aborted Task, force the state
             if str(task_status) == 'stopped':
+                # print warning that we are opening a stopped dataset:
+                LoggerRoot.get_base_logger().warning(
+                    'Reopening aborted Dataset, any change will clear and overwrite current state')
                 task.mark_started(force=True)
                 task_status = 'in_progress'
 
@@ -84,7 +87,9 @@ class Dataset(object):
             if str(task_status) in ('created', 'in_progress'):
                 if str(task.task_type) != str(Task.TaskTypes.data_processing):
                     task.set_task_type(task_type=Task.TaskTypes.data_processing)
-                task.set_system_tags((task.get_system_tags() or []) + [self.__tag])
+                task_system_tags = task.get_system_tags() or []
+                if self.__tag not in task_system_tags:
+                    task.set_system_tags(task_system_tags + [self.__tag])
                 if dataset_tags:
                     task.set_tags((task.get_tags() or []) + list(dataset_tags))
         else:
@@ -601,7 +606,7 @@ class Dataset(object):
         # type: (Optional[str], bool, Optional[str]) -> List[str]
         """
         returns a list of files in the current dataset
-        If dataset_id is give, return a list of files that remained unchanged since the specified dataset_version
+        If dataset_id is provided, return a list of files that remained unchanged since the specified dataset_version
 
         :param dataset_path: Only match files matching the dataset_path (including wildcards).
             Example: 'folder/sub/*.json'
@@ -916,9 +921,9 @@ class Dataset(object):
             task_ids=[dataset_id] if dataset_id else None,
             project_name=dataset_project,
             task_name=exact_match_regex(dataset_name) if dataset_name else None,
+            tags=dataset_tags,
             task_filter=dict(
                 system_tags=[cls.__tag, '-archived'], order_by=['-created'],
-                tags=dataset_tags,
                 type=[str(Task.TaskTypes.data_processing)],
                 page_size=1, page=0,
                 status=['published'] if only_published else
@@ -1796,7 +1801,7 @@ class Dataset(object):
         if self._dependency_chunk_lookup is None:
             self._dependency_chunk_lookup = self._build_dependency_chunk_lookup()
         return self._dependency_chunk_lookup
-    
+
     def _build_chunk_selection(self, part, num_parts):
         # type: (int, int) -> Dict[str, int]
         """
@@ -1804,11 +1809,11 @@ class Dataset(object):
         Notice that for a specific part, one can only get the chunks from parent versions (not including this one)
         :param part: Current part index (between 0 and num_parts-1)
         :param num_parts: Total number of parts to divide the dataset into
-        :return: Dict of Dataset ID and their respected chunks used for this part number 
+        :return: Dict of Dataset ID and their respected chunks used for this part number
         """
         # get the chunk dependencies
         dependency_chunk_lookup = self._get_dependency_chunk_lookup()
-            
+
         # first collect the total number of chunks
         total_chunks = sum(dependency_chunk_lookup.values())
 

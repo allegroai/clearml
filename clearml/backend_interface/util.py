@@ -52,6 +52,15 @@ def make_message(s, **kwargs):
     return s % args
 
 
+def does_project_exist(session, project_name):
+    res = session.send(projects.GetAllRequest(name=exact_match_regex(project_name), only_fields=['id']))
+    if not res:
+        return None
+    if res.response and res.response.projects:
+        return True
+    return False
+
+
 def get_or_create_project(session, project_name, description=None):
     res = session.send(projects.GetAllRequest(name=exact_match_regex(project_name), only_fields=['id']))
     if not res:

@@ -15,7 +15,7 @@ from pathlib2 import Path
 from .. import Task, StorageManager, Logger
 from ..backend_api.session.client import APIClient
 from ..backend_interface.task.development.worker import DevWorker
-from ..backend_interface.util import mutually_exclusive, exact_match_regex
+from ..backend_interface.util import mutually_exclusive, exact_match_regex, does_project_exist
 from ..config import deferred_config
 from ..debugging.log import LoggerRoot
 from ..storage.helper import StorageHelper
@@ -463,20 +463,26 @@ class Dataset(object):
         self._dirty = False
         self._serialize()
 
-    def finalize(self, verbose=False, raise_on_error=True):
-        # type: (bool, bool) -> bool
+    def finalize(self, verbose=False, raise_on_error=True, auto_upload=False):
+        # type: (bool, bool, bool) -> bool
         """
         Finalize the dataset publish dataset Task. upload must first called to verify there are not pending uploads.
         If files do need to be uploaded, it throws an exception (or return False)
 
         :param verbose: If True print verbose progress report
         :param raise_on_error: If True raise exception if dataset finalizing failed
+        :param auto_upload: Automatically upload dataset if not called yet, will upload to default locationz
         """
         # check we do not have files waiting for upload.
         if self._dirty:
-            if raise_on_error:
+            if auto_upload:
+                self._task.get_logger().report_text("Pending uploads, starting dataset upload to {}"
+                                                    .format(self.get_default_storage()))
+                self.upload()
+            elif raise_on_error:
                 raise ValueError("Cannot finalize dataset, pending uploads. Call Dataset.upload(...)")
-            return False
+            else:
+                return False
 
         status = self._task.get_status()
         if status not in ('in_progress', 'created'):
@@ -898,7 +904,9 @@ class Dataset(object):
             dataset_name=None,  # type: Optional[str]
             dataset_tags=None,  # type: Optional[Sequence[str]]
             only_completed=False,  # type: bool
-            only_published=False  # type: bool
+            only_published=False,  # type: bool
+            auto_create=False,   # type: bool
+            writable_copy=False # type: bool
     ):
         # type: (...) -> "Dataset"
         """
@@ -910,26 +918,37 @@ class Dataset(object):
         :param dataset_tags: Requested Dataset tags (list of tag strings)
         :param only_completed: Return only if the requested dataset is completed or published
         :param only_published: Return only if the requested dataset is published
+        :param auto_create: Create new dataset if it does not exist yet
+        :param writable_copy: Get a mutable version of the dataset instead, so one can add files to the instance.
         :return: Dataset object
         """
         mutually_exclusive(dataset_id=dataset_id, dataset_project=dataset_project, _require_at_least_one=False)
         mutually_exclusive(dataset_id=dataset_id, dataset_name=dataset_name, _require_at_least_one=False)
         if not any([dataset_id, dataset_project, dataset_name, dataset_tags]):
-            raise ValueError('Dataset selection provided not provided (id/name/project/tags')
+            raise ValueError("Dataset selection criteria not met. Didn't provide id/name/project/tags correctly.")
 
-        tasks = Task.get_tasks(
-            task_ids=[dataset_id] if dataset_id else None,
-            project_name=dataset_project,
-            task_name=exact_match_regex(dataset_name) if dataset_name else None,
-            tags=dataset_tags,
-            task_filter=dict(
-                system_tags=[cls.__tag, '-archived'], order_by=['-created'],
-                type=[str(Task.TaskTypes.data_processing)],
-                page_size=1, page=0,
-                status=['published'] if only_published else
-                ['published', 'completed', 'closed'] if only_completed else None)
-        )
+        if auto_create and not does_project_exist(session=Task._get_default_session(),
+                                                  project_name=dataset_project):
+            tasks = []
+        else:
+            tasks = Task.get_tasks(
+                task_ids=[dataset_id] if dataset_id else None,
+                project_name=dataset_project,
+                task_name=exact_match_regex(dataset_name) if dataset_name else None,
+                tags=dataset_tags,
+                task_filter=dict(
+                    system_tags=[cls.__tag, '-archived'], order_by=['-created'],
+                    type=[str(Task.TaskTypes.data_processing)],
+                    page_size=1, page=0,
+                    status=['published'] if only_published else
+                    ['published', 'completed', 'closed'] if only_completed else None)
+            )
+
         if not tasks:
+            if auto_create:
+                instance = Dataset.create(dataset_name=dataset_name, dataset_project=dataset_project,
+                                          dataset_tags=dataset_tags)
+                return instance
             raise ValueError('Could not find Dataset {} {}'.format(
                 'id' if dataset_id else 'project/name',
                 dataset_id if dataset_id else (dataset_project, dataset_name)))
@@ -951,6 +970,13 @@ class Dataset(object):
         # remove the artifact, just in case
         if force_download and local_state_file:
             os.unlink(local_state_file)
+
+        # Now we have the requested dataset, but if we want a mutable copy instead, we create a new dataset with the
+        # current one as its parent. So one can add files to it and finalize as a new version.
+        if writable_copy:
+            writeable_instance = Dataset.create(dataset_name=instance.name, dataset_project=instance.project,
+                                                dataset_tags=instance.tags, parent_datasets=[instance.id])
+            return writeable_instance
 
         return instance
 

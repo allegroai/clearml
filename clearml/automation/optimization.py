@@ -9,7 +9,7 @@ from threading import Thread, Event
 from time import time
 from typing import List, Set, Union, Any, Sequence, Optional, Mapping, Callable
 
-from .job import ClearmlJob
+from .job import ClearmlJob, LocalClearmlJob
 from .parameters import Parameter
 from ..backend_interface.util import get_or_create_project
 from ..logger import Logger
@@ -1267,6 +1267,32 @@ class HyperParameterOptimizer(object):
         if not self.optimizer:
             return []
         return [j.task for j in self.optimizer.get_running_jobs()]
+
+    def start_locally(self, job_complete_callback=None):
+        # type: (Optional[Callable[[str, float, int, dict, str], None]]) -> bool
+        """
+        Start the HyperParameterOptimizer controller completely locally. Both the optimizer task
+        and all spawned substasks are ran on the local machine using the current environment.
+        If the calling process is stopped, then the controller stops as well.
+
+        :param Callable job_complete_callback: Callback function, called when a job is completed.
+
+            .. code-block:: py
+
+                def job_complete_callback(
+                    job_id,                 # type: str
+                    objective_value,        # type: float
+                    objective_iteration,    # type: int
+                    job_parameters,         # type: dict
+                    top_performance_job_id  # type: str
+                ):
+                    pass
+
+        :return: True, if the controller started. False, if the controller did not start.
+
+        """
+        self.optimizer.set_job_class(LocalClearmlJob)
+        return self.start(job_complete_callback=job_complete_callback)
 
     def start(self, job_complete_callback=None):
         # type: (Optional[Callable[[str, float, int, dict, str], None]]) -> bool

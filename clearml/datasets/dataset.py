@@ -15,7 +15,7 @@ from pathlib2 import Path
 from .. import Task, StorageManager, Logger
 from ..backend_api.session.client import APIClient
 from ..backend_interface.task.development.worker import DevWorker
-from ..backend_interface.util import mutually_exclusive, exact_match_regex, does_project_exist
+from ..backend_interface.util import mutually_exclusive, exact_match_regex, get_existing_project
 from ..config import deferred_config
 from ..debugging.log import LoggerRoot
 from ..storage.helper import StorageHelper
@@ -471,7 +471,7 @@ class Dataset(object):
 
         :param verbose: If True print verbose progress report
         :param raise_on_error: If True raise exception if dataset finalizing failed
-        :param auto_upload: Automatically upload dataset if not called yet, will upload to default locationz
+        :param auto_upload: Automatically upload dataset if not called yet, will upload to default location.
         """
         # check we do not have files waiting for upload.
         if self._dirty:
@@ -906,7 +906,7 @@ class Dataset(object):
             only_completed=False,  # type: bool
             only_published=False,  # type: bool
             auto_create=False,   # type: bool
-            writable_copy=False # type: bool
+            writable_copy=False  # type: bool
     ):
         # type: (...) -> "Dataset"
         """
@@ -919,7 +919,8 @@ class Dataset(object):
         :param only_completed: Return only if the requested dataset is completed or published
         :param only_published: Return only if the requested dataset is published
         :param auto_create: Create new dataset if it does not exist yet
-        :param writable_copy: Get a mutable version of the dataset instead, so one can add files to the instance.
+        :param writable_copy: Get a newly created mutable dataset with the current one as its parent,
+            so new files can added to the instance.
         :return: Dataset object
         """
         mutually_exclusive(dataset_id=dataset_id, dataset_project=dataset_project, _require_at_least_one=False)
@@ -927,8 +928,8 @@ class Dataset(object):
         if not any([dataset_id, dataset_project, dataset_name, dataset_tags]):
             raise ValueError("Dataset selection criteria not met. Didn't provide id/name/project/tags correctly.")
 
-        if auto_create and not does_project_exist(session=Task._get_default_session(),
-                                                  project_name=dataset_project):
+        if auto_create and not get_existing_project(
+                session=Task._get_default_session(), project_name=dataset_project):
             tasks = []
         else:
             tasks = Task.get_tasks(
@@ -974,8 +975,12 @@ class Dataset(object):
         # Now we have the requested dataset, but if we want a mutable copy instead, we create a new dataset with the
         # current one as its parent. So one can add files to it and finalize as a new version.
         if writable_copy:
-            writeable_instance = Dataset.create(dataset_name=instance.name, dataset_project=instance.project,
-                                                dataset_tags=instance.tags, parent_datasets=[instance.id])
+            writeable_instance = Dataset.create(
+                dataset_name=instance.name,
+                dataset_project=instance.project,
+                dataset_tags=instance.tags,
+                parent_datasets=[instance.id],
+            )
             return writeable_instance
 
         return instance

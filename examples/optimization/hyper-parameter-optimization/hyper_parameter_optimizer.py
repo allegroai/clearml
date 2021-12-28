@@ -119,6 +119,8 @@ an_optimizer.set_report_period(2.2)
 # start the optimization process, callback function to be called every time an experiment is completed
 # this function returns immediately
 an_optimizer.start(job_complete_callback=job_complete_callback)
+# You can also use the line below instead to run all the optimizer tasks locally, without using queues or agent
+# an_optimizer.start_locally(job_complete_callback=job_complete_callback)
 # set the time limit for the optimization process (2 hours)
 an_optimizer.set_time_limit(in_minutes=120.0)
 # wait until process is done (notice we are controlling the optimization process in the background)

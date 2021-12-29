@@ -929,7 +929,8 @@ class Dataset(object):
             raise ValueError("Dataset selection criteria not met. Didn't provide id/name/project/tags correctly.")
 
         if auto_create and not get_existing_project(
-                session=Task._get_default_session(), project_name=dataset_project):
+            session=Task._get_default_session(), project_name=dataset_project
+        ):
             tasks = []
         else:
             tasks = Task.get_tasks(

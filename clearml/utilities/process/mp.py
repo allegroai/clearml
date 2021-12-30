@@ -62,8 +62,6 @@ class ForkSafeRLock(object):
         """Raise any exception triggered within the runtime context."""
         # Do whatever cleanup.
         self.release()
-        if any((exc_type, exc_value, traceback,)):
-            raise (exc_type, exc_value, traceback)
 
 
 class ThreadCalls(object):
@@ -326,8 +324,6 @@ class SingletonLock(AbstractContextManager):
         """Raise any exception triggered within the runtime context."""
         # Do whatever cleanup.
         self.release()
-        if any((exc_type, exc_value, traceback,)):
-            raise (exc_type, exc_value, traceback)
 
 
 class BackgroundMonitor(object):

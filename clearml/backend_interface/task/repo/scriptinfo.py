@@ -524,6 +524,28 @@ class ScriptInfo(object):
 
     @classmethod
     def _get_jupyter_notebook_filename(cls):
+        # check if we are running in vscode, we have the jupyter notebook defined:
+        if 'IPython' in sys.modules:
+            # noinspection PyBroadException
+            try:
+                from IPython import get_ipython  # noqa
+                ip = get_ipython()
+                # vscode-jupyter PR #8531 added this variable
+                local_ipynb_file = ip.__dict__.get('user_ns', {}).get('__vsc_ipynb_file__') if ip else None
+                if local_ipynb_file:
+                    # now replace the .ipynb with .py
+                    # we assume we will have that file available for monitoring
+                    local_ipynb_file = Path(local_ipynb_file)
+                    script_entry_point = local_ipynb_file.with_suffix('.py').as_posix()
+
+                    # install the post store hook,
+                    # notice that if we do not have a local file we serialize/write every time the entire notebook
+                    cls._jupyter_install_post_store_hook(local_ipynb_file.as_posix(), log_history=False)
+
+                    return script_entry_point
+            except Exception:
+                pass
+
         if not (sys.argv[0].endswith(os.path.sep + 'ipykernel_launcher.py') or
                 sys.argv[0].endswith(os.path.join(os.path.sep, 'ipykernel', '__main__.py'))) \
                 or len(sys.argv) < 3 or not sys.argv[2].endswith('.json'):

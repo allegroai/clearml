@@ -4,7 +4,7 @@ import struct
 import sys
 from functools import partial
 from multiprocessing import Lock, Event as ProcessEvent
-from threading import Thread, Event as TrEvent
+from threading import Thread, Event as TrEvent, RLock as ThreadRLock
 from time import sleep, time
 from typing import List, Dict, Optional
 from multiprocessing import Process
@@ -31,6 +31,39 @@ try:
 except ImportError:
     def get_context(*args, **kwargs):
         return False
+
+
+class ForkSafeRLock(object):
+    def __init__(self):
+        self._lock = None
+        self._instance_pid = None
+
+    def acquire(self, *args, **kwargs):
+        self.create()
+        return self._lock.acquire(*args, **kwargs)
+
+    def release(self, *args, **kwargs):
+        if self._lock is None:
+            return None
+        return self._lock.release(*args, **kwargs)
+
+    def create(self):
+        # this part is not atomic, and there is not a lot we can do about it.
+        if self._instance_pid != os.getpid() or not self._lock:
+            self._lock = ThreadRLock()
+            self._instance_pid = os.getpid()
+
+    def __enter__(self):
+        """Return `self` upon entering the runtime context."""
+        self.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Raise any exception triggered within the runtime context."""
+        # Do whatever cleanup.
+        self.release()
+        if any((exc_type, exc_value, traceback,)):
+            raise (exc_type, exc_value, traceback)
 
 
 class ThreadCalls(object):
@@ -300,6 +333,7 @@ class SingletonLock(AbstractContextManager):
 class BackgroundMonitor(object):
     # If we will need multiple monitoring contexts (i.e. subprocesses) this will become a dict
     _main_process = None
+    _main_process_proc_obj = None
     _main_process_task_id = None
     _parent_pid = None
     _sub_process_started = None
@@ -420,10 +454,19 @@ class BackgroundMonitor(object):
         if BackgroundMonitor._main_process == 0:
             # update to the child process pid
             BackgroundMonitor._main_process = os.getpid()
+            BackgroundMonitor._main_process_proc_obj = psutil.Process(BackgroundMonitor._main_process)
             cls._background_process_start(*process_args)
             # force to leave the subprocess
             leave_process(0)
             return
+
+        # update main process object (we are now in the parent process, and we update on the child's subprocess pid)
+        # noinspection PyBroadException
+        try:
+            BackgroundMonitor._main_process_proc_obj = psutil.Process(BackgroundMonitor._main_process)
+        except Exception:
+            # if we fail for some reason, do not crash, switch to thread mode when you can
+            BackgroundMonitor._main_process_proc_obj = None
 
     @classmethod
     def __start_subprocess_forkprocess(cls, task_obj_id):
@@ -453,6 +496,7 @@ class BackgroundMonitor(object):
                     continue
                 raise
         BackgroundMonitor._main_process = _main_process.pid
+        BackgroundMonitor._main_process_proc_obj = psutil.Process(BackgroundMonitor._main_process)
         if un_daemonize:
             # noinspection PyBroadException
             try:
@@ -467,6 +511,7 @@ class BackgroundMonitor(object):
         is_debugger_running = bool(getattr(sys, 'gettrace', None) and sys.gettrace())
         # make sure we update the pid to our own
         cls._main_process = os.getpid()
+        cls._main_process_proc_obj = psutil.Process(cls._main_process)
         # restore original signal, this will prevent any deadlocks
         # Do not change the exception we need to catch base exception as well
         # noinspection PyBroadException
@@ -530,6 +575,19 @@ class BackgroundMonitor(object):
             return isinstance(self._thread, Thread) and self._thread.is_alive()
 
     @classmethod
+    def _fast_is_subprocess_alive(cls):
+        if not cls._main_process_proc_obj:
+            return False
+        # we have to assume the process actually exists, so we optimize for
+        # just getting the object and status.
+        # noinspection PyBroadException
+        try:
+            return cls._main_process_proc_obj.is_running() and \
+                   cls._main_process_proc_obj.status() != psutil.STATUS_ZOMBIE
+        except Exception:
+            return False
+
+    @classmethod
     def is_subprocess_alive(cls, task=None):
         if not cls._main_process or (task and cls._main_process_task_id != task.id):
             return False
@@ -572,6 +630,7 @@ class BackgroundMonitor(object):
             return
         cls.wait_for_sub_process(task)
         BackgroundMonitor._main_process = None
+        BackgroundMonitor._main_process_proc_obj = None
         BackgroundMonitor._main_process_task_id = None
         BackgroundMonitor._parent_pid = None
         BackgroundMonitor._sub_process_started = None

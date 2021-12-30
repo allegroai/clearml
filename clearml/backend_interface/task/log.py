@@ -83,6 +83,25 @@ class BackgroundLogService(BackgroundMonitor):
         self._flush = SafeEvent()
 
     def add_to_queue(self, record):
+        # check that we did not loose the reporter sub-process
+        if self.is_subprocess_mode() and not self._fast_is_subprocess_alive():
+            # we lost the reporting subprocess, let's switch to thread mode
+            # gel all data, work on local queue:
+            self.send_all_records()
+            # replace queue:
+            self._queue = TrQueue()
+            self._flush = TrEvent()
+            self._event = TrEvent()
+            self._done_ev = TrEvent()
+            self._start_ev = TrEvent()
+            # set thread mode
+            self._subprocess = False
+            # start background thread
+            self._thread = None
+            self._start()
+            getLogger('clearml.log').warning(
+                'Event reporting sub-process lost, switching to thread based reporting')
+
         self._queue.put(record)
 
     def empty(self):

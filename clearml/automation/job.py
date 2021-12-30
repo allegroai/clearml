@@ -572,7 +572,8 @@ class ClearmlJob(BaseJob):
 
 class LocalClearmlJob(ClearmlJob):
     """
-    Run jobs locally as a sub-process, use for debugging purposes only
+    Run jobs locally as a sub-process, use only when no agents are available (this will not use queues)
+    or for debug purposes.
     """
     def __init__(self, *args, **kwargs):
         super(LocalClearmlJob, self).__init__(*args, **kwargs)

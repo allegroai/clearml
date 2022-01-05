@@ -36,6 +36,45 @@ from clearml import Task
 from clearml.automation.monitor import Monitor
 
 
+class UserFilter:
+    """Filters tasks based on usernames
+
+    Either `include` or `exclude` must be passed, but not both.
+    If `include` is given, any task that is not created by any of the users in the 'include' list will be filtered.
+    If `exclude` is given, any task that is created by any of the users in the 'exclude' list will be filtered.
+    If neither is given, this is a no-op.
+    Raises:
+        - ValueError if both include and exclude are given
+        - RuntimeError if the Web API returns an invalid response, or if a given username is not found in the response
+        - KeyError if the Web API return a response of unexpected format
+    """
+    def __init__(self, include=None, exclude=None):
+        # Either `include` or `exclude` should be specified
+        if include is not None and exclude is not None:
+            raise ValueError("Specify either 'include' or 'exclude', not both!")
+        include = include or list()
+        if isinstance(include, str):
+            include = [include]
+        exclude = exclude or list()
+        if isinstance(exclude, str):
+            exclude = [exclude]
+        res = Task._get_default_session().send_request("users", "get_all")
+        if not res.ok:
+            raise RuntimeError("Cannot get list of all users!")
+        all_users = {d['name']: d['id'] for d in res.json()['data']['users']}
+        for user_list in [include, exclude]:
+            for user in user_list:
+                if user not in all_users:
+                    raise RuntimeError(f"Cannot locate user '{user}' in API!")
+        self.include = [all_users[user] for user in include]
+        self.exclude = [all_users[user] for user in exclude]
+
+    def __call__(self, task: Task):
+        if self.include:
+            return task.data.user not in self.include
+        return task.data.user in self.exclude
+    
+
 class SlackMonitor(Monitor):
     """
     Create a monitoring service that alerts on Task failures / completion in a Slack channel
@@ -178,6 +217,8 @@ def main():
                         help='Set refresh rate of the monitoring service, default every 10.0 sec')
     parser.add_argument('--service_queue', type=str, default='services',
                         help='Queue name to use when running as a service (default: \'services\'')
+    parser.add_argument('--include_users', type=str, nargs='*', help='Only report tasks from these users')
+    parser.add_argument('--exclude_users', type=str, nargs='*', help='Only report tasks not from these users')
     parser.add_argument('--local', action="store_true", default=False,
                         help='Run service locally instead of as a service '
                              '(Default: Automatically launch itself on the services queue)')
@@ -192,9 +233,12 @@ def main():
         print('Slack channel was not provided, please run with --channel <channel_name>')
         exit(1)
 
+    # create the user filter
+    user_filter = UserFilter(include=args.include_users, exclude=args.exclude_users)
+    
     # create the slack monitoring object
-    slack_monitor = SlackMonitor(
-        slack_api_token=args.slack_api, channel=args.channel, message_prefix=args.message_prefix)
+    slack_monitor = SlackMonitor(slack_api_token=args.slack_api, channel=args.channel,
+                                 message_prefix=args.message_prefix, filters=[user_filter])
 
     # configure the monitoring filters
     slack_monitor.min_num_iterations = args.min_num_iterations

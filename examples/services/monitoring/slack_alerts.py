@@ -99,6 +99,7 @@ class SlackMonitor(Monitor):
         self.filters = filters or list()
         self.status_alerts = ["failed", ]
         self.include_manual_experiments = False
+        self.include_archived = False
         self._channel_id = None
         self._message_prefix = '{} '.format(message_prefix) if message_prefix else ''
         self.check_credentials()
@@ -158,7 +159,9 @@ class SlackMonitor(Monitor):
 
         :return dict: Example dictionary: {'status': ['failed'], 'order_by': ['-last_update']}
         """
-        filter_tags = ['-archived'] + (['-development'] if not self.include_manual_experiments else [])
+        filter_tags = list() if self.include_archived else ['-archived']
+        if not self.include_manual_experiments:
+            filter_tags.append('-development')
         return dict(status=self.status_alerts, order_by=['-last_update'], system_tags=filter_tags)
 
     def process_task(self, task):
@@ -213,6 +216,7 @@ def main():
                         help='Include experiments running manually (i.e. not by clearml-agent)')
     parser.add_argument('--include_completed_experiments', action="store_true", default=False,
                         help='Include completed experiments (i.e. not just failed experiments)')
+    parser.add_argument('--include_archived', action="store_true", default=False, help='Include archived experiments')
     parser.add_argument('--refresh_rate', type=float, default=10.,
                         help='Set refresh rate of the monitoring service, default every 10.0 sec')
     parser.add_argument('--service_queue', type=str, default='services',
@@ -243,6 +247,7 @@ def main():
     # configure the monitoring filters
     slack_monitor.min_num_iterations = args.min_num_iterations
     slack_monitor.include_manual_experiments = args.include_manual_experiments
+    slack_monitor.include_archived = args.include_archived
     if args.project:
         slack_monitor.set_projects(project_names_re=[args.project])
     if args.include_completed_experiments:

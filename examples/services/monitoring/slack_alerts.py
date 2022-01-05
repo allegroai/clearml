@@ -40,7 +40,7 @@ class SlackMonitor(Monitor):
     """
     Create a monitoring service that alerts on Task failures / completion in a Slack channel
     """
-    def __init__(self, slack_api_token, channel, message_prefix=None):
+    def __init__(self, slack_api_token, channel, message_prefix=None, filters=None):
         # type: (str, str, Optional[str]) -> ()
         """
         Create a Slack Monitoring object.
@@ -50,11 +50,14 @@ class SlackMonitor(Monitor):
         :param channel: Name of the channel to post alerts to
         :param message_prefix: optional message prefix to add before any message posted
             For example: message_prefix="Hey <!here>,"
+        :param filters: An optional collection of callables that will be passed a Task
+            object and return True/False if it should be filtered
         """
         super(SlackMonitor, self).__init__()
         self.channel = '{}'.format(channel[1:] if channel[0] == '#' else channel)
         self.slack_client = WebClient(token=slack_api_token)
         self.min_num_iterations = 0
+        self.filters = filters or list()
         self.status_alerts = ["failed", ]
         self.include_manual_experiments = False
         self._channel_id = None
@@ -131,6 +134,9 @@ class SlackMonitor(Monitor):
         if self.min_num_iterations and task.get_last_iteration() < self.min_num_iterations:
             print('Skipping {} experiment id={}, number of iterations {} < {}'.format(
                 task.status, task.id, task.get_last_iteration(), self.min_num_iterations))
+            return
+        if any(f(task) for f in self.filters):
+            print("Experiment id={} {} did not pass all filters".format(task.id, task.status))
             return
 
         print('Experiment id={} {}, raising alert on channel \"{}\"'.format(task.id, task.status, self.channel))

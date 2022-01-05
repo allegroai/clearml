@@ -27,7 +27,7 @@ We are done!
 import argparse
 import os
 from time import sleep
-from typing import Optional
+from typing import Optional, List, Callable
 
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -41,7 +41,7 @@ class SlackMonitor(Monitor):
     Create a monitoring service that alerts on Task failures / completion in a Slack channel
     """
     def __init__(self, slack_api_token, channel, message_prefix=None, filters=None):
-        # type: (str, str, Optional[str]) -> ()
+        # type: (str, str, Optional[str], Optional[List[Callable[[Task], bool]]]) -> ()
         """
         Create a Slack Monitoring object.
         It will alert on any Task/Experiment that failed or completed

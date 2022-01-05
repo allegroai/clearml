@@ -29,8 +29,8 @@ import os
 from time import sleep
 from typing import Optional
 
-from slack import WebClient
-from slack.errors import SlackApiError
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
 
 from clearml import Task
 from clearml.automation.monitor import Monitor

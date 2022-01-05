@@ -1143,10 +1143,10 @@ class PipelineController(object):
                 self._task._set_configuration(
                     name=self._config_section, config_type='dictionary',
                     config_text=json.dumps(pipeline_dag, indent=2))
-                params.update(self._pipeline_args)
+                params.update(flatten_dictionary(self._pipeline_args))
                 # noinspection PyProtectedMember
                 self._task._set_parameters(
-                    {'{}/{}'.format(self._args_section, k): str(v) for k, v in params.items()},
+                    {'{}/{}'.format(self._args_section, k): v for k, v in params.items()},
                     __parameters_descriptions=self._pipeline_args_desc,
                     __update=True,
                 )

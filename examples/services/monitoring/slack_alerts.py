@@ -55,7 +55,8 @@ class UserFilter:
         all_users = {d["name"]: d["id"] for d in res.json()["data"]["users"]}
         for user in include + exclude:
             if user not in all_users:
-                raise RuntimeError(f"Cannot locate user '{user}' in API!")
+                print(f"Cannot translate user '{user}' to any known user ID - "
+                      f"will use it verbatim")
         self.include = [all_users[user] for user in include]  # Map usernames to user IDs
         self.exclude = [all_users[user] for user in exclude]
 
@@ -277,12 +278,14 @@ def main():
         print("Slack channel was not provided, please run with --channel <channel_name>")
         exit(1)
 
-    # create the user filter
-    user_filter = UserFilter(include=args.include_users, exclude=args.exclude_users)
+    filters = list()
+    # create the user filter if needed
+    if args.include_users or args.exclude_users:
+        filters.append(UserFilter(include=args.include_users, exclude=args.exclude_users))
 
     # create the slack monitoring object
     slack_monitor = SlackMonitor(
-        slack_api_token=args.slack_api, channel=args.channel, message_prefix=args.message_prefix, filters=[user_filter]
+        slack_api_token=args.slack_api, channel=args.channel, message_prefix=args.message_prefix, filters=filters
     )
 
     # configure the monitoring filters

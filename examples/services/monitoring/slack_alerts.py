@@ -57,8 +57,8 @@ class UserFilter:
             if user not in all_users:
                 print(f"Cannot translate user '{user}' to any known user ID - "
                       f"will use it verbatim")
-        self.include = [all_users[user] for user in include]  # Map usernames to user IDs
-        self.exclude = [all_users[user] for user in exclude]
+        self.include = [all_users.get(user, user) for user in include]  # Map usernames to user IDs
+        self.exclude = [all_users.get(user, user) for user in exclude]
 
     def __call__(self, task):
         # type: (Task) -> bool

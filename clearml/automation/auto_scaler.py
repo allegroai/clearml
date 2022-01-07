@@ -239,11 +239,13 @@ class AutoScaler(object):
             self.update_idle_workers(all_workers, idle_workers)
             required_idle_resources = []  # idle resources we'll need to keep running
             allocate_new_resources = self.extra_allocations()
+            waiting_tasks = []
 
             # Check if we have tasks waiting on one of the designated queues
             for queue in self.queues:
                 entries = self.api_client.queues.get_by_id(queue_name_to_id[queue]).entries
-                self.logger.info("Found %d tasks in queue %r", len(entries), queue)
+                waiting_tasks.extend([e.task for e in entries])
+                self.logger.info("Found %d tasks in queue %r", len(waiting_tasks), queue)
                 if entries and len(entries) > 0:
                     queue_resources = self.queues[queue]
 
@@ -280,13 +282,8 @@ class AutoScaler(object):
                     allocate_new_resources.extend(spin_up_resources)
 
             # Now we actually spin the new machines
-            for resource in allocate_new_resources:
-                task_id = None
+            for resource, task_id in zip(allocate_new_resources, waiting_tasks):
                 try:
-                    if isinstance(resource, tuple):
-                        worker_id, task_id = resource
-                        resource = WorkerId(worker_id).name
-
                     queue = self.resource_to_queue[resource]
                     self.logger.info(
                         'Spinning new instance resource=%r, prefix=%r, queue=%r, task_id=%r',

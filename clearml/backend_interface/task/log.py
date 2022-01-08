@@ -3,14 +3,12 @@ import sys
 from pathlib2 import Path
 from logging import LogRecord, getLogger, basicConfig, getLevelName, INFO, WARNING, Formatter, makeLogRecord, warning
 from logging.handlers import BufferingHandler
-from six.moves.queue import Queue as TrQueue
-from threading import Event as TrEvent
 
 from .development.worker import DevWorker
 from ...backend_api.services import events
 from ...backend_api.session.session import MaxRequestSizeError
 from ...config import config
-from ...utilities.process.mp import BackgroundMonitor
+from ...utilities.process.mp import BackgroundMonitor, ForkEvent, ForkQueue
 from ...utilities.process.mp import SafeQueue as PrQueue, SafeEvent
 
 
@@ -21,8 +19,8 @@ class BackgroundLogService(BackgroundMonitor):
         super(BackgroundLogService, self).__init__(task=task, wait_period=wait_period)
         self._worker = worker
         self._task_id = task.id
-        self._queue = TrQueue()
-        self._flush = TrEvent()
+        self._queue = ForkQueue()
+        self._flush = ForkEvent()
         self._last_event = None
         self._offline_log_filename = offline_log_filename
         self.session = session
@@ -76,7 +74,7 @@ class BackgroundLogService(BackgroundMonitor):
                 self._queue.put(a_request)
 
     def set_subprocess_mode(self):
-        if isinstance(self._queue, TrQueue):
+        if isinstance(self._queue, ForkQueue):
             self.send_all_records()
             self._queue = PrQueue()
         super(BackgroundLogService, self).set_subprocess_mode()
@@ -84,16 +82,16 @@ class BackgroundLogService(BackgroundMonitor):
 
     def add_to_queue(self, record):
         # check that we did not loose the reporter sub-process
-        if self.is_subprocess_mode() and not self._fast_is_subprocess_alive():
+        if self.is_subprocess_mode() and not self._fast_is_subprocess_alive() and not self.get_at_exit_state():  ##HANGS IF RACE HOLDS!
             # we lost the reporting subprocess, let's switch to thread mode
             # gel all data, work on local queue:
             self.send_all_records()
             # replace queue:
-            self._queue = TrQueue()
-            self._flush = TrEvent()
-            self._event = TrEvent()
-            self._done_ev = TrEvent()
-            self._start_ev = TrEvent()
+            self._queue = ForkQueue()
+            self._flush = ForkEvent()
+            self._event = ForkEvent()
+            self._done_ev = ForkEvent()
+            self._start_ev = ForkEvent()
             # set thread mode
             self._subprocess = False
             # start background thread
@@ -275,7 +273,8 @@ class TaskHandler(BufferingHandler):
         if _background_log:
             if not _background_log.is_subprocess_mode() or _background_log.is_alive():
                 _background_log.stop()
-                if wait:
+                if wait and (not _background_log.is_subprocess_mode() or
+                             _background_log.is_subprocess_mode_and_parent_process()):
                     # noinspection PyBroadException
                     try:
                         timeout = 1. if _background_log.empty() else self.__wait_for_flush_timeout

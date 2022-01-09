@@ -5,6 +5,8 @@ from six import PY2
 from argparse import _StoreAction, ArgumentError, _StoreConstAction, _SubParsersAction, _AppendAction, SUPPRESS  # noqa
 from copy import copy
 
+from typing import Tuple, Type, Union
+
 from ...backend_api import Session
 from ...binding.args import call_original_argparser
 
@@ -71,7 +73,7 @@ class _Arguments(object):
         name = option_strings[0].strip('- \t') if isinstance(option_strings, list) else option_strings.strip('- \t')
         if Session.check_min_api_version('2.9'):
             name = self._prefix_args + name
-        self._task.set_parameter(name=name, value=default, description=help)
+        self._task.set_parameter(name=name, value=default, description=help, value_type=type)
 
     def connect(self, parser):
         self._task.connect_argparse(parser)
@@ -561,6 +563,20 @@ class _Arguments(object):
         if not isinstance(dictionary, self._ProxyDictReadOnly):
             return self._ProxyDictReadOnly(self, prefix, **dictionary)
         return dictionary
+
+    @classmethod
+    def get_supported_types(cls, as_str=False):
+        # type: (bool) -> Union[Type, Tuple[str]]
+        """
+        Return the basic types supported by Argument casting
+        :param as_str: if True return string cast of the types
+        :return: List of type objects supported for auto casting (serializing to string)
+        """
+        supported_types = (int, float, bool, str, list, tuple)
+        if as_str:
+            return tuple([str(t) for t in supported_types])
+
+        return supported_types
 
     @classmethod
     def __cast_arg(cls, arg, dtype=None):

@@ -339,7 +339,9 @@ class UploadEvent(MetricsEventAdapter):
             # noinspection PyBroadException
             try:
                 output = pathlib2.Path(self._local_image_path)
-                if not output.is_file():
+                if output.is_file():
+                    local_file = output
+                else:
                     output = None
             except Exception:
                 output = None

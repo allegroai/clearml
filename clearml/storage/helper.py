@@ -1241,7 +1241,7 @@ class _Boto3Driver(_Driver):
     _connect_timeout = deferred_config('aws.boto3.connect_timeout', 60)
     _read_timeout = deferred_config('aws.boto3.read_timeout', 60)
 
-    _stream_download_pool_connections = 128
+    _stream_download_pool_connections = deferred_config('aws.boto3.stream_connections', 128)
     _stream_download_pool = None
     _stream_download_pool_pid = None
 
@@ -1307,7 +1307,7 @@ class _Boto3Driver(_Driver):
     def _get_stream_download_pool(self):
         if self._stream_download_pool is None or self._stream_download_pool_pid != os.getpid():
             self._stream_download_pool_pid = os.getpid()
-            self._stream_download_pool = ThreadPoolExecutor(max_workers=self._stream_download_pool_connections)
+            self._stream_download_pool = ThreadPoolExecutor(max_workers=int(self._stream_download_pool_connections))
         return self._stream_download_pool
 
     def get_container(self, container_name, config=None, **kwargs):
@@ -1510,7 +1510,7 @@ class _Boto3Driver(_Driver):
 class _GoogleCloudStorageDriver(_Driver):
     """Storage driver for google cloud storage"""
 
-    _stream_download_pool_connections = 128
+    _stream_download_pool_connections = deferred_config('google.storage.stream_connections', 128)
     _stream_download_pool = None
     _stream_download_pool_pid = None
 
@@ -1550,7 +1550,7 @@ class _GoogleCloudStorageDriver(_Driver):
     def _get_stream_download_pool(self):
         if self._stream_download_pool is None or self._stream_download_pool_pid != os.getpid():
             self._stream_download_pool_pid = os.getpid()
-            self._stream_download_pool = ThreadPoolExecutor(max_workers=self._stream_download_pool_connections)
+            self._stream_download_pool = ThreadPoolExecutor(max_workers=int(self._stream_download_pool_connections))
         return self._stream_download_pool
 
     def get_container(self, container_name, config=None, **kwargs):

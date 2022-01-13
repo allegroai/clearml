@@ -328,6 +328,7 @@ class Artifacts(object):
             artifact_object = LazyEvalWrapper._load_object(artifact_object)
 
         pathlib_types = (Path, pathlib_Path,) if pathlib_Path is not None else (Path,)
+        local_filename = None
 
         # try to convert string Path object (it might reference a file/folder)
         # dont not try to serialize long texts.

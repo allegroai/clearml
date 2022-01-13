@@ -11,6 +11,7 @@ from typing import Optional, Sequence, Union, Tuple, List, Callable, Dict, Any
 from pathlib2 import Path
 from six.moves.urllib.parse import urlparse
 
+from .args import _Arguments
 from .repo import ScriptInfo
 from ...task import Task
 
@@ -593,7 +594,8 @@ if __name__ == '__main__':
                 'function_input_artifacts={}, it must in the format: '
                 '{{"argument": "task_id.artifact_name"}}'.format(function_input_artifacts)
             )
-
+        inspect_args = None
+        function_kwargs_types = dict()
         if function_kwargs is None:
             function_kwargs = dict()
             inspect_args = inspect.getfullargspec(a_function)
@@ -613,6 +615,16 @@ if __name__ == '__main__':
 
                 function_kwargs = {str(k): v for k, v in zip(inspect_defaults_args, inspect_defaults_vals)} \
                     if inspect_defaults_vals else {str(k): None for k in inspect_defaults_args}
+
+        if function_kwargs:
+            if not inspect_args:
+                inspect_args = inspect.getfullargspec(a_function)
+            # inspect_func.annotations[k]
+            if inspect_args.annotations:
+                supported_types = _Arguments.get_supported_types()
+                function_kwargs_types = {
+                    str(k): str(inspect_args.annotations[k].__name__) for k in inspect_args.annotations
+                    if inspect_args.annotations[k] in supported_types}
 
         task_template = cls.task_template.format(
             kwargs_section=cls.kwargs_section,
@@ -658,11 +670,12 @@ if __name__ == '__main__':
                 task['script']['working_dir'] = '.'
                 task['hyperparams'] = {
                     cls.kwargs_section: {
-                        k: dict(section=cls.kwargs_section, name=k, value=str(v))
+                        k: dict(section=cls.kwargs_section, name=k,
+                                value=str(v) if v is not None else '', type=function_kwargs_types.get(k, None))
                         for k, v in (function_kwargs or {}).items()
                     },
                     cls.input_artifact_section: {
-                        k: dict(section=cls.input_artifact_section, name=k, value=str(v))
+                        k: dict(section=cls.input_artifact_section, name=k, value=str(v) if v is not None else '')
                         for k, v in (function_input_artifacts or {}).items()
                     }
                 }
@@ -676,7 +689,9 @@ if __name__ == '__main__':
                     {'{}/{}'.format(cls.input_artifact_section, k): str(v) for k, v in function_input_artifacts}
                     if function_input_artifacts else {}
                 )
-                task.set_parameters(hyper_parameters)
+                __function_kwargs_types = {'{}/{}'.format(cls.kwargs_section, k): v for k, v in function_kwargs_types} \
+                    if function_kwargs_types else None
+                task.set_parameters(hyper_parameters, __parameters_types=__function_kwargs_types)
 
             return task
 

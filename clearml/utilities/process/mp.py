@@ -3,7 +3,7 @@ import pickle
 import struct
 import sys
 from functools import partial
-from multiprocessing import Lock, Event as ProcessEvent
+from multiprocessing import Lock, Semaphore, Event as ProcessEvent
 from threading import Thread, Event as TrEvent, RLock as ThreadRLock
 from time import sleep, time
 from typing import List, Dict, Optional
@@ -33,25 +33,40 @@ except ImportError:
         return False
 
 
-class ForkSafeRLock(object):
-    def __init__(self):
-        self._lock = None
+class _ForkSafeThreadSyncObject(object):
+
+    def __init__(self, functor):
+        self._sync = None
         self._instance_pid = None
+        self._functor = functor
+
+    def _create(self):
+        # this part is not atomic, and there is not a lot we can do about it.
+        if self._instance_pid != os.getpid() or not self._sync:
+            # Notice! This is NOT atomic, this means the first time accessed, two concurrent calls might
+            # end up overwriting each others, object
+            # even tough it sounds horrible, the worst case in our usage scenario
+            # is the first call usage is not "atomic"
+
+            # Notice the order! we first create the object and THEN update the pid,
+            # this is so whatever happens we Never try to used the old (pre-forked copy) of the synchronization object
+            self._sync = self._functor()
+            self._instance_pid = os.getpid()
+
+
+class ForkSafeRLock(_ForkSafeThreadSyncObject):
+    def __init__(self):
+        super(ForkSafeRLock, self).__init__(ThreadRLock)
 
     def acquire(self, *args, **kwargs):
-        self.create()
-        return self._lock.acquire(*args, **kwargs)
+        self._create()
+        return self._sync.acquire(*args, **kwargs)
 
     def release(self, *args, **kwargs):
-        if self._lock is None:
+        if self._sync is None:
             return None
-        return self._lock.release(*args, **kwargs)
-
-    def create(self):
-        # this part is not atomic, and there is not a lot we can do about it.
-        if self._instance_pid != os.getpid() or not self._lock:
-            self._lock = ThreadRLock()
-            self._instance_pid = os.getpid()
+        self._create()
+        return self._sync.release(*args, **kwargs)
 
     def __enter__(self):
         """Return `self` upon entering the runtime context."""
@@ -62,19 +77,100 @@ class ForkSafeRLock(object):
         """Raise any exception triggered within the runtime context."""
         # Do whatever cleanup.
         self.release()
-        if any((exc_type, exc_value, traceback,)):
-            raise (exc_type, exc_value, traceback)
+
+
+class ForkSemaphore(_ForkSafeThreadSyncObject):
+    def __init__(self, value=1):
+        super(ForkSemaphore, self).__init__(functor=partial(Semaphore, value))
+
+    def acquire(self, *args, **kwargs):
+        self._create()
+        return self._sync.acquire(*args, **kwargs)
+
+    def release(self, *args, **kwargs):
+        if self._sync is None:
+            return None
+        self._create()
+        return self._sync.release(*args, **kwargs)
+
+    def get_value(self):
+        self._create()
+        return self._sync.get_value()
+
+    def __enter__(self):
+        """Return `self` upon entering the runtime context."""
+        self.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Raise any exception triggered within the runtime context."""
+        # Do whatever cleanup.
+        self.release()
+
+
+class ForkEvent(_ForkSafeThreadSyncObject):
+    def __init__(self):
+        super(ForkEvent, self).__init__(TrEvent)
+
+    def set(self):
+        self._create()
+        return self._sync.set()
+
+    def clear(self):
+        if self._sync is None:
+            return None
+        self._create()
+        return self._sync.clear()
+
+    def is_set(self):
+        self._create()
+        return self._sync.is_set()
+
+    def wait(self, *args, **kwargs):
+        self._create()
+        return self._sync.wait(*args, **kwargs)
+
+
+class ForkQueue(_ForkSafeThreadSyncObject):
+    def __init__(self):
+        super(ForkQueue, self).__init__(TrQueue)
+
+    def get(self, *args, **kwargs):
+        self._create()
+        return self._sync.get(*args, **kwargs)
+
+    def put(self, *args, **kwargs):
+        self._create()
+        return self._sync.put(*args, **kwargs)
+
+    def empty(self):
+        if not self._sync:
+            return True
+        self._create()
+        return self._sync.empty()
+
+    def full(self):
+        if not self._sync:
+            return False
+        self._create()
+        return self._sync.full()
+
+    def close(self):
+        if not self._sync:
+            return
+        self._create()
+        return self._sync.close()
 
 
 class ThreadCalls(object):
     def __init__(self):
-        self._queue = TrQueue()
+        self._queue = ForkQueue()
         self._thread = Thread(target=self._worker)
         self._thread.daemon = True
         self._thread.start()
 
     def is_alive(self):
-        return bool(self._thread)
+        return bool(self._thread) and self._thread.is_alive()
 
     def apply_async(self, func, args=None):
         if not func:
@@ -136,7 +232,7 @@ class SingletonThreadPool(object):
 
     @classmethod
     def is_active(cls):
-        return cls.__thread_pool and cls.__thread_pool.is_alive()
+        return cls.__thread_pool and cls.__thread_pool_pid == os.getpid() and cls.__thread_pool.is_alive()
 
 
 class SafeQueue(object):
@@ -158,7 +254,7 @@ class SafeQueue(object):
         except Exception:
             pass
         self._internal_q = None
-        self._q_size = 0
+        self._q_size = []  # list of PIDs we pushed, so this is atomic
 
     def empty(self):
         return self._q.empty() and (not self._internal_q or self._internal_q.empty())
@@ -166,12 +262,13 @@ class SafeQueue(object):
     def is_pending(self):
         # check if we have pending requests to be pushed (it does not mean they were pulled)
         # only call from main put process
-        return self._q_size > 0
+        return self._get_q_size_len() > 0
 
     def close(self, event, timeout=3.0):
         # wait until all pending requests pushed
         tic = time()
-        prev_q_size = self._q_size
+        pid = os.getpid()
+        prev_q_size = self._get_q_size_len(pid)
         while self.is_pending():
             if event:
                 event.set()
@@ -181,10 +278,10 @@ class SafeQueue(object):
             # timeout is for the maximum time to pull a single object from the queue,
             # this way if we get stuck we notice quickly and abort
             if timeout and (time()-tic) > timeout:
-                if prev_q_size == self._q_size:
+                if prev_q_size == self._get_q_size_len(pid):
                     break
                 else:
-                    prev_q_size = self._q_size
+                    prev_q_size = self._get_q_size_len(pid)
                     tic = time()
 
     def get(self, *args, **kwargs):
@@ -208,25 +305,37 @@ class SafeQueue(object):
         return buffer
 
     def put(self, obj):
+        # not atomic when forking for the first time
         # GIL will make sure it is atomic
-        self._q_size += 1
+        self._q_size.append(os.getpid())
         # make sure the block put is done in the thread pool i.e. in the background
         obj = pickle.dumps(obj)
+        if BackgroundMonitor.get_at_exit_state():
+            self._q_put(obj)
+            return
         self.__thread_pool.get().apply_async(self._q_put, args=(obj, ))
+
+    def _get_q_size_len(self, pid=None):
+        pid = pid or os.getpid()
+        return len([p for p in self._q_size if p == pid])
 
     def _q_put(self, obj):
         try:
             self._q.put(obj)
         except BaseException:
             # make sure we zero the _q_size of the process dies (i.e. queue put fails)
-            self._q_size = 0
+            self._q_size = []
             raise
+        pid = os.getpid()
         # GIL will make sure it is atomic
-        self._q_size -= 1
+        # pop the First "counter" that is ours (i.e. pid == os.getpid())
+        p = None
+        while p != pid:
+            p = self._q_size.pop()
 
     def _init_reader_thread(self):
         if not self._internal_q:
-            self._internal_q = TrQueue()
+            self._internal_q = ForkQueue()
         if not self._reader_thread or not self._reader_thread.is_alive():
             # read before we start the thread
             self._reader_thread = Thread(target=self._reader_daemon)
@@ -326,8 +435,6 @@ class SingletonLock(AbstractContextManager):
         """Raise any exception triggered within the runtime context."""
         # Do whatever cleanup.
         self.release()
-        if any((exc_type, exc_value, traceback,)):
-            raise (exc_type, exc_value, traceback)
 
 
 class BackgroundMonitor(object):
@@ -337,14 +444,16 @@ class BackgroundMonitor(object):
     _main_process_task_id = None
     _parent_pid = None
     _sub_process_started = None
+    _at_exit = False
     _instances = {}  # type: Dict[int, List[BackgroundMonitor]]
 
     def __init__(self, task, wait_period):
-        self._event = TrEvent()
-        self._done_ev = TrEvent()
-        self._start_ev = TrEvent()
+        self._event = ForkEvent()
+        self._done_ev = ForkEvent()
+        self._start_ev = ForkEvent()
         self._task_pid = os.getpid()
         self._thread = None
+        self._thread_pid = None
         self._wait_timeout = wait_period
         self._subprocess = None if task.is_main_task() else False
         self._task_id = task.id
@@ -366,12 +475,15 @@ class BackgroundMonitor(object):
     def wait(self, timeout=None):
         if not self._done_ev:
             return
-        self._done_ev.wait(timeout=timeout)
+        if not self.is_subprocess_mode() or self.is_subprocess_mode_and_parent_process():
+            self._done_ev.wait(timeout=timeout)
 
     def _start(self):
         # if we already started do nothing
         if isinstance(self._thread, Thread):
-            return
+            if self._thread_pid == os.getpid():
+                return
+        self._thread_pid = os.getpid()
         self._thread = Thread(target=self._daemon)
         self._thread.daemon = True
         self._thread.start()
@@ -380,7 +492,8 @@ class BackgroundMonitor(object):
         if not self._thread:
             return
 
-        if not self.is_subprocess_mode() or self.is_subprocess_alive():
+        if not self._is_subprocess_mode_and_not_parent_process() and (
+                not self.is_subprocess_mode() or self.is_subprocess_alive()):
             self._event.set()
 
         if isinstance(self._thread, Thread):
@@ -388,7 +501,7 @@ class BackgroundMonitor(object):
                 self._get_instances().remove(self)
             except ValueError:
                 pass
-            self._thread = None
+            self._thread = False
 
     def daemon(self):
         while True:
@@ -400,7 +513,7 @@ class BackgroundMonitor(object):
         self._start_ev.set()
         self.daemon()
         self.post_execution()
-        self._thread = None
+        self._thread = False
 
     def post_execution(self):
         self._done_ev.set()
@@ -544,7 +657,12 @@ class BackgroundMonitor(object):
         for i in instances:
             # DO NOT CHANGE, we need to catch base exception, if the process gte's killed
             try:
-                while i._thread and i._thread.is_alive():
+                while i._thread is None or (i._thread and i._thread.is_alive()):
+                    # thread is still not up
+                    if i._thread is None:
+                        sleep(0.1)
+                        continue
+
                     # noinspection PyBroadException
                     try:
                         p = psutil.Process(parent_pid)
@@ -568,11 +686,14 @@ class BackgroundMonitor(object):
         return
 
     def is_alive(self):
-        if self.is_subprocess_mode():
-            return self.is_subprocess_alive() and self._thread \
-                   and self._start_ev.is_set() and not self._done_ev.is_set()
-        else:
+        if not self.is_subprocess_mode():
             return isinstance(self._thread, Thread) and self._thread.is_alive()
+
+        if self.get_at_exit_state():
+            return self.is_subprocess_alive() and self._thread
+
+        return self.is_subprocess_alive() and self._thread and \
+               self._start_ev.is_set() and not self._done_ev.is_set()
 
     @classmethod
     def _fast_is_subprocess_alive(cls):
@@ -620,6 +741,16 @@ class BackgroundMonitor(object):
     def _is_subprocess_mode_and_not_parent_process(self):
         return self.is_subprocess_mode() and self._parent_pid != os.getpid()
 
+    def is_subprocess_mode_and_parent_process(self):
+        return self.is_subprocess_mode() and self._parent_pid == os.getpid()
+
+    def _is_thread_mode_and_not_main_process(self):
+        if self.is_subprocess_mode():
+            return False
+        from ... import Task
+        # noinspection PyProtectedMember
+        return Task._Task__is_subprocess()
+
     @classmethod
     def is_subprocess_enabled(cls, task=None):
         return bool(cls._main_process) and (not task or task.id == cls._main_process_task_id)
@@ -648,6 +779,14 @@ class BackgroundMonitor(object):
         tic = time()
         while cls.is_subprocess_alive(task=task) and (not timeout or time()-tic < timeout):
             sleep(0.03)
+
+    @classmethod
+    def set_at_exit_state(cls, state=True):
+        cls._at_exit = bool(state)
+
+    @classmethod
+    def get_at_exit_state(cls):
+        return cls._at_exit
 
 
 def leave_process(status=0):

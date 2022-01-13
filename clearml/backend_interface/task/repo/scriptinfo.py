@@ -760,7 +760,7 @@ class ScriptInfo(object):
     def _get_script_info(
             cls, filepaths, check_uncommitted=True, create_requirements=True, log=None,
             uncommitted_from_remote=False, detect_jupyter_notebook=True,
-            add_missing_installed_packages=False, detailed_req_report=None):
+            add_missing_installed_packages=False, detailed_req_report=None, force_single_script=False):
         jupyter_filepath = cls._get_jupyter_notebook_filename() if detect_jupyter_notebook else None
         if jupyter_filepath:
             scripts_path = [Path(os.path.normpath(jupyter_filepath)).absolute()]
@@ -786,7 +786,11 @@ class ScriptInfo(object):
 
         script_dir = scripts_dir[0]
         script_path = scripts_path[0]
-        plugin = next((p for p in cls.plugins if p.exists(script_dir)), None)
+
+        if force_single_script:
+            plugin = None
+        else:
+            plugin = next((p for p in cls.plugins if p.exists(script_dir)), None)
 
         repo_info = DetectionResult()
         messages = []
@@ -880,7 +884,7 @@ class ScriptInfo(object):
     @classmethod
     def get(cls, filepaths=None, check_uncommitted=True, create_requirements=True, log=None,
             uncommitted_from_remote=False, detect_jupyter_notebook=True, add_missing_installed_packages=False,
-            detailed_req_report=None):
+            detailed_req_report=None, force_single_script=False):
         try:
             if not filepaths:
                 filepaths = [sys.argv[0], ]
@@ -892,6 +896,7 @@ class ScriptInfo(object):
                 detect_jupyter_notebook=detect_jupyter_notebook,
                 add_missing_installed_packages=add_missing_installed_packages,
                 detailed_req_report=detailed_req_report,
+                force_single_script=force_single_script,
             )
         except SystemExit:
             pass

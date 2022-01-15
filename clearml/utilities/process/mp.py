@@ -692,8 +692,10 @@ class BackgroundMonitor(object):
         if self.get_at_exit_state():
             return self.is_subprocess_alive() and self._thread
 
-        return self.is_subprocess_alive() and self._thread and \
-               self._start_ev.is_set() and not self._done_ev.is_set()
+        return self.is_subprocess_alive() and \
+            self._thread and \
+            self._start_ev.is_set() and \
+            not self._done_ev.is_set()
 
     @classmethod
     def _fast_is_subprocess_alive(cls):

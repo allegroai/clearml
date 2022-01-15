@@ -1,6 +1,5 @@
 import abc
 import hashlib
-import os
 import time
 from functools import reduce
 from logging import getLevelName

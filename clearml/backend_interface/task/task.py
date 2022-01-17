@@ -75,6 +75,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     _report_subprocess_enabled = deferred_config('development.report_use_subprocess', sys.platform == 'linux')
     _force_use_pip_freeze = deferred_config(multi=[('development.detect_with_pip_freeze', False),
                                                    ('development.detect_with_conda_freeze', False)])
+    _force_store_standalone_script = False
     _offline_filename = 'task.json'
 
     class TaskTypes(Enum):
@@ -246,8 +247,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             result, script_requirements = ScriptInfo.get(
                 filepaths=[self._calling_filename, sys.argv[0], ]
                 if ScriptInfo.is_running_from_module() else [sys.argv[0], self._calling_filename, ],
-                log=self.log, create_requirements=False,
-                check_uncommitted=self._store_diff, uncommitted_from_remote=self._store_remote_diff
+                log=self.log,
+                create_requirements=False,
+                check_uncommitted=self._store_diff,
+                uncommitted_from_remote=self._store_remote_diff,
+                force_single_script=self._force_store_standalone_script,
             )
             for msg in result.warning_messages:
                 self.get_logger().report_text(msg)
@@ -569,11 +573,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """ The signal that this Task started. """
         return self.send(tasks.StartedRequest(self.id, force=force), ignore_errors=ignore_errors)
 
-    def stopped(self, ignore_errors=True, force=False, status_reason=None):
-        # type: (bool, bool, Optional[str]) -> ()
+    def stopped(self, ignore_errors=True, force=False, status_reason=None, status_message=None):
+        # type: (bool, bool, Optional[str], Optional[str]) -> ()
         """ The signal that this Task stopped. """
         return self.send(
-            tasks.StoppedRequest(self.id, force=force, status_reason=status_reason),
+            tasks.StoppedRequest(self.id, force=force, status_reason=status_reason, status_message=status_message),
             ignore_errors=ignore_errors
         )
 
@@ -587,7 +591,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def mark_completed(self, ignore_errors=True, status_message=None, force=False):
         # type: (bool, Optional[str], bool) -> ()
-        """ The signal indicating that this Task completed. """
+        """
+        Manually mark a Task as completed
+
+        :param bool ignore_errors: If True (default), ignore any errors raised
+        :param bool force: If True the task status will be changed to `stopped` regardless of the current Task state.
+        :param str status_message: Optional, add status change message to the stop request.
+            This message will be stored as status_message on the Task's info panel
+        """
         if hasattr(tasks, 'CompletedRequest') and callable(tasks.CompletedRequest):
             return self.send(
                 tasks.CompletedRequest(self.id, status_reason='completed', status_message=status_message, force=force),
@@ -1855,6 +1866,19 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         (instead of `pip freeze` or automatic analysis)
         """
         cls._force_use_pip_freeze = requirements_file if requirements_file else bool(force)
+
+    @classmethod
+    def force_store_standalone_script(cls, force=True):
+        # type: (bool) -> None
+        """
+        Force using storing the main python file as a single standalone script, instead of linking with the
+        local git repository/commit ID.
+
+        Notice: Must be called before `Task.init` !
+
+        :param force: Set force using `pip freeze` flag on/off
+        """
+        cls._force_store_standalone_script = bool(force)
 
     def _get_default_report_storage_uri(self):
         # type: () -> str

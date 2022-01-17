@@ -56,6 +56,9 @@ class ResourceMonitor(BackgroundMonitor):
                 pass
 
     def daemon(self):
+        if self._is_thread_mode_and_not_main_process():
+            return
+
         seconds_since_started = 0
         reported = 0
         last_iteration = 0

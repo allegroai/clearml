@@ -2,13 +2,12 @@ import datetime
 import json
 import logging
 import math
-from multiprocessing import Semaphore
-from threading import Event as TrEvent
+import os
 from time import sleep, time
 
 import numpy as np
 import six
-from six.moves.queue import Queue as TrQueue, Empty
+from six.moves.queue import Empty
 
 from .events import (
     ScalarEvent, VectorEvent, ImageEvent, PlotEvent, ImageEventNoUpload,
@@ -21,7 +20,7 @@ from ...utilities.plotly_reporter import (
     create_2d_histogram_plot, create_value_matrix, create_3d_surface,
     create_2d_scatter_series, create_3d_scatter_series, create_line_plot, plotly_scatter3d_layout_dict,
     create_image_plot, create_plotly_table, )
-from ...utilities.process.mp import BackgroundMonitor
+from ...utilities.process.mp import BackgroundMonitor, ForkSemaphore, ForkEvent, ForkQueue
 from ...utilities.py3_interop import AbstractContextManager
 from ...utilities.process.mp import SafeQueue as PrQueue, SafeEvent
 
@@ -36,41 +35,48 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
         super(BackgroundReportService, self).__init__(
             task=task, wait_period=flush_frequency)
         self._flush_threshold = flush_threshold
-        self._exit_event = TrEvent()
-        self._empty_state_event = TrEvent()
-        self._queue = TrQueue()
+        self._flush_event = ForkEvent()
+        self._empty_state_event = ForkEvent()
+        self._queue = ForkQueue()
         self._queue_size = 0
-        self._res_waiting = Semaphore()
+        self._res_waiting = ForkSemaphore()
         self._metrics = metrics
         self._storage_uri = None
         self._async_enable = async_enable
+        self._is_thread_mode_in_subprocess_flag = None
 
     def set_storage_uri(self, uri):
         self._storage_uri = uri
 
     def set_subprocess_mode(self):
-        if isinstance(self._queue, TrQueue):
+        if isinstance(self._queue, ForkQueue):
             self._write()
             self._queue = PrQueue()
-        if not isinstance(self._exit_event, SafeEvent):
-            self._exit_event = SafeEvent()
+        if not isinstance(self._event, SafeEvent):
+            self._event = SafeEvent()
         if not isinstance(self._empty_state_event, SafeEvent):
             self._empty_state_event = SafeEvent()
         super(BackgroundReportService, self).set_subprocess_mode()
 
     def stop(self):
         if isinstance(self._queue, PrQueue):
-            self._queue.close(self._event)
+            self._queue.close(self._flush_event)
         if not self.is_subprocess_mode() or self.is_subprocess_alive():
-            self._exit_event.set()
+            self._flush_event.set()
         super(BackgroundReportService, self).stop()
 
     def flush(self):
+        while isinstance(self._queue, PrQueue) and self._queue.is_pending():
+            sleep(0.1)
         self._queue_size = 0
+        # stop background process?!
         if not self.is_subprocess_mode() or self.is_subprocess_alive():
-            self._event.set()
+            self._flush_event.set()
 
     def wait_for_events(self, timeout=None):
+        if self._is_subprocess_mode_and_not_parent_process() and self.get_at_exit_state():
+            return
+
         # noinspection PyProtectedMember
         if self._is_subprocess_mode_and_not_parent_process():
             while self._queue and not self._queue.empty():
@@ -78,7 +84,7 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
             return
 
         self._empty_state_event.clear()
-        if isinstance(self._empty_state_event, TrEvent):
+        if isinstance(self._empty_state_event, ForkEvent):
             tic = time()
             while self._thread and self._thread.is_alive() and (not timeout or time()-tic < timeout):
                 if self._empty_state_event.wait(timeout=1.0):
@@ -100,19 +106,22 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
             # gel all data, work on local queue:
             self._write()
             # replace queue:
-            self._queue = TrQueue()
+            self._queue = ForkQueue()
             self._queue_size = 0
-            self._event = TrEvent()
-            self._done_ev = TrEvent()
-            self._start_ev = TrEvent()
-            self._exit_event = TrEvent()
-            self._empty_state_event = TrEvent()
-            self._res_waiting = Semaphore()
+            self._event = ForkEvent()
+            self._done_ev = ForkEvent()
+            self._start_ev = ForkEvent()
+            self._flush_event = ForkEvent()
+            self._empty_state_event = ForkEvent()
+            self._res_waiting = ForkSemaphore()
             # set thread mode
             self._subprocess = False
+            self._is_thread_mode_in_subprocess_flag = None
             # start background thread
             self._thread = None
             self._start()
+            logging.getLogger('clearml.reporter').warning(
+                'Event reporting sub-process lost, switching to thread based reporting')
 
         self._queue.put(ev)
         self._queue_size += 1
@@ -120,9 +129,11 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
             self.flush()
 
     def daemon(self):
-        while not self._exit_event.wait(0):
-            self._event.wait(self._wait_timeout)
-            self._event.clear()
+        self._is_thread_mode_in_subprocess_flag = self._is_thread_mode_and_not_main_process()
+
+        while not self._event.wait(0):
+            self._flush_event.wait(self._wait_timeout)
+            self._flush_event.clear()
             # lock state
             self._res_waiting.acquire()
             self._write()
@@ -130,7 +141,7 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
             if self.get_num_results() > 0:
                 self.wait_for_results()
             # set empty flag only if we are not waiting for exit signal
-            if not self._exit_event.wait(0):
+            if not self._event.wait(0):
                 self._empty_state_event.set()
             # unlock state
             self._res_waiting.release()
@@ -155,8 +166,15 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
                 break
         if not events:
             return
+        if self._is_thread_mode_in_subprocess_flag:
+            for e in events:
+                if isinstance(e, UploadEvent):
+                    # noinspection PyProtectedMember
+                    e._generate_file_name(force_pid_suffix=os.getpid())
+
         res = self._metrics.write_events(
             events, async_enable=self._async_enable, storage_uri=self._storage_uri)
+
         if self._async_enable:
             self._add_async_result(res)
 

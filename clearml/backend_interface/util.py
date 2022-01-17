@@ -52,14 +52,28 @@ def make_message(s, **kwargs):
     return s % args
 
 
-def get_or_create_project(session, project_name, description=None):
+def get_existing_project(session, project_name):
+    """Return either the project ID if it exists, an empty string if it doesn't or None if backend request failed."""
     res = session.send(projects.GetAllRequest(name=exact_match_regex(project_name), only_fields=['id']))
     if not res:
         return None
     if res.response and res.response.projects:
         return res.response.projects[0].id
-    res = session.send(projects.CreateRequest(name=project_name, description=description or ''))
-    return res.response.id
+    return ""
+
+
+def get_or_create_project(session, project_name, description=None):
+    """Return the ID of an existing project, or if it does not exist, make a new one and return that ID instead."""
+    project_id = get_existing_project(session, project_name)
+    if project_id:
+        return project_id
+    if project_id == "":
+        # Project was not found, so create a new one
+        res = session.send(projects.CreateRequest(name=project_name, description=description or ''))
+        return res.response.id
+
+    # This should only happen if backend response was None and so project_id is also None
+    return None
 
 
 def get_queue_id(session, queue):

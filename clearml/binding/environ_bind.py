@@ -1,4 +1,5 @@
 import os
+from time import sleep
 
 import six
 
@@ -82,26 +83,27 @@ class PatchOsFork(object):
         # Make sure the new process stdout is logged
         if not ret:
             from ..task import Task
-            if Task.current_task() is not None:
-                # bind sub-process logger
-                task = Task.init(project_name=None, task_name=None, task_type=None)
-                task.get_logger().flush()
-
-                # Hack: now make sure we setup the reporter threads (Log+Reporter)
+            # force creating a Task
+            task = Task.current_task()
+            # # Hack: now make sure we setup the reporter threads (Log+Reporter)
+            if not task._report_subprocess_enabled:
                 BackgroundMonitor.start_all(task=task)
 
-                # TODO: Check if the signal handler method is enough, for the time being, we have both
-                # # if we got here patch the os._exit of our instance to call us
-                def _at_exit_callback(*a_args, **a_kwargs):
-                    # call at exit manually
-                    # noinspection PyProtectedMember
-                    task._at_exit()
-                    # noinspection PyProtectedMember, PyUnresolvedReferences
-                    return os._org_exit(*a_args, **a_kwargs)
+            # The signal handler method is Not enough, for the time being, we have both
+            # even though it makes little sense
+            # # if we got here patch the os._exit of our instance to call us
+            def _at_exit_callback(*a_args, **a_kwargs):
+                # just make sure we flush the internal state (the at exist caught by the external signal does the rest
+                # in theory we should not have to do any of that, but for some reason if we do not
+                # the signal is never caught by the signal call backs, not sure why....
+                sleep(0.1)
+                # noinspection PyProtectedMember, PyUnresolvedReferences
+                return os._org_exit(*a_args, **a_kwargs)
 
-                if not hasattr(os, '_org_exit'):
-                    # noinspection PyProtectedMember, PyUnresolvedReferences
-                    os._org_exit = os._exit
-                os._exit = _at_exit_callback
+            if not hasattr(os, '_org_exit'):
+                # noinspection PyProtectedMember, PyUnresolvedReferences
+                os._org_exit = os._exit
+
+            os._exit = _at_exit_callback
 
         return ret

@@ -34,10 +34,20 @@ def main():
         "momentum": 0.9,
         "loss_report": 100,
     }
-    model = OutputModel(task=task, framework="pytorch")
 
     params = task.connect(params)  # enabling configuration override by clearml
     print(params)  # printing actual configuration (after override in remote mode)
+
+    model = OutputModel(task=task, framework="pytorch")
+    model_config_dict = {
+        "list_of_ints": [1, 2, 3, 4],
+        "dict": {
+            "sub_value": "string",
+            "sub_integer": 11
+            },
+        "value": 13.37
+    }
+    model.update_design(config_dict=model_config_dict)
 
     manager = StorageManager()
 

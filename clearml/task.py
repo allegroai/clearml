@@ -551,9 +551,8 @@ class Task(_Task):
             Task.__main_task = task
             # register the main task for at exit hooks (there should only be one)
             task.__register_at_exit(task._at_exit)
-            # patch OS forking if we are not logging with a subprocess
-            if not cls._report_subprocess_enabled:
-                PatchOsFork.patch_fork()
+            # always patch OS forking because of ProcessPool and the alike
+            PatchOsFork.patch_fork()
             if auto_connect_frameworks:
                 is_auto_connect_frameworks_bool = not isinstance(auto_connect_frameworks, dict)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('hydra', True):
@@ -1455,17 +1454,19 @@ class Task(_Task):
         self.started(force=force)
         self.reload()
 
-    def mark_stopped(self, force=False):
-        # type: (bool) -> ()
+    def mark_stopped(self, force=False, status_message=None):
+        # type: (bool, Optional[str]) -> ()
         """
         Manually mark a Task as stopped (also used in :meth:`_at_exit`)
 
         :param bool force: If True the task status will be changed to `stopped` regardless of the current Task state.
+        :param str status_message: Optional, add status change message to the stop request.
+            This message will be stored as status_message on the Task's info panel
         """
         # flush any outstanding logs
         self.flush(wait_for_uploads=True)
         # mark task as stopped
-        self.stopped(force=force)
+        self.stopped(force=force, status_message=str(status_message) if status_message else None)
 
     def flush(self, wait_for_uploads=False):
         # type: (bool) -> bool
@@ -3120,6 +3121,12 @@ class Task(_Task):
         # protect sub-process at_exit (should never happen)
         if self._at_exit_called and self._at_exit_called != get_current_thread_id():
             return
+
+        # make sure we do not try to use events, because Python might deadlock itself.
+        # https://bugs.python.org/issue41606
+        if self.__is_subprocess():
+            BackgroundMonitor.set_at_exit_state(True)
+
         # shutdown will clear the main, so we have to store it before.
         # is_main = self.is_main_task()
         # fix debugger signal in the middle, catch everything
@@ -3313,7 +3320,8 @@ class Task(_Task):
 
         # make sure no one will re-enter the shutdown method
         self._at_exit_called = True
-        BackgroundMonitor.wait_for_sub_process(self)
+        if not is_sub_process and BackgroundMonitor.is_subprocess_enabled():
+            BackgroundMonitor.wait_for_sub_process(self)
 
     @classmethod
     def __register_at_exit(cls, exit_callback, only_remove_signal_and_exception_hooks=False):
@@ -3470,9 +3478,10 @@ class Task(_Task):
         else:
             cls.__exit_hook.update_callback(exit_callback)
 
-    @classmethod
-    def _remove_at_exit_callbacks(cls):
-        cls.__register_at_exit(None, only_remove_signal_and_exception_hooks=True)
+    def _remove_at_exit_callbacks(self):
+        self.__register_at_exit(None, only_remove_signal_and_exception_hooks=True)
+        atexit.unregister(self.__exit_hook._exit_callback)
+        self._at_exit_called = True
 
     @classmethod
     def __get_task(

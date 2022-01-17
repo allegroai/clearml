@@ -19,6 +19,7 @@ from .backend_interface.logger import StdStreamPatch
 from .backend_interface.task import Task as _Task
 from .backend_interface.task.log import TaskHandler
 from .backend_interface.util import mutually_exclusive
+from .backend_interface.metrics.events import UploadEvent
 from .config import running_remotely, get_cache_dir, config, DEBUG_SIMULATE_REMOTE_TASK, deferred_config
 from .errors import UsageError
 from .storage.helper import StorageHelper
@@ -93,6 +94,8 @@ class Logger(object):
             base_logger = LoggerRoot.get_base_logger()
             if base_logger and base_logger.handlers:
                 StdStreamPatch.patch_logging_formatter(self, base_logger.handlers[0])
+
+        self._default_max_sample_history = None
 
     @classmethod
     def current_logger(cls):
@@ -853,7 +856,8 @@ class Logger(object):
                 image=image,
                 iter=iteration or 0,
                 upload_uri=upload_uri,
-                max_image_history=max_image_history,
+                max_image_history=max_image_history if max_image_history is not None
+                else self._default_max_sample_history,
                 delete_after_upload=delete_after_upload,
             )
 
@@ -936,7 +940,7 @@ class Logger(object):
                 stream=stream,
                 iter=iteration or 0,
                 upload_uri=upload_uri,
-                max_history=max_history,
+                max_history=max_history if max_history is not None else self._default_max_sample_history,
                 delete_after_upload=delete_after_upload,
                 file_extension=file_extension,
             )
@@ -1090,6 +1094,48 @@ class Logger(object):
             specify ``None`` or ``0``.
         """
         pass
+
+    def set_default_debug_sample_history(self, max_history):
+        # type: (int) -> None
+        """
+        Set the default maximum debug sample history when reporting media/debug samples.
+        Overrides the configuration file defaults.
+        When reporting debug samples with the same title/series combination and running iterations,
+        only the last X samples are stored (in other words samples are overwritten).
+        The default history size set with `max_history` is used when calling
+        `report_image`, `report_media` etc. without specifying `max_history`
+
+        :param max_history: Number of samples (files) to store on a unique set of title/series being reported
+            with different iteration counter. This is used to make sure users do not end up exploding storage
+            on server storage side.
+
+            For example the following code sample will store the last 5 images even though
+            we are reporting 100 samples.
+
+            .. code-block:: py
+
+                logger.set_default_debug_sample_history(5)
+                for i in range(100):
+                    logger.report_image(title='image', series='sample', iteration=i, ...)
+
+        :return:
+        """
+        self._default_max_sample_history = int(max_history)
+
+    def get_default_debug_sample_history(self):
+        # type: () -> int
+        """
+        Return the the default max debug sample history when reporting media/debug samples.
+        If value was not set specifically, the functions returns the configuration file default value.
+
+        :return: default number of samples (files) to store on a unique set of title/series being reported
+            with different iteration counter. This is used to make sure users do not end up exploding storage
+            on server storage side.
+        """
+        if self._default_max_sample_history is not None:
+            return self._default_max_sample_history
+        # noinspection PyProtectedMember
+        return int(UploadEvent._file_history_size)
 
     def report_image_and_upload(
             self,
@@ -1298,7 +1344,7 @@ class Logger(object):
             matrix=matrix,
             iter=iteration or 0,
             upload_uri=upload_uri,
-            max_image_history=max_image_history,
+            max_image_history=max_image_history if max_image_history is not None else self._default_max_sample_history,
             delete_after_upload=delete_after_upload,
         )
 
@@ -1344,7 +1390,7 @@ class Logger(object):
             image=None,
             iter=iteration or 0,
             upload_uri=upload_uri,
-            max_image_history=max_file_history,
+            max_image_history=max_file_history if max_file_history is not None else self._default_max_sample_history,
             delete_after_upload=delete_after_upload,
         )
 

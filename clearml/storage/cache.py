@@ -197,7 +197,7 @@ class CacheManager(object):
                         pass
                 else:
                     try:
-                        shutil.rmtree(f.as_posix())
+                        shutil.rmtree(f.as_posix(), ignore_errors=False)
                     except Exception as e:
                         # failed deleting folder
                         LoggerRoot.get_base_logger().debug(

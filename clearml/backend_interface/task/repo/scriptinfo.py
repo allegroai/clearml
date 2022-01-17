@@ -524,6 +524,28 @@ class ScriptInfo(object):
 
     @classmethod
     def _get_jupyter_notebook_filename(cls):
+        # check if we are running in vscode, we have the jupyter notebook defined:
+        if 'IPython' in sys.modules:
+            # noinspection PyBroadException
+            try:
+                from IPython import get_ipython  # noqa
+                ip = get_ipython()
+                # vscode-jupyter PR #8531 added this variable
+                local_ipynb_file = ip.__dict__.get('user_ns', {}).get('__vsc_ipynb_file__') if ip else None
+                if local_ipynb_file:
+                    # now replace the .ipynb with .py
+                    # we assume we will have that file available for monitoring
+                    local_ipynb_file = Path(local_ipynb_file)
+                    script_entry_point = local_ipynb_file.with_suffix('.py').as_posix()
+
+                    # install the post store hook,
+                    # notice that if we do not have a local file we serialize/write every time the entire notebook
+                    cls._jupyter_install_post_store_hook(local_ipynb_file.as_posix(), log_history=False)
+
+                    return script_entry_point
+            except Exception:
+                pass
+
         if not (sys.argv[0].endswith(os.path.sep + 'ipykernel_launcher.py') or
                 sys.argv[0].endswith(os.path.join(os.path.sep, 'ipykernel', '__main__.py'))) \
                 or len(sys.argv) < 3 or not sys.argv[2].endswith('.json'):
@@ -738,7 +760,7 @@ class ScriptInfo(object):
     def _get_script_info(
             cls, filepaths, check_uncommitted=True, create_requirements=True, log=None,
             uncommitted_from_remote=False, detect_jupyter_notebook=True,
-            add_missing_installed_packages=False, detailed_req_report=None):
+            add_missing_installed_packages=False, detailed_req_report=None, force_single_script=False):
         jupyter_filepath = cls._get_jupyter_notebook_filename() if detect_jupyter_notebook else None
         if jupyter_filepath:
             scripts_path = [Path(os.path.normpath(jupyter_filepath)).absolute()]
@@ -764,7 +786,11 @@ class ScriptInfo(object):
 
         script_dir = scripts_dir[0]
         script_path = scripts_path[0]
-        plugin = next((p for p in cls.plugins if p.exists(script_dir)), None)
+
+        if force_single_script:
+            plugin = None
+        else:
+            plugin = next((p for p in cls.plugins if p.exists(script_dir)), None)
 
         repo_info = DetectionResult()
         messages = []
@@ -858,7 +884,7 @@ class ScriptInfo(object):
     @classmethod
     def get(cls, filepaths=None, check_uncommitted=True, create_requirements=True, log=None,
             uncommitted_from_remote=False, detect_jupyter_notebook=True, add_missing_installed_packages=False,
-            detailed_req_report=None):
+            detailed_req_report=None, force_single_script=False):
         try:
             if not filepaths:
                 filepaths = [sys.argv[0], ]
@@ -870,6 +896,7 @@ class ScriptInfo(object):
                 detect_jupyter_notebook=detect_jupyter_notebook,
                 add_missing_installed_packages=add_missing_installed_packages,
                 detailed_req_report=detailed_req_report,
+                force_single_script=force_single_script,
             )
         except SystemExit:
             pass

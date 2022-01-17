@@ -24,6 +24,7 @@ from _socket import gethostname
 from attr import attrs, attrib, asdict
 from furl import furl
 from pathlib2 import Path
+from requests import codes as requests_codes
 from requests.exceptions import ConnectionError
 from six import binary_type, StringIO
 from six.moves.queue import Queue, Empty
@@ -1004,6 +1005,7 @@ class _HttpDriver(_Driver):
 
     timeout_connection = deferred_config('http.timeout.connection', 30)
     timeout_total = deferred_config('http.timeout.total', 30)
+    max_retries = deferred_config('http.download.max_retries', 15)
     min_kbps_speed = 50
 
     schemes = ('http', 'https')
@@ -1014,7 +1016,22 @@ class _HttpDriver(_Driver):
 
         def __init__(self, name, retries=5, **kwargs):
             self.name = name
-            self.session = get_http_session_with_retry(total=retries, connect=retries, read=retries, redirect=retries)
+            self.session = get_http_session_with_retry(
+                total=retries,
+                connect=retries,
+                read=retries,
+                redirect=retries,
+                backoff_factor=0.5,
+                backoff_max=120,
+                status_forcelist=[
+                    requests_codes.request_timeout,
+                    requests_codes.timeout,
+                    requests_codes.bad_gateway,
+                    requests_codes.service_unavailable,
+                    requests_codes.bandwidth_limit_exceeded,
+                    requests_codes.too_many_requests,
+                ]
+            )
 
         def get_headers(self, url):
             if not self._default_backend_session:
@@ -1032,8 +1049,8 @@ class _HttpDriver(_Driver):
             self.url, self.is_stream, self.container_name, self.object_name = \
                 url, is_stream, container_name, object_name
 
-    def __init__(self, retries=5):
-        self._retries = retries
+    def __init__(self, retries=None):
+        self._retries = retries or int(self.max_retries)
         self._containers = {}
 
     def get_container(self, container_name, config=None, **kwargs):
@@ -1241,7 +1258,7 @@ class _Boto3Driver(_Driver):
     _connect_timeout = deferred_config('aws.boto3.connect_timeout', 60)
     _read_timeout = deferred_config('aws.boto3.read_timeout', 60)
 
-    _stream_download_pool_connections = 128
+    _stream_download_pool_connections = deferred_config('aws.boto3.stream_connections', 128)
     _stream_download_pool = None
     _stream_download_pool_pid = None
 
@@ -1307,7 +1324,7 @@ class _Boto3Driver(_Driver):
     def _get_stream_download_pool(self):
         if self._stream_download_pool is None or self._stream_download_pool_pid != os.getpid():
             self._stream_download_pool_pid = os.getpid()
-            self._stream_download_pool = ThreadPoolExecutor(max_workers=self._stream_download_pool_connections)
+            self._stream_download_pool = ThreadPoolExecutor(max_workers=int(self._stream_download_pool_connections))
         return self._stream_download_pool
 
     def get_container(self, container_name, config=None, **kwargs):
@@ -1510,7 +1527,7 @@ class _Boto3Driver(_Driver):
 class _GoogleCloudStorageDriver(_Driver):
     """Storage driver for google cloud storage"""
 
-    _stream_download_pool_connections = 128
+    _stream_download_pool_connections = deferred_config('google.storage.stream_connections', 128)
     _stream_download_pool = None
     _stream_download_pool_pid = None
 
@@ -1550,7 +1567,7 @@ class _GoogleCloudStorageDriver(_Driver):
     def _get_stream_download_pool(self):
         if self._stream_download_pool is None or self._stream_download_pool_pid != os.getpid():
             self._stream_download_pool_pid = os.getpid()
-            self._stream_download_pool = ThreadPoolExecutor(max_workers=self._stream_download_pool_connections)
+            self._stream_download_pool = ThreadPoolExecutor(max_workers=int(self._stream_download_pool_connections))
         return self._stream_download_pool
 
     def get_container(self, container_name, config=None, **kwargs):

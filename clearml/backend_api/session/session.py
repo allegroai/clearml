@@ -1,5 +1,4 @@
 import json as json_lib
-import os
 import sys
 import types
 from socket import gethostname

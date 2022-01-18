@@ -52,7 +52,7 @@ class CacheManager(object):
             # check if we need to cache the file
             try:
                 # noinspection PyProtectedMember
-                direct_access = helper._driver.get_direct_access(remote_url)
+                direct_access = helper.get_driver_direct_access(remote_url)
             except (OSError, ValueError):
                 LoggerRoot.get_base_logger().debug("Failed accessing local file: {}".format(remote_url))
                 return None

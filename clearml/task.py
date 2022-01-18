@@ -44,6 +44,7 @@ from .binding.frameworks.lightgbm_bind import PatchLIGHTgbmModelIO
 from .binding.frameworks.pytorch_bind import PatchPyTorchModelIO
 from .binding.frameworks.tensorflow_bind import TensorflowBinding
 from .binding.frameworks.xgboost_bind import PatchXGBoostModelIO
+from .binding.frameworks.catboost_bind import PatchCatBoostModelIO
 from .binding.frameworks.megengine_bind import PatchMegEngineModelIO
 from .binding.joblib_bind import PatchedJoblib
 from .binding.matplotlib_bind import PatchedMatplotlib
@@ -583,6 +584,8 @@ class Task(_Task):
                     PatchMegEngineModelIO.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('xgboost', True):
                     PatchXGBoostModelIO.update_current_task(task)
+                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('catboost', True):
+                    PatchCatBoostModelIO.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('fastai', True):
                     PatchFastai.update_current_task(task)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('lightgbm', True):

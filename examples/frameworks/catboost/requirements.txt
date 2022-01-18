@@ -1,0 +1,3 @@
+catboost == 1.0.4
+numpy == 1.19.2
+scikit_learn == 1.0.2

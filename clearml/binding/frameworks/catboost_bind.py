@@ -13,6 +13,7 @@ from ...model import Framework
 class PatchCatBoostModelIO(PatchBaseModelIO):
     __main_task = None
     __patched = None 
+    __callback_cls = None
 
 
     @staticmethod
@@ -29,10 +30,14 @@ class PatchCatBoostModelIO(PatchBaseModelIO):
             return
         PatchCatBoostModelIO.__patched = True
         try:
-            import catboost
-            bst = catboost.CatBoost
-            bst.save_model = _patched_call(bst.save_model, PatchCatBoostModelIO._save)
-            bst.load_model = _patched_call(bst.load_model, PatchCatBoostModelIO._load)
+            from catboost import CatBoost, CatBoostClassifier, CatBoostRegressor, CatBoostRanker
+            CatBoost.save_model = _patched_call(CatBoost.save_model, PatchCatBoostModelIO._save)
+            CatBoost.load_model = _patched_call(CatBoost.load_model, PatchCatBoostModelIO._load)
+            PatchCatBoostModelIO.__callback_cls = PatchCatBoostModelIO._generate_training_callback_class()
+            CatBoost.fit = _patched_call(CatBoost.fit, PatchCatBoostModelIO._fit)
+            CatBoostClassifier.fit = _patched_call(CatBoostClassifier.fit, PatchCatBoostModelIO._fit)
+            CatBoostRegressor.fit = _patched_call(CatBoostRegressor.fit, PatchCatBoostModelIO._fit)
+            CatBoostRanker.fit = _patched_call(CatBoostRegressor.fit, PatchCatBoostModelIO._fit)
         except ImportError:
             pass
         except Exception:
@@ -71,15 +76,9 @@ class PatchCatBoostModelIO(PatchBaseModelIO):
 
         # register input model
         empty = _Empty()
-        # Hack: disabled
-        if False and running_remotely():
-            filename = WeightsFileHandler.restore_weights_file(empty, f, Framework.catboost,
-                                                               PatchXGBoostModelIO.__main_task)
-            model = original_fn(filename or f, *args, **kwargs)
-        else:
-            model = original_fn(obj, f, *args, **kwargs)
-            WeightsFileHandler.restore_weights_file(empty, filename, Framework.catboost,
-                PatchCatBoostModelIO.__main_task)
+        model = original_fn(obj, f, *args, **kwargs)
+        WeightsFileHandler.restore_weights_file(empty, filename, Framework.catboost,
+            PatchCatBoostModelIO.__main_task)
         if empty.trains_in_model:
             # noinspection PyBroadException
             try:
@@ -87,3 +86,26 @@ class PatchCatBoostModelIO(PatchBaseModelIO):
             except Exception:
                 pass
         return model
+
+    @staticmethod
+    def _fit(original_fn, obj, *args, **kwargs):
+        print('got in _callback_after_iteration')
+        callbacks = kwargs.get('callbacks') or []
+        kwargs['callbacks'] = callbacks + [PatchCatBoostModelIO.__callback_cls(task=PatchCatBoostModelIO.__main_task)]
+        return original_fn(obj, *args, **kwargs)
+
+    @staticmethod
+    def _generate_training_callback_class():
+        class ClearMLCallback:
+            def __init__(self, task):
+                self._logger = task.get_logger()
+
+            def after_iteration(self, info):
+                info = vars(info)
+                iteration = info['iteration']
+                for title, metric in info['metrics'].items():
+                    for series, log in metric.items():
+                        value = log[-1]
+                        self._logger.report_scalar(title=title, series=series, value=value, iteration=iteration)
+                return True
+        return ClearMLCallback

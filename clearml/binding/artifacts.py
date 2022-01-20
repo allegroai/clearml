@@ -319,7 +319,7 @@ class Artifacts(object):
             raise ValueError("Artifact by the name of {} is already registered, use register_artifact".format(name))
 
         # cast preview to string
-        if preview:
+        if preview not in (None, False):
             preview = str(preview)
 
         # evaluate lazy proxy object

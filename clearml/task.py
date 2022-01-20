@@ -1454,17 +1454,19 @@ class Task(_Task):
         self.started(force=force)
         self.reload()
 
-    def mark_stopped(self, force=False):
-        # type: (bool) -> ()
+    def mark_stopped(self, force=False, status_message=None):
+        # type: (bool, Optional[str]) -> ()
         """
         Manually mark a Task as stopped (also used in :meth:`_at_exit`)
 
         :param bool force: If True the task status will be changed to `stopped` regardless of the current Task state.
+        :param str status_message: Optional, add status change message to the stop request.
+            This message will be stored as status_message on the Task's info panel
         """
         # flush any outstanding logs
         self.flush(wait_for_uploads=True)
         # mark task as stopped
-        self.stopped(force=force)
+        self.stopped(force=force, status_message=str(status_message) if status_message else None)
 
     def flush(self, wait_for_uploads=False):
         # type: (bool) -> bool

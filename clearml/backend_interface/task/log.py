@@ -82,7 +82,7 @@ class BackgroundLogService(BackgroundMonitor):
 
     def add_to_queue(self, record):
         # check that we did not loose the reporter sub-process
-        if self.is_subprocess_mode() and not self._fast_is_subprocess_alive() and not self.get_at_exit_state():  ##HANGS IF RACE HOLDS!
+        if self.is_subprocess_mode() and not self._fast_is_subprocess_alive() and not self.get_at_exit_state():  # HANGS IF RACE HOLDS!
             # we lost the reporting subprocess, let's switch to thread mode
             # gel all data, work on local queue:
             self.send_all_records()

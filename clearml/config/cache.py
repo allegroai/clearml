@@ -1,8 +1,10 @@
 import json
+from os.path import expanduser
 
 import six
+from pathlib2 import Path
 
-from . import get_cache_dir, running_remotely
+from . import running_remotely
 from .defs import SESSION_CACHE_FILE
 
 
@@ -12,21 +14,26 @@ class SessionCache(object):
     TODO: Improve error handling to something like "except (FileNotFoundError, PermissionError, JSONDecodeError)"
     TODO: that's both six-compatible and tested
     """
+
+    SESSION_CACHE_FOLDER = "~/.clearml"
+
     @classmethod
     def _load_cache(cls):
+        # noinspection PyBroadException
         try:
             flag = 'rb' if six.PY2 else 'rt'
-            with (get_cache_dir() / SESSION_CACHE_FILE).open(flag) as fp:
+            with (Path(expanduser(cls.SESSION_CACHE_FOLDER)) / SESSION_CACHE_FILE).open(flag) as fp:
                 return json.load(fp)
         except Exception:
             return {}
 
     @classmethod
     def _store_cache(cls, cache):
+        # noinspection PyBroadException
         try:
-            get_cache_dir().mkdir(parents=True, exist_ok=True)
+            Path(expanduser(cls.SESSION_CACHE_FOLDER)).mkdir(parents=True, exist_ok=True)
             flag = 'wb' if six.PY2 else 'wt'
-            with (get_cache_dir() / SESSION_CACHE_FILE).open(flag) as fp:
+            with (Path(expanduser(cls.SESSION_CACHE_FOLDER)) / SESSION_CACHE_FILE).open(flag) as fp:
                 json.dump(cache, fp)
         except Exception:
             pass

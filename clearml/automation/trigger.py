@@ -98,7 +98,7 @@ class DatasetTrigger(BaseTrigger):
         if self.on_archive:
             system_tags = list(set(query.get('system_tags', []) + ['archived']))
             query.update({'system_tags': system_tags})
-            
+
         return query
 
 

@@ -24,6 +24,7 @@ from _socket import gethostname
 from attr import attrs, attrib, asdict
 from furl import furl
 from pathlib2 import Path
+from requests import codes as requests_codes
 from requests.exceptions import ConnectionError
 from six import binary_type, StringIO
 from six.moves.queue import Queue, Empty
@@ -613,7 +614,15 @@ class StorageHelper(object):
         else:
             return [obj.name for obj in self._driver.list_container_objects(self._container)]
 
-    def download_to_file(self, remote_path, local_path, overwrite_existing=False, delete_on_failure=True, verbose=None):
+    def download_to_file(
+            self,
+            remote_path,
+            local_path,
+            overwrite_existing=False,
+            delete_on_failure=True,
+            verbose=None,
+            skip_zero_size_check=False
+    ):
         def next_chunk(astream):
             if isinstance(astream, binary_type):
                 chunk = astream
@@ -631,7 +640,7 @@ class StorageHelper(object):
         verbose = self._verbose if verbose is None else verbose
 
         # Check if driver type supports direct access:
-        direct_access_path = self._driver.get_direct_access(remote_path)
+        direct_access_path = self.get_driver_direct_access(remote_path)
         if direct_access_path:
             return direct_access_path
 
@@ -701,7 +710,7 @@ class StorageHelper(object):
                         fd.write(data)
                         data, stream = next_chunk(stream)
 
-            if Path(temp_local_path).stat().st_size <= 0:
+            if not skip_zero_size_check and Path(temp_local_path).stat().st_size <= 0:
                 raise Exception('downloaded a 0-sized file')
 
             # if we are on windows, we need to remove the target file before renaming
@@ -724,7 +733,7 @@ class StorageHelper(object):
                     pass
                 # file was downloaded by a parallel process, check we have the final output and delete the partial copy
                 path_local_path = Path(local_path)
-                if not path_local_path.is_file() or path_local_path.stat().st_size <= 0:
+                if not path_local_path.is_file() or (not skip_zero_size_check and path_local_path.stat().st_size <= 0):
                     raise Exception('Failed renaming partial file, downloaded file exists and a 0-sized file')
 
             # report download if we are on the second chunk
@@ -806,6 +815,16 @@ class StorageHelper(object):
         if not helper:
             return None
         return helper.download_to_file(remote_url, local_path, overwrite_existing=overwrite_existing)
+
+    def get_driver_direct_access(self, path):
+        """
+        Check if the helper's driver has a direct access to the file
+
+        :param str path: file path to check access to
+        :return: Return the string representation of the file as path if have access to it, else None
+        """
+
+        return self._driver.get_direct_access(path)
 
     @classmethod
     def _canonize_url(cls, url):
@@ -1004,6 +1023,7 @@ class _HttpDriver(_Driver):
 
     timeout_connection = deferred_config('http.timeout.connection', 30)
     timeout_total = deferred_config('http.timeout.total', 30)
+    max_retries = deferred_config('http.download.max_retries', 15)
     min_kbps_speed = 50
 
     schemes = ('http', 'https')
@@ -1014,7 +1034,22 @@ class _HttpDriver(_Driver):
 
         def __init__(self, name, retries=5, **kwargs):
             self.name = name
-            self.session = get_http_session_with_retry(total=retries, connect=retries, read=retries, redirect=retries)
+            self.session = get_http_session_with_retry(
+                total=retries,
+                connect=retries,
+                read=retries,
+                redirect=retries,
+                backoff_factor=0.5,
+                backoff_max=120,
+                status_forcelist=[
+                    requests_codes.request_timeout,
+                    requests_codes.timeout,
+                    requests_codes.bad_gateway,
+                    requests_codes.service_unavailable,
+                    requests_codes.bandwidth_limit_exceeded,
+                    requests_codes.too_many_requests,
+                ]
+            )
 
         def get_headers(self, url):
             if not self._default_backend_session:
@@ -1032,8 +1067,8 @@ class _HttpDriver(_Driver):
             self.url, self.is_stream, self.container_name, self.object_name = \
                 url, is_stream, container_name, object_name
 
-    def __init__(self, retries=5):
-        self._retries = retries
+    def __init__(self, retries=None):
+        self._retries = retries or int(self.max_retries)
         self._containers = {}
 
     def get_container(self, container_name, config=None, **kwargs):

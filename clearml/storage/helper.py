@@ -1680,9 +1680,9 @@ class _AzureBlobServiceStorageDriver(_Driver):
             self.config = config
             self.account_url = account_url
             try:
-                from azure.storage.blob import BlockBlobService
+                from azure.storage.blob import BlockBlobService  # noqa
             except ImportError:
-                from azure.storage.blob import BlobServiceClient
+                from azure.storage.blob import BlobServiceClient  # noqa
                 self.__legacy = False
             else:
                 self.__legacy = True
@@ -1696,16 +1696,17 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 self.__blob_service.socket_timeout = self.SOCKET_TIMEOUT
             else:
                 credential = {
-                        'account_name': self.config.account_name,
-                        'account_key': self.config.account_key
-                        }
+                    'account_name': self.config.account_name,
+                    'account_key': self.config.account_key
+                 }
                 self.__blob_service = BlobServiceClient(
                     account_url=account_url, 
                     credential=credential,
                     max_single_put_size=self.MAX_SINGLE_PUT_SIZE,
-                    )
+                )
 
-        def create_blob_from_data(self, container_name, object_name, blob_name, data, max_connections=2, progress_callback=None): 
+        def create_blob_from_data(self, container_name, object_name, blob_name, data, max_connections=2,
+                                  progress_callback=None):
             if self.__legacy:
                 self.__blob_service.create_blob_from_bytes(
                     container_name,
@@ -1713,12 +1714,13 @@ class _AzureBlobServiceStorageDriver(_Driver):
                     data,
                     max_connections=max_connections,
                     progress_callback=progress_callback,
-                    )
+                )
             else:
                 client = self.__blob_service.get_blob_client(container_name, blob_name)
-                client.upload_blob(data, overwrite=True)
+                client.upload_blob(data, overwrite=True, max_concurrency=max_connections)
 
-        def create_blob_from_path(self, container_name, blob_name, path, max_connections=2, content_settings=None, progress_callback=None):
+        def create_blob_from_path(self, container_name, blob_name, path, max_connections=2, content_settings=None,
+                                  progress_callback=None):
             if self.__legacy:
                 self.__blob_service.create_blob_from_path(
                     container_name,
@@ -1734,10 +1736,10 @@ class _AzureBlobServiceStorageDriver(_Driver):
                     first_chunk = True
                     for chunk in iter((lambda: file.read(self.MAX_SINGLE_PUT_SIZE)), b''):
                         if first_chunk:
-                            client.upload_blob(chunk, overwrite=True)
+                            client.upload_blob(chunk, overwrite=True, max_concurrency=max_connections)
                             first_chunk = False
                         else:
-                            from azure.storage.blob import BlockType
+                            from azure.storage.blob import BlockType  # noqa
                             client.upload_blob(chunk, BlockType.AppendBlob)
 
         def delete_blob(self, container_name, blob_name):
@@ -1809,7 +1811,8 @@ class _AzureBlobServiceStorageDriver(_Driver):
     def get_container(self, container_name=None, config=None, account_url=None, **kwargs):
         container_name = container_name or config.container_name
         if container_name not in self._containers:
-            self._containers[container_name] = self._Container(name=container_name, config=config, account_url=account_url)
+            self._containers[container_name] = self._Container(name=container_name, config=config,
+                                                               account_url=account_url)
         # self._containers[container_name].config.retries = kwargs.get('retries', 5)
         return self._containers[container_name]
 
@@ -1817,8 +1820,8 @@ class _AzureBlobServiceStorageDriver(_Driver):
         try:
             from azure.common import AzureHttpError  # noqa
         except ImportError:
-            from azure.core.exceptions import HttpResponseError
-            AzureHttpError = HttpResponseError
+            from azure.core.exceptions import HttpResponseError  # noqa
+            AzureHttpError = HttpResponseError  # noqa
 
         blob_name = self._blob_name_from_object_path(object_name, container.name)  # noqa: F841
         try:
@@ -1841,8 +1844,8 @@ class _AzureBlobServiceStorageDriver(_Driver):
         try:
             from azure.common import AzureHttpError  # noqa
         except ImportError:
-            from azure.core.exceptions import HttpResponseError
-            AzureHttpError = HttpResponseError
+            from azure.core.exceptions import HttpResponseError  # noqa
+            AzureHttpError = HttpResponseError  # noqa
 
         blob_name = self._blob_name_from_object_path(object_name, container.name)
         stream = None

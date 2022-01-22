@@ -6,7 +6,6 @@ from pathlib2 import Path
 from ..frameworks.base_bind import PatchBaseModelIO
 from ..frameworks import _patched_call, WeightsFileHandler, _Empty
 from ..import_bind import PostImportHookPatching
-from ...config import running_remotely
 from ...model import Framework
 
 
@@ -66,8 +65,7 @@ class PatchCatBoostModelIO(PatchBaseModelIO):
         return ret
 
     @staticmethod
-    def _load(original_fn, obj, f, *args, **kwargs):
-        print(f)
+    def _load(original_fn, f, *args, **kwargs):
         # see https://catboost.ai/en/docs/concepts/python-reference_catboost_load_model
         if isinstance(f, six.string_types):
             filename = f
@@ -77,14 +75,13 @@ class PatchCatBoostModelIO(PatchBaseModelIO):
             filename = None
 
         if not PatchCatBoostModelIO.__main_task:
-            return original_fn(obj, f, *args, **kwargs)
+            return original_fn(f, *args, **kwargs)
 
         # register input model
         empty = _Empty()
-        model = original_fn(obj, f, *args, **kwargs)
+        model = original_fn(f, *args, **kwargs)
         WeightsFileHandler.restore_weights_file(empty, filename, Framework.catboost, PatchCatBoostModelIO.__main_task)
         if empty.trains_in_model:
-            # noinspection PyBroadException
             try:
                 model.trains_in_model = empty.trains_in_model
             except Exception:

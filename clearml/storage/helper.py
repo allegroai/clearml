@@ -1681,11 +1681,17 @@ class _AzureBlobServiceStorageDriver(_Driver):
             self.account_url = account_url
             try:
                 from azure.storage.blob import BlockBlobService  # noqa
-            except ImportError:
-                from azure.storage.blob import BlobServiceClient  # noqa
-                self.__legacy = False
-            else:
+                from azure.common import AzureHttpError  # noqa: F401
                 self.__legacy = True
+            except ImportError:
+                try:
+                    from azure.storage.blob import BlobServiceClient  # noqa
+                    self.__legacy = False
+                except ImportError:
+                    raise UsageError(
+                            'Azure blob storage driver not found. '
+                            'Please install driver using: \'pip install clearml[azure]\', \'pip install "azure.storage.blob>=12.0.0"\' or \'pip install "azure.storage.blob<=2.1.0"\''
+                            )
             
             if self.__legacy:
                 self.__blob_service = BlockBlobService(

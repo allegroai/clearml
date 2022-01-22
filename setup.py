@@ -71,7 +71,7 @@ setup(
             'boto3>=1.9',
         ],
         'azure': [
-            'azure-storage-blob>=12.0.0',
+            'azure-storage-blob>=2.0.1,<=2.1',
         ],
         'gs': [
             'google-cloud-storage>=1.13.2',

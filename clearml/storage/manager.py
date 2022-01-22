@@ -291,10 +291,15 @@ class StorageManager(object):
 
         with ThreadPool() as pool:
             for path in helper.list(prefix=remote_url):
-                remote_path = os.path.join(helper.base_url, path)
+                remote_path = str(Path(helper.base_url) / Path(path)) \
+                    if helper.get_driver_direct_access(helper.base_url) else \
+                    "{}/{}".format(helper.base_url.rstrip('/'), path.lstrip('/'))
                 if match_wildcard and not fnmatch.fnmatch(remote_path, match_wildcard):
                     continue
-                local_url = os.path.join(local_folder, remote_path[len(remote_url):].lstrip(os.path.sep))
+                local_url = os.path.join(
+                    str(Path(local_folder)),
+                    str(Path(remote_path[len(remote_url):].lstrip(os.path.sep)))
+                )
                 if not os.path.exists(local_url) or os.path.getsize(local_url) == 0:
                     results.append(
                         pool.apply_async(

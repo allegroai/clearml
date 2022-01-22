@@ -1690,7 +1690,8 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 except ImportError:
                     raise UsageError(
                             'Azure blob storage driver not found. '
-                            'Please install driver using: \'pip install clearml[azure]\', \'pip install "azure.storage.blob>=12.0.0"\' or \'pip install "azure.storage.blob<=2.1.0"\''
+                            'Please install driver using: \'pip install clearml[azure]\', \'pip install '
+                            '"azure.storage.blob>=12.0.0"\' or \'pip install "azure.storage.blob<=2.1.0"\''
                             )
             
             if self.__legacy:

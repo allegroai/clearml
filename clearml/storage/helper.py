@@ -614,7 +614,15 @@ class StorageHelper(object):
         else:
             return [obj.name for obj in self._driver.list_container_objects(self._container)]
 
-    def download_to_file(self, remote_path, local_path, overwrite_existing=False, delete_on_failure=True, verbose=None):
+    def download_to_file(
+            self,
+            remote_path,
+            local_path,
+            overwrite_existing=False,
+            delete_on_failure=True,
+            verbose=None,
+            skip_zero_size_check=False
+    ):
         def next_chunk(astream):
             if isinstance(astream, binary_type):
                 chunk = astream
@@ -632,7 +640,7 @@ class StorageHelper(object):
         verbose = self._verbose if verbose is None else verbose
 
         # Check if driver type supports direct access:
-        direct_access_path = self._driver.get_direct_access(remote_path)
+        direct_access_path = self.get_driver_direct_access(remote_path)
         if direct_access_path:
             return direct_access_path
 
@@ -702,7 +710,7 @@ class StorageHelper(object):
                         fd.write(data)
                         data, stream = next_chunk(stream)
 
-            if Path(temp_local_path).stat().st_size <= 0:
+            if not skip_zero_size_check and Path(temp_local_path).stat().st_size <= 0:
                 raise Exception('downloaded a 0-sized file')
 
             # if we are on windows, we need to remove the target file before renaming
@@ -725,7 +733,7 @@ class StorageHelper(object):
                     pass
                 # file was downloaded by a parallel process, check we have the final output and delete the partial copy
                 path_local_path = Path(local_path)
-                if not path_local_path.is_file() or path_local_path.stat().st_size <= 0:
+                if not path_local_path.is_file() or (not skip_zero_size_check and path_local_path.stat().st_size <= 0):
                     raise Exception('Failed renaming partial file, downloaded file exists and a 0-sized file')
 
             # report download if we are on the second chunk
@@ -807,6 +815,16 @@ class StorageHelper(object):
         if not helper:
             return None
         return helper.download_to_file(remote_url, local_path, overwrite_existing=overwrite_existing)
+
+    def get_driver_direct_access(self, path):
+        """
+        Check if the helper's driver has a direct access to the file
+
+        :param str path: file path to check access to
+        :return: Return the string representation of the file as path if have access to it, else None
+        """
+
+        return self._driver.get_direct_access(path)
 
     @classmethod
     def _canonize_url(cls, url):

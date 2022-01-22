@@ -12,25 +12,26 @@ from ...model import Framework
 
 class PatchCatBoostModelIO(PatchBaseModelIO):
     __main_task = None
-    __patched = None 
+    __patched = None
     __callback_cls = None
-
 
     @staticmethod
     def update_current_task(task, **kwargs):
         PatchCatBoostModelIO.__main_task = task
         PatchCatBoostModelIO._patch_model_io()
-        PostImportHookPatching.add_on_import('catboost', PatchCatBoostModelIO._patch_model_io)
+        PostImportHookPatching.add_on_import("catboost", PatchCatBoostModelIO._patch_model_io)
 
     @staticmethod
     def _patch_model_io():
         if PatchCatBoostModelIO.__patched:
             return
-        if 'catboost' not in sys.modules:
+        if "catboost" not in sys.modules:
             return
         PatchCatBoostModelIO.__patched = True
+        # noinspection PyBroadException
         try:
             from catboost import CatBoost, CatBoostClassifier, CatBoostRegressor, CatBoostRanker
+
             CatBoost.save_model = _patched_call(CatBoost.save_model, PatchCatBoostModelIO._save)
             CatBoost.load_model = _patched_call(CatBoost.load_model, PatchCatBoostModelIO._load)
             PatchCatBoostModelIO.__callback_cls = PatchCatBoostModelIO._generate_training_callback_class()
@@ -59,26 +60,29 @@ class PatchCatBoostModelIO(PatchBaseModelIO):
             model_name = Path(filename).stem
         except Exception:
             model_name = None
-        WeightsFileHandler.create_output_model(obj, filename, Framework.catboost, PatchCatBoostModelIO.__main_task,
-                                               singlefile=True, model_name=model_name)
+        WeightsFileHandler.create_output_model(
+            obj, filename, Framework.catboost, PatchCatBoostModelIO.__main_task, singlefile=True, model_name=model_name
+        )
         return ret
 
     @staticmethod
     def _load(original_fn, obj, f, *args, **kwargs):
+        print(f)
         # see https://catboost.ai/en/docs/concepts/python-reference_catboost_load_model
         if isinstance(f, six.string_types):
             filename = f
+        elif len(args) >= 1 and isinstance(args[0], six.string_types):
+            filename = args[0]
         else:
             filename = None
 
         if not PatchCatBoostModelIO.__main_task:
-            return original_fn(obj, f, *args, **kwargs) 
+            return original_fn(obj, f, *args, **kwargs)
 
         # register input model
         empty = _Empty()
         model = original_fn(obj, f, *args, **kwargs)
-        WeightsFileHandler.restore_weights_file(empty, filename, Framework.catboost,
-            PatchCatBoostModelIO.__main_task)
+        WeightsFileHandler.restore_weights_file(empty, filename, Framework.catboost, PatchCatBoostModelIO.__main_task)
         if empty.trains_in_model:
             # noinspection PyBroadException
             try:
@@ -89,9 +93,8 @@ class PatchCatBoostModelIO(PatchBaseModelIO):
 
     @staticmethod
     def _fit(original_fn, obj, *args, **kwargs):
-        print('got in _callback_after_iteration')
-        callbacks = kwargs.get('callbacks') or []
-        kwargs['callbacks'] = callbacks + [PatchCatBoostModelIO.__callback_cls(task=PatchCatBoostModelIO.__main_task)]
+        callbacks = kwargs.get("callbacks") or []
+        kwargs["callbacks"] = callbacks + [PatchCatBoostModelIO.__callback_cls(task=PatchCatBoostModelIO.__main_task)]
         return original_fn(obj, *args, **kwargs)
 
     @staticmethod
@@ -102,10 +105,11 @@ class PatchCatBoostModelIO(PatchBaseModelIO):
 
             def after_iteration(self, info):
                 info = vars(info)
-                iteration = info['iteration']
-                for title, metric in info['metrics'].items():
+                iteration = info.get("iteration")
+                for title, metric in (info.get("metrics") or {}).items():
                     for series, log in metric.items():
                         value = log[-1]
                         self._logger.report_scalar(title=title, series=series, value=value, iteration=iteration)
                 return True
+
         return ClearMLCallback

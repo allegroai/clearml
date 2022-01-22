@@ -1672,7 +1672,6 @@ class _AzureBlobServiceStorageDriver(_Driver):
     _containers = {}
 
     class _Container(object):
-
         def __init__(self, name, config, account_url):
             self.MAX_SINGLE_PUT_SIZE = 16 * 1024 * 1024
             self.SOCKET_TIMEOUT = (300, 2000)
@@ -1682,18 +1681,20 @@ class _AzureBlobServiceStorageDriver(_Driver):
             try:
                 from azure.storage.blob import BlockBlobService  # noqa
                 from azure.common import AzureHttpError  # noqa: F401
+
                 self.__legacy = True
             except ImportError:
                 try:
                     from azure.storage.blob import BlobServiceClient  # noqa
+
                     self.__legacy = False
                 except ImportError:
                     raise UsageError(
-                            'Azure blob storage driver not found. '
-                            'Please install driver using: \'pip install clearml[azure]\', \'pip install '
-                            '"azure.storage.blob>=12.0.0"\' or \'pip install "azure.storage.blob<=2.1.0"\''
-                            )
-            
+                        "Azure blob storage driver not found. "
+                        "Please install driver using: 'pip install clearml[azure]' or "
+                        "pip install '\"azure.storage.blob>=12.0.0\"'"
+                    )
+
             if self.__legacy:
                 self.__blob_service = BlockBlobService(
                     account_name=self.config.account_name,
@@ -1702,18 +1703,16 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 self.__blob_service.MAX_SINGLE_PUT_SIZE = self.MAX_SINGLE_PUT_SIZE
                 self.__blob_service.socket_timeout = self.SOCKET_TIMEOUT
             else:
-                credential = {
-                    'account_name': self.config.account_name,
-                    'account_key': self.config.account_key
-                 }
+                credential = {"account_name": self.config.account_name, "account_key": self.config.account_key}
                 self.__blob_service = BlobServiceClient(
-                    account_url=account_url, 
+                    account_url=account_url,
                     credential=credential,
                     max_single_put_size=self.MAX_SINGLE_PUT_SIZE,
                 )
 
-        def create_blob_from_data(self, container_name, object_name, blob_name, data, max_connections=2,
-                                  progress_callback=None):
+        def create_blob_from_data(
+            self, container_name, object_name, blob_name, data, max_connections=2, progress_callback=None
+        ):
             if self.__legacy:
                 self.__blob_service.create_blob_from_bytes(
                     container_name,
@@ -1726,8 +1725,9 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 client = self.__blob_service.get_blob_client(container_name, blob_name)
                 client.upload_blob(data, overwrite=True, max_concurrency=max_connections)
 
-        def create_blob_from_path(self, container_name, blob_name, path, max_connections=2, content_settings=None,
-                                  progress_callback=None):
+        def create_blob_from_path(
+            self, container_name, blob_name, path, max_connections=2, content_settings=None, progress_callback=None
+        ):
             if self.__legacy:
                 self.__blob_service.create_blob_from_path(
                     container_name,
@@ -1739,14 +1739,15 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 )
             else:
                 client = self.__blob_service.get_blob_client(container_name, blob_name)
-                with open(path, 'rb') as file:
+                with open(path, "rb") as file:
                     first_chunk = True
-                    for chunk in iter((lambda: file.read(self.MAX_SINGLE_PUT_SIZE)), b''):
+                    for chunk in iter((lambda: file.read(self.MAX_SINGLE_PUT_SIZE)), b""):
                         if first_chunk:
                             client.upload_blob(chunk, overwrite=True, max_concurrency=max_connections)
                             first_chunk = False
                         else:
                             from azure.storage.blob import BlockType  # noqa
+
                             client.upload_blob(chunk, BlockType.AppendBlob)
 
         def delete_blob(self, container_name, blob_name):
@@ -1802,7 +1803,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 )
             else:
                 client = self.__blob_service.get_blob_client(container_name, blob_name, max_concurrency=max_connections)
-                with open(path, 'wb') as file:
+                with open(path, "wb") as file:
                     return client.download_blob().download_to_stream(file)
 
         def is_legacy(self):
@@ -1818,8 +1819,9 @@ class _AzureBlobServiceStorageDriver(_Driver):
     def get_container(self, container_name=None, config=None, account_url=None, **kwargs):
         container_name = container_name or config.container_name
         if container_name not in self._containers:
-            self._containers[container_name] = self._Container(name=container_name, config=config,
-                                                               account_url=account_url)
+            self._containers[container_name] = self._Container(
+                name=container_name, config=config, account_url=account_url
+            )
         # self._containers[container_name].config.retries = kwargs.get('retries', 5)
         return self._containers[container_name]
 
@@ -1828,6 +1830,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
             from azure.common import AzureHttpError  # noqa
         except ImportError:
             from azure.core.exceptions import HttpResponseError  # noqa
+
             AzureHttpError = HttpResponseError  # noqa
 
         blob_name = self._blob_name_from_object_path(object_name, container.name)  # noqa: F841
@@ -1852,6 +1855,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
             from azure.common import AzureHttpError  # noqa
         except ImportError:
             from azure.core.exceptions import HttpResponseError  # noqa
+
             AzureHttpError = HttpResponseError  # noqa
 
         blob_name = self._blob_name_from_object_path(object_name, container.name)
@@ -1859,14 +1863,15 @@ class _AzureBlobServiceStorageDriver(_Driver):
         try:
             from azure.storage.blob import ContentSettings  # noqa
             from mimetypes import guess_type
+
             container.create_blob_from_path(
-                    container.name,
-                    blob_name,
-                    file_path,
-                    max_connections=2,
-                    content_settings=ContentSettings(content_type=guess_type(file_path)),
-                    progress_callback=callback,
-                    )
+                container.name,
+                blob_name,
+                file_path,
+                max_connections=2,
+                content_settings=ContentSettings(content_type=guess_type(file_path)),
+                progress_callback=callback,
+            )
             return True
         except AzureHttpError as ex:
             self.get_logger().error('Failed uploading (Azure error): %s' % ex)
@@ -1904,10 +1909,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
         container = obj.container
         total_size_mb = obj.content_length / (1024. * 1024.)
         remote_path = os.path.join(
-            "{}://".format(self.scheme),
-            container.config.account_name,
-            container.name,
-            obj.blob_name
+            "{}://".format(self.scheme), container.config.account_name, container.name, obj.blob_name
         )
         cb = DownloadProgressReport(total_size_mb, verbose, remote_path, self.get_logger())
         blob = container.get_blob_to_bytes(
@@ -1920,11 +1922,12 @@ class _AzureBlobServiceStorageDriver(_Driver):
     def download_object(self, obj, local_path, overwrite_existing=True, delete_on_failure=True, callback=None, **_):
         p = Path(local_path)
         if not overwrite_existing and p.is_file():
-            self.get_logger().warning('failed saving after download: overwrite=False and file exists (%s)' % str(p))
+            self.get_logger().warning("failed saving after download: overwrite=False and file exists (%s)" % str(p))
             return
 
         download_done = threading.Event()
         download_done.counter = 0
+
 
         def callback_func(current, total):
             if callback:
@@ -1933,6 +1936,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 callback(chunk)
             if current >= total:
                 download_done.set()
+
 
         container = obj.container
         container.blob_service.MAX_SINGLE_GET_SIZE = 5 * 1024 * 1024

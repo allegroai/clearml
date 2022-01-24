@@ -63,7 +63,7 @@ class S3BucketConfig(object):
                     )
                 )
             )
-        return configs
+        return valid_configs
 
 
 BucketConfig = S3BucketConfig

@@ -2,7 +2,7 @@
 from clearml import Task, OutputModel
 
 # Connecting ClearML with the current process,
-task = Task.init(project_name="examples", task_name="Model configuration example")
+task = Task.init(project_name="examples", task_name="Model reporting example")
 
 # Create output model and connect it to the task
 output_model = OutputModel(task=task)

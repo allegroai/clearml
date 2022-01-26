@@ -88,7 +88,7 @@ class PatchFire:
             print(command)
             if command is not None:
                 start_with = command + "/"
-                replaced_args = ".".split(command)
+                replaced_args = command.split(".")
             else:
                 start_with = ""
                 replaced_args = []
@@ -97,6 +97,7 @@ class PatchFire:
                     replaced_args.append("--" + k[len(start_with) :])
                     if v is not None:
                         replaced_args.append(v)
+            print(replaced_args)
             return original_fn(component, replaced_args, parsed_flag_args, context, name, *args, **kwargs)
         if PatchFire.__processed_args:
             return original_fn(component, args_, parsed_flag_args, context, name, *args, **kwargs)

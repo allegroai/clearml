@@ -27,7 +27,7 @@ class PatchFire:
     __processed_args = False
     __groups = []
     __commands = {}
-    __parsed_flag_args = SimpleNamespace(
+    __default_args = SimpleNamespace(
         completion=None, help=False, interactive=False, separator="-", trace=False, verbose=False
     )
     __current_command = None
@@ -93,11 +93,9 @@ class PatchFire:
                 start_with = ""
                 replaced_args = []
             for k, v in PatchFire.__remote_task_params_dict.items():
-                if k.startswith(start_with):
+                if k.startswith(start_with) and k not in vars(PatchFire.__default_args):
                     replaced_args.append("--" + k[len(start_with) :])
-                    if v is not None:
-                        replaced_args.append(v)
-            print(replaced_args)
+                    replaced_args.append(v)
             return original_fn(component, replaced_args, parsed_flag_args, context, name, *args, **kwargs)
         if PatchFire.__processed_args:
             return original_fn(component, args_, parsed_flag_args, context, name, *args, **kwargs)
@@ -121,14 +119,14 @@ class PatchFire:
     def __get_all_groups_and_commands(component, context):
         groups = []
         commands = {}
-        component_trace_result = fire.core._Fire(component, [], PatchFire.__parsed_flag_args, context).GetResult()
+        component_trace_result = fire.core._Fire(component, [], PatchFire.__default_args, context).GetResult()
         group_args = [[]]
         while len(group_args) > 0:
             query_group = group_args[-1]
             groups.append(".".join(query_group))
             group_args = group_args[:-1]
             current_groups, current_commands = PatchFire.__get_groups_and_commands_for_args(
-                component_trace_result, query_group, PatchFire.__parsed_flag_args, context
+                component_trace_result, query_group, PatchFire.__default_args, context
             )
             for command in current_commands:
                 prefix = ".".join(query_group) + "." if len(query_group) > 0 else ""

@@ -54,6 +54,10 @@ class PatchFire:
         parameters_types = {}
         if cls.__current_command is None:
             args = {cls._section_name + "/" + k: v for k, v in cls._args.items()}
+            for k in PatchFire.__command_args[None]:
+                k = cls._section_name + "/" + k
+                if k not in args:
+                    args[k] = None 
         else:
             args[cls._section_name + "/" + cls.__current_command] = True
             parameters_types[cls._section_name + "/" + cls.__current_command] = cls._command_type
@@ -106,6 +110,9 @@ class PatchFire:
             PatchFire.__command_args[command] = PatchFire.__get_command_args(
                 component, command.split("."), parsed_flag_args, context, name=name
             )
+        PatchFire.__command_args[None] = PatchFire.__get_command_args(
+            component, "", parsed_flag_args, context, name=name
+        )
         command_as_args = []
         if PatchFire.__current_command is not None:
             command_as_args = PatchFire.__current_command.split(".")

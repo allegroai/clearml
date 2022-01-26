@@ -40,7 +40,6 @@ class PatchFire:
 
         if task:
             cls._main_task = task
-            PatchFire._update_task_args()
 
         if not cls.__patched:
             cls.__patched = True

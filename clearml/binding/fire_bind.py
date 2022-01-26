@@ -21,6 +21,7 @@ class PatchFire:
     _section_name = "Args"
     _command_type = "fire.Command"
     __remote_task_params = None
+    __remote_task_params_dict = {}
     __patched = False
     __processed_args = False
     __groups = []
@@ -79,7 +80,12 @@ class PatchFire:
 
     @staticmethod
     def __Fire(original_fn, component, args_, parsed_flag_args, context, name, *args, **kwargs):
-        if PatchFire.__processed_args or running_remotely():
+        print('GOT IN FIRE')
+        if running_remotely():
+            command = PatchFire._load_task_params() 
+            print(command)
+            return original_fn(component, args_, parsed_flag_args, context, name, *args, **kwargs)
+        if PatchFire.__processed_args:
             return original_fn(component, args_, parsed_flag_args, context, name, *args, **kwargs)
         PatchFire.__processed_args = True
         PatchFire.__groups, PatchFire.__commands = PatchFire.__get_all_groups_and_commands(component, context)

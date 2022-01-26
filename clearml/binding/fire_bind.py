@@ -9,6 +9,7 @@ from os import stat
 from types import SimpleNamespace
 from .frameworks import _patched_call  # noqa
 from ..config import running_remotely, get_remote_task_id
+from ..utilities.dicts import cast_str_to_bool
 
 
 class PatchFire:
@@ -83,6 +84,7 @@ class PatchFire:
         print('GOT IN FIRE')
         if running_remotely():
             command = PatchFire._load_task_params() 
+            print(PatchFire.__remote_task_params_dict)
             print(command)
             return original_fn(component, args_, parsed_flag_args, context, name, *args, **kwargs)
         if PatchFire.__processed_args:

@@ -81,10 +81,10 @@ class PatchFire:
 
     @staticmethod
     def __Fire(original_fn, component, args_, parsed_flag_args, context, name, *args, **kwargs):
-        print('GOT IN FIRE')
+        print("GOT IN FIRE")
         print(args_)
         if running_remotely():
-            command = PatchFire._load_task_params() 
+            command = PatchFire._load_task_params()
             print(command)
             if command is not None:
                 start_with = command + "/"
@@ -92,9 +92,9 @@ class PatchFire:
             else:
                 start_with = ""
                 replaced_args = []
-            for k, v in PatchFire.__remote_task_params_dict:
+            for k, v in PatchFire.__remote_task_params_dict.items():
                 if k.startswith(start_with):
-                    replaced_args.append("--" + k[len(start_with):])
+                    replaced_args.append("--" + k[len(start_with) :])
                     if v is not None:
                         replaced_args.append(v)
             return original_fn(component, replaced_args, parsed_flag_args, context, name, *args, **kwargs)

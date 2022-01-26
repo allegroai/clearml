@@ -96,7 +96,7 @@ class PatchFire:
                 start_with = ""
                 replaced_args = []
             for k, v in PatchFire.__remote_task_params_dict.items():
-                if k.startswith(start_with) and k not in vars(PatchFire.__default_args):
+                if k.startswith(start_with) and k not in vars(PatchFire.__default_args) and len(v) > 0:
                     replaced_args.append("--" + k[len(start_with) :])
                     replaced_args.append(v)
             return original_fn(component, replaced_args, parsed_flag_args, context, name, *args, **kwargs)

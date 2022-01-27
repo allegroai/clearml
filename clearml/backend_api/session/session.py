@@ -174,7 +174,7 @@ class Session(TokenManager):
             raise ValueError(
                 "ClearML configuration could not be found (missing `~/clearml.conf` or Environment CLEARML_API_HOST)\n"
                 "To get started with ClearML: setup your own `clearml-server`, "
-                "or create a free account at https://app.community.clear.ml"
+                "or create a free account at https://app.clear.ml"
             )
 
         self._ssl_error_count_verbosity = self.config.get(

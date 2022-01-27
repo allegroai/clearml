@@ -15,10 +15,10 @@ from clearml.config import config_obj
 from clearml.utilities.pyhocon import ConfigFactory, ConfigMissingException
 
 description = "\n" \
-    "Please create new clearml credentials through the profile page in " \
-    "your `clearml-server` web app (e.g. http://localhost:8080/profile) \n"\
-    "Or create a free account at https://app.community.clear.ml/profile\n\n" \
-    "In the profile page, press \"Create new credentials\", then press \"Copy to clipboard\".\n" \
+    "Please create new clearml credentials through the settings page in " \
+    "your `clearml-server` web app (e.g. http://localhost:8080//settings/workspace-configuration) \n"\
+    "Or create a free account at https://app.clear.ml/settings/workspace-configuration\n\n" \
+    "In settings page, press \"Create new credentials\", then press \"Copy to clipboard\".\n" \
     "\n" \
     "Paste copied configuration here:\n"
 
@@ -155,7 +155,7 @@ def main():
                      '    api_server: %s\n' \
                      '    web_server: %s\n' \
                      '    files_server: %s\n' \
-                     '    # Credentials are generated using the webapp, %s/profile\n' \
+                     '    # Credentials are generated using the webapp, %s/settings\n' \
                      '    # Override with os environment: CLEARML_API_ACCESS_KEY / CLEARML_API_SECRET_KEY\n' \
                      '    credentials {"access_key": "%s", "secret_key": "%s"}\n' \
                      '}\n' \

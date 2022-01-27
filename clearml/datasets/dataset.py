@@ -660,7 +660,7 @@ class Dataset(object):
     def list_modified_files(self, dataset_id=None):
         # type: (str) -> List[str]
         """
-        return a list of files removed when comparing to a specific dataset_version
+        return a list of files modified when comparing to a specific dataset_version
 
         :param dataset_id: dataset id (str) to compare against, if None is given compare against the parents datasets
         :return: List of files with relative path
@@ -679,7 +679,7 @@ class Dataset(object):
     def list_added_files(self, dataset_id=None):
         # type: (str) -> List[str]
         """
-        return a list of files removed when comparing to a specific dataset_version
+        return a list of files added when comparing to a specific dataset_version
 
         :param dataset_id: dataset id (str) to compare against, if None is given compare against the parents datasets
         :return: List of files with relative path

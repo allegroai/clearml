@@ -173,7 +173,10 @@ class PatchFire:
     def __get_used_args(component, command_as_args, full_args, parsed_flag_args, context, name=None):
         component_trace = fire.core._Fire(component, command_as_args, parsed_flag_args, context, name=name).GetResult()
         metadata = fire.decorators.GetMetadata(component)
-        component = component.__call__
+        try:
+            component = component.__call__
+        except AttributeError:
+            pass
         fn_spec = fire.inspectutils.GetFullArgSpec(component_trace)
         parse = fire.core._MakeParseFn(component, metadata)  # noqa
         (parsed_args, parsed_kwargs), _, _, _ = parse(full_args)

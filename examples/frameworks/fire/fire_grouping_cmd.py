@@ -1,3 +1,7 @@
+import fire
+from clearml import Task
+
+
 class Other(object):
     def status(self):
         return "Other"

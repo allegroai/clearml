@@ -1,11 +1,11 @@
 try:
     import fire
-    import inspect
-    import fire.core  # noqa
+    import fire.core
+    import fire.helptext
 except ImportError:
     fire = None
 
-from os import stat
+import inspect
 from types import SimpleNamespace
 from .frameworks import _patched_call  # noqa
 from ..config import running_remotely, get_remote_task_id
@@ -20,17 +20,16 @@ class PatchFire:
     _multi_command = False
     _main_task = None
     _section_name = "Args"
-    _command_type = "fire.Command"
     __remote_task_params = None
     __remote_task_params_dict = {}
     __patched = False
-    __processed_args = False
     __groups = []
     __commands = {}
     __default_args = SimpleNamespace(
         completion=None, help=False, interactive=False, separator="-", trace=False, verbose=False
     )
     __current_command = None
+    __fetched_current_command = False
     __command_args = {}
 
     @classmethod
@@ -43,7 +42,12 @@ class PatchFire:
 
         if not cls.__patched:
             cls.__patched = True
-            fire.core._Fire = _patched_call(fire.core._Fire, PatchFire.__Fire)
+            if running_remotely():
+                fire.core._Fire = _patched_call(fire.core._Fire, PatchFire.__Fire)
+            else:
+                fire.core._CallAndUpdateTrace = _patched_call(
+                    fire.core._CallAndUpdateTrace, PatchFire.__CallAndUpdateTrace
+                )
 
     @classmethod
     def _update_task_args(cls):
@@ -56,7 +60,7 @@ class PatchFire:
             for k in PatchFire.__command_args[None]:
                 k = cls._section_name + "/" + k
                 if k not in args:
-                    args[k] = None 
+                    args[k] = None
         else:
             args[cls._section_name + "/" + cls.__current_command] = True
             parameters_types[cls._section_name + "/" + cls.__current_command] = cls._command_type
@@ -74,7 +78,6 @@ class PatchFire:
             }
             args = {**args, **unused_command_args}
 
-        print(f"Args are {args}")
         # noinspection PyProtectedMember
         cls._main_task._set_parameters(
             args,
@@ -83,12 +86,9 @@ class PatchFire:
         )
 
     @staticmethod
-    def __Fire(original_fn, component, args_, parsed_flag_args, context, name, *args, **kwargs):
-        print("GOT IN FIRE")
-        print(args_)
+    def __Fire(original_fn, component, args_, parsed_flag_args, context, name, *args, **kwargs):  # noqa
         if running_remotely():
             command = PatchFire._load_task_params()
-            print(command)
             if command is not None:
                 start_with = command + "/"
                 replaced_args = command.split(".")
@@ -100,32 +100,81 @@ class PatchFire:
                     replaced_args.append("--" + k[len(start_with) :])
                     replaced_args.append(v)
             return original_fn(component, replaced_args, parsed_flag_args, context, name, *args, **kwargs)
-        if PatchFire.__processed_args:
-            return original_fn(component, args_, parsed_flag_args, context, name, *args, **kwargs)
-        PatchFire.__processed_args = True
-        PatchFire.__groups, PatchFire.__commands = PatchFire.__get_all_groups_and_commands(component, context)
-        PatchFire.__current_command = PatchFire.__get_current_command(args_, PatchFire.__groups, PatchFire.__commands)
-        for command in PatchFire.__commands:
-            PatchFire.__command_args[command] = PatchFire.__get_command_args(
-                component, command.split("."), parsed_flag_args, context, name=name
-            )
-        PatchFire.__command_args[None] = PatchFire.__get_command_args(
-            component, "", parsed_flag_args, context, name=name
-        )
-        command_as_args = []
-        if PatchFire.__current_command is not None:
-            command_as_args = PatchFire.__current_command.split(".")
-        PatchFire._args = PatchFire.__get_used_args(
-            component, command_as_args, args_, parsed_flag_args, context, name, *args, **kwargs
-        )
-        PatchFire._update_task_args()
         return original_fn(component, args_, parsed_flag_args, context, name, *args, **kwargs)
+
+    @staticmethod
+    def __CallAndUpdateTrace(  # noqa
+        original_fn, component, args_, component_trace, treatment, target, *args, **kwargs
+    ):
+        if not PatchFire.__fetched_current_command:
+            PatchFire.__fetched_current_command = True
+            context, component_context = PatchFire.__get_context_and_component(component)
+            PatchFire.__groups, PatchFire.__commands = PatchFire.__get_all_groups_and_commands(
+                component_context, context
+            )
+            PatchFire.__current_command = PatchFire.__get_current_command(
+                args_, PatchFire.__groups, PatchFire.__commands
+            )
+            for command in PatchFire.__commands:
+                PatchFire.__command_args[command] = PatchFire.__get_command_args(
+                    component_context, command.split("."), PatchFire.__default_args, context
+                )
+            PatchFire.__command_args[None] = PatchFire.__get_command_args(
+                component_context,
+                "",
+                PatchFire.__default_args,
+                context,
+            )
+        for k, v in PatchFire.__commands.items():
+            if v == component:
+                PatchFire.__current_command = k
+                break
+            # Comparing methods in Python is equivalent to comparing the __func__ of the methods
+            # and the objects they are bound to. We do not care about the object in this case,
+            # so we just compare the __func__
+            if inspect.ismethod(component) and inspect.ismethod(v) and v.__func__ == component.__func__:
+                PatchFire.__current_command = k
+                break
+        fn = component.__call__ if treatment == "callable" else component
+        metadata = fire.decorators.GetMetadata(component)
+        fn_spec = fire.inspectutils.GetFullArgSpec(component)
+        parse = fire.core._MakeParseFn(fn, metadata)  # noqa
+        (parsed_args, parsed_kwargs), _, _, _ = parse(args_)
+        PatchFire._args = {**PatchFire._args, **{k: v for k, v in zip(fn_spec.args, parsed_args)}, **parsed_kwargs}
+        PatchFire._update_task_args()
+        return original_fn(component, args_, component_trace, treatment, target, *args, **kwargs)
+
+    @staticmethod
+    def __get_context_and_component(component):
+        context = {}
+        component_context = component
+        # Walk through the stack to find the arguments with fire.Fire() has been called.
+        # Can't do it by patching the function because we want to patch _CallAndUpdateTrace,
+        # which is called by fire.Fire()
+        frame_infos = inspect.stack()
+        for frame_info_ind, frame_info in enumerate(frame_infos):
+            if frame_info.function == "Fire":
+                component_context = inspect.getargvalues(frame_info.frame).locals["component"]
+                if inspect.getargvalues(frame_info.frame).locals["component"] is None:
+                    # This is similar to how fire finds this context
+                    fire_context_frame = frame_infos[frame_info_ind + 1].frame
+                    context.update(fire_context_frame.f_globals)
+                    context.update(fire_context_frame.f_locals)
+                    # Ignore modules, as they yield too many commands.
+                    # Also ignore clearml.task.
+                    context = {
+                        k: v
+                        for k, v in context.items()
+                        if not inspect.ismodule(v) and (not inspect.isclass(v) or v.__module__ != "clearml.task")
+                    }
+                break
+        return context, component_context
 
     @staticmethod
     def __get_all_groups_and_commands(component, context):
         groups = []
         commands = {}
-        component_trace_result = fire.core._Fire(component, [], PatchFire.__default_args, context).GetResult()
+        component_trace_result = fire.core._Fire(component, [], PatchFire.__default_args, context).GetResult()  # noqa
         group_args = [[]]
         while len(group_args) > 0:
             query_group = group_args[-1]
@@ -143,8 +192,8 @@ class PatchFire:
 
     @staticmethod
     def __get_groups_and_commands_for_args(component, args_, parsed_flag_args, context, name=None):
-        component_trace = fire.core._Fire(component, args_, parsed_flag_args, context, name=name).GetResult()
-        groups, commands, _, _ = fire.helptext._GetActionsGroupedByKind(component_trace, verbose=False)
+        component_trace = fire.core._Fire(component, args_, parsed_flag_args, context, name=name).GetResult()  # noqa
+        groups, commands, _, _ = fire.helptext._GetActionsGroupedByKind(component_trace, verbose=False)  # noqa
         groups = [(name, member) for name, member in groups.GetItems()]
         commands = [(name, member) for name, member in commands.GetItems()]
         return groups, commands
@@ -165,22 +214,9 @@ class PatchFire:
 
     @staticmethod
     def __get_command_args(component, args_, parsed_flag_args, context, name=None):
-        component_trace = fire.core._Fire(component, args_, parsed_flag_args, context, name=name).GetResult()
+        component_trace = fire.core._Fire(component, args_, parsed_flag_args, context, name=name).GetResult()  # noqa
         fn_spec = fire.inspectutils.GetFullArgSpec(component_trace)
         return fn_spec.args
-
-    @staticmethod
-    def __get_used_args(component, command_as_args, full_args, parsed_flag_args, context, name=None):
-        component_trace = fire.core._Fire(component, command_as_args, parsed_flag_args, context, name=name).GetResult()
-        metadata = fire.decorators.GetMetadata(component)
-        try:
-            component = component.__call__
-        except AttributeError:
-            pass
-        fn_spec = fire.inspectutils.GetFullArgSpec(component_trace)
-        parse = fire.core._MakeParseFn(component, metadata)  # noqa
-        (parsed_args, parsed_kwargs), _, _, _ = parse(full_args)
-        return {**parsed_kwargs, **{k: v for k, v in zip(fn_spec.args, parsed_args[len(command_as_args) :])}}
 
     @staticmethod
     def _load_task_params():

@@ -13,7 +13,7 @@
 [![Optuna](https://img.shields.io/badge/Optuna-integrated-blue)](https://optuna.org)
 [![Slack Channel](https://img.shields.io/badge/slack-%23clearml--community-blueviolet?logo=slack)](https://join.slack.com/t/clearml/shared_invite/zt-c0t13pty-aVUZZW1TSSSg2vyIGVPBhg)
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/allegroai)](https://artifacthub.io/packages/search?repo=allegroai)
-[![Signup](https://img.shields.io/badge/Clear%7CML-Signup-blueviolet)](https://app.community.clear.ml)
+[![Signup](https://img.shields.io/badge/Clear%7CML-Signup-blueviolet)](https://app.clear.ml)
 </div>
 
 ---
@@ -27,18 +27,18 @@ ClearML is a ML/DL development and production suite, it contains three main modu
   (S3/GS/Azure/NAS)  
   
 
-Instrumenting these components is the **ClearML-server**, see [Self-Hosting](https://clear.ml/docs/latest/docs/deploying_clearml/clearml_server) & [Free tier Hosting](https://app.community.clear.ml)  
+Instrumenting these components is the **ClearML-server**, see [Self-Hosting](https://clear.ml/docs/latest/docs/deploying_clearml/clearml_server) & [Free tier Hosting](https://app.clear.ml)  
 
 
 ---
 <div align="center">
 
-**[Sign up](https://app.community.clear.ml)  &  [Start using](https://clear.ml/docs/) in under 2 minutes**  
+**[Sign up](https://app.clear.ml)  &  [Start using](https://clear.ml/docs/) in under 2 minutes**  
 
 </div>
 
 ---
-<a href="https://app.community.clear.ml"><img src="https://github.com/allegroai/clearml/blob/master/docs/webapp_screenshots.gif?raw=true" width="100%"></a>
+<a href="https://app.clear.ml"><img src="https://github.com/allegroai/clearml/blob/master/docs/webapp_screenshots.gif?raw=true" width="100%"></a>
 
 ## ClearML Experiment Manager
 
@@ -69,7 +69,7 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
 #### [Start using ClearML](https://clear.ml/docs/latest/docs/getting_started/ds/ds_first_steps) 
 
 
-1. Sign up for free to the [ClearML Hosted Service](https://app.community.clear.ml) (alternatively, you can set up your own server, see [here](https://clear.ml/docs/latest/docs/deploying_clearml/clearml_server)).
+1. Sign up for free to the [ClearML Hosted Service](https://app.clear.ml) (alternatively, you can set up your own server, see [here](https://clear.ml/docs/latest/docs/deploying_clearml/clearml_server)).
 
     > **_ClearML Demo Server:_** ClearML no longer uses the demo server by default. To enable the demo server, set the `CLEARML_NO_DEFAULT_SERVER=0`
     > environment variable. Credentials aren't needed, but experiments launched to the demo server are public, so make sure not 
@@ -81,7 +81,7 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
     pip install clearml
     ```
 
-1. Connect the ClearML SDK to the server by [creating credentials](https://app.community.clear.ml/profile), then execute the command
+1. Connect the ClearML SDK to the server by [creating credentials](https://app.clear.ml/settings/workspace-configuration), then execute the command
 below and follow the instructions: 
 
     ```bash

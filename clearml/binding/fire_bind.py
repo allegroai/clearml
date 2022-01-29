@@ -112,9 +112,6 @@ class PatchFire:
             args = {**args, **unused_command_args}
             parameters_types = {**parameters_types, **unused_paramenters_types}
 
-        print(f"Cls args are {cls._args}")
-        print(f"Args are {args}")
-
         # noinspection PyProtectedMember
         cls._main_task._set_parameters(
             args,

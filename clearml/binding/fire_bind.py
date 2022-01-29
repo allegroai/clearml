@@ -59,7 +59,7 @@ class PatchFire:
         parameters_types = {}
         if cls.__current_command is None:
             args = {cls._section_name + "/" + k: v for k, v in cls._args.items()}
-            parameters_types = {k: cls._shared_arg_type for k in cls._args.keys()}
+            parameters_types = {cls._section_name + "/" + k: cls._shared_arg_type for k in cls._args.keys()}
             for k in PatchFire.__command_args[None]:
                 k = cls._section_name + "/" + k
                 if k not in args:

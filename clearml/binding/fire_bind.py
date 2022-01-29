@@ -108,7 +108,7 @@ class PatchFire:
                 command_prefix = ""
                 replaced_args = []
             for k, v in PatchFire.__remote_task_params_dict.items():
-                if k not in vars(PatchFire.__default_args):
+                if k not in vars(PatchFire.__default_args) and k != command:
                     skip = None
                     if k.startswith(command_prefix):
                         skip = len(command_prefix)

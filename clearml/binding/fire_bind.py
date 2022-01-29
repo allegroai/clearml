@@ -68,6 +68,7 @@ class PatchFire:
             args[cls._section_name + "/" + cls.__current_command] = True
             parameters_types[cls._section_name + "/" + cls.__current_command] = cls._command_type
             args = {
+                **args,
                 **{
                     cls._section_name + "/" + cls.__current_command + "/" + k: v
                     for k, v in cls._args.items()
@@ -80,6 +81,7 @@ class PatchFire:
                 },
             }
             parameters_types = {
+                **parameters_types,
                 **{
                     cls._section_name
                     + "/"

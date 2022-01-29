@@ -66,7 +66,16 @@ class PatchFire:
             parameters_types[cls._section_name + "/" + cls.__current_command] = cls._command_type
             args = {
                 **args,
-                **{cls._section_name + "/" + cls.__current_command + "/" + k: v for k, v in cls._args.items()},
+                **{
+                    cls._section_name + "/" + cls.__current_command + "/" + k: v
+                    for k, v in cls._args.items()
+                    if k in PatchFire.__command_args[cls.__current_command]
+                },
+                **{
+                    cls._section_name + "/" + k: v
+                    for k, v in cls._args.items()
+                    if k not in PatchFire.__command_args[cls.__current_command]
+                },
             }
         for command in cls.__commands:
             if command == cls.__current_command:
@@ -77,6 +86,9 @@ class PatchFire:
                 cls._section_name + "/" + command + "/" + k: None for k in cls.__command_args[command]
             }
             args = {**args, **unused_command_args}
+
+        print(f'Cls args are {cls._args}')
+        print(f'Args are {args}')
 
         # noinspection PyProtectedMember
         cls._main_task._set_parameters(
@@ -90,15 +102,23 @@ class PatchFire:
         if running_remotely():
             command = PatchFire._load_task_params()
             if command is not None:
-                start_with = command + "/"
+                command_prefix = command + "/"
                 replaced_args = command.split(".")
             else:
-                start_with = ""
+                command_prefix = ""
                 replaced_args = []
             for k, v in PatchFire.__remote_task_params_dict.items():
-                if k.startswith(start_with) and k not in vars(PatchFire.__default_args) and len(v) > 0:
-                    replaced_args.append("--" + k[len(start_with) :])
-                    replaced_args.append(v)
+                if k not in vars(PatchFire.__default_args):
+                    skip = None
+                    if k.startswith(command_prefix):
+                        skip = len(command_prefix)
+                    elif "." not in k and "/" not in k:
+                        # k is the name of an argument shared between commands
+                        skip = 0
+                    if skip is not None:
+                        replaced_args.append("--" + k[skip :])
+                        if len(v) > 0:
+                            replaced_args.append(v)
             return original_fn(component, replaced_args, parsed_flag_args, context, name, *args, **kwargs)
         return original_fn(component, args_, parsed_flag_args, context, name, *args, **kwargs)
 
@@ -106,6 +126,8 @@ class PatchFire:
     def __CallAndUpdateTrace(  # noqa
         original_fn, component, args_, component_trace, treatment, target, *args, **kwargs
     ):
+        if running_remotely():
+            return original_fn(component, args_, component_trace, treatment, target, *args, **kwargs)
         if not PatchFire.__fetched_current_command:
             PatchFire.__fetched_current_command = True
             context, component_context = PatchFire.__get_context_and_component(component)

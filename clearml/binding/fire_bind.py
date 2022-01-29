@@ -17,6 +17,8 @@ class PatchFire:
     _args_types = {}
     _kwargs = {}
     _command_type = "fire.Command"
+    _command_arg_type_template = "fire.Arg@%s"
+    _shared_arg_type = "fire.Arg.shared"
     _multi_command = False
     _main_task = None
     _section_name = "Args"
@@ -57,6 +59,7 @@ class PatchFire:
         parameters_types = {}
         if cls.__current_command is None:
             args = {cls._section_name + "/" + k: v for k, v in cls._args.items()}
+            parameters_types = {k: cls._shared_arg_type for k in cls._args.keys()}
             for k in PatchFire.__command_args[None]:
                 k = cls._section_name + "/" + k
                 if k not in args:
@@ -65,7 +68,6 @@ class PatchFire:
             args[cls._section_name + "/" + cls.__current_command] = True
             parameters_types[cls._section_name + "/" + cls.__current_command] = cls._command_type
             args = {
-                **args,
                 **{
                     cls._section_name + "/" + cls.__current_command + "/" + k: v
                     for k, v in cls._args.items()
@@ -77,6 +79,22 @@ class PatchFire:
                     if k not in PatchFire.__command_args[cls.__current_command]
                 },
             }
+            parameters_types = {
+                **{
+                    cls._section_name
+                    + "/"
+                    + cls.__current_command
+                    + "/"
+                    + k: cls._command_arg_type_template % cls.__current_command
+                    for k in cls._args.keys()
+                    if k in PatchFire.__command_args[cls.__current_command]
+                },
+                **{
+                    cls._section_name + "/" + k: cls._shared_arg_type
+                    for k in cls._args.keys()
+                    if k not in PatchFire.__command_args[cls.__current_command]
+                },
+            }
         for command in cls.__commands:
             if command == cls.__current_command:
                 continue
@@ -85,10 +103,15 @@ class PatchFire:
             unused_command_args = {
                 cls._section_name + "/" + command + "/" + k: None for k in cls.__command_args[command]
             }
+            unused_paramenters_types = {
+                cls._section_name + "/" + command + "/" + k: cls._command_arg_type_template % command
+                for k in cls.__command_args[command]
+            }
             args = {**args, **unused_command_args}
+            parameters_types = {**parameters_types, **unused_paramenters_types}
 
-        print(f'Cls args are {cls._args}')
-        print(f'Args are {args}')
+        print(f"Cls args are {cls._args}")
+        print(f"Args are {args}")
 
         # noinspection PyProtectedMember
         cls._main_task._set_parameters(
@@ -102,23 +125,20 @@ class PatchFire:
         if running_remotely():
             command = PatchFire._load_task_params()
             if command is not None:
-                command_prefix = command + "/"
                 replaced_args = command.split(".")
             else:
-                command_prefix = ""
                 replaced_args = []
-            for k, v in PatchFire.__remote_task_params_dict.items():
-                if k not in vars(PatchFire.__default_args) and k != command:
-                    skip = None
-                    if k.startswith(command_prefix):
-                        skip = len(command_prefix)
-                    elif "." not in k and "/" not in k:
-                        # k is the name of an argument shared between commands
-                        skip = 0
-                    if skip is not None:
-                        replaced_args.append("--" + k[skip :])
-                        if len(v) > 0:
-                            replaced_args.append(v)
+            for param in PatchFire.__remote_task_params.values():
+                if command is not None and param.type == PatchFire._command_arg_type_template % command:
+                    replaced_args.append("--" + param.name[len(command + "/") :])
+                    value = PatchFire.__remote_task_params_dict[param.name]
+                    if len(value) > 0:
+                        replaced_args.append(value)
+                if param.type == PatchFire._shared_arg_type:
+                    replaced_args.append("--" + param.name)
+                    value = PatchFire.__remote_task_params_dict[param.name]
+                    if len(value) > 0:
+                        replaced_args.append(value)
             return original_fn(component, replaced_args, parsed_flag_args, context, name, *args, **kwargs)
         return original_fn(component, args_, parsed_flag_args, context, name, *args, **kwargs)
 
@@ -254,10 +274,10 @@ class PatchFire:
                 k[skip:]: v for k, v in params_dict.items() if k.startswith(PatchFire._section_name + "/")
             }
 
-        params = PatchFire.__remote_task_params
+        PatchFire.__remote_task_params = PatchFire.__remote_task_params[PatchFire._section_name]
         command = [
             p.name
-            for p in params["Args"].values()
+            for p in PatchFire.__remote_task_params.values()
             if p.type == PatchFire._command_type and cast_str_to_bool(p.value, strip=True)
         ]
         return command[0] if command else None

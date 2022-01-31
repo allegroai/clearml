@@ -1,10 +1,11 @@
 import sys
 
-import six
 from pathlib2 import Path
 
+import six
+
+from ..frameworks import WeightsFileHandler, _Empty, _patched_call
 from ..frameworks.base_bind import PatchBaseModelIO
-from ..frameworks import _patched_call, WeightsFileHandler, _Empty
 from ..import_bind import PostImportHookPatching
 from ...model import Framework
 
@@ -82,6 +83,7 @@ class PatchCatBoostModelIO(PatchBaseModelIO):
         model = original_fn(f, *args, **kwargs)
         WeightsFileHandler.restore_weights_file(empty, filename, Framework.catboost, PatchCatBoostModelIO.__main_task)
         if empty.trains_in_model:
+            # noinspection PyBroadException
             try:
                 model.trains_in_model = empty.trains_in_model
             except Exception:

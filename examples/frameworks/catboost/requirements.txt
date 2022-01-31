@@ -1,9 +1,4 @@
-click >= 7.1.2
-boto3 == 1.20.33
-catboost == 1.0.4
+catboost
 numpy == 1.19.2
-scikit_learn >= 0.22
-traitlets == 5.1.1
-IPython
-ipywidgets
+scikit_learn
 clearml

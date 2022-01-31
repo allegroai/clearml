@@ -305,7 +305,7 @@ class StorageManager(object):
                         pool.apply_async(
                             helper.download_to_file,
                             args=(remote_path, local_url),
-                            kwds={"overwrite_existing": overwrite},
+                            kwds={"overwrite_existing": overwrite, "skip_zero_size_check": skip_zero_size_check},
                         )
                     )
             for res in results:

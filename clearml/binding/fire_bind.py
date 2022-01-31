@@ -138,11 +138,12 @@ class PatchFire:
                     value = PatchFire.__remote_task_params_dict[param.name]
                     if len(value) > 0:
                         replaced_args.append(value)
-                if param.type == PatchFire._shared_arg_type or param.name in vars(PatchFire.__default_args):
+                if param.type == PatchFire._shared_arg_type: # or param.name in vars(PatchFire.__default_args):
                     replaced_args.append("--" + param.name)
                     value = PatchFire.__remote_task_params_dict[param.name]
                     if len(value) > 0:
                         replaced_args.append(value)
+            print(f'Args are {replaced_args}')
             return original_fn(component, replaced_args, parsed_flag_args, context, name, *args, **kwargs)
         return original_fn(component, args_, parsed_flag_args, context, name, *args, **kwargs)
 

@@ -1,5 +1,8 @@
-import fire
+# ClearML - Example of Python Fire integration, with commands derived from a dictionary 
+#
 from clearml import Task
+
+import fire
 
 
 def add(x, y):

@@ -1,5 +1,8 @@
-import fire
+# ClearML - Example of Python Fire integration, with commands grouped inside classes
+#
 from clearml import Task
+
+import fire
 
 
 class Other(object):

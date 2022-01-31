@@ -1,4 +1,7 @@
+# ClearML - Example of Python Fire integration, processing multiple commands, when fire is initialized with no component
+#
 from clearml import Task
+
 import fire
 
 
@@ -8,7 +11,6 @@ def hello(count, name="clearml", prefix="prefix_", suffix="_suffix", **kwargs):
 
 
 def serve(addr, port, should_serve=False):
-    Task.init(project_name="examples", task_name="fire multi command")
     if not should_serve:
         print("Not serving")
     else:

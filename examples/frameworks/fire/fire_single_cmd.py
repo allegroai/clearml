@@ -1,5 +1,8 @@
-import fire
+# ClearML - Example of Python Fire integration, with a single command passed to Fire
+#
 from clearml import Task
+
+import fire
 
 
 def hello(count, name="clearml", prefix="prefix_", suffix="_suffix", **kwargs):

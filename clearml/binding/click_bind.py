@@ -15,7 +15,6 @@ class PatchClick:
     _args_type = {}
     _num_commands = 0
     _command_type = 'click.Command'
-    _group_type = 'click.Group'
     _section_name = 'Args'
     _main_task = None
     __remote_task_params = None
@@ -67,7 +66,7 @@ class PatchClick:
 
     @staticmethod
     def _command_init(original_fn, self, *args, **kwargs):
-        if self and (isinstance(self, Command) or isinstance(self, Group)) and 'name' in kwargs:
+        if self and isinstance(self, Command) and isinstance(self, Group) and 'name' in kwargs:
             if isinstance(self, Command):
                 PatchClick._num_commands += 1
             if not running_remotely():
@@ -76,8 +75,6 @@ class PatchClick:
                     PatchClick._args[name] = False
                     if isinstance(self, Command):
                         PatchClick._args_type[name] = PatchClick._command_type
-                    else:
-                        PatchClick._args_type[name] = PatchClick._group_type
                     # maybe we should take it post initialization
                     if kwargs.get('help'):
                         PatchClick._args_desc[name] = str(kwargs.get('help'))
@@ -111,7 +108,7 @@ class PatchClick:
 
         ret = original_fn(self, *args, **kwargs)
 
-        if isinstance(self, Command): # and not isinstance(self, Group):
+        if isinstance(self, Command):
             ctx = kwargs.get('ctx') or args[0]
             if running_remotely():
                 PatchClick._load_task_params()

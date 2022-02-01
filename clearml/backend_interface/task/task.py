@@ -793,6 +793,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             tags=None,  # type: Optional[Sequence[str]]
             model_name=None,  # type: Optional[str]
             iteration=None,  # type: Optional[int]
+            auto_delete_file=True  # type: bool
     ):
         # type: (...) -> str
         """
@@ -810,6 +811,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param model_name: If provided the model name as it will appear in the model artifactory. (Optional)
             Default: Task.name - name
         :param iteration: iteration number for the current stored model (Optional)
+        :param bool auto_delete_file: Delete the temporary file after uploading (Optional)
+
+            - ``True`` - Delete (Default)
+            - ``False`` - Do not delete
 
         :return: The URI of the uploaded weights file.
             Notice: upload is done is a background thread, while the function call returns immediately
@@ -822,7 +827,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             comment=comment
         )
         output_model.connect(task=self, name=name)
-        url = output_model.update_weights(weights_filename=model_path, iteration=iteration)
+        url = output_model.update_weights(
+            weights_filename=model_path, iteration=iteration, auto_delete_file=auto_delete_file
+        )
         return url
 
     @property

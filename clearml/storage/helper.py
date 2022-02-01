@@ -248,11 +248,12 @@ class StorageHelper(object):
         return instance
 
     @classmethod
-    def get_local_copy(cls, remote_url):
+    def get_local_copy(cls, remote_url, skip_zero_size_check=False):
         """
         Download a file from remote URL to a local storage, and return path to local copy,
 
         :param remote_url: Remote URL. Example: https://example.com/file.jpg s3://bucket/folder/file.mp4 etc.
+        :param skip_zero_size_check: If True no error will be raised for files with zero bytes size.
         :return: Path to local copy of the downloaded file. None if error occurred.
         """
         helper = cls.get(remote_url)
@@ -261,7 +262,7 @@ class StorageHelper(object):
         # create temp file with the requested file name
         file_name = '.' + remote_url.split('/')[-1].split(os.path.sep)[-1]
         local_path = mktemp(suffix=file_name)
-        return helper.download_to_file(remote_url, local_path)
+        return helper.download_to_file(remote_url, local_path, skip_zero_size_check=skip_zero_size_check)
 
     def __init__(self, base_url, url, key=None, secret=None, region=None, verbose=False, logger=None, retries=5,
                  **kwargs):
@@ -802,19 +803,22 @@ class StorageHelper(object):
         return True
 
     @classmethod
-    def download_from_url(cls, remote_url, local_path, overwrite_existing=False):
+    def download_from_url(cls, remote_url, local_path, overwrite_existing=False, skip_zero_size_check=False):
         """
         Download a file from remote URL to a local storage
 
         :param remote_url: Remote URL. Example: https://example.com/image.jpg or s3://bucket/folder/file.mp4 etc.
         :param local_path: target location for downloaded file. Example: /tmp/image.jpg
         :param overwrite_existing: If True and local_path exists, it will overwrite it, otherwise print warning
+        :param skip_zero_size_check: If True no error will be raised for files with zero bytes size.
         :return: local_path if download was successful.
         """
         helper = cls.get(remote_url)
         if not helper:
             return None
-        return helper.download_to_file(remote_url, local_path, overwrite_existing=overwrite_existing)
+        return helper.download_to_file(
+            remote_url, local_path, overwrite_existing=overwrite_existing, skip_zero_size_check=skip_zero_size_check
+        )
 
     def get_driver_direct_access(self, path):
         """

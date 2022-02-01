@@ -211,6 +211,7 @@ class Logger(object):
         :param yaxis: The y-axis title. (Optional)
         :param mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
         :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/bar/
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
         self._touch_title_series(title, series)
@@ -257,6 +258,7 @@ class Logger(object):
         :param yaxis: The y-axis title. (Optional)
         :param mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
         :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/bar/
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
 
@@ -319,6 +321,7 @@ class Logger(object):
         :param csv: path to local csv file
         :param url: A URL to the location of csv file.
         :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/table/
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
         mutually_exclusive(
@@ -394,6 +397,7 @@ class Logger(object):
 
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/scatter/
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
 
@@ -471,6 +475,7 @@ class Logger(object):
 
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/scatter/
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
 
@@ -549,6 +554,7 @@ class Logger(object):
 
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/scatter3d/
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
         # check if multiple series
@@ -629,6 +635,7 @@ class Logger(object):
         :param bool yaxis_reversed: If False 0,0 is at the bottom left corner. If True 0,0 is at the Top left corner
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/heatmap/
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
 
@@ -682,6 +689,7 @@ class Logger(object):
         :param list(str) ylabels: Labels for each row of the matrix. (Optional)
         :param bool yaxis_reversed: If False 0,0 is at the bottom left corner. If True 0,0 is at the Top left corner
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/heatmap/
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
         self._touch_title_series(title, series)
@@ -730,6 +738,7 @@ class Logger(object):
         :param list(float) camera: X,Y,Z coordinates indicating the camera position. The default value is ``(1,1,1)``.
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/surface/
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
 

@@ -250,12 +250,13 @@ def create_value_matrix(np_value_matrix, title="Heatmap Matrix", xlabels=None, y
     if yaxis_reversed:
         conf_matrix_plot['layout']['yaxis']['autorange'] = "reversed"
 
-    if custom_colors:
+    if custom_colors and not layout_config:
         scale, bar = _get_z_colorbar_data()
         conf_matrix_plot["data"][0].update({"colorscale": scale})
         conf_matrix_plot["data"][0].update({"colorbar": bar})
 
     if layout_config:
+        conf_matrix_plot["data"][0] = merge_dicts(conf_matrix_plot["data"][0], layout_config)
         conf_matrix_plot["layout"] = merge_dicts(conf_matrix_plot["layout"], layout_config)
 
     return conf_matrix_plot

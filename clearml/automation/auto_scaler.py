@@ -181,7 +181,7 @@ class AutoScaler(object):
     def stale_workers(self, spun_workers):
         now = time()
         for worker_id, (resource, spin_time) in list(spun_workers.items()):
-            if now - spin_time > self.max_idle_time_min*60:
+            if now - spin_time > self.max_spin_up_time_min*60:
                 self.logger.info('Stuck spun instance %s of type %s', worker_id, resource)
                 yield worker_id
 

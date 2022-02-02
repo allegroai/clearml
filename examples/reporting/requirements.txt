@@ -7,4 +7,10 @@ pillow>=4.0
 plotly
 seaborn
 six
+torch
+torchvision
+tqdm
+pytorch-ignite
+tensorboard
+loguru
 clearml

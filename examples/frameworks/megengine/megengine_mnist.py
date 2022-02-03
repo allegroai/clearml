@@ -60,9 +60,7 @@ def build_dataloader():
     train_dataset = MNIST(root=gettempdir(), train=True, download=True)
     dataloader = DataLoader(
         train_dataset,
-        transform=Compose(
-            [Normalize(mean=0.1307 * 255, std=0.3081 * 255), Pad(2), ToMode("CHW"),]
-        ),
+        transform=Compose([Normalize(mean=0.1307 * 255, std=0.3081 * 255), Pad(2), ToMode("CHW"),]),
         sampler=RandomSampler(dataset=train_dataset, batch_size=64),
     )
     return dataloader
@@ -72,9 +70,7 @@ def train(dataloader, args):
     writer = SummaryWriter("runs")
     net = Net()
     net.train()
-    optimizer = SGD(
-        net.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.wd
-    )
+    optimizer = SGD(net.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.wd)
     gm = GradManager().attach(net.parameters())
 
     epoch_length = len(dataloader)
@@ -89,14 +85,11 @@ def train(dataloader, args):
             optimizer.step().clear_grad()
 
             if step % 50 == 0:
-                print(
-                    "epoch:{}, iter:{}, loss:{}".format(epoch + 1, step, float(loss))
-                )  # noqa
+                print("epoch:{}, iter:{}, loss:{}".format(epoch + 1, step, float(loss)))  # noqa
             writer.add_scalar("loss", float(loss), epoch * epoch_length + step)
         if (epoch + 1) % 5 == 0:
             mge.save(
-                net.state_dict(),
-                os.path.join(gettempdir(), f"mnist_net_e{epoch + 1}.pkl"),
+                net.state_dict(), os.path.join(gettempdir(), f"mnist_net_e{epoch + 1}.pkl"),
             )  # noqa
 
 
@@ -107,9 +100,7 @@ def main():
     parser.add_argument(
         "--epoch", type=int, default=10, help="number of training epoch(default: 10)",
     )
-    parser.add_argument(
-        "--lr", type=float, default=0.01, help="learning rate(default: 0.01)"
-    )
+    parser.add_argument("--lr", type=float, default=0.01, help="learning rate(default: 0.01)")
     parser.add_argument(
         "--momentum", type=float, default=0.9, help="SGD momentum (default: 0.9)",
     )

@@ -1,4 +1,4 @@
 catboost
-numpy == 1.19.2
+numpy == 1.21.0
 scikit_learn
 clearml

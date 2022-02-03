@@ -248,7 +248,10 @@ class _Arguments(object):
             # with the rest we have to make sure the type is correct
             matched_actions = self._find_parser_action(parser, k)
             for parent_parser, current_action in matched_actions:
-                if current_action and isinstance(current_action, _StoreConstAction):
+                if current_action and current_action.default == SUPPRESS and not v:
+                    # this value should be kept suppressed, do nothing
+                    v = SUPPRESS
+                elif current_action and isinstance(current_action, _StoreConstAction):
                     # make the default value boolean
                     # first check if False value
                     const_value = current_action.const if current_action.const is not None else (

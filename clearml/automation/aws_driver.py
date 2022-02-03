@@ -112,10 +112,10 @@ class AWSDriver(CloudDriver):
             instance_id = instances["Instances"][0]["InstanceId"]
 
         instance = boto3.resource("ec2", **self.creds()).Instance(instance_id)
-        if self.tags:
+        if resource_conf.get("tags"):
             instance.create_tags(
                 Resources=[instance_id],
-                Tags=[{"Key": key, "Value": val} for key, val in self.tags],
+                Tags=[{"Key": key, "Value": val} for key, val in parse_tags(resource_conf.get("tags"))],
             )
         # Wait until instance is in running state
         instance.wait_until_running()

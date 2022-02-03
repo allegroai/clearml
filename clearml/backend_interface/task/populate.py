@@ -173,7 +173,7 @@ class CreateAndPopulate(object):
                 name=self.task_name,
                 project=Task.get_project_id(self.project_name),
                 type=str(self.task_type or Task.TaskTypes.training),
-            )
+            )  # type: dict
             if self.output_uri:
                 task_state['output'] = dict(destination=self.output_uri)
         else:
@@ -279,6 +279,7 @@ class CreateAndPopulate(object):
             else:
                 script_entry = os.path.abspath(script_entry)
             idx_a = 0
+            lines = None
             # find the right entry for the patch if we have a local file (basically after __future__
             if local_entry_file:
                 with open(local_entry_file, 'rt') as f:
@@ -308,13 +309,19 @@ class CreateAndPopulate(object):
                     "+Task.init()\n" \
                     "+\n".format(
                         script_entry=script_entry, idx_a=idx_a, idx_b=idx_a + 1)
+            elif local_entry_file and lines:
+                # if we are here it means we do not have a git diff, but a single script file
+                init_lines = ["from clearml import Task\n", "Task.init()\n\n"]
+                task_state['script']['diff'] = ''.join(lines[:idx_a] + init_lines + lines[idx_a:])
+                # no need to add anything, we patched it.
+                task_init_patch = ""
             else:
                 # Add Task.init call
                 task_init_patch += \
                     "from clearml import Task\n" \
                     "Task.init()\n\n"
 
-            # make sure we add the dif at the end of the current diff
+            # make sure we add the diff at the end of the current diff
             task_state['script']['diff'] = task_state['script'].get('diff', '')
             if task_state['script']['diff'] and not task_state['script']['diff'].endswith('\n'):
                 task_state['script']['diff'] += '\n'
@@ -544,7 +551,8 @@ if __name__ == '__main__':
         :param a_function: A global function to convert into a standalone Task
         :param function_kwargs: Optional, provide subset of function arguments and default values to expose.
             If not provided automatically take all function arguments & defaults
-        :param function_input_artifacts: Optional, pass input arguments to the function from other Tasks's output artifact.
+        :param function_input_artifacts: Optional, pass input arguments to the function from
+            other Tasks's output artifact.
             Example argument named `numpy_matrix` from Task ID `aabbcc` artifact name `answer`:
             {'numpy_matrix': 'aabbcc.answer'}
         :param function_return: Provide a list of names for all the results.

@@ -7,5 +7,4 @@ pillow>=4.0
 plotly
 seaborn
 six
-loguru
 clearml

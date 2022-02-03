@@ -3,7 +3,7 @@ import os
 import sys
 from tempfile import gettempdir
 
-# import numpy as np
+import numpy as np
 
 try:
     import megengine as mge

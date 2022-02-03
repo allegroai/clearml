@@ -51,6 +51,7 @@ class Framework(Options):
     lightgbm = 'LightGBM'
     parquet = 'Parquet'
     megengine = 'MegEngine'
+    catboost = 'CatBoost'
 
     __file_extensions_mapping = {
         '.pb': (tensorflow, tensorflowjs, onnx, ),
@@ -79,6 +80,7 @@ class Framework(Options):
         '__model__': (paddlepaddle, ),
         '.pkl': (scikitlearn, keras, xgboost, megengine),
         '.parquet': (parquet, ),
+        '.cbm': (catboost, ),
     }
 
     @classmethod

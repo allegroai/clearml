@@ -16,9 +16,9 @@ try:
     from megengine.optimizer import SGD
 except ImportError:
     raise ImportError(
-        "megengine package is missing, you can install it using pip or conda"
-            if sys.version_info.minor <= 8
-            else "MegEngine does not support python version >= 3.9"
+        "megengine package is missing, you can install it using pip: pip install megengine"
+        if sys.version_info.minor <= 8
+        else "MegEngine does not support python version >= 3.9"
     )
 
 from clearml import Task
@@ -61,11 +61,7 @@ def build_dataloader():
     dataloader = DataLoader(
         train_dataset,
         transform=Compose(
-            [
-                Normalize(mean=0.1307 * 255, std=0.3081 * 255),
-                Pad(2),
-                ToMode("CHW"),
-            ]
+            [Normalize(mean=0.1307 * 255, std=0.3081 * 255), Pad(2), ToMode("CHW"),]
         ),
         sampler=RandomSampler(dataset=train_dataset, batch_size=64),
     )
@@ -109,25 +105,16 @@ def main():
 
     parser = argparse.ArgumentParser(description="MegEngine MNIST Example")
     parser.add_argument(
-        "--epoch",
-        type=int,
-        default=10,
-        help="number of training epoch(default: 10)",
+        "--epoch", type=int, default=10, help="number of training epoch(default: 10)",
     )
     parser.add_argument(
         "--lr", type=float, default=0.01, help="learning rate(default: 0.01)"
     )
     parser.add_argument(
-        "--momentum",
-        type=float,
-        default=0.9,
-        help="SGD momentum (default: 0.9)",
+        "--momentum", type=float, default=0.9, help="SGD momentum (default: 0.9)",
     )
     parser.add_argument(
-        "--wd",
-        type=float,
-        default=5e-4,
-        help="SGD weight decay(default: 5e-4)",
+        "--wd", type=float, default=5e-4, help="SGD weight decay(default: 5e-4)",
     )
 
     args = parser.parse_args()

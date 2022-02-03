@@ -3,7 +3,7 @@ import os
 import sys
 from tempfile import gettempdir
 
-import numpy as np
+# import numpy as np
 
 try:
     import megengine as mge
@@ -14,13 +14,12 @@ try:
     from megengine.data.dataset import MNIST
     from megengine.data.transform import Compose, Normalize, Pad, ToMode
     from megengine.optimizer import SGD
-except ImportError as err:
-    print(
-        "Please install it using pip or conda"
-        if sys.version_info.minor <= 8
-        else "Also MegEngine doesn't support python version higher than 3.8.*"
+except ImportError:
+    raise ImportError(
+        "megengine package is missing, you can install it using pip or conda"
+            if sys.version_info.minor <= 8
+            else "MegEngine does not support python version >= 3.9"
     )
-    sys.exit()
 
 from clearml import Task
 from tensorboardX import SummaryWriter

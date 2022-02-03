@@ -16,9 +16,9 @@ try:
     from megengine.optimizer import SGD
 except ImportError as err:
     print(
-        f"{err}\nPlease install it using pip or conda"
+        "Please install it using pip or conda"
         if sys.version_info.minor <= 8
-        else f"{err}\nAlso MegEngine doesn't support python version higher than 3.8.*"
+        else "Also MegEngine doesn't support python version higher than 3.8.*"
     )
     sys.exit()
 

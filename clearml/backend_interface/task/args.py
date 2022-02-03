@@ -313,7 +313,13 @@ class _Arguments(object):
                     # now we should try and cast the value if we can
                     # noinspection PyBroadException
                     try:
-                        v = var_type(v)
+                        # Since we have no actual var type here, we check if the string presentation of the original
+                        # default value and the new value are the same, if they are,
+                        # we should just use the original default value
+                        if str(v) == str(current_action.default):
+                            v = current_action.default
+                        else:
+                            v = var_type(v)
                         # cast back to int if it's the same value
                         if type(current_action.default) == int and int(v) == v:
                             arg_parser_arguments[k] = v = int(v)

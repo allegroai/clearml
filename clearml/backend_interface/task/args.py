@@ -248,7 +248,10 @@ class _Arguments(object):
             # with the rest we have to make sure the type is correct
             matched_actions = self._find_parser_action(parser, k)
             for parent_parser, current_action in matched_actions:
-                if current_action and isinstance(current_action, _StoreConstAction):
+                if current_action and current_action.default == SUPPRESS and not v:
+                    # this value should be kept suppressed, do nothing
+                    v = SUPPRESS
+                elif current_action and isinstance(current_action, _StoreConstAction):
                     # make the default value boolean
                     # first check if False value
                     const_value = current_action.const if current_action.const is not None else (
@@ -313,7 +316,13 @@ class _Arguments(object):
                     # now we should try and cast the value if we can
                     # noinspection PyBroadException
                     try:
-                        v = var_type(v)
+                        # Since we have no actual var type here, we check if the string presentation of the original
+                        # default value and the new value are the same, if they are,
+                        # we should just use the original default value
+                        if str(v) == str(current_action.default):
+                            v = current_action.default
+                        else:
+                            v = var_type(v)
                         # cast back to int if it's the same value
                         if type(current_action.default) == int and int(v) == v:
                             arg_parser_arguments[k] = v = int(v)

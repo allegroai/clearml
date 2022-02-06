@@ -116,7 +116,7 @@ def cli():
         raise_on_missing_entries=True,
         verbose=True,
     )
-    # verify args
+    # verify args before creating the Task
     create_populate.update_task_args(args.args)
 
     print('Creating new task')

@@ -7,7 +7,16 @@ from clearml import Task
 import fastai
 
 try:
-    from fastai.vision.all import *
+    from fastai.vision.all import (
+        untar_data,
+        URLs,
+        get_image_files,
+        ImageDataLoaders,
+        Resize,
+        cnn_learner,
+        resnet34,
+        error_rate,
+    )
 except ImportError:
     raise ImportError("FastAI version %s imported, but this example is for FastAI v2." % fastai.__version__)
 

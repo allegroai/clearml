@@ -7,7 +7,18 @@ from clearml import Task
 import fastai
 
 try:
-    from fastai.vision import *  # Quick access to computer vision functionality
+    from fastai.vision import (
+        untar_data,
+        URLs,
+        ImageDataBunch,
+        rand_pad,
+        imagenet_stats,
+        cnn_learner,
+        models,
+        accuracy,
+        Path,
+        partial,
+    )
     from fastai.callbacks.tensorboard import LearnerTensorboardWriter
 except ImportError:
     raise ImportError("FastAI version %s imported, but this example is for FastAI v1." % fastai.__version__)

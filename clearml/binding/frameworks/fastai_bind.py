@@ -25,12 +25,12 @@ class PatchFastai(object):
         try:
             if version.parse(fastai.__version__) < version.parse("2.0.0"):
                 PatchFastaiV1.update_current_task(task)
-                PatchFastaiV1._patch_model_callback()
-                PostImportHookPatching.add_on_import("fastai", PatchFastaiV1._patch_model_callback)
+                PatchFastaiV1.patch_model_callback()
+                PostImportHookPatching.add_on_import("fastai", PatchFastaiV1.patch_model_callback)
             else:
                 PatchFastaiV2.update_current_task(task)
-                PatchFastaiV2._patch_model_callback()
-                PostImportHookPatching.add_on_import("fastai", PatchFastaiV2._patch_model_callback)
+                PatchFastaiV2.patch_model_callback()
+                PostImportHookPatching.add_on_import("fastai", PatchFastaiV2.patch_model_callback)
         except Exception:
             pass
 
@@ -45,8 +45,8 @@ class PatchFastaiV1(object):
         PatchFastaiV1._main_task = task
 
     @staticmethod
-    def _patch_model_callback():
-        # if you have tensroboard, we assume you use TesnorboardLogger, which we catch, so no need to patch.
+    def patch_model_callback():
+        # if you have tensorboard, we assume you use TensorboardLogger, which we catch, so no need to patch.
         if "tensorboard" in sys.modules:
             return
 
@@ -181,7 +181,7 @@ class PatchFastaiV2(object):
         PatchFastaiV2._main_task = task
 
     @staticmethod
-    def _patch_model_callback():
+    def patch_model_callback():
         if "tensorboard" in sys.modules:
             return
 
@@ -217,21 +217,23 @@ class PatchFastaiV2(object):
         def after_batch(self):
             # noinspection PyBroadException
             try:
-                super().after_batch()
+                super().after_batch()  # noqa
                 logger = PatchFastaiV2._main_task.get_logger()
-                if not self.training:
+                if not self.training:  # noqa
                     return
                 self.__train_iter += 1
-                for metric in self._train_mets:
+                for metric in self._train_mets:  # noqa
                     logger.report_scalar(
                         title="metrics_" + self.__id,
                         series="train_" + metric.name,
                         value=metric.value,
                         iteration=self.__train_iter,
                     )
-                for k, v in self.opt.hypers[-1].items():
+                for k, v in self.opt.hypers[-1].items():  # noqa
                     logger.report_scalar(title=k + "_" + self.__id, series=k, value=v, iteration=self.__train_iter)
-                params = [(name, values.clone().detach().cpu()) for (name, values) in self.model.named_parameters()]
+                params = [
+                    (name, values.clone().detach().cpu()) for (name, values) in self.model.named_parameters()
+                ]  # noqa
                 if self.__gradient_hist_helper.logger is not logger:
                     self.__gradient_hist_helper = WeightsGradientHistHelper(logger)
                 histograms = []
@@ -251,9 +253,9 @@ class PatchFastaiV2(object):
         def after_epoch(self):
             # noinspection PyBroadException
             try:
-                super().after_epoch()
+                super().after_epoch()  # noqa
                 logger = PatchFastaiV2._main_task.get_logger()
-                for metric in self._valid_mets:
+                for metric in self._valid_mets:  # noqa
                     logger.report_scalar(
                         title="metrics_" + self.__id,
                         series="valid_" + metric.name,
@@ -267,9 +269,11 @@ class PatchFastaiV2(object):
             # noinspection PyBroadException
             try:
                 if hasattr(fastai.learner.Recorder, "before_step"):
-                    super().before_step()
+                    super().before_step()  # noqa
                 logger = PatchFastaiV2._main_task.get_logger()
-                gradients = [x.grad.clone().detach().cpu() for x in self.learn.model.parameters() if x.grad is not None]
+                gradients = [
+                    x.grad.clone().detach().cpu() for x in self.learn.model.parameters() if x.grad is not None
+                ]  # noqa
                 if len(gradients) == 0:
                     return
 
@@ -296,7 +300,7 @@ class PatchFastaiV2(object):
                     min_gradient=gradient_stats[:, 5].min(),
                 )
                 for name, val in stats_report.items():
-                    if name != num_zeros:
+                    if name != "num_zeros":
                         title = "model_stats_gradients_" + self.__id
                     else:
                         title = "model_stats_gradients_num_zeros_" + self.__id

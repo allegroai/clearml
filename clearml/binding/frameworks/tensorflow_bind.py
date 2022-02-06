@@ -108,7 +108,6 @@ class WeightsGradientHistHelper(object):
                 increase_histogram_update_call_counter=(index == len(histograms) - 1),
             )
 
-
     def add_histogram(self, title, series, step, hist_data, increase_histogram_update_call_counter=True):
         # only collect histogram every specific interval
         offset = 1 if increase_histogram_update_call_counter else 0
@@ -138,7 +137,6 @@ class WeightsGradientHistHelper(object):
             hist_data=hist_data,
             increase_histogram_update_call_counter=increase_histogram_update_call_counter,
         )
-
 
     def _add_histogram(self, title, series, step, hist_data, increase_histogram_update_call_counter=True):
         # only collect histogram every specific interval

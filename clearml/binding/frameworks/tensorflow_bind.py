@@ -72,7 +72,7 @@ class IsTensorboardInit(object):
 # noinspection PyProtectedMember
 class WeightsGradientHistHelper(object):
     def __init__(self, logger, report_freq=100, histogram_update_freq_multiplier=10, histogram_granularity=50):
-        self._logger = logger
+        self.logger = logger
         self.report_freq = report_freq
         self._histogram_granularity = histogram_granularity
         self._histogram_update_freq_multiplier = histogram_update_freq_multiplier
@@ -98,12 +98,25 @@ class WeightsGradientHistHelper(object):
         _cur_idx = np.unique(np.sort(np.concatenate((cur_idx_below, cur_idx_above)).astype(np.int)))
         return _cur_idx
 
-    def add_histogram(self, title, series, step, hist_data):
+    def add_histograms(self, histograms):
+        for index, histogram in enumerate(histograms):
+            self.add_histogram(
+                histogram.get("title"),
+                histogram.get("series"),
+                histogram.get("step"),
+                histogram.get("hist_data"),
+                increase_histogram_update_call_counter=(index == len(histograms) - 1),
+            )
+
+
+    def add_histogram(self, title, series, step, hist_data, increase_histogram_update_call_counter=True):
         # only collect histogram every specific interval
-        self._histogram_update_call_counter += 1
-        if self._histogram_update_call_counter % self.report_freq != 0 or \
-                self._histogram_update_call_counter < self.report_freq - 1:
-            return None
+        offset = 1 if increase_histogram_update_call_counter else 0
+        if (self._histogram_update_call_counter + offset) % self.report_freq != 0 or (
+            self._histogram_update_call_counter + offset
+        ) < self.report_freq - 1:
+            self._histogram_update_call_counter += offset
+            return
 
         if isinstance(hist_data, dict):
             pass
@@ -112,21 +125,30 @@ class WeightsGradientHistHelper(object):
             # hist_data['bucketLimit'] is the histogram bucket right side limit, meaning X axis
             # hist_data['bucket'] is the histogram height, meaning the Y axis
             # notice hist_data[:, 1] is the right side limit, for backwards compatibility we take the left side
-            hist_data = {'bucketLimit': hist_data[:, 0].tolist(), 'bucket': hist_data[:, 2].tolist()}
+            hist_data = {"bucketLimit": hist_data[:, 0].tolist(), "bucket": hist_data[:, 2].tolist()}
         else:
             # assume we have to do the histogram on the data
             hist_data = np.histogram(hist_data, bins=32)
-            hist_data = {'bucketLimit': hist_data[1].tolist(), 'bucket': hist_data[0].tolist()}
+            hist_data = {"bucketLimit": hist_data[1].tolist(), "bucket": hist_data[0].tolist()}
 
-        self._add_histogram(title=title, series=series, step=step, hist_data=hist_data)
+        self._add_histogram(
+            title=title,
+            series=series,
+            step=step,
+            hist_data=hist_data,
+            increase_histogram_update_call_counter=increase_histogram_update_call_counter,
+        )
 
-    def _add_histogram(self, title, series, step, hist_data):
+
+    def _add_histogram(self, title, series, step, hist_data, increase_histogram_update_call_counter=True):
         # only collect histogram every specific interval
-        self._histogram_update_call_counter += 1
-        if self._histogram_update_call_counter % self.report_freq != 0 or \
-                self._histogram_update_call_counter < self.report_freq - 1:
-            return None
-
+        if increase_histogram_update_call_counter:
+            self._histogram_update_call_counter += 1
+        if (
+            self._histogram_update_call_counter % self.report_freq != 0
+            or self._histogram_update_call_counter < self.report_freq - 1
+        ):
+            return
         # generate forward matrix of the histograms
         # Y-axis (rows) is iteration (from 0 to current Step)
         # X-axis averaged bins (conformed sample 'bucketLimit')
@@ -166,7 +188,7 @@ class WeightsGradientHistHelper(object):
         # only report histogram every specific interval, but do report the first few, so you know there are histograms
         if hist_iters.size < 1 or (hist_iters.size >= self._histogram_update_freq_multiplier and
                                    hist_iters.size % self._histogram_update_freq_multiplier != 0):
-            return None
+            return
 
         # resample histograms on a unified bin axis +- epsilon
         _epsilon = abs((minmax[1] - minmax[0])/float(self._hist_x_granularity))
@@ -193,7 +215,7 @@ class WeightsGradientHistHelper(object):
         skipy = max(1, int(yedges.size / 10))
         xlabels = ['%.2f' % v if i % skipx == 0 else '' for i, v in enumerate(xedges[:-1])]
         ylabels = [str(int(v)) if i % skipy == 0 else '' for i, v in enumerate(yedges)]
-        self._logger.report_surface(
+        self.logger.report_surface(
             title=title,
             series=series,
             iteration=0,

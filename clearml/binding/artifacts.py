@@ -319,7 +319,7 @@ class Artifacts(object):
             raise ValueError("Artifact by the name of {} is already registered, use register_artifact".format(name))
 
         # cast preview to string
-        if preview not in (None, False):
+        if preview is not None and not (isinstance(preview, bool) and preview is False):
             preview = str(preview)
 
         # evaluate lazy proxy object
@@ -332,7 +332,7 @@ class Artifacts(object):
 
         # try to convert string Path object (it might reference a file/folder)
         # dont not try to serialize long texts.
-        if isinstance(artifact_object, six.string_types) and len(artifact_object) < 2048:
+        if isinstance(artifact_object, six.string_types) and artifact_object and len(artifact_object) < 2048:
             # noinspection PyBroadException
             try:
                 artifact_path = Path(artifact_object)
@@ -537,19 +537,23 @@ class Artifacts(object):
                 artifact_type_data.preview = '# full text too large to store, storing first {}kb\n{}'.format(
                     self.max_preview_size_bytes//1024, artifact_object[:self.max_preview_size_bytes]
                 )
-            delete_after_upload = True
-            override_filename_ext_in_uri = '.txt'
-            override_filename_in_uri = name + override_filename_ext_in_uri
-            fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
-            os.close(fd)
-            # noinspection PyBroadException
-            try:
-                with open(local_filename, 'wt') as f:
-                    f.write(artifact_object)
-            except Exception:
-                # cleanup and raise exception
-                os.unlink(local_filename)
-                raise
+            if artifact_object:
+                delete_after_upload = True
+                override_filename_ext_in_uri = '.txt'
+                override_filename_in_uri = name + override_filename_ext_in_uri
+                fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
+                os.close(fd)
+                # noinspection PyBroadException
+                try:
+                    with open(local_filename, 'wt') as f:
+                        f.write(artifact_object)
+                except Exception:
+                    # cleanup and raise exception
+                    os.unlink(local_filename)
+                    raise
+        elif artifact_object is None or (isinstance(artifact_object, str) and artifact_object == ""):
+            artifact_type = ''
+            store_as_pickle = False
         elif auto_pickle:
             # revert to pickling the object
             store_as_pickle = True

@@ -14,7 +14,6 @@ bash_script_template = '''\
 #!/bin/bash
 
 set -x
-set -e
 
 apt-get update
 apt-get install -y \
@@ -43,6 +42,12 @@ source ~/.bashrc
 {bash_script}
 {driver_extra}
 python -m clearml_agent --config-file ~/clearml.conf daemon --queue '{queue}' {docker}
+
+if [[ $? -ne 0 ]]
+then
+  exit 1
+fi
+
 shutdown
 '''
 

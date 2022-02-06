@@ -304,7 +304,7 @@ class PatchFastaiV2(object):
                         title = "model_stats_gradients_" + self.__id
                     else:
                         title = "model_stats_gradients_num_zeros_" + self.__id
-                        logger.report_scalar(title=title, series=name, value=val, iteration=self.__train_iter)
+                    logger.report_scalar(title=title, series=name, value=val, iteration=self.__train_iter)
             except Exception:
                 pass
 

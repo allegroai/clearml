@@ -1828,7 +1828,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return not running_remotely()
 
     @classmethod
-    def add_requirements(cls, requirement, package_version=None):
+    def add_requirements(cls, package, package_version=None):
         # type: (str, Optional[str]) -> None
         """
         Force the adding of a package to the requirements list. If ``package_version`` is None, use the
@@ -1840,17 +1840,18 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Alternatively, you can add all requirements from a file.
         Example: Task.add_requirements('/path/to/your/project/requirements.txt')
 
-        :param str requirement: The package name or path to a requirements file to add to the "Installed Packages" section of the task.
+        :param str package: The package name or path to a requirements file
+            to add to the "Installed Packages" section of the task.
         :param package_version: The package version requirements. If ``None``, then  use the installed version.
         """
         if not running_remotely() and hasattr(cls, "current_task") and cls.current_task():
             get_logger("task").warning("Requirement ignored, Task.add_requirements() must be called before Task.init()")
-        if not os.path.exists(requirement):
-            cls._force_requirements[requirement] = package_version
+        if not os.path.exists(package):
+            cls._force_requirements[package] = package_version
             return
         import pkg_resources
 
-        with Path(requirement).open() as requirements_txt:
+        with Path(package).open() as requirements_txt:
             for req in pkg_resources.parse_requirements(requirements_txt):
                 cls._force_requirements[req.name] = str(req.specifier)
 

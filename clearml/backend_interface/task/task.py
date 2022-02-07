@@ -945,20 +945,35 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not Session.check_min_api_version('2.9'):
             return self._get_task_property('execution.parameters')
 
+        def get_converted_value(param):
+            try:
+                if param.type in [t.__name__ for t in six.string_types]:
+                    return param.value
+                if param.type == six.text_type.__name__:
+                    return six.text_type(param.value)
+                if param.type == type(None).__name__:
+                    return None
+                import ast
+
+                return ast.literal_eval(param.value)
+            except Exception:
+                return param.value
+
+
         # API will makes sure we get old parameters with type legacy on top level (instead of nested in Args)
         parameters = dict()
-        hyperparams = self._get_task_property('hyperparams') or {}
+        hyperparams = self._get_task_property("hyperparams") or {}
         if not backwards_compatibility:
             for section in hyperparams:
                 for key, section_param in hyperparams[section].items():
-                    parameters['{}/{}'.format(section, key)] = section_param.value
+                    parameters["{}/{}".format(section, key)] = get_converted_value(section_param)
         else:
             for section in hyperparams:
                 for key, section_param in hyperparams[section].items():
-                    if section_param.type == 'legacy' and section in (self._legacy_parameters_section_name, ):
-                        parameters['{}'.format(key)] = section_param.value
+                    if section_param.type == "legacy" and section in (self._legacy_parameters_section_name,):
+                        parameters["{}".format(key)] = get_converted_value(section_param)
                     else:
-                        parameters['{}/{}'.format(section, key)] = section_param.value
+                        parameters["{}/{}".format(section, key)] = get_converted_value(section_param)
 
         return parameters
 

@@ -9,6 +9,7 @@ import requests
 import six
 from requests.auth import HTTPBasicAuth
 from six.moves.urllib.parse import urlparse, urlunparse
+from typing import List
 
 from .callresult import CallResult
 from .defs import (
@@ -25,6 +26,7 @@ from .defs import (
     ENV_ENABLE_ENV_CONFIG_SECTION,
     ENV_ENABLE_FILES_CONFIG_SECTION,
     ENV_API_DEFAULT_REQ_METHOD,
+    ENV_API_EXTRA_RETRY_CODES,
 )
 from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
@@ -183,7 +185,8 @@ class Session(TokenManager):
         self.__host = host.strip("/")
         http_retries_config = http_retries_config or self.config.get(
             "api.http.retries", ConfigTree()).as_plain_ordered_dict()
-        http_retries_config["status_forcelist"] = self._retry_codes
+
+        http_retries_config["status_forcelist"] = self._get_retry_codes()
         self.__http_session = get_http_session_with_retry(**http_retries_config)
         self.__http_session.write_timeout = self._write_session_timeout
         self.__http_session.request_size_threshold = self._write_session_data_size
@@ -232,6 +235,25 @@ class Session(TokenManager):
         self._load_vaults()
 
         self._apply_config_sections(local_logger)
+
+    def _get_retry_codes(self):
+        # type: () -> List[int]
+        retry_codes = set(self._retry_codes)
+
+        extra = self.config.get("api.http.extra_retry_codes", [])
+        if ENV_API_EXTRA_RETRY_CODES.get():
+            extra = [s.strip() for s in ENV_API_EXTRA_RETRY_CODES.get().split(",") if s.strip()]
+
+        for code in extra or []:
+            try:
+                retry_codes.add(int(code))
+            except (ValueError, TypeError):
+                print("Warning: invalid extra HTTP retry code detected: {}".format(code))
+
+        if retry_codes.difference(self._retry_codes):
+            print("Using extra HTTP retry codes {}".format(sorted(retry_codes.difference(self._retry_codes))))
+
+        return list(retry_codes)
 
     def _load_vaults(self):
         if not self.check_min_api_version("2.15") or self.feature_set == "basic":

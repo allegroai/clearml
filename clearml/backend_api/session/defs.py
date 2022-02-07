@@ -26,3 +26,11 @@ POST requests can be used instead.
 However this has not been vigorously tested and may have unintended consequences.
 """
 ENV_API_DEFAULT_REQ_METHOD = EnvEntry("CLEARML_API_DEFAULT_REQ_METHOD")
+
+"""
+Experimental option to make the SDK retry on additional error codes.
+Use a comma-separated list of integer return codes.
+NOTE: this changes behavior and might cause the experiment to wait 
+for a very long time for a non-responding or mis-configured server
+"""
+ENV_API_EXTRA_RETRY_CODES = EnvEntry("CLEARML_API_EXTRA_RETRY_CODES")

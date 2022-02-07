@@ -234,7 +234,17 @@ class AutoScaler(object):
                         previous_workers.add(worker.id)
 
             for worker_id in self.stale_workers(spun_workers):
-                del spun_workers[worker_id]
+                out = spun_workers.pop(worker_id, None)
+                if out is None:
+                    self.logger.warning('Ignoring unknown stale worker: %r', worker_id)
+                    continue
+                resource = out[0]
+                try:
+                    self.logger.info('Spinning down stuck worker: %r', worker_id)
+                    self.driver.spin_down_worker(WorkerId(worker_id).cloud_id)
+                    up_machines[resource] -= 1
+                except Exception as err:
+                    self.logger.info('Cannot spin down %r: %r', worker_id, err)
 
             self.update_idle_workers(all_workers, idle_workers)
             required_idle_resources = []  # idle resources we'll need to keep running

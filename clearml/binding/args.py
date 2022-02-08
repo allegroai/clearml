@@ -37,15 +37,23 @@ class PatchArgumentParser:
     @staticmethod
     def parse_args(self, args=None, namespace=None):
         if PatchArgumentParser._recursion_guard:
-            return {} if not PatchArgumentParser._original_parse_args else \
-                PatchArgumentParser._original_parse_args(self, args=args, namespace=namespace)
+            return (
+                {}
+                if not PatchArgumentParser._original_parse_args
+                else PatchArgumentParser._original_parse_args(self, args=args, namespace=namespace)
+            )
 
         PatchArgumentParser._recursion_guard = True
         try:
             result = PatchArgumentParser._patched_parse_args(
-                PatchArgumentParser._original_parse_args, self, args=args, namespace=namespace)
+                PatchArgumentParser._original_parse_args, self, args=args, namespace=namespace
+            )
         except Exception as e:
-            result = None
+            result = (
+                {}
+                if not PatchArgumentParser._original_parse_args
+                else PatchArgumentParser._original_parse_args(self, args=args, namespace=namespace)
+            )
             warnings.warn("Error when patching arguments: %s" % e)
         finally:
             PatchArgumentParser._recursion_guard = False
@@ -54,15 +62,23 @@ class PatchArgumentParser:
     @staticmethod
     def parse_known_args(self, args=None, namespace=None):
         if PatchArgumentParser._recursion_guard:
-            return {} if not PatchArgumentParser._original_parse_args else \
-                PatchArgumentParser._original_parse_known_args(self, args=args, namespace=namespace)
+            return (
+                {}
+                if not PatchArgumentParser._original_parse_args
+                else PatchArgumentParser._original_parse_known_args(self, args=args, namespace=namespace)
+            )
 
         PatchArgumentParser._recursion_guard = True
         try:
             result = PatchArgumentParser._patched_parse_args(
-                PatchArgumentParser._original_parse_known_args, self, args=args, namespace=namespace)
+                PatchArgumentParser._original_parse_known_args, self, args=args, namespace=namespace
+            )
         except Exception as e:
-            result = None
+            result = (
+                {}
+                if not PatchArgumentParser._original_parse_args
+                else PatchArgumentParser._original_parse_known_args(self, args=args, namespace=namespace)
+            )
             warnings.warn("Error when patching arguments: %s" % e)
         finally:
             PatchArgumentParser._recursion_guard = False

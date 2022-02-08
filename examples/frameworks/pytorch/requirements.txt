@@ -6,3 +6,4 @@ torch <= 1.5.1 ; python_version < '3.8'
 torchvision
 tqdm
 jsonschema==3.2.0 ; python_version <= '3.5'
+clearml

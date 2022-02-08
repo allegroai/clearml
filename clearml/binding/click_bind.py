@@ -66,7 +66,7 @@ class PatchClick:
 
     @staticmethod
     def _command_init(original_fn, self, *args, **kwargs):
-        if self and (isinstance(self, Command) or isinstance(self, Group)) and 'name' in kwargs:
+        if isinstance(self, (Command, Group)) and 'name' in kwargs:
             if isinstance(self, Command):
                 PatchClick._num_commands += 1
             if not running_remotely():

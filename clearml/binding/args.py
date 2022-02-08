@@ -1,5 +1,6 @@
 """ Argparse utilities"""
 import sys
+import warnings
 from copy import copy
 
 from six import PY2
@@ -43,6 +44,9 @@ class PatchArgumentParser:
         try:
             result = PatchArgumentParser._patched_parse_args(
                 PatchArgumentParser._original_parse_args, self, args=args, namespace=namespace)
+        except Exception as e:
+            result = None
+            warnings.warn("Error when patching arguments: %s" % e)
         finally:
             PatchArgumentParser._recursion_guard = False
         return result
@@ -57,6 +61,9 @@ class PatchArgumentParser:
         try:
             result = PatchArgumentParser._patched_parse_args(
                 PatchArgumentParser._original_parse_known_args, self, args=args, namespace=namespace)
+        except Exception as e:
+            result = None
+            warnings.warn("Error when patching arguments: %s" % e)
         finally:
             PatchArgumentParser._recursion_guard = False
         return result
@@ -224,7 +231,10 @@ def patch_argparse():
 
 
 # Notice! we are patching argparser, so we know if someone parsed arguments before connecting to task
-patch_argparse()
+try:
+    patch_argparse()
+except Exception as e:
+    warnings.warn("Error when patching argparse: %s" % e)
 
 
 def call_original_argparser(self, args=None, namespace=None):

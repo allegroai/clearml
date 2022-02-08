@@ -102,7 +102,7 @@ def main():
 
     # Connecting ClearML with the current process,
     # from here on everything is logged automatically
-    task = Task.init(project_name='examples', task_name='pytorch with tensorboard')  # noqa: F841
+    task = Task.init(project_name='examples', task_name='PyTorch with TensorBoard')  # noqa: F841
 
     writer = SummaryWriter('runs')
     writer.add_text('TEXT', 'This is some text', 0)

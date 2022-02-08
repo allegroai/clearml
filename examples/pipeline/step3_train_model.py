@@ -8,7 +8,7 @@ from clearml import Task
 
 # Connecting ClearML with the current process,
 # from here on everything is logged automatically
-task = Task.init(project_name="examples", task_name="pipeline step 3 train model")
+task = Task.init(project_name="examples", task_name="Pipeline step 3 train model")
 
 # Arguments
 args = {

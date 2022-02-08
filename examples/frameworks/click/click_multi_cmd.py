@@ -4,7 +4,7 @@ from clearml import Task
 
 @click.group()
 def cli():
-    task = Task.init(project_name='examples', task_name='click multi command')
+    task = Task.init(project_name='examples', task_name='Click multi command')
     print('done')
 
 

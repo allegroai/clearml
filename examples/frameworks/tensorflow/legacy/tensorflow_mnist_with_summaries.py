@@ -37,7 +37,7 @@ FLAGS = None
 
 # Connecting ClearML with the current process,
 # from here on everything is logged automatically
-task = Task.init(project_name='examples', task_name='Tensorflow mnist with summaries example')
+task = Task.init(project_name='examples', task_name='TensorFlow MNIST with summaries example')
 
 
 def train():

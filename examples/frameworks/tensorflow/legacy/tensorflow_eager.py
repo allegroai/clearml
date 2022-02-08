@@ -37,7 +37,7 @@ tf.compat.v1.enable_eager_execution()
 
 # Connecting ClearML with the current process,
 # from here on everything is logged automatically
-task = Task.init(project_name='examples', task_name='Tensorflow eager mode')
+task = Task.init(project_name='examples', task_name='TensorFlow eager mode')
 
 FLAGS = tf.app.flags.FLAGS
 tf.app.flags.DEFINE_integer('data_num', 100, """Flag of type integer""")

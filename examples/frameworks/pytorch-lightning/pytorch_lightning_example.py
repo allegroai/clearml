@@ -55,7 +55,7 @@ class LitClassifier(pl.LightningModule):
 if __name__ == '__main__':
     # Connecting ClearML with the current process,
     # from here on everything is logged automatically
-    task = Task.init(project_name="examples", task_name="pytorch lightning mnist example")
+    task = Task.init(project_name="examples", task_name="PyTorch lightning MNIST example")
 
     pl.seed_everything(0)
 

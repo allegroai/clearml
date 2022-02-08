@@ -13,7 +13,7 @@ from clearml import Task
 
 # Connecting ClearML with the current process,
 # from here on everything is logged automatically
-task = Task.init(project_name='examples', task_name='Tensorflow v2 mnist with summaries')
+task = Task.init(project_name='examples', task_name='TensorFlow v2 MNIST with summaries')
 
 
 # Load and prepare the MNIST dataset.

@@ -7,7 +7,7 @@ from clearml import Task
 @click.option('--name', prompt='Your name',
               help='The person to greet.')
 def hello(count, name):
-    task = Task.init(project_name='examples', task_name='click single command')
+    task = Task.init(project_name='examples', task_name='Click single command')
 
     """Simple program that greets NAME for a total of COUNT times."""
     for x in range(count):

@@ -60,7 +60,7 @@ Vestibulum dictum ipsum at viverra ultrices. Aliquam sed ante massa. Quisque con
 def main():
     # Connecting ClearML with the current process,
     # from here on everything is logged automatically
-    task = Task.init(project_name="examples", task_name="text reporting")
+    task = Task.init(project_name="examples", task_name="Text reporting")
 
     print("reporting text logs")
 

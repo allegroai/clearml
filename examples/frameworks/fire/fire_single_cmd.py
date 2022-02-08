@@ -11,5 +11,5 @@ def hello(count, name="clearml", prefix="prefix_", suffix="_suffix", **kwargs):
 
 
 if __name__ == "__main__":
-    Task.init(project_name="examples", task_name="fire single command")
+    Task.init(project_name="examples", task_name="Fire single command")
     fire.Fire(hello)

@@ -6,7 +6,7 @@ from clearml import Task, Logger
 
 # Connecting ClearML with the current process,
 # from here on everything is logged automatically
-task = Task.init(project_name="examples", task_name="audio and video reporting")
+task = Task.init(project_name="examples", task_name="Audio and video reporting")
 
 print('reporting audio and video samples to the debug samples section')
 

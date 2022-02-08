@@ -55,7 +55,7 @@ if __name__ == '__main__':
     # create the pipeline controller
     pipe = PipelineController(
         project='examples',
-        name='pipeline demo',
+        name='Pipeline demo',
         version='1.1',
         add_pipeline_tags=False,
     )

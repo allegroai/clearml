@@ -1679,15 +1679,15 @@ class _AzureBlobServiceStorageDriver(_Driver):
             self.config = config
             self.account_url = account_url
             try:
-                from azure.storage.blob import BlockBlobService  # noqa
-                from azure.common import AzureHttpError  # noqa: F401
+                from azure.storage.blob import BlobServiceClient  # noqa
 
-                self.__legacy = True
+                self.__legacy = False
             except ImportError:
                 try:
-                    from azure.storage.blob import BlobServiceClient  # noqa
+                    from azure.storage.blob import BlockBlobService  # noqa
+                    from azure.common import AzureHttpError  # noqa: F401
 
-                    self.__legacy = False
+                    self.__legacy = True
                 except ImportError:
                     raise UsageError(
                         "Azure blob storage driver not found. "

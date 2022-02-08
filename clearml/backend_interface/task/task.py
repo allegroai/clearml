@@ -1849,11 +1849,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not os.path.exists(package_name):
             cls._force_requirements[package_name] = package_version
             return
-        import pkg_resources
-
-        with Path(package_name).open() as requirements_txt:
-            for req in pkg_resources.parse_requirements(requirements_txt):
-                cls._force_requirements[req.name] = str(req.specifier)
+        try:
+            import pkg_resources
+        except ImportError:
+            get_logger("task").warning("Requirement ignored, pkg_resources is not installed")
+        else:
+            with Path(package_name).open() as requirements_txt:
+                for req in pkg_resources.parse_requirements(requirements_txt):
+                    if req.marker is None or pkg_resources.evaluate_marker(str(req.marker)):
+                        cls._force_requirements[req.name] = str(req.specifier)
 
     @classmethod
     def ignore_requirements(cls, package_name):

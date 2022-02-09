@@ -50,6 +50,7 @@ from .binding.joblib_bind import PatchedJoblib
 from .binding.matplotlib_bind import PatchedMatplotlib
 from .binding.hydra_bind import PatchHydra
 from .binding.click_bind import PatchClick
+from .binding.fire_bind import PatchFire
 from .binding.jsonargs_bind import PatchJsonArgParse
 from .config import (
     config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, DEV_DEFAULT_OUTPUT_URI,
@@ -606,8 +607,9 @@ class Task(_Task):
 
                 # Patch ArgParser to be aware of the current task
                 argparser_update_currenttask(Task.__main_task)
-                # Patch Click
+                # Patch Click and Fire
                 PatchClick.patch(Task.__main_task)
+                PatchFire.patch(Task.__main_task)
 
                 # set excluded arguments
                 if isinstance(auto_connect_arg_parser, dict):

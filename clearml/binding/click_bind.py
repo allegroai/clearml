@@ -66,15 +66,15 @@ class PatchClick:
 
     @staticmethod
     def _command_init(original_fn, self, *args, **kwargs):
-        if self and isinstance(self, Command) and 'name' in kwargs:
-            PatchClick._num_commands += 1
-            if running_remotely():
-                pass
-            else:
+        if isinstance(self, (Command, Group)) and 'name' in kwargs:
+            if isinstance(self, Command):
+                PatchClick._num_commands += 1
+            if not running_remotely():
                 name = kwargs['name']
                 if name:
                     PatchClick._args[name] = False
-                    PatchClick._args_type[name] = PatchClick._command_type
+                    if isinstance(self, Command):
+                        PatchClick._args_type[name] = PatchClick._command_type
                     # maybe we should take it post initialization
                     if kwargs.get('help'):
                         PatchClick._args_desc[name] = str(kwargs.get('help'))
@@ -108,7 +108,7 @@ class PatchClick:
 
         ret = original_fn(self, *args, **kwargs)
 
-        if isinstance(self, Command) and not isinstance(self, Group):
+        if isinstance(self, Command):
             ctx = kwargs.get('ctx') or args[0]
             if running_remotely():
                 PatchClick._load_task_params()
@@ -118,7 +118,8 @@ class PatchClick:
                     ctx.params[p.name] = p.process_value(
                         ctx, cast_str_to_bool(value, strip=True) if isinstance(p.type, BoolParamType) else value)
             else:
-                PatchClick._args[self.name] = True
+                if not isinstance(self, Group):
+                    PatchClick._args[self.name] = True
                 for k, v in ctx.params.items():
                     # store passed value
                     PatchClick._args[self.name + '/' + str(k)] = str(v or '')

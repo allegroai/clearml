@@ -54,7 +54,7 @@ class PatchArgumentParser:
                 if not PatchArgumentParser._original_parse_args
                 else PatchArgumentParser._original_parse_args(self, args=args, namespace=namespace)
             )
-            warnings.warn("Error when patching arguments: %s" % e)
+            warnings.warn("Failed patching argparse arguments: %s" % e)
         finally:
             PatchArgumentParser._recursion_guard = False
         return result
@@ -79,7 +79,7 @@ class PatchArgumentParser:
                 if not PatchArgumentParser._original_parse_args
                 else PatchArgumentParser._original_parse_known_args(self, args=args, namespace=namespace)
             )
-            warnings.warn("Error when patching arguments: %s" % e)
+            warnings.warn("Failed patching argparse arguments: %s" % e)
         finally:
             PatchArgumentParser._recursion_guard = False
         return result
@@ -250,7 +250,7 @@ def patch_argparse():
 try:
     patch_argparse()
 except Exception as e:
-    warnings.warn("Error when patching argparse: %s" % e)
+    warnings.warn("Failed patching argparse: %s" % e)
 
 
 def call_original_argparser(self, args=None, namespace=None):

@@ -12,7 +12,7 @@ from clearml import Task
 
 # Connecting ClearML with the current process,
 # from here on everything is logged automatically
-task = Task.init(project_name='examples', task_name='tensorboard toy example')
+task = Task.init(project_name='examples', task_name='TensorBoard toy example')
 
 k = tf.placeholder(tf.float32)
 

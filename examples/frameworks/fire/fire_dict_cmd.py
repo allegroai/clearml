@@ -14,7 +14,7 @@ def multiply(x, y):
 
 
 if __name__ == "__main__":
-    Task.init(project_name="examples", task_name="fire dict command")
+    Task.init(project_name="examples", task_name="Fire dict command")
     fire.Fire(
         {
             "add": add,

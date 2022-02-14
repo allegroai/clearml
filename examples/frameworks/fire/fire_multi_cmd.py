@@ -18,5 +18,5 @@ def serve(addr, port, should_serve=False):
 
 
 if __name__ == "__main__":
-    Task.init(project_name="examples", task_name="fire multi command")
+    Task.init(project_name="examples", task_name="Fire multi command")
     fire.Fire()

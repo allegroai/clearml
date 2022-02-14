@@ -14,6 +14,6 @@ class Calculator(object):
 
 
 if __name__ == "__main__":
-    Task.init(project_name="examples", task_name="fire object command")
+    Task.init(project_name="examples", task_name="Fire object command")
     calculator = Calculator()
     fire.Fire(calculator)

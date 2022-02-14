@@ -15,7 +15,7 @@ scheduler = TaskScheduler()
 # Run the pipeline Task 'pipeline demo, every day at 10:30am
 scheduler.add_task(
     name='recurring pipeline job',
-    schedule_task_id=Task.get_task(project_name='examples', task_name='pipeline demo'),
+    schedule_task_id=Task.get_task(project_name='examples', task_name='Pipeline demo'),
     queue='default',
     minute=30,
     hour=10,

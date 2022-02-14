@@ -6,7 +6,7 @@ from clearml import Task
 @click.option('--print-something/--dont-print-something', default=True)
 @click.option('--what-to-print', default='something')
 def cli(print_something, what_to_print):
-    Task.init(project_name='examples', task_name='click multi command')
+    Task.init(project_name='examples', task_name='Click multi command')
     if print_something:
         print(what_to_print)
 

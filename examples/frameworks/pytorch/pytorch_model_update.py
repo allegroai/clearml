@@ -23,7 +23,7 @@ def main():
     # from here on everything is logged automatically
     task = Task.init(
         project_name="examples",
-        task_name="Model update pytorch",
+        task_name="Model update PyTorch",
         auto_connect_frameworks={"pytorch": False},
     )
     params = {

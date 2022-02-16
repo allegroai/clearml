@@ -3001,7 +3001,12 @@ class Task(_Task):
             except TypeError:
                 return False
 
-        a_dict = {k: v for k, v in an_object.__dict__.items() if verify_type(k, v)}
+        a_dict = {
+            k: v
+            for cls_ in an_object.__mro__
+            for k, v in cls_.__dict__.items()
+            if verify_type(k, v)
+        }
         if running_remotely() and (self.is_main_task() or self._is_remote_main_task()):
             a_dict = self._connect_dictionary(a_dict, name)
             for k, v in a_dict.items():

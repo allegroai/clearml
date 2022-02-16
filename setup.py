@@ -17,6 +17,13 @@ here = os.path.dirname(__file__)
 # Get the long description from the README file
 long_description = read_text(os.path.join(here, 'README.md'))
 
+# fix github, dark logo hack.
+long_description = long_description.replace(
+    """<img align="center" src="docs/clearml-logo.svg#gh-light-mode-only" alt="Clear|ML"><img align="center" src="docs/clearml-logo-dark.svg#gh-dark-mode-only" alt="Clear|ML">""",  # noqa
+    """<a href="https://app.clear.ml"><img src="https://github.com/allegroai/clearml/blob/master/docs/clearml-logo.svg?raw=true" width="250px"></a>""",  # noqa
+    1
+)
+
 
 def read_version_string(version_file):
     for line in read_text(version_file).splitlines():

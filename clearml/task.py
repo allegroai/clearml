@@ -1854,16 +1854,19 @@ class Task(_Task):
                     j['variant'], {'last': j['value'], 'min': j['min_value'], 'max': j['max_value']})
         return scalar_metrics
 
-    def get_parameters_as_dict(self):
-        # type: () -> Dict
+    def get_parameters_as_dict(self, cast=False):
+        # type: (bool) -> Dict
         """
         Get the Task parameters as a raw nested dictionary.
 
         .. note::
-           The values are not parsed. They are returned as is.
+           If `cast` is False (default) The values are not parsed. They are returned as is.
+
+        :param cast: If True, cast the parameter to the original type. Default False,
+            values are returned in their string representation
 
         """
-        return naive_nested_from_flat_dictionary(self.get_parameters())
+        return naive_nested_from_flat_dictionary(self.get_parameters(cast=cast))
 
     def set_parameters_as_dict(self, dictionary):
         # type: (Dict) -> None
@@ -2998,7 +3001,12 @@ class Task(_Task):
             except TypeError:
                 return False
 
-        a_dict = {k: v for k, v in an_object.__dict__.items() if verify_type(k, v)}
+        a_dict = {
+            k: v
+            for cls_ in an_object.__mro__
+            for k, v in cls_.__dict__.items()
+            if verify_type(k, v)
+        }
         if running_remotely() and (self.is_main_task() or self._is_remote_main_task()):
             a_dict = self._connect_dictionary(a_dict, name)
             for k, v in a_dict.items():

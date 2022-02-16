@@ -113,7 +113,7 @@ def test(args, model, device, test_loader, epoch):
 def main(_):
     # Connecting ClearML with the current process,
     # from here on everything is logged automatically
-    task = Task.init(project_name="examples", task_name="pytorch mnist train with abseil")
+    task = Task.init(project_name="examples", task_name="PyTorch MNIST train with abseil")
 
     use_cuda = FLAGS.cuda and torch.cuda.is_available()
 

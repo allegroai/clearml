@@ -40,5 +40,5 @@ class Pipeline(object):
 
 
 if __name__ == "__main__":
-    Task.init(project_name="examples", task_name="fire grouping command")
+    Task.init(project_name="examples", task_name="Fire grouping command")
     fire.Fire(Pipeline)

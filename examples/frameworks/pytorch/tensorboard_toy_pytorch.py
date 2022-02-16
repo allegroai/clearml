@@ -10,7 +10,7 @@ from clearml import Task
 
 # Connecting ClearML with the current process,
 # from here on everything is logged automatically
-task = Task.init(project_name='examples', task_name='pytorch tensorboard toy example')
+task = Task.init(project_name='examples', task_name='PyTorch TensorBoard toy example')
 
 writer = SummaryWriter(log_dir=os.path.join(gettempdir(), 'tensorboard_logs'))
 

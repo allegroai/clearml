@@ -219,7 +219,7 @@ def report_html_image(logger, iteration=0):
 def main():
     # Connecting ClearML with the current process,
     # from here on everything is logged automatically
-    task = Task.init(project_name="examples", task_name="html samples reporting")
+    task = Task.init(project_name="examples", task_name="HTML samples reporting")
 
     print('reporting html files into debug samples section')
 

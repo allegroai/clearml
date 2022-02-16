@@ -28,7 +28,7 @@ import six
 from six.moves.urllib.parse import quote
 
 from ...utilities.locks import RLock as FileRLock
-from ...utilities.proxy_object import verify_basic_type
+from ...utilities.proxy_object import verify_basic_type, cast_basic_type, get_basic_type
 from ...binding.artifacts import Artifacts
 from ...backend_interface.task.development.worker import DevWorker
 from ...backend_interface.session import SendError
@@ -927,8 +927,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
             self._edit(execution=self.data.execution)
 
-    def get_parameters(self, backwards_compatibility=True):
-        # type: (bool) -> (Optional[dict])
+    def get_parameters(self, backwards_compatibility=True, cast=False):
+        # type: (bool, bool) -> (Optional[dict])
         """
         Get the parameters for a Task. This method returns a complete group of key-value parameter pairs, but does not
         support parameter descriptions (the result is a dictionary of key-value pairs).
@@ -938,6 +938,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param backwards_compatibility: If True (default) parameters without section name
             (API version < 2.9, clearml-server < 0.16) will be at dict root level.
             If False, parameters without section name, will be nested under "Args/" key.
+        :param cast: If True, cast the parameter to the original type. Default False,
+            values are returned in their string representation
 
         :return: dict of the task parameters, all flattened to key/value.
             Different sections with key prefix "section/"
@@ -951,14 +953,16 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not backwards_compatibility:
             for section in hyperparams:
                 for key, section_param in hyperparams[section].items():
-                    parameters['{}/{}'.format(section, key)] = section_param.value
+                    parameters['{}/{}'.format(section, key)] = \
+                        cast_basic_type(section_param.value, section_param.type) if cast else section_param.value
         else:
             for section in hyperparams:
                 for key, section_param in hyperparams[section].items():
+                    v = cast_basic_type(section_param.value, section_param.type) if cast else section_param.value
                     if section_param.type == 'legacy' and section in (self._legacy_parameters_section_name, ):
-                        parameters['{}'.format(key)] = section_param.value
+                        parameters['{}'.format(key)] = v
                     else:
-                        parameters['{}/{}'.format(section, key)] = section_param.value
+                        parameters['{}/{}'.format(section, key)] = v
 
         return parameters
 
@@ -1086,7 +1090,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     section = hyperparams.get(section_name, dict())
                     org_param = org_hyperparams.get(section_name, dict()).get(key, None)
                     param_type = params_types[org_k] if org_k in params_types else (
-                        org_param.type if org_param is not None else type(v) if v is not None else None
+                        org_param.type if org_param is not None else get_basic_type(v) if v is not None else None
                     )
                     if param_type and not isinstance(param_type, str):
                         param_type = param_type.__name__ if hasattr(param_type, '__name__') else str(param_type)

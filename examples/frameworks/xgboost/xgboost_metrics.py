@@ -4,7 +4,7 @@ from sklearn.model_selection import train_test_split
 
 from clearml import Task
 
-task = Task.init(project_name="examples", task_name="xgboost metric auto reporting")
+task = Task.init(project_name="examples", task_name="XGBoost metric auto reporting")
 
 X, y = load_iris(return_X_y=True)
 X_train, X_test, y_train, y_test = train_test_split(

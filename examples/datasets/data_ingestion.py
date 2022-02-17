@@ -20,7 +20,7 @@ from clearml import Dataset, Task
 dataset_name = "cifar_dataset"
 dataset_project = "dataset_examples"
 
-task = Task.init(project_name="Image Example", task_name="image classification CIFAR10")
+task = Task.init(project_name="Image Example", task_name="Image classification CIFAR10")
 params = {
     "number_of_epochs": 20,
     "batch_size": 64,

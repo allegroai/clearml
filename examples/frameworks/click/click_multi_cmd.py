@@ -3,9 +3,12 @@ from clearml import Task
 
 
 @click.group()
-def cli():
-    task = Task.init(project_name='examples', task_name='click multi command')
-    print('done')
+@click.option('--print-something/--dont-print-something', default=True)
+@click.option('--what-to-print', default='something')
+def cli(print_something, what_to_print):
+    Task.init(project_name='examples', task_name='Click multi command')
+    if print_something:
+        print(what_to_print)
 
 
 @cli.command('hello', help='test help')
@@ -15,7 +18,6 @@ def hello(count, name):
     """Simple program that greets NAME for a total of COUNT times."""
     for x in range(count):
         click.echo("Hello {}!".format(name))
-    print('done')
 
 
 CONTEXT_SETTINGS = dict(

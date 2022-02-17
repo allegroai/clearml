@@ -61,7 +61,7 @@ def generate_summary(k, step):
     tf.summary.image("test_rgba", image_rgba, max_outputs=10, step=step)
 
 
-task = Task.init(project_name='examples', task_name='tensorboard toy example')
+task = Task.init(project_name='examples', task_name='TensorbBoard toy example')
 
 # create the tensorboard file writer in a temp folder
 writer = tf.summary.create_file_writer(os.path.join(gettempdir(), "toy_tb_example"))

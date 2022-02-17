@@ -17,5 +17,5 @@ class BrokenCalculator(object):
 
 
 if __name__ == "__main__":
-    Task.init(project_name="examples", task_name="fire class command")
+    Task.init(project_name="examples", task_name="Fire class command")
     fire.Fire(BrokenCalculator)

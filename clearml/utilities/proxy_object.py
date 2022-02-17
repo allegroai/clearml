@@ -1,7 +1,9 @@
 import itertools
+import json
 from copy import copy
 
 import six
+import yaml
 
 
 class ProxyDictPostWrite(dict):
@@ -89,6 +91,59 @@ def verify_basic_type(a_dict_list, basic_types=None):
     elif isinstance(a_dict_list, dict):
         return all(verify_basic_type(k) for k in a_dict_list.keys()) and \
                all(verify_basic_type(v) for v in a_dict_list.values())
+
+
+def cast_basic_type(value, type_str):
+    if not type_str:
+        return value
+
+    basic_types = {str(getattr(v, '__name__', v)): v for v in (float, int, bool, str, list, tuple, dict)}
+
+    parts = type_str.split('/')
+    # nested = len(parts) > 1
+
+    if parts[0] in ('list', 'tuple'):
+        v = '[' + value.lstrip('[(').rstrip('])') + ']'
+        v = yaml.load(v, Loader=yaml.SafeLoader)
+        return basic_types.get(parts[0])(v)
+    elif parts[0] in ('dict', ):
+        try:
+            return json.loads(value)
+        except Exception:
+            pass
+        return value
+
+    t = basic_types.get(str(type_str).lower().strip(), False)
+    if t is not False:
+        # noinspection PyBroadException
+        try:
+            return t(value)
+        except Exception:
+            return value
+
+    return value
+
+
+def get_basic_type(value):
+    basic_types = (float, int, bool, six.string_types, list, tuple, dict)
+
+    if isinstance(value, (list, tuple)) and value:
+        tv = type(value)
+        t = type(value[0])
+        if all(t == type(v) for v in value):
+            return '{}/{}'.format(str(getattr(tv, '__name__', tv)), str(getattr(t, '__name__', t)))
+    elif isinstance(value, dict) and value:
+        t = type(list(value.values())[0])
+        if all(t == type(v) for v in value.values()):
+            return 'dict/{}'.format(str(getattr(t, '__name__', t)))
+
+    # it might be an empty list/dict/tuple
+    t = type(value)
+    if isinstance(value, basic_types):
+        return str(getattr(t, '__name__', t))
+
+    # we are storing it, even though we will not be able to restore it
+    return str(getattr(t, '__name__', t))
 
 
 def flatten_dictionary(a_dict, prefix='', sep='/'):

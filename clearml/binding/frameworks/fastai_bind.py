@@ -2,7 +2,7 @@ import sys
 
 import numpy as np
 
-from packaging import version
+from clearml.utilities.version import Version
 
 from . import _patched_call
 from .tensorflow_bind import WeightsGradientHistHelper
@@ -23,7 +23,7 @@ class PatchFastai(object):
 
         # noinspection PyBroadException
         try:
-            if version.parse(fastai.__version__) < version.parse("2.0.0"):
+            if Version(fastai.__version__) < Version("2.0.0"):
                 PatchFastaiV1.update_current_task(task)
                 PatchFastaiV1.patch_model_callback()
                 PostImportHookPatching.add_on_import("fastai", PatchFastaiV1.patch_model_callback)

@@ -119,6 +119,8 @@ def main():
     if not web_input:
         web_host = input_url('Web Application Host', web_host)
     else:
+        if web_input is True and not web_host:
+            web_host = host
         api_host = input_url('API Host', api_host)
 
     files_host = input_url('File Store Host', files_host)

@@ -3003,7 +3003,7 @@ class Task(_Task):
 
         a_dict = {
             k: v
-            for cls_ in an_object.__mro__
+            for cls_ in getattr(an_object, "__mro__", [an_object])
             for k, v in cls_.__dict__.items()
             if verify_type(k, v)
         }

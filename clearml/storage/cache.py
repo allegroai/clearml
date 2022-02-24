@@ -125,7 +125,7 @@ class CacheManager(object):
             # Omitting Characters from Very Long Filename
             if len(os.path.basename(file_name)) >= max_char_length:
                 file_basename = file_basename[:max_char_length]
-                new_file_name = file_basename + file_ext
+                new_file_name = "{}{}".format(file_basename, file_ext)
 
             # Which file name to return?
             if new_file_name:

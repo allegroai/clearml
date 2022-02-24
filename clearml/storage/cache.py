@@ -104,6 +104,38 @@ class CacheManager(object):
             filename = url.split("/")[-1]
             return "{}.{}".format(str_hash, quote_url(filename))
 
+        def filename_validation(self, file_name):
+            # type: (str) -> str
+            """
+            :param file_name: base file name
+            :return: new_file name (if necessary) or original
+            """
+            file_ext = "".join(Path(file_name).suffixes[-2:])
+            file_basename = file_name.rstrip(file_ext)
+            cache_folder = self.get_cache_folder()
+
+            # New Filename
+            new_file_name = ""
+
+            # Maximum character supported for filename
+            max_char_length = os.statvfs(cache_folder).f_namemax
+            max_char_length -= len(file_ext)
+            max_char_length -= 32
+
+            # Omitting Characters from Very Long Filename
+            if len(os.path.basename(file_name)) >= max_char_length:
+                file_basename = file_basename[:max_char_length]
+                new_file_name = file_basename + file_ext
+
+            # Which file name to return?
+            if new_file_name:
+                LoggerRoot.get_base_logger().warning(
+                    'File is renamed to "{}"'.format(new_file_name)
+                )
+                return new_file_name
+            else:
+                return file_name
+
         def get_cache_folder(self):
             # type: () -> str
             """
@@ -149,6 +181,7 @@ class CacheManager(object):
             )
             folder.mkdir(parents=True, exist_ok=True)
             local_filename = local_filename or self.get_hashed_url_file(remote_url)
+            local_filename = self.filename_validation(file_name=local_filename)
             new_file = folder / local_filename
             new_file_exists = new_file.exists()
             if new_file_exists:

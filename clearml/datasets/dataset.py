@@ -398,14 +398,14 @@ class Dataset(object):
 
             if not count:
                 zip_file.unlink()
-
-            total_size += zip_file.stat().st_size
+            else:
+                total_size += zip_file.stat().st_size
+                # update the artifact preview
+                archive_preview = "Dataset archive content [{} files]:\n".format(count) + archive_preview
+                # add into the list
+                list_zipped_artifacts += [(zip_file, count, archive_preview, self._data_artifact_name)]
             # let's see what's left
             list_file_entries = list_file_entries[processed:]
-            # update the artifact preview
-            archive_preview = 'Dataset archive content [{} files]:\n'.format(count) + archive_preview
-            # add into the list
-            list_zipped_artifacts += [(zip_file, count, archive_preview, self._data_artifact_name)]
             # next artifact name to use
             self._data_artifact_name = self._get_next_data_artifact_name(self._data_artifact_name)
 
@@ -413,10 +413,12 @@ class Dataset(object):
             a_tqdm.close()
 
         self._task.get_logger().report_text(
-            'File compression completed: total size {}, {} chunked stored (average size {})'.format(
+            "File compression completed: total size {}, {} chunked stored (average size {})".format(
                 format_size(total_size),
                 len(list_zipped_artifacts),
-                format_size(total_size / len(list_zipped_artifacts))))
+                format_size(0 if len(list_zipped_artifacts) == 0 else total_size / len(list_zipped_artifacts)),
+            )
+        )
 
         if not list_zipped_artifacts:
             LoggerRoot.get_base_logger().info('No pending files, skipping upload.')

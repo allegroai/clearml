@@ -1549,8 +1549,14 @@ class Task(_Task):
                 # noinspection PyProtectedMember
                 Logger._remove_std_logger()
 
-    def delete(self, delete_artifacts_and_models=True, skip_models_used_by_other_tasks=True, raise_on_error=False):
-        # type: (bool, bool, bool) -> bool
+    def delete(
+            self,
+            delete_artifacts_and_models=True,
+            skip_models_used_by_other_tasks=True,
+            raise_on_error=False,
+            callback=None,
+    ):
+        # type: (bool, bool, bool, Callable[[str, str], bool]) -> bool
         """
         Delete the task as well as it's output models and artifacts.
         Models and artifacts are deleted from their storage locations, each using its URI.
@@ -1559,10 +1565,14 @@ class Task(_Task):
         configured in your configuration file (e.g. if an artifact is stored in S3, make sure sdk.aws.s3.credentials
         are properly configured and that you have delete permission in the related buckets).
 
-        :param delete_artifacts_and_models: If True, artifacts and models would also be deleted (default True)
+        :param delete_artifacts_and_models: If True, artifacts and models would also be deleted (default True).
+                                            If callback is provided, this argument is ignored.
         :param skip_models_used_by_other_tasks: If True, models used by other tasks would not be deleted (default True)
         :param raise_on_error: If True an exception will be raised when encountering an error.
                                If False an error would be printed and no exception will be raised.
+        :param callback: An optional callback accepting a uri type (string) and a uri (string) that will be called
+                         for each artifact and model. If provided, the delete_artifacts_and_models is ignored.
+                         Return True to indicate the artifact/model should be deleted or False otherwise.
         :return: True if the task was deleted successfully.
         """
         if not running_remotely() or not self.is_main_task():
@@ -1570,6 +1580,7 @@ class Task(_Task):
                 delete_artifacts_and_models=delete_artifacts_and_models,
                 skip_models_used_by_other_tasks=skip_models_used_by_other_tasks,
                 raise_on_error=raise_on_error,
+                callback=callback,
             )
         return False
 

@@ -33,6 +33,7 @@ from six.moves.urllib.request import url2pathname
 
 from .callbacks import UploadProgressReport, DownloadProgressReport
 from .util import quote_url
+from ..backend_api.session import Session
 from ..backend_api.utils import get_http_session_with_retry
 from ..backend_config.bucket_config import S3BucketConfigurations, GSBucketConfigurations, AzureContainerConfigurations
 from ..config import config, deferred_config
@@ -103,6 +104,8 @@ class StorageHelper(object):
         Supports both local and remote files (currently local files, network-mapped files, HTTP/S and Amazon S3)
     """
     _temp_download_suffix = '.partially'
+
+    _file_server_host = None
 
     @classmethod
     def _get_logger(cls):
@@ -876,10 +879,11 @@ class StorageHelper(object):
         elif parsed.scheme == _GoogleCloudStorageDriver.scheme:
             conf = cls._gs_configurations.get_config_by_uri(base_url)
             return str(furl(scheme=parsed.scheme, netloc=conf.bucket))
-        elif parsed.scheme == 'http':
-            return 'http://'
-        elif parsed.scheme == 'https':
-            return 'https://'
+        elif parsed.scheme in ('http', 'https'):
+            files_server = cls._get_file_server_host()
+            if base_url.startswith(files_server):
+                return files_server
+            return parsed.scheme + "://"
         else:  # if parsed.scheme == 'file':
             # if we do not know what it is, we assume file
             return 'file://'
@@ -905,6 +909,12 @@ class StorageHelper(object):
                 raise ValueError('folder_uri: {} does not start with base url: {}'.format(folder_uri, _base_url))
 
         return folder_uri
+
+    @classmethod
+    def _get_file_server_host(cls):
+        if cls._file_server_host is None:
+            cls._file_server_host = Session.get_files_server_host()
+        return cls._file_server_host
 
     def _absolute_object_name(self, path):
         """ Returns absolute remote path, including any prefix that is handled by the container """
@@ -1081,11 +1091,14 @@ class _HttpDriver(_Driver):
         return self._containers[container_name]
 
     def upload_object_via_stream(self, iterator, container, object_name, extra=None, callback=None, **kwargs):
-        url = object_name[:object_name.index('/')]
-        url_path = object_name[len(url) + 1:]
-        full_url = container.name + url
         # when sending data in post, there is no connection timeout, just an entire upload timeout
         timeout = int(self.timeout_total)
+        url = container.name
+        path = object_name
+        if not urlparse(url).netloc:
+            host, _, path = object_name.partition('/')
+            url += host + '/'
+
         stream_size = 0
         if hasattr(iterator, 'tell') and hasattr(iterator, 'seek'):
             pos = iterator.tell()
@@ -1093,9 +1106,9 @@ class _HttpDriver(_Driver):
             stream_size = iterator.tell() - pos
             iterator.seek(pos, 0)
             timeout = max(timeout, (stream_size / 1024) / float(self.min_kbps_speed))
-
-        res = container.session.post(full_url, files={url_path: iterator}, timeout=timeout,
-                                     headers=container.get_headers(full_url))
+        res = container.session.post(
+            url, files={path: iterator}, timeout=timeout, headers=container.get_headers(url)
+        )
         if res.status_code != requests.codes.ok:
             raise ValueError('Failed uploading object %s (%d): %s' % (object_name, res.status_code, res.text))
 

@@ -27,6 +27,7 @@ class AWSDriver(CloudDriver):
     aws_secret_access_key = attr.ib(validator=instance_of(str), default='')
     aws_region = attr.ib(validator=instance_of(str), default='')
     use_credentials_chain = attr.ib(validator=instance_of(bool), default=False)
+    use_iam_instance_profile = attr.ib(validator=instance_of(bool), default=False)
 
     @classmethod
     def from_config(cls, config):
@@ -35,6 +36,7 @@ class AWSDriver(CloudDriver):
         obj.aws_secret_access_key = config['hyper_params'].get('cloud_credentials_secret')
         obj.aws_region = config['hyper_params'].get('cloud_credentials_region')
         obj.use_credentials_chain = config['hyper_params'].get('use_credentials_chain', False)
+        obj.use_iam_instance_profile = config['hyper_params'].get('use_iam_instance_profile', False)
         return obj
 
     def __attrs_post_init__(self):
@@ -69,6 +71,11 @@ class AWSDriver(CloudDriver):
             launch_specification["SecurityGroupIds"] = resource_conf[
                 "security_group_ids"
             ]
+        if resource_conf.get("iam_arn", None) and resource_conf.get("iam_name", None):
+            launch_specification["IamInstanceProfile"] = {
+                'Arn': resource_conf["iam_arn"],
+                'Name': resource_conf["iam_name"]
+            }
 
         if resource_conf["is_spot"]:
             # Create a request for a spot instance in AWS

@@ -84,7 +84,11 @@ class ForkSemaphore(_ForkSafeThreadSyncObject):
         super(ForkSemaphore, self).__init__(functor=partial(Semaphore, value))
 
     def acquire(self, *args, **kwargs):
-        self._create()
+        try:
+            self._create()
+        except BaseException:  # noqa
+            return None
+
         return self._sync.acquire(*args, **kwargs)
 
     def release(self, *args, **kwargs):

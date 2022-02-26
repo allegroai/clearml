@@ -1831,7 +1831,6 @@ class _AzureBlobServiceStorageDriver(_Driver):
         def is_legacy(self):
             return self.__legacy
 
-
     @attrs
     class _Object(object):
         container = attrib()
@@ -1950,7 +1949,6 @@ class _AzureBlobServiceStorageDriver(_Driver):
         download_done = threading.Event()
         download_done.counter = 0
 
-
         def callback_func(current, total):
             if callback:
                 chunk = current - download_done.counter
@@ -1958,7 +1956,6 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 callback(chunk)
             if current >= total:
                 download_done.set()
-
 
         container = obj.container
         container.blob_service.MAX_SINGLE_GET_SIZE = 5 * 1024 * 1024

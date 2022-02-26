@@ -118,7 +118,7 @@ class CloudDriver(ABC):
     def instance_type_key(self):
         """Return key in configuration for instance type"""
 
-    def gen_user_data(self, worker_prefix, queue_name, task_id):
+    def gen_user_data(self, worker_prefix, queue_name, task_id, cpu_only=False):
         return bash_script_template.format(
             queue=queue_name,
             worker_prefix=worker_prefix,
@@ -131,7 +131,7 @@ class CloudDriver(ABC):
             secret_key=self.secret_key,
             web_server=self.web_server,
 
-            bash_script=self.extra_vm_bash_script,
+            bash_script=("export NVIDIA_VISIBLE_DEVICES=none; " if cpu_only else "") + self.extra_vm_bash_script,
             driver_extra=self.driver_bash_extra(task_id),
             docker="--docker '{}'".format(self.docker_image) if self.docker_image else "",
             instance_id_command=self.instance_id_command(),

@@ -44,7 +44,7 @@ class AWSDriver(CloudDriver):
     def spin_up_worker(self, resource_conf, worker_prefix, queue_name, task_id):
         # user_data script will automatically run when the instance is started. it will install the required packages
         # for clearml-agent configure it using environment variables and run clearml-agent on the required queue
-        user_data = self.gen_user_data(worker_prefix, queue_name, task_id)
+        user_data = self.gen_user_data(worker_prefix, queue_name, task_id, resource_conf.get("cpu_only", False))
 
         ec2 = boto3.client("ec2", **self.creds())
         launch_specification = ConfigFactory.from_dict(

@@ -167,7 +167,7 @@ class CacheManager(object):
                 ):
                     # parse the lock filename
                     name = f.name[
-                        len(CacheManager._lockfile_prefix) : -len(
+                        len(CacheManager._lockfile_prefix):-len(
                             CacheManager._lockfile_suffix
                         )
                     ]
@@ -181,7 +181,7 @@ class CacheManager(object):
                 lock_files.pop(f.name, None)
 
             # delete old files
-            files = files[self._file_limit :]
+            files = files[self._file_limit:]
             for i, f in enumerate(files):
                 if i < self._file_limit:
                     continue

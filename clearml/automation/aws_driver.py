@@ -27,6 +27,7 @@ class AWSDriver(CloudDriver):
     aws_secret_access_key = attr.ib(validator=instance_of(str), default='')
     aws_region = attr.ib(validator=instance_of(str), default='')
     use_credentials_chain = attr.ib(validator=instance_of(bool), default=False)
+    use_iam_instance_profile = attr.ib(validator=instance_of(bool), default=False)
 
     @classmethod
     def from_config(cls, config):
@@ -35,6 +36,7 @@ class AWSDriver(CloudDriver):
         obj.aws_secret_access_key = config['hyper_params'].get('cloud_credentials_secret')
         obj.aws_region = config['hyper_params'].get('cloud_credentials_region')
         obj.use_credentials_chain = config['hyper_params'].get('use_credentials_chain', False)
+        obj.use_iam_instance_profile = config['hyper_params'].get('use_iam_instance_profile', False)
         return obj
 
     def __attrs_post_init__(self):
@@ -44,7 +46,7 @@ class AWSDriver(CloudDriver):
     def spin_up_worker(self, resource_conf, worker_prefix, queue_name, task_id):
         # user_data script will automatically run when the instance is started. it will install the required packages
         # for clearml-agent configure it using environment variables and run clearml-agent on the required queue
-        user_data = self.gen_user_data(worker_prefix, queue_name, task_id)
+        user_data = self.gen_user_data(worker_prefix, queue_name, task_id, resource_conf.get("cpu_only", False))
 
         ec2 = boto3.client("ec2", **self.creds())
         launch_specification = ConfigFactory.from_dict(
@@ -69,6 +71,11 @@ class AWSDriver(CloudDriver):
             launch_specification["SecurityGroupIds"] = resource_conf[
                 "security_group_ids"
             ]
+        if resource_conf.get("iam_arn", None) and resource_conf.get("iam_name", None):
+            launch_specification["IamInstanceProfile"] = {
+                'Arn': resource_conf["iam_arn"],
+                'Name': resource_conf["iam_name"]
+            }
 
         if resource_conf["is_spot"]:
             # Create a request for a spot instance in AWS

@@ -134,11 +134,11 @@ class PatchFire:
                 replaced_args = []
             for param in PatchFire.__remote_task_params[PatchFire._section_name].values():
                 if command is not None and param.type == PatchFire._command_arg_type_template % command:
-                    replaced_args.append("--" + param.name[len(command + PatchFire._args_sep) :])
+                    replaced_args.append("--" + param.name[len(command + PatchFire._args_sep):])
                     value = PatchFire.__remote_task_params_dict[param.name]
                     if len(value) > 0:
                         replaced_args.append(value)
-                if param.type == PatchFire._shared_arg_type: 
+                if param.type == PatchFire._shared_arg_type:
                     replaced_args.append("--" + param.name)
                     value = PatchFire.__remote_task_params_dict[param.name]
                     if len(value) > 0:

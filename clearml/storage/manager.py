@@ -249,9 +249,9 @@ class StorageManager(object):
 
     @classmethod
     def download_folder(
-        cls, remote_url, local_folder=None, match_wildcard=None, overwrite=False
+        cls, remote_url, local_folder=None, match_wildcard=None, overwrite=False, skip_zero_size_check=False
     ):
-        # type: (str, Optional[str], Optional[str], bool) -> Optional[str]
+        # type: (str, Optional[str], Optional[str], bool, bool) -> Optional[str]
         """
         Download remote folder recursively to the local machine, maintaining the sub folder structure
         from the remote storage.
@@ -271,6 +271,7 @@ class StorageManager(object):
             Example: `*.json`
         :param bool overwrite: If False, and target files exist do not download.
             If True always download the remote files. Default False.
+        :param bool skip_zero_size_check: If True no error will be raised for files with zero bytes size.
 
         :return: Target local folder
         """

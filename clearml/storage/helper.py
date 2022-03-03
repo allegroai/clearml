@@ -879,7 +879,7 @@ class StorageHelper(object):
         elif parsed.scheme == _GoogleCloudStorageDriver.scheme:
             conf = cls._gs_configurations.get_config_by_uri(base_url)
             return str(furl(scheme=parsed.scheme, netloc=conf.bucket))
-        elif parsed.scheme in ('http', 'https'):
+        elif parsed.scheme in _HttpDriver.schemes:
             files_server = cls._get_file_server_host()
             if base_url.startswith(files_server):
                 return files_server
@@ -1136,7 +1136,11 @@ class _HttpDriver(_Driver):
 
     def get_object(self, container_name, object_name, *args, **kwargs):
         is_stream = kwargs.get('stream', True)
-        url = ''.join((container_name, object_name.lstrip('/')))
+        url = '/'.join((
+            container_name[:-1] if container_name.endswith('/') else container_name,
+            object_name.lstrip('/')
+        ))
+        # url = ''.join((container_name, object_name.lstrip('/')))
         return self._HttpSessionHandle(url, is_stream, container_name, object_name)
 
     def _get_download_object(self, obj):

@@ -211,6 +211,25 @@ def naive_nested_from_flat_dictionary(flat_dict, sep='/'):
     }
 
 
+def walk_nested_dict_tuple_list(dict_list_tuple, callback):
+    nested = (dict, tuple, list)
+    if not isinstance(dict_list_tuple, nested):
+        return callback(dict_list_tuple)
+
+    if isinstance(dict_list_tuple, dict):
+        ret = {}
+        for k, v in dict_list_tuple.items():
+            ret[k] = walk_nested_dict_tuple_list(v, callback=callback) if isinstance(v, nested) else callback(v)
+    else:
+        ret = []
+        for v in dict_list_tuple:
+            ret.append(walk_nested_dict_tuple_list(v, callback=callback) if isinstance(v, nested) else callback(v))
+        if isinstance(dict_list_tuple, tuple):
+            ret = tuple(dict_list_tuple)
+
+    return ret
+
+
 class WrapperBase(type):
 
     # This metaclass is heavily inspired by the Object Proxying python recipe

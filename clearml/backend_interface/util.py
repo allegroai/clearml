@@ -54,7 +54,8 @@ def make_message(s, **kwargs):
 
 def get_existing_project(session, project_name):
     """Return either the project ID if it exists, an empty string if it doesn't or None if backend request failed."""
-    res = session.send(projects.GetAllRequest(name=exact_match_regex(project_name), only_fields=['id']))
+    res = session.send(projects.GetAllRequest(
+        name=exact_match_regex(project_name), only_fields=['id'], search_hidden=True, _allow_extra_fields_=True))
     if not res:
         return None
     if res.response and res.response.projects:
@@ -62,18 +63,36 @@ def get_existing_project(session, project_name):
     return ""
 
 
-def get_or_create_project(session, project_name, description=None):
+def get_or_create_project(session, project_name, description=None, system_tags=None, project_id=None):
     """Return the ID of an existing project, or if it does not exist, make a new one and return that ID instead."""
-    project_id = get_existing_project(session, project_name)
+    project_system_tags = []
+    if not project_id:
+        res = session.send(projects.GetAllRequest(
+            name=exact_match_regex(project_name),
+            only_fields=['id', 'system_tags'] if system_tags else ['id'],
+            search_hidden=True, _allow_extra_fields_=True))
+
+        if res and res.response and res.response.projects:
+            project_id = res.response.projects[0].id
+            if system_tags:
+                project_system_tags = res.response.projects[0].system_tags
+
+    if project_id and system_tags and (not project_system_tags or
+                                       set(project_system_tags) & set(system_tags) != set(system_tags)):
+        # set system_tags
+        session.send(
+            projects.UpdateRequest(
+                project=project_id, system_tags=list(set((project_system_tags or []) + system_tags))
+            )
+        )
+
     if project_id:
         return project_id
-    if project_id == "":
-        # Project was not found, so create a new one
-        res = session.send(projects.CreateRequest(name=project_name, description=description or ''))
-        return res.response.id
 
-    # This should only happen if backend response was None and so project_id is also None
-    return None
+    # Project was not found, so create a new one
+    res = session.send(projects.CreateRequest(
+        name=project_name, description=description or '', system_tags=system_tags))
+    return res.response.id
 
 
 def get_queue_id(session, queue):

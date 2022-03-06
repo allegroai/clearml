@@ -1534,8 +1534,24 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         Set the task_type for the Task.
 
-        :param task_type: The task_type of the Task (see optional values in TaskTypes).
+        :param task_type: The task_type of the Task.
+
+            Valid task types:
+
+            - ``TaskTypes.training``
+            - ``TaskTypes.testing``
+            - ``TaskTypes.inference``
+            - ``TaskTypes.data_processing``
+            - ``TaskTypes.application``
+            - ``TaskTypes.monitor``
+            - ``TaskTypes.controller``
+            - ``TaskTypes.optimizer``
+            - ``TaskTypes.service``
+            - ``TaskTypes.qc``
+            - ``TaskTypes.custom``
+
         :type task_type: str or TaskTypes
+
         """
         if not isinstance(task_type, self.TaskTypes):
             task_type = self.TaskTypes(task_type)

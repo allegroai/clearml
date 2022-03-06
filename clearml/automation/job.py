@@ -148,7 +148,8 @@ class BaseJob(object):
     def status(self, force=False):
         # type: (bool) -> str
         """
-        Return the Job Task current status, see Task.TaskStatusEnum
+        Return the Job Task current status. Options are: "created", "queued", "in_progress", "stopped", "published",
+        "publishing", "closed", "failed", "completed", "unknown".
 
         :param force: Force status update, otherwise, only refresh state every 1 sec
 
@@ -667,7 +668,8 @@ class LocalClearmlJob(ClearmlJob):
     def status(self, force=False):
         # type: (bool) -> str
         """
-        Return the Job Task current status, see Task.TaskStatusEnum
+        Return the Job Task current status. Options are: "created", "queued", "in_progress", "stopped", "published",
+        "publishing", "closed", "failed", "completed", "unknown".
 
         :param force: Force status update, otherwise, only refresh state every 1 sec
 

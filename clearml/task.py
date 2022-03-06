@@ -835,7 +835,8 @@ class Task(_Task):
             `parent`: (str) filter by parent task-id matching
             `search_text`: (str) free text search (in task fields comment/name/id)
             `status`: List[str] List of valid statuses
-                (options are: "created", "queued", "in_progress", "stopped", "published", "completed")
+                (options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed", "failed",
+                "completed", "unknown")
             `type`: List[str] List of valid task type
                 (options are: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor',
                 'controller', 'optimizer', 'service', 'qc'. 'custom')
@@ -894,7 +895,8 @@ class Task(_Task):
             `parent`: (str) filter by parent task-id matching
             `search_text`: (str) free text search (in task fields comment/name/id)
             `status`: List[str] List of valid statuses
-                (options are: "created", "queued", "in_progress", "stopped", "published", "completed")
+                (options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed", "failed",
+                "completed", "unknown")
             `type`: List[str] List of valid task type
                 (options are: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor',
                 'controller', 'optimizer', 'service', 'qc'. 'custom')

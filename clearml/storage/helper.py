@@ -1129,7 +1129,7 @@ class _HttpDriver(_Driver):
         container = self._containers[obj.container_name]
         res = container.session.delete(obj.url, headers=container.get_headers(obj.url))
         if res.status_code != requests.codes.ok:
-            self._get_logger().warning('Failed deleting object %s (%d): %s' % (
+            self.get_logger().warning('Failed deleting object %s (%d): %s' % (
                 obj.object_name, res.status_code, res.text))
             return False
         return True
@@ -1140,7 +1140,6 @@ class _HttpDriver(_Driver):
             container_name[:-1] if container_name.endswith('/') else container_name,
             object_name.lstrip('/')
         ))
-        # url = ''.join((container_name, object_name.lstrip('/')))
         return self._HttpSessionHandle(url, is_stream, container_name, object_name)
 
     def _get_download_object(self, obj):

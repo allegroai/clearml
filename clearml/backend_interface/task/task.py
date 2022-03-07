@@ -707,7 +707,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 ]
 
             task_deleted = self.send(tasks.DeleteRequest(self.task_id, force=True))
-            if not task_deleted:
+            if not task_deleted.ok():
                 if raise_on_error:
                     raise self.DeleteError("Failed deleting task {}".format(self.task_id))
                 self.log.error("Failed deleting task {}".format(self.task_id))

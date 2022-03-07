@@ -2911,9 +2911,9 @@ class PipelineDecorator(PipelineController):
             def wrapper(*args, **kwargs):
                 if cls._debug_execute_step_function:
                     args = walk_nested_dict_tuple_list(
-                        args, lambda x: v._remoteref() if isinstance(v, LazyEvalWrapper) else v)
+                        args, lambda x: x._remoteref() if isinstance(x, LazyEvalWrapper) else x)
                     kwargs = walk_nested_dict_tuple_list(
-                        kwargs, lambda x: v._remoteref() if isinstance(v, LazyEvalWrapper) else v)
+                        kwargs, lambda x: x._remoteref() if isinstance(x, LazyEvalWrapper) else x)
 
                     func_return = []
 

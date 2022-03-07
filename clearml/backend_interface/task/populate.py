@@ -480,7 +480,10 @@ from clearml.automation.controller import PipelineDecorator
 {function_source}
 
 if __name__ == '__main__':
-    task = Task.init()
+    task = Task.init(
+        auto_connect_frameworks={auto_connect_frameworks},
+        auto_connect_arg_parser={auto_connect_arg_parser},
+    )
     kwargs = {function_kwargs}
     task.connect(kwargs, name='{kwargs_section}')
     function_input_artifacts = {function_input_artifacts}
@@ -510,6 +513,8 @@ if __name__ == '__main__':
             project_name=None,  # type: Optional[str]
             task_name=None,  # type: Optional[str]
             task_type=None,  # type: Optional[str]
+            auto_connect_frameworks=None,  # type: Optional[dict]
+            auto_connect_arg_parser=None,  # type: Optional[dict]
             repo=None,  # type: Optional[str]
             branch=None,  # type: Optional[str]
             commit=None,  # type: Optional[str]
@@ -561,6 +566,8 @@ if __name__ == '__main__':
         :param task_name: Set the name of the remote task. Required if base_task_id is None.
         :param task_type: Optional, The task type to be created. Supported values: 'training', 'testing', 'inference',
             'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc', 'custom'
+        :param auto_connect_frameworks: Control the frameworks auto connect, see `Task.init` auto_connect_frameworks
+        :param auto_connect_arg_parser: Control the ArgParser auto connect, see `Task.init` auto_connect_arg_parser
         :param repo: Remote URL for the repository to use, OR path to local copy of the git repository
             Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'
         :param branch: Select specific repository branch/tag (implies the latest commit from the branch)
@@ -582,6 +589,9 @@ if __name__ == '__main__':
         :param _sanitize_helper_functions: Sanitization function for the helper function string.
         :return: Newly created Task object
         """
+        assert (not auto_connect_frameworks or isinstance(auto_connect_frameworks, (bool, dict)))
+        assert (not auto_connect_arg_parser or isinstance(auto_connect_arg_parser, (bool, dict)))
+
         function_name = str(a_function.__name__)
         function_source = inspect.getsource(a_function)
         if _sanitize_function:
@@ -635,6 +645,8 @@ if __name__ == '__main__':
                     if inspect_args.annotations[k] in supported_types}
 
         task_template = cls.task_template.format(
+            auto_connect_frameworks=auto_connect_frameworks,
+            auto_connect_arg_parser=auto_connect_arg_parser,
             kwargs_section=cls.kwargs_section,
             input_artifact_section=cls.input_artifact_section,
             function_source=function_source,

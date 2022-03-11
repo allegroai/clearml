@@ -2875,7 +2875,7 @@ class Task(_Task):
             self._reporter.async_enable = True
             # if we just created the logger, set default flush period
             if not flush_period or flush_period is self.NotSet:
-                flush_period = DevWorker.report_period
+                flush_period = float(DevWorker.report_period)
 
         if isinstance(flush_period, (int, float)):
             flush_period = int(abs(flush_period))

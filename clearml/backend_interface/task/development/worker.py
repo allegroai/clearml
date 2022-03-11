@@ -54,10 +54,10 @@ class DevWorker(object):
         last_ping = time()
         while self._task is not None:
             try:
-                if self._exit_event.wait(min(self.ping_period, self.report_period)):
+                if self._exit_event.wait(min(float(self.ping_period), float(self.report_period))):
                     return
                 # send ping request
-                if self._support_ping and (time() - last_ping) >= self.ping_period:
+                if self._support_ping and (time() - last_ping) >= float(self.ping_period):
                     self.ping()
                     last_ping = time()
                 if self._dev_stop_signal:

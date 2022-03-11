@@ -52,6 +52,7 @@ class DownloadError(Exception):
 
 @six.add_metaclass(ABCMeta)
 class _Driver(object):
+    _file_server_hosts = None
 
     @classmethod
     def get_logger(cls):
@@ -97,6 +98,12 @@ class _Driver(object):
     def get_object(self, container_name, object_name, **kwargs):
         pass
 
+    @classmethod
+    def get_file_server_hosts(cls):
+        if cls._file_server_hosts is None:
+            cls._file_server_hosts = [Session.get_files_server_host()] + (Session.legacy_file_servers or [])
+        return cls._file_server_hosts
+
 
 class StorageHelper(object):
     """ Storage helper.
@@ -104,8 +111,6 @@ class StorageHelper(object):
         Supports both local and remote files (currently local files, network-mapped files, HTTP/S and Amazon S3)
     """
     _temp_download_suffix = '.partially'
-
-    _file_server_host = None
 
     @classmethod
     def _get_logger(cls):
@@ -880,9 +885,9 @@ class StorageHelper(object):
             conf = cls._gs_configurations.get_config_by_uri(base_url)
             return str(furl(scheme=parsed.scheme, netloc=conf.bucket))
         elif parsed.scheme in _HttpDriver.schemes:
-            files_server = cls._get_file_server_host()
-            if base_url.startswith(files_server):
-                return files_server
+            for files_server in _Driver.get_file_server_hosts():
+                if base_url.startswith(files_server):
+                    return files_server
             return parsed.scheme + "://"
         else:  # if parsed.scheme == 'file':
             # if we do not know what it is, we assume file
@@ -909,12 +914,6 @@ class StorageHelper(object):
                 raise ValueError('folder_uri: {} does not start with base url: {}'.format(folder_uri, _base_url))
 
         return folder_uri
-
-    @classmethod
-    def _get_file_server_host(cls):
-        if cls._file_server_host is None:
-            cls._file_server_host = Session.get_files_server_host()
-        return cls._file_server_host
 
     def _absolute_object_name(self, path):
         """ Returns absolute remote path, including any prefix that is handled by the container """
@@ -1044,7 +1043,6 @@ class _HttpDriver(_Driver):
 
     class _Container(object):
         _default_backend_session = None
-        _default_files_server_host = None
 
         def __init__(self, name, retries=5, **kwargs):
             self.name = name
@@ -1064,17 +1062,18 @@ class _HttpDriver(_Driver):
                     requests_codes.too_many_requests,
                 ]
             )
+            self.attach_auth_header = any(
+                (name.rstrip('/') == host.rstrip('/') or name.startswith(host.rstrip('/') + '/'))
+                for host in _HttpDriver.get_file_server_hosts()
+            )
 
-        def get_headers(self, url):
+        def get_headers(self, _):
             if not self._default_backend_session:
                 from ..backend_interface.base import InterfaceBase
                 self._default_backend_session = InterfaceBase._get_default_session()
-            if self._default_files_server_host is None:
-                self._default_files_server_host = self._default_backend_session.get_files_server_host().rstrip('/')
 
-            if url == self._default_files_server_host or url.startswith(self._default_files_server_host + '/'):
+            if self.attach_auth_header:
                 return self._default_backend_session.add_auth_headers({})
-            return None
 
     class _HttpSessionHandle(object):
         def __init__(self, url, is_stream, container_name, object_name):

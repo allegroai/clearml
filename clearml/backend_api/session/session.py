@@ -83,6 +83,8 @@ class Session(TokenManager):
     default_secret = "x!XTov_G-#vspE*Y(h$Anm&DIc5Ou-F)jsl$PdOyj5wG1&E!Z8"
     force_max_api_version = None
 
+    legacy_file_servers = ["https://files.community.clear.ml"]
+
     # TODO: add requests.codes.gateway_timeout once we support async commits
     _retry_codes = [
         requests.codes.bad_gateway,

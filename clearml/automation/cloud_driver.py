@@ -124,11 +124,11 @@ class CloudDriver(ABC):
             worker_prefix=worker_prefix,
 
             auth_token=self.auth_token or '',
-            access_key=self.access_key,
+            access_key=self.access_key or '',
             api_server=self.api_server,
             clearml_conf=self.clearml_conf(),
             files_server=self.files_server,
-            secret_key=self.secret_key,
+            secret_key=self.secret_key or '',
             web_server=self.web_server,
 
             bash_script=("export NVIDIA_VISIBLE_DEVICES=none; " if cpu_only else "") + self.extra_vm_bash_script,

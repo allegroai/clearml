@@ -232,6 +232,7 @@ class StorageManager(object):
         if not Path(local_folder).is_dir():
             base_logger.error("Local folder '{}' does not exist".format(local_folder))
             return
+        local_folder = str(Path(local_folder))
         results = []
         helper = StorageHelper.get(remote_url)
         with ThreadPool() as pool:
@@ -299,7 +300,7 @@ class StorageManager(object):
                     continue
                 local_url = os.path.join(
                     str(Path(local_folder)),
-                    str(Path(remote_path[len(remote_url):].lstrip(os.path.sep)))
+                    str(Path(remote_path[len(remote_url):])).lstrip(os.path.sep)
                 )
                 if not os.path.exists(local_url) or os.path.getsize(local_url) == 0:
                     results.append(

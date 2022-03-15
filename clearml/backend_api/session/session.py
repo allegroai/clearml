@@ -72,8 +72,8 @@ class Session(TokenManager):
 
     _client = [(__package__.partition(".")[0], __version__)]
 
-    api_version = '2.1'
-    max_api_version = '2.1'
+    api_version = '2.9'
+    max_api_version = '2.9'
     feature_set = 'basic'
     default_demo_host = "https://demoapi.demo.clear.ml"
     default_host = default_demo_host

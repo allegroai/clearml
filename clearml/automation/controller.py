@@ -291,7 +291,8 @@ class PipelineController(object):
             - match git repository branch to a previous step
                 task_overrides={'script.branch': '${stage1.script.branch}', 'script.version_num': ''}
             - change container image
-                task_overrides={'container.image': '${stage1.container.image}'}
+                task_overrides={'container.image': 'nvidia/cuda:11.6.0-devel-ubuntu20.04',
+                                'container.arguments': '--ipc=host'}
             - match container image to a previous step
                 task_overrides={'container.image': '${stage1.container.image}'}
         :param execution_queue: Optional, the queue to use for executing this specific step.

@@ -118,6 +118,10 @@ class CloudDriver(ABC):
     def instance_type_key(self):
         """Return key in configuration for instance type"""
 
+    @abstractmethod
+    def console_log(self, instance_id):
+        """Return log for instance"""
+
     def gen_user_data(self, worker_prefix, queue_name, task_id, cpu_only=False):
         return bash_script_template.format(
             queue=queue_name,

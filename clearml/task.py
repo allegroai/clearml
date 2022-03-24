@@ -100,6 +100,8 @@ class Task(_Task):
     .. warning::
         Do not construct Task objects directly. Use one of the methods listed below to create experiments or
         reference existing experiments.
+        Do not define `CLEARML_TASK_*` and `CLEARML_PROC_*` OS environments, they are used internally
+        for bookkeeping between processes and agents.
 
     For detailed information about creating Task objects, see the following methods:
 

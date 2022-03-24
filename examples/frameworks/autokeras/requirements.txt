@@ -1,5 +1,2 @@
-# Plese read this https://github.com/keras-team/autokeras#installation before doing changes
-autokeras
-tensorflow>=2.3.0
+autokeras ; python_version >= '3.7'
 clearml
-git+https://github.com/keras-team/keras-tuner.git

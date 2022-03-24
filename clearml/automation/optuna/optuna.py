@@ -1,4 +1,3 @@
-from concurrent.futures import ThreadPoolExecutor
 from time import sleep
 from typing import Any, Optional, Sequence
 
@@ -175,9 +174,8 @@ class OptimizerOptuna(SearchStrategy):
             sleep_interval=int(self.pool_period_minutes * 60),
             config_space=config_space,
         )
-        with ThreadPoolExecutor(max_workers=self._num_concurrent_workers) as executor:
-            for _ in range(self._num_concurrent_workers):
-                executor.submit(self._study.optimize, self._objective.objective, n_trials=self.total_max_jobs)
+        self._study.optimize(
+            self._objective.objective, n_trials=self.total_max_jobs, n_jobs=self._num_concurrent_workers)
 
     def stop(self):
         # type: () -> ()

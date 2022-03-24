@@ -55,7 +55,6 @@ clearml_conf_template = '''\
 agent.git_user="{git_user}"
 agent.git_pass="{git_pass}"
 {extra_clearml_conf}
-{auth_token}
 '''
 
 
@@ -142,11 +141,6 @@ class CloudDriver(ABC):
         )
 
     def clearml_conf(self):
-        auth_token = ''
-        token = self.session.auth_token or self.auth_token
-        if token:
-            auth_token = 'agent.extra_docker_arguments = ["-e", "CLEARML_AUTH_TOKEN={}"]'.format(token)
-
         # TODO: This need to be documented somewhere
         git_user = environ.get(env_git_user) or self.git_user or ''
         git_pass = environ.get(env_git_pass) or self.git_pass or ''
@@ -155,7 +149,6 @@ class CloudDriver(ABC):
             git_user=git_user,
             git_pass=git_pass,
             extra_clearml_conf=self.extra_clearml_conf,
-            auth_token=auth_token,
         )
 
     def driver_bash_extra(self, task_id):

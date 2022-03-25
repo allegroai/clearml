@@ -97,7 +97,8 @@ def cast_basic_type(value, type_str):
     if not type_str:
         return value
 
-    basic_types = {str(getattr(v, '__name__', v)): v for v in (float, int, bool, str, list, tuple, dict)}
+    basic_types = {str(getattr(v, '__name__', v)): v for v in (float, int, str, list, tuple, dict)}
+    basic_types['bool'] = lambda v: False if v == 'False' else True
 
     parts = type_str.split('/')
     # nested = len(parts) > 1

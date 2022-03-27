@@ -295,6 +295,8 @@ class PipelineController(object):
                                 'container.arguments': '--ipc=host'}
             - match container image to a previous step
                 task_overrides={'container.image': '${stage1.container.image}'}
+            - reset requirements (the agent will use the "requirements.txt" inside the repo)
+                task_overrides={'script.requirements.pip': ""}
         :param execution_queue: Optional, the queue to use for executing this specific step.
             If not provided, the task will be sent to the default execution queue, as defined on the class
         :param monitor_metrics: Optional, log the step's metrics on the pipeline Task.

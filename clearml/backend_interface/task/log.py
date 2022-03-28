@@ -210,7 +210,7 @@ class TaskHandler(BufferingHandler):
             self._offline_log_filename = offline_folder / self.__offline_filename
         self._background_log = BackgroundLogService(
             worker=task.session.worker, task=task,
-            session=task.session, wait_period=DevWorker.report_period,
+            session=task.session, wait_period=float(DevWorker.report_period),
             offline_log_filename=self._offline_log_filename)
         self._background_log_size = 0
         if use_subprocess:

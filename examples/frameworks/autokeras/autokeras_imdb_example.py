@@ -1,4 +1,14 @@
-import autokeras as ak
+try:
+    import autokeras as ak
+except ImportError:
+    import sys
+
+    raise ImportError(
+        "autokeras package is missing, you can install it using pip: pip install autokeras"
+        if sys.version_info.minor > 6
+        else "AutoKeras does not support python version < 3.7"
+    )
+
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
@@ -15,8 +25,8 @@ def imdb_raw():
     index_offset = 3  # word index offset
 
     (x_train, y_train), (x_test, y_test) = tf.keras.datasets.imdb.load_data(
-        num_words=max_features,
-        index_from=index_offset)
+        num_words=max_features, index_from=index_offset
+    )
     x_train = x_train
     y_train = y_train.reshape(-1, 1)
     x_test = x_test
@@ -29,12 +39,10 @@ def imdb_raw():
     word_to_id["<UNK>"] = 2
 
     id_to_word = {value: key for key, value in word_to_id.items()}
-    x_train = list(map(lambda sentence: ' '.join(
-        id_to_word[i] for i in sentence), x_train))
-    x_test = list(map(lambda sentence: ' '.join(
-        id_to_word[i] for i in sentence), x_test))
-    x_train = np.array(x_train, dtype=np.str)
-    x_test = np.array(x_test, dtype=np.str)
+    x_train = list(map(lambda sentence: " ".join(id_to_word[i] for i in sentence), x_train))
+    x_test = list(map(lambda sentence: " ".join(id_to_word[i] for i in sentence), x_test))
+    x_train = np.array(x_train, dtype=str)
+    x_test = np.array(x_test, dtype=str)
     return (x_train, y_train), (x_test, y_test)
 
 
@@ -45,13 +53,14 @@ print(y_train.shape)  # (25000, 1)
 print(x_train[0][:50])  # <START> this film was just brilliant casting <UNK>
 
 # Initialize the TextClassifier
-clf = ak.TextClassifier(max_trials=3)
+clf = ak.TextClassifier(max_trials=2)
 
-tensorboard_callback_train = keras.callbacks.TensorBoard(log_dir='log')
-tensorboard_callback_test = keras.callbacks.TensorBoard(log_dir='log')
+# Tensorboard Callbacks
+tb_callbacks = [keras.callbacks.TensorBoard(log_dir="log")]
 
 # Search for the best model.
-clf.fit(x_train, y_train, epochs=2, callbacks=[tensorboard_callback_train])
-clf.fit(x_test, y_test, epochs=2, callbacks=[tensorboard_callback_test])
+clf.fit(x_train, y_train, epochs=2, callbacks=tb_callbacks)
+
 # Evaluate on the testing data.
-print('Accuracy: {accuracy}'.format(accuracy=clf.evaluate(x_test, y_test)))
+clf_accuracy = clf.evaluate(x_test, y_test)
+print("Accuracy:", clf_accuracy)

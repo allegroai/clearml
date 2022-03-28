@@ -11,6 +11,7 @@ from .cloud_driver import parse_tags
 try:
     # noinspection PyPackageRequirements
     import boto3
+    from botocore.exceptions import ClientError
 
     Task.add_requirements("boto3")
 except ImportError as err:
@@ -160,3 +161,11 @@ class AWSDriver(CloudDriver):
 
     def kind(self):
         return 'AWS'
+
+    def console_log(self, instance_id):
+        ec2 = boto3.client("ec2", **self.creds())
+        try:
+            out = ec2.get_console_output(InstanceId=instance_id)
+            return out.get('Output', '')
+        except ClientError as err:
+            return 'error: cannot get logs for {}:\n{}'.format(instance_id, err)

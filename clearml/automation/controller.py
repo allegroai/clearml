@@ -291,9 +291,12 @@ class PipelineController(object):
             - match git repository branch to a previous step
                 task_overrides={'script.branch': '${stage1.script.branch}', 'script.version_num': ''}
             - change container image
-                task_overrides={'container.image': '${stage1.container.image}'}
+                task_overrides={'container.image': 'nvidia/cuda:11.6.0-devel-ubuntu20.04',
+                                'container.arguments': '--ipc=host'}
             - match container image to a previous step
                 task_overrides={'container.image': '${stage1.container.image}'}
+            - reset requirements (the agent will use the "requirements.txt" inside the repo)
+                task_overrides={'script.requirements.pip': ""}
         :param execution_queue: Optional, the queue to use for executing this specific step.
             If not provided, the task will be sent to the default execution queue, as defined on the class
         :param monitor_metrics: Optional, log the step's metrics on the pipeline Task.
@@ -2911,9 +2914,9 @@ class PipelineDecorator(PipelineController):
             def wrapper(*args, **kwargs):
                 if cls._debug_execute_step_function:
                     args = walk_nested_dict_tuple_list(
-                        args, lambda x: v._remoteref() if isinstance(v, LazyEvalWrapper) else v)
+                        args, lambda x: x._remoteref() if isinstance(x, LazyEvalWrapper) else x)
                     kwargs = walk_nested_dict_tuple_list(
-                        kwargs, lambda x: v._remoteref() if isinstance(v, LazyEvalWrapper) else v)
+                        kwargs, lambda x: x._remoteref() if isinstance(x, LazyEvalWrapper) else x)
 
                     func_return = []
 
@@ -2944,7 +2947,8 @@ class PipelineDecorator(PipelineController):
                     kwargs[inspect_func.args[i]] = v
 
                 kwargs_artifacts.update(
-                    {k: walk_nested_dict_tuple_list(v, lambda x: x._remoteref())
+                    {k: walk_nested_dict_tuple_list(
+                        v, lambda x: x._remoteref() if isinstance(x, LazyEvalWrapper) else x)
                      for k, v in kwargs.items() if isinstance(v, LazyEvalWrapper)}
                 )
                 kwargs = {k: deepcopy(v) for k, v in kwargs.items() if not isinstance(v, LazyEvalWrapper)}

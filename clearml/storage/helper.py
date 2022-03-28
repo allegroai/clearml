@@ -52,6 +52,7 @@ class DownloadError(Exception):
 
 @six.add_metaclass(ABCMeta)
 class _Driver(object):
+    _file_server_hosts = None
 
     @classmethod
     def get_logger(cls):
@@ -97,6 +98,12 @@ class _Driver(object):
     def get_object(self, container_name, object_name, **kwargs):
         pass
 
+    @classmethod
+    def get_file_server_hosts(cls):
+        if cls._file_server_hosts is None:
+            cls._file_server_hosts = [Session.get_files_server_host()] + (Session.legacy_file_servers or [])
+        return cls._file_server_hosts
+
 
 class StorageHelper(object):
     """ Storage helper.
@@ -104,8 +111,6 @@ class StorageHelper(object):
         Supports both local and remote files (currently local files, network-mapped files, HTTP/S and Amazon S3)
     """
     _temp_download_suffix = '.partially'
-
-    _file_server_host = None
 
     @classmethod
     def _get_logger(cls):
@@ -560,6 +565,7 @@ class StorageHelper(object):
             dest_path = os.path.basename(src_path)
 
         dest_path = self._canonize_url(dest_path)
+        dest_path = dest_path.replace('\\', '/')
 
         if cb and self.scheme in _HttpDriver.schemes:
             # store original callback
@@ -682,7 +688,7 @@ class StorageHelper(object):
             # try to get file size
             try:
                 if isinstance(self._driver, _HttpDriver) and obj:
-                    obj = self._driver._get_download_object(obj)
+                    obj = self._driver._get_download_object(obj)  # noqa
                     total_size_mb = float(obj.headers.get('Content-Length', 0)) / (1024 * 1024)
                 elif hasattr(obj, 'size'):
                     size = obj.size
@@ -717,9 +723,10 @@ class StorageHelper(object):
             if not skip_zero_size_check and Path(temp_local_path).stat().st_size <= 0:
                 raise Exception('downloaded a 0-sized file')
 
-            # if we are on windows, we need to remove the target file before renaming
+            # if we are on Windows, we need to remove the target file before renaming
             # otherwise posix rename will overwrite the target
             if os.name != 'posix':
+                # noinspection PyBroadException
                 try:
                     os.remove(local_path)
                 except Exception:
@@ -752,8 +759,7 @@ class StorageHelper(object):
             if delete_on_failure:
                 # noinspection PyBroadException
                 try:
-                    if temp_local_path:
-                        os.remove(temp_local_path)
+                    os.remove(temp_local_path)
                 except Exception:
                     pass
             return None
@@ -880,9 +886,9 @@ class StorageHelper(object):
             conf = cls._gs_configurations.get_config_by_uri(base_url)
             return str(furl(scheme=parsed.scheme, netloc=conf.bucket))
         elif parsed.scheme in _HttpDriver.schemes:
-            files_server = cls._get_file_server_host()
-            if base_url.startswith(files_server):
-                return files_server
+            for files_server in _Driver.get_file_server_hosts():
+                if base_url.startswith(files_server):
+                    return files_server
             return parsed.scheme + "://"
         else:  # if parsed.scheme == 'file':
             # if we do not know what it is, we assume file
@@ -909,12 +915,6 @@ class StorageHelper(object):
                 raise ValueError('folder_uri: {} does not start with base url: {}'.format(folder_uri, _base_url))
 
         return folder_uri
-
-    @classmethod
-    def _get_file_server_host(cls):
-        if cls._file_server_host is None:
-            cls._file_server_host = Session.get_files_server_host()
-        return cls._file_server_host
 
     def _absolute_object_name(self, path):
         """ Returns absolute remote path, including any prefix that is handled by the container """
@@ -1044,7 +1044,6 @@ class _HttpDriver(_Driver):
 
     class _Container(object):
         _default_backend_session = None
-        _default_files_server_host = None
 
         def __init__(self, name, retries=5, **kwargs):
             self.name = name
@@ -1064,17 +1063,18 @@ class _HttpDriver(_Driver):
                     requests_codes.too_many_requests,
                 ]
             )
+            self.attach_auth_header = any(
+                (name.rstrip('/') == host.rstrip('/') or name.startswith(host.rstrip('/') + '/'))
+                for host in _HttpDriver.get_file_server_hosts()
+            )
 
-        def get_headers(self, url):
+        def get_headers(self, _):
             if not self._default_backend_session:
                 from ..backend_interface.base import InterfaceBase
                 self._default_backend_session = InterfaceBase._get_default_session()
-            if self._default_files_server_host is None:
-                self._default_files_server_host = self._default_backend_session.get_files_server_host().rstrip('/')
 
-            if url == self._default_files_server_host or url.startswith(self._default_files_server_host + '/'):
+            if self.attach_auth_header:
                 return self._default_backend_session.add_auth_headers({})
-            return None
 
     class _HttpSessionHandle(object):
         def __init__(self, url, is_stream, container_name, object_name):
@@ -1711,7 +1711,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
 
     class _Container(object):
         def __init__(self, name, config, account_url):
-            self.MAX_SINGLE_PUT_SIZE = 16 * 1024 * 1024
+            self.MAX_SINGLE_PUT_SIZE = 4 * 1024 * 1024
             self.SOCKET_TIMEOUT = (300, 2000)
             self.name = name
             self.config = config
@@ -1776,17 +1776,9 @@ class _AzureBlobServiceStorageDriver(_Driver):
                     progress_callback=progress_callback,
                 )
             else:
-                client = self.__blob_service.get_blob_client(container_name, blob_name)
-                with open(path, "rb") as file:
-                    first_chunk = True
-                    for chunk in iter((lambda: file.read(self.MAX_SINGLE_PUT_SIZE)), b""):
-                        if first_chunk:
-                            client.upload_blob(chunk, overwrite=True, max_concurrency=max_connections)
-                            first_chunk = False
-                        else:
-                            from azure.storage.blob import BlockType  # noqa
-
-                            client.upload_blob(chunk, BlockType.AppendBlob)
+                self.create_blob_from_data(
+                    container_name, None, blob_name, open(path, "rb"), max_connections=max_connections
+                )
 
         def delete_blob(self, container_name, blob_name):
             if self.__legacy:
@@ -1840,12 +1832,16 @@ class _AzureBlobServiceStorageDriver(_Driver):
                     progress_callback=progress_callback,
                 )
             else:
-                client = self.__blob_service.get_blob_client(container_name, blob_name, max_concurrency=max_connections)
+                client = self.__blob_service.get_blob_client(container_name, blob_name)
                 with open(path, "wb") as file:
-                    return client.download_blob().download_to_stream(file)
+                    return client.download_blob(max_concurrency=max_connections).download_to_stream(file)
 
         def is_legacy(self):
             return self.__legacy
+
+        @property
+        def blob_service(self):
+            return self.__blob_service
 
     @attrs
     class _Object(object):
@@ -1954,7 +1950,10 @@ class _AzureBlobServiceStorageDriver(_Driver):
             obj.blob_name,
             progress_callback=cb,
         )
-        return blob.content
+        if container.is_legacy():
+            return blob.content
+        else:
+            return blob
 
     def download_object(self, obj, local_path, overwrite_existing=True, delete_on_failure=True, callback=None, **_):
         p = Path(local_path)
@@ -1982,7 +1981,8 @@ class _AzureBlobServiceStorageDriver(_Driver):
             max_connections=10,
             progress_callback=callback_func,
         )
-        download_done.wait()
+        if container.is_legacy():
+            download_done.wait()
 
     def test_upload(self, test_path, config, **_):
         container = self.get_container(config=config)

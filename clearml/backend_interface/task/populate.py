@@ -589,6 +589,12 @@ if __name__ == '__main__':
         :param _sanitize_helper_functions: Sanitization function for the helper function string.
         :return: Newly created Task object
         """
+        # not set -> equals True
+        if auto_connect_frameworks is None:
+            auto_connect_frameworks = True
+        if auto_connect_arg_parser is None:
+            auto_connect_arg_parser = True
+
         assert (not auto_connect_frameworks or isinstance(auto_connect_frameworks, (bool, dict)))
         assert (not auto_connect_arg_parser or isinstance(auto_connect_arg_parser, (bool, dict)))
 

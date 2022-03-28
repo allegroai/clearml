@@ -19,7 +19,7 @@ from .backend_interface.logger import StdStreamPatch
 from .backend_interface.task import Task as _Task
 from .backend_interface.task.log import TaskHandler
 from .backend_interface.util import mutually_exclusive
-from .backend_interface.metrics.events import UploadEvent
+from .backend_interface.metrics.events import UploadEvent, MetricsEventAdapter
 from .config import running_remotely, get_cache_dir, config, DEBUG_SIMULATE_REMOTE_TASK, deferred_config
 from .errors import UsageError
 from .storage.helper import StorageHelper
@@ -1232,6 +1232,32 @@ class Logger(object):
         """
         from clearml.backend_interface.metrics import Reporter
         Reporter.matplotlib_force_report_non_interactive(force=force)
+
+    @classmethod
+    def set_reporting_nan_value(cls, value, warn_period=1000):
+        # type: (float, int) -> None
+        """
+        When a NaN value is encountered, it is reported as a floating value (by default 0) and the user is warned.
+        This function is used to change the value NaN is converted to and the warning period.
+
+        :param value: The value NaN is converted to
+        :param warn_period: Number of times NaN is encountered and converted until the next warning
+        """
+        MetricsEventAdapter.default_nan_value = value
+        MetricsEventAdapter.report_nan_warning_period = warn_period
+
+    @classmethod
+    def set_reporting_inf_value(cls, value, warn_period=1000):
+        # type: (float, int) -> None
+        """
+        When an inf value is encountered, it is reported as a floating value (by default 0) and the user is warned.
+        This function is used to change the value inf is converted to and the warning period.
+
+        :param value: The value inf is converted to
+        :param warn_period: Number of times inf is encountered and converted until the next warning
+        """
+        MetricsEventAdapter.default_inf_value = value
+        MetricsEventAdapter.report_inf_warning_period = warn_period
 
     @classmethod
     def _remove_std_logger(cls):

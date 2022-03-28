@@ -323,6 +323,8 @@ class Entity(object):
             pass
 
         func = getattr(self._service, attr)
+        if not callable(func):
+            return func
 
         @wrap_request_class(func)
         def new_func(*args, **kwargs):

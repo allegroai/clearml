@@ -92,7 +92,7 @@ def get_or_create_project(session, project_name, description=None, system_tags=N
     # Project was not found, so create a new one
     res = session.send(projects.CreateRequest(
         name=project_name, description=description or '', system_tags=system_tags))
-    return res.response.id
+    return res.response.id if res else None
 
 
 def get_queue_id(session, queue):

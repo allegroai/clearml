@@ -10,7 +10,7 @@ class Arg2:
 
 
 if __name__ == "__main__":
-    Task.init(project_name="examples", task_name="jsonargparse nested namespaces", auto_connect_frameworks={"pytorch-lightning": False})
+    Task.init(project_name="examples", task_name="jsonargparse nested namespaces")
     parser = ArgumentParser()
     parser.add_argument("--arg1.opt1", default="from default 1")
     parser.add_argument("--arg1.opt2", default="from default 2")

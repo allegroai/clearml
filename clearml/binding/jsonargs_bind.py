@@ -1,5 +1,5 @@
 import ast
-import copy
+import six
 
 try:
     from jsonargparse import ArgumentParser
@@ -9,6 +9,7 @@ except ImportError:
 
 from ..config import running_remotely, get_remote_task_id
 from .frameworks import _patched_call  # noqa
+from ..utilities.proxy_object import flatten_dictionary
 
 
 class PatchJsonArgParse(object):
@@ -55,38 +56,45 @@ class PatchJsonArgParse(object):
             try:
                 PatchJsonArgParse._load_task_params()
                 params = PatchJsonArgParse.__remote_task_params_dict
+                params_namespace = Namespace()
                 for k, v in params.items():
-                    if v == '':
+                    if v == "":
                         v = None
                     # noinspection PyBroadException
                     try:
                         v = ast.literal_eval(v)
                     except Exception:
                         pass
-                    params[k] = v
-                params = PatchJsonArgParse.__unflatten_dict(params)
-                params = PatchJsonArgParse.__nested_dict_to_namespace(params)
-                return params
+                    params_namespace[k] = PatchJsonArgParse.__namespace_eval(v)
+                return params_namespace
             except Exception:
                 return original_fn(obj, **kwargs)
-        orig_parsed_args = original_fn(obj, **kwargs)
+        parsed_args = original_fn(obj, **kwargs)
         # noinspection PyBroadException
         try:
-            parsed_args = vars(copy.deepcopy(orig_parsed_args))
-            for ns_name, ns_val in parsed_args.items():
-                if not isinstance(ns_val, (Namespace, list)):
-                    PatchJsonArgParse._args[ns_name] = str(ns_val)
-                    if ns_name == PatchJsonArgParse._command_name:
-                        PatchJsonArgParse._args_type[ns_name] = PatchJsonArgParse._command_type
-                else:
-                    ns_val = PatchJsonArgParse.__nested_namespace_to_dict(ns_val)
-                    ns_val = PatchJsonArgParse.__flatten_dict(ns_val, parent_name=ns_name)
-                    for k, v in ns_val.items():
-                        PatchJsonArgParse._args[k] = str(v)
+            subcommand = None
+            for ns_name, ns_val in Namespace(parsed_args).items():
+                PatchJsonArgParse._args[ns_name] = ns_val
+                if ns_name == PatchJsonArgParse._command_name:
+                    PatchJsonArgParse._args_type[ns_name] = PatchJsonArgParse._command_type
+                    subcommand = ns_val
+            try:
+                import pytorch_lightning
+            except ImportError:
+                pytorch_lightning = None
+            if subcommand and subcommand in PatchJsonArgParse._args and pytorch_lightning:
+                subcommand_args = flatten_dictionary(
+                    PatchJsonArgParse._args[subcommand],
+                    prefix=subcommand + PatchJsonArgParse._commands_sep,
+                    sep=PatchJsonArgParse._commands_sep,
+                )
+                del PatchJsonArgParse._args[subcommand]
+                PatchJsonArgParse._args.update(subcommand_args)
+            PatchJsonArgParse._args = {k: str(v) for k, v in PatchJsonArgParse._args.items()}
             PatchJsonArgParse._update_task_args()
         except Exception:
             pass
-        return orig_parsed_args
+        return parsed_args
 
     @staticmethod
     def _load_task_params():
@@ -105,62 +113,15 @@ class PatchJsonArgParse(object):
             }
 
     @staticmethod
-    def __nested_namespace_to_dict(namespace):
-        if isinstance(namespace, list):
-            return [PatchJsonArgParse.__nested_namespace_to_dict(n) for n in namespace]
-        if not isinstance(namespace, Namespace):
-            return namespace
-        namespace = vars(namespace)
-        for k, v in namespace.items():
-            namespace[k] = PatchJsonArgParse.__nested_namespace_to_dict(v)
-        return namespace
-
-    @staticmethod
-    def __nested_dict_to_namespace(dict_):
-        if isinstance(dict_, list):
-            return [PatchJsonArgParse.__nested_dict_to_namespace(d) for d in dict_]
-        if not isinstance(dict_, dict):
-            return dict_
-        for k, v in dict_.items():
-            dict_[k] = PatchJsonArgParse.__nested_dict_to_namespace(v)
-        return Namespace(**dict_)
-
-    @staticmethod
-    def __flatten_dict(dict_, parent_name=None):
-        if isinstance(dict_, list):
-            if parent_name:
-                return {parent_name: [PatchJsonArgParse.__flatten_dict(d) for d in dict_]}
-            return [PatchJsonArgParse.__flatten_dict(d) for d in dict_]
-        if not isinstance(dict_, dict):
-            if parent_name:
-                return {parent_name: dict_}
-            return dict_
-        result = {}
-        for k, v in dict_.items():
-            v = PatchJsonArgParse.__flatten_dict(v, parent_name=k)
-            if isinstance(v, dict):
-                for flattened_k, flattened_v in v.items():
-                    if parent_name:
-                        result[parent_name + PatchJsonArgParse._commands_sep + flattened_k] = flattened_v
-                    else:
-                        result[flattened_k] = flattened_v
-            else:
-                result[k] = v
-        return result
-
-    @staticmethod
-    def __unflatten_dict(dict_):
-        if isinstance(dict_, list):
-            return [PatchJsonArgParse.__unflatten_dict(d) for d in dict_]
-        if not isinstance(dict_, dict):
-            return dict_
-        result = {}
-        for k, v in dict_.items():
-            keys = k.split(PatchJsonArgParse._commands_sep)
-            current_dict = result
-            for k_part in keys[:-1]:
-                if k_part not in current_dict:
-                    current_dict[k_part] = {}
-                current_dict = current_dict[k_part]
-            current_dict[keys[-1]] = PatchJsonArgParse.__unflatten_dict(v)
-        return result
+    def __namespace_eval(val):
+        if isinstance(val, six.string_types) and val.startswith("Namespace(") and val[-1] == ")":
+            val = val[len("Namespace("):]
+            val = val[:-1]
+            return Namespace(PatchJsonArgParse.__namespace_eval(ast.literal_eval("{" + val + "}")))
+        if isinstance(val, list):
+            return [PatchJsonArgParse.__namespace_eval(v) for v in val]
+        if isinstance(val, dict):
+            for k, v in val.items():
+                val[k] = PatchJsonArgParse.__namespace_eval(v)
+            return val
+        return val

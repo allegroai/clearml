@@ -328,7 +328,8 @@ class Task(_Task):
                `ClearML Python Client Extras <./references/clearml_extras_storage/>`_ in the "ClearML Python Client
                Reference" section.
 
-        :param auto_connect_arg_parser: Automatically connect an argparse object to the Task
+        :param auto_connect_arg_parser: Automatically connect an argparse object to the Task. Supported argument
+            parsers packages are: argparse, click, python-fire, jsonargparse.
 
             The values are:
 

@@ -11,5 +11,5 @@ class Main:
 
 
 if __name__ == "__main__":
-    Task.init(project_name="examples", task_name="jsonargparse command", auto_connect_frameworks={"pytorch_lightning": False})
+    Task.init(project_name="examples", task_name="jsonargparse command")
     print(CLI(Main))

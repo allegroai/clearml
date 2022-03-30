@@ -92,12 +92,20 @@ def verify_basic_type(a_dict_list, basic_types=None):
         return all(verify_basic_type(k) for k in a_dict_list.keys()) and \
                all(verify_basic_type(v) for v in a_dict_list.values())
 
+def convert_bool(s):
+  s = s.strip().lower()
+  if s == "true":
+    return True
+  elif s == "false" or not s:
+    return False
+  raise ValueError("Invalid value (boolean literal expected): %s".format(s))
 
 def cast_basic_type(value, type_str):
     if not type_str:
         return value
 
-    basic_types = {str(getattr(v, '__name__', v)): v for v in (float, int, bool, str, list, tuple, dict)}
+    basic_types = {str(getattr(v, '__name__', v)): v for v in (float, int, str, list, tuple, dict)}
+    basic_types['bool'] = convert_bool
 
     parts = type_str.split('/')
     # nested = len(parts) > 1

@@ -1,3 +1,4 @@
+import sys
 from argparse import ArgumentParser
 
 from pathlib2 import Path
@@ -79,6 +80,10 @@ def cli():
 
     # get the args
     args = parser.parse_args()
+
+    if len(sys.argv) < 2:
+        parser.print_help()
+        exit(0)
 
     if args.version:
         print('Version {}'.format(__version__))

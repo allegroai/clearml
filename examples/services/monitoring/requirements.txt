@@ -1,2 +1,2 @@
 clearml
-slackclient > 2.0.0
+slack_sdk > 3.0.0

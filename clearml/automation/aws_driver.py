@@ -11,6 +11,7 @@ from .cloud_driver import parse_tags
 try:
     # noinspection PyPackageRequirements
     import boto3
+    from botocore.exceptions import ClientError
 
     Task.add_requirements("boto3")
 except ImportError as err:
@@ -28,6 +29,8 @@ class AWSDriver(CloudDriver):
     aws_region = attr.ib(validator=instance_of(str), default='')
     use_credentials_chain = attr.ib(validator=instance_of(bool), default=False)
     use_iam_instance_profile = attr.ib(validator=instance_of(bool), default=False)
+    iam_arn = attr.ib(validator=instance_of(str), default='')
+    iam_name = attr.ib(validator=instance_of(str), default='')
 
     @classmethod
     def from_config(cls, config):
@@ -37,6 +40,8 @@ class AWSDriver(CloudDriver):
         obj.aws_region = config['hyper_params'].get('cloud_credentials_region')
         obj.use_credentials_chain = config['hyper_params'].get('use_credentials_chain', False)
         obj.use_iam_instance_profile = config['hyper_params'].get('use_iam_instance_profile', False)
+        obj.iam_arn = config['hyper_params'].get('iam_arn')
+        obj.iam_name = config['hyper_params'].get('iam_name')
         return obj
 
     def __attrs_post_init__(self):
@@ -71,10 +76,14 @@ class AWSDriver(CloudDriver):
             launch_specification["SecurityGroupIds"] = resource_conf[
                 "security_group_ids"
             ]
-        if resource_conf.get("iam_arn", None) and resource_conf.get("iam_name", None):
+        # Adding iam role - you can have Arn OR Name, not both, Arn getting priority
+        if self.iam_arn:
             launch_specification["IamInstanceProfile"] = {
-                'Arn': resource_conf["iam_arn"],
-                'Name': resource_conf["iam_name"]
+                'Arn': self.iam_arn,
+            }
+        elif self.iam_name:
+            launch_specification["IamInstanceProfile"] = {
+                'Name': self.iam_name
             }
 
         if resource_conf["is_spot"]:
@@ -152,3 +161,11 @@ class AWSDriver(CloudDriver):
 
     def kind(self):
         return 'AWS'
+
+    def console_log(self, instance_id):
+        ec2 = boto3.client("ec2", **self.creds())
+        try:
+            out = ec2.get_console_output(InstanceId=instance_id)
+            return out.get('Output', '')
+        except ClientError as err:
+            return 'error: cannot get logs for {}:\n{}'.format(instance_id, err)

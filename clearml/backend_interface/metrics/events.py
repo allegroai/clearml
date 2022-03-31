@@ -13,6 +13,7 @@ from six.moves.urllib.parse import urlparse, urlunparse
 
 from ...backend_api.services import events
 from ...config import deferred_config
+from ...debugging.log import LoggerRoot
 from ...storage.util import quote_url
 from ...utilities.attrs import attrs
 from ...utilities.process.mp import SingletonLock
@@ -25,8 +26,13 @@ class MetricsEventAdapter(object):
     metrics manager when batching and writing events.
     """
 
-    _default_nan_value = 0.
-    """ Default value used when a np.nan value is encountered """
+    default_nan_value = 0.
+    default_inf_value = 0.
+    """ Default value used when a np.nan or np.inf value is encountered """
+    report_nan_warning_period = 1000
+    report_inf_warning_period = 1000
+    _report_nan_warning_iteration = float('inf')
+    _report_inf_warning_iteration = float('inf')
 
     @attrs(cmp=False, slots=True)
     class FileEntry(object):
@@ -116,9 +122,27 @@ class MetricsEventAdapter(object):
         return res
 
     @classmethod
-    def _convert_np_nan(cls, val):
-        if np.isnan(val) or np.isinf(val):
-            return cls._default_nan_value
+    def _convert_np_nan_inf(cls, val):
+        if np.isnan(val):
+            cls._report_nan_warning_iteration += 1
+            if cls._report_nan_warning_iteration >= cls.report_nan_warning_period:
+                LoggerRoot.get_base_logger().info(
+                    "NaN value encountered. Reporting it as '{}'. Use clearml.Logger.set_reporting_nan_value to assign another value".format(
+                        cls.default_nan_value
+                    )
+                )
+                cls._report_nan_warning_iteration = 0
+            return cls.default_nan_value
+        if np.isinf(val):
+            cls._report_inf_warning_iteration += 1
+            if cls._report_inf_warning_iteration >= cls.report_inf_warning_period:
+                LoggerRoot.get_base_logger().info(
+                    "inf value encountered. Reporting it as '{}'. Use clearml.Logger.set_reporting_inf_value to assign another value".format(
+                        cls.default_inf_value
+                    )
+                )
+                cls._report_inf_warning_iteration = 0
+            return cls.default_inf_value
         return val
 
 
@@ -126,7 +150,7 @@ class ScalarEvent(MetricsEventAdapter):
     """ Scalar event adapter """
 
     def __init__(self, metric, variant, value, iter, **kwargs):
-        self._value = self._convert_np_nan(value)
+        self._value = self._convert_np_nan_inf(value)
         super(ScalarEvent, self).__init__(metric=metric, variant=variant, iter=iter, **kwargs)
 
     def get_api_event(self):
@@ -157,7 +181,7 @@ class VectorEvent(MetricsEventAdapter):
     """ Vector event adapter """
 
     def __init__(self, metric, variant, values, iter, **kwargs):
-        self._values = [self._convert_np_nan(v) for v in values]
+        self._values = [self._convert_np_nan_inf(v) for v in values]
         super(VectorEvent, self).__init__(metric=metric, variant=variant, iter=iter, **kwargs)
 
     def get_api_event(self):
@@ -346,7 +370,6 @@ class UploadEvent(MetricsEventAdapter):
                 output = None
 
             if output is None:
-                from ...debugging.log import LoggerRoot
                 LoggerRoot.get_base_logger().warning(
                     'Skipping upload, could not find object file \'{}\''.format(self._local_image_path))
                 return None

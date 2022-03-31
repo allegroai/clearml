@@ -55,7 +55,6 @@ clearml_conf_template = '''\
 agent.git_user="{git_user}"
 agent.git_pass="{git_pass}"
 {extra_clearml_conf}
-{auth_token}
 '''
 
 
@@ -118,17 +117,21 @@ class CloudDriver(ABC):
     def instance_type_key(self):
         """Return key in configuration for instance type"""
 
+    @abstractmethod
+    def console_log(self, instance_id):
+        """Return log for instance"""
+
     def gen_user_data(self, worker_prefix, queue_name, task_id, cpu_only=False):
         return bash_script_template.format(
             queue=queue_name,
             worker_prefix=worker_prefix,
 
             auth_token=self.auth_token or '',
-            access_key=self.access_key,
+            access_key=self.access_key or '',
             api_server=self.api_server,
             clearml_conf=self.clearml_conf(),
             files_server=self.files_server,
-            secret_key=self.secret_key,
+            secret_key=self.secret_key or '',
             web_server=self.web_server,
 
             bash_script=("export NVIDIA_VISIBLE_DEVICES=none; " if cpu_only else "") + self.extra_vm_bash_script,
@@ -138,11 +141,6 @@ class CloudDriver(ABC):
         )
 
     def clearml_conf(self):
-        auth_token = ''
-        token = self.session.auth_token or self.auth_token
-        if token:
-            auth_token = 'agent.extra_docker_arguments = ["-e", "CLEARML_AUTH_TOKEN={}"]'.format(token)
-
         # TODO: This need to be documented somewhere
         git_user = environ.get(env_git_user) or self.git_user or ''
         git_pass = environ.get(env_git_pass) or self.git_pass or ''
@@ -151,7 +149,6 @@ class CloudDriver(ABC):
             git_user=git_user,
             git_pass=git_pass,
             extra_clearml_conf=self.extra_clearml_conf,
-            auth_token=auth_token,
         )
 
     def driver_bash_extra(self, task_id):

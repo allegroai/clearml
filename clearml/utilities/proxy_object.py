@@ -92,12 +92,20 @@ def verify_basic_type(a_dict_list, basic_types=None):
         return all(verify_basic_type(k) for k in a_dict_list.keys()) and \
                all(verify_basic_type(v) for v in a_dict_list.values())
 
+def convert_bool(s):
+  s = s.strip().lower()
+  if s == "true":
+    return True
+  elif s == "false" or not s:
+    return False
+  raise ValueError("Invalid value (boolean literal expected): %s".format(s))
 
 def cast_basic_type(value, type_str):
     if not type_str:
         return value
 
-    basic_types = {str(getattr(v, '__name__', v)): v for v in (float, int, bool, str, list, tuple, dict)}
+    basic_types = {str(getattr(v, '__name__', v)): v for v in (float, int, str, list, tuple, dict)}
+    basic_types['bool'] = convert_bool
 
     parts = type_str.split('/')
     # nested = len(parts) > 1
@@ -209,6 +217,25 @@ def naive_nested_from_flat_dictionary(flat_dict, sep='/'):
             )
         )
     }
+
+
+def walk_nested_dict_tuple_list(dict_list_tuple, callback):
+    nested = (dict, tuple, list)
+    if not isinstance(dict_list_tuple, nested):
+        return callback(dict_list_tuple)
+
+    if isinstance(dict_list_tuple, dict):
+        ret = {}
+        for k, v in dict_list_tuple.items():
+            ret[k] = walk_nested_dict_tuple_list(v, callback=callback) if isinstance(v, nested) else callback(v)
+    else:
+        ret = []
+        for v in dict_list_tuple:
+            ret.append(walk_nested_dict_tuple_list(v, callback=callback) if isinstance(v, nested) else callback(v))
+        if isinstance(dict_list_tuple, tuple):
+            ret = tuple(dict_list_tuple)
+
+    return ret
 
 
 class WrapperBase(type):

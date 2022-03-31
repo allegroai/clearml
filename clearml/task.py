@@ -100,6 +100,8 @@ class Task(_Task):
     .. warning::
         Do not construct Task objects directly. Use one of the methods listed below to create experiments or
         reference existing experiments.
+        Do not define `CLEARML_TASK_*` and `CLEARML_PROC_*` OS environments, they are used internally
+        for bookkeeping between processes and agents.
 
     For detailed information about creating Task objects, see the following methods:
 
@@ -326,7 +328,8 @@ class Task(_Task):
                `ClearML Python Client Extras <./references/clearml_extras_storage/>`_ in the "ClearML Python Client
                Reference" section.
 
-        :param auto_connect_arg_parser: Automatically connect an argparse object to the Task
+        :param auto_connect_arg_parser: Automatically connect an argparse object to the Task. Supported argument
+            parsers packages are: argparse, click, python-fire, jsonargparse.
 
             The values are:
 
@@ -370,9 +373,9 @@ class Task(_Task):
 
                auto_connect_frameworks={
                    'matplotlib': True, 'tensorflow': True, 'tensorboard': True, 'pytorch': True,
-                   'xgboost': True, 'scikit': True, 'fastai': True, 'lightgbm': True,
-                   'hydra': True, 'detect_repository': True, 'tfdefines': True, 'joblib': True,
-                   'megengine': True, 'jsonargparse': True, 'catboost': True
+                   'xgboost': True, 'scikit': True, 'fastai': True,
+                   'lightgbm': True, 'hydra': True, 'detect_repository': True, 'tfdefines': True,
+                   'joblib': True, 'megengine': True, 'catboost': True
                }
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
@@ -559,8 +562,6 @@ class Task(_Task):
                 is_auto_connect_frameworks_bool = not isinstance(auto_connect_frameworks, dict)
                 if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('hydra', True):
                     PatchHydra.update_current_task(task)
-                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('jsonargparse', True):
-                    PatchJsonArgParse.update_current_task(task)
                 if is_auto_connect_frameworks_bool or (
                         auto_connect_frameworks.get('scikit', True) and
                         auto_connect_frameworks.get('joblib', True)):
@@ -607,9 +608,9 @@ class Task(_Task):
 
                 # Patch ArgParser to be aware of the current task
                 argparser_update_currenttask(Task.__main_task)
-                # Patch Click and Fire
                 PatchClick.patch(Task.__main_task)
                 PatchFire.patch(Task.__main_task)
+                PatchJsonArgParse.patch(Task.__main_task)
 
                 # set excluded arguments
                 if isinstance(auto_connect_arg_parser, dict):
@@ -2875,7 +2876,7 @@ class Task(_Task):
             self._reporter.async_enable = True
             # if we just created the logger, set default flush period
             if not flush_period or flush_period is self.NotSet:
-                flush_period = DevWorker.report_period
+                flush_period = float(DevWorker.report_period)
 
         if isinstance(flush_period, (int, float)):
             flush_period = int(abs(flush_period))

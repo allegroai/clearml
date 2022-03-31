@@ -516,7 +516,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 return a_name
             return '{}.{}'.format(a_name[:max(2, max_length-len(uuid)-1)], uuid)
 
-        return '/'.join(quote(x, safe="'[]{}()$^,.; -_+-=") for x in
+        return '/'.join(quote(x, safe="'[]{}()$^,.; -_+-=/") for x in
                         (limit_folder_name(self.get_project_name(), str(self.project), 256, False),
                          limit_folder_name(self.name, str(self.data.id), 128, True),
                          extra_path) if x)
@@ -707,7 +707,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 ]
 
             task_deleted = self.send(tasks.DeleteRequest(self.task_id, force=True))
-            if not task_deleted:
+            if not task_deleted.ok():
                 if raise_on_error:
                     raise self.DeleteError("Failed deleting task {}".format(self.task_id))
                 self.log.error("Failed deleting task {}".format(self.task_id))
@@ -1711,14 +1711,21 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         # send request
         res = self.send(
-            events.GetTaskPlotsRequest(task=self.id, iters=max_iterations or 1),
+            events.GetTaskPlotsRequest(
+                task=self.id, iters=max_iterations or 1,
+                _allow_extra_fields_=True, no_scroll=True
+            ),
             raise_on_errors=False,
             ignore_errors=True,
         )
         if not res:
             return []
         response = res.wait()
-        if not response.ok() or not response.response_data:
+
+        if not response.ok():
+            return []
+
+        if not response.response_data:
             return []
 
         return response.response_data.get('plots', [])

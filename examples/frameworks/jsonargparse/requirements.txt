@@ -1,0 +1,7 @@
+clearml
+jsonargparse
+pytorch_lightning
+torch
+torchmetrics
+torchvision
+docstring_parser

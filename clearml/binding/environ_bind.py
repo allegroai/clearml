@@ -85,6 +85,9 @@ class PatchOsFork(object):
             from ..task import Task
             # force creating a Task
             task = Task.current_task()
+            if task is None:
+                return ret
+
             # # Hack: now make sure we setup the reporter threads (Log+Reporter)
             if not task._report_subprocess_enabled:
                 BackgroundMonitor.start_all(task=task)

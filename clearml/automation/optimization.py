@@ -1747,8 +1747,16 @@ class HyperParameterOptimizer(object):
 
                 self._report_remaining_budget(task_logger, counter)
 
-                if self.optimizer.budget.compute_time.used and self.optimizer.budget.compute_time.used >= 1.0:
-                    # Reached compute time limit
+                if (
+                    self.optimizer.budget.compute_time.used
+                    and self.optimizer.budget.compute_time.limit
+                    and self.optimizer.budget.compute_time.used >= self.optimizer.budget.compute_time.limit
+                ):
+                    logger.warning(
+                        "Optimizer task reached compute time limit (used {:.2f} out of {:.2f})".format(
+                            self.optimizer.budget.compute_time.limit, self.optimizer.compute_time.used
+                        )
+                    )
                     timeout = -1
 
                 self._report_resources(task_logger, counter)

@@ -1,0 +1,12 @@
+trainer:
+  callbacks:
+    - class_path: pytorch_lightning.callbacks.LearningRateMonitor
+      init_args:
+        logging_interval: epoch
+    - class_path: pytorch_lightning.callbacks.ModelCheckpoint
+      init_args:
+        filename: best
+        save_last: False
+        save_top_k: 1
+        monitor: loss
+        mode: min

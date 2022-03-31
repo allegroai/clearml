@@ -262,9 +262,9 @@ class AutoScaler(object):
                     # If we have an idle worker matching the required resource,
                     # remove it from the required allocation resources
                     free_queue_resources = [
-                        resource
-                        for _, resource, _ in idle_workers.values()
-                        if any(q_r for q_r in queue_resources if resource in q_r[0])
+                        resource_name
+                        for _, resource_name, _ in idle_workers.values()
+                        if any(q_r for q_r in queue_resources if resource_name == q_r[0])
                     ]
                     # if we have an instance waiting to be spun
                     # remove it from the required allocation resources
@@ -317,9 +317,9 @@ class AutoScaler(object):
 
             # Go over the idle workers list, and spin down idle workers
             for worker_id in list(idle_workers):
-                timestamp, resources, worker = idle_workers[worker_id]
+                timestamp, resource_name, worker = idle_workers[worker_id]
                 # skip resource types that might be needed
-                if resources in required_idle_resources:
+                if resource_name in required_idle_resources:
                     continue
                 # Remove from both cloud and clearml all instances that are idle for longer than MAX_IDLE_TIME_MIN
                 if time() - timestamp > self.max_idle_time_min * MINUTE:
@@ -346,7 +346,7 @@ class AutoScaler(object):
             task = getattr(worker, 'task', None)
             if not task:
                 if worker.id not in idle_workers:
-                    resource_name = WorkerId(worker.id).instance_type
+                    resource_name = WorkerId(worker.id).name
                     worker_time = worker_last_time(worker)
                     idle_workers[worker.id] = (worker_time, resource_name, worker)
             elif worker.id in idle_workers:

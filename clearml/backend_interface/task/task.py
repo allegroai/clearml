@@ -1727,14 +1727,21 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         # send request
         res = self.send(
-            events.GetTaskPlotsRequest(task=self.id, iters=max_iterations or 1),
+            events.GetTaskPlotsRequest(
+                task=self.id, iters=max_iterations or 1,
+                _allow_extra_fields_=True, no_scroll=True
+            ),
             raise_on_errors=False,
             ignore_errors=True,
         )
         if not res:
             return []
         response = res.wait()
-        if not response.ok() or not response.response_data:
+
+        if not response.ok():
+            return []
+
+        if not response.response_data:
             return []
 
         return response.response_data.get('plots', [])

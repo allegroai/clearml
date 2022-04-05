@@ -11,20 +11,25 @@
 [![PyPI pyversions](https://img.shields.io/pypi/pyversions/clearml.svg)](https://img.shields.io/pypi/pyversions/clearml.svg)
 [![PyPI version shields.io](https://img.shields.io/pypi/v/clearml.svg)](https://img.shields.io/pypi/v/clearml.svg)
 [![Optuna](https://img.shields.io/badge/Optuna-integrated-blue)](https://optuna.org)
-[![Slack Channel](https://img.shields.io/badge/slack-%23clearml--community-blueviolet?logo=slack)](https://join.slack.com/t/clearml/shared_invite/zt-c0t13pty-aVUZZW1TSSSg2vyIGVPBhg)
+<br>
+[![PyPI Downloads](https://pepy.tech/badge/clearml/month)](https://pypi.org/project/clearml/)
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/allegroai)](https://artifacthub.io/packages/search?repo=allegroai)
+[![Slack Channel](https://img.shields.io/badge/slack-%23clearml--community-blueviolet?logo=slack)](https://join.slack.com/t/clearml/shared_invite/zt-c0t13pty-aVUZZW1TSSSg2vyIGVPBhg)
 [![Signup](https://img.shields.io/badge/Clear%7CML-Signup-blueviolet)](https://app.clear.ml)
 </div>
 
 ---
 ### ClearML
-#### *Formerly known as Allegro Trains*
-ClearML is a ML/DL development and production suite, it contains three main modules:
+<sup>*Formerly known as Allegro Trains*<sup>
+
+ClearML is a ML/DL development and production suite, it contains FOUR main modules:
 
 - [Experiment Manager](#clearml-experiment-manager) - Automagical experiment tracking, environments and results
-- [ML-Ops](https://github.com/allegroai/clearml-agent) - Automation, Pipelines & Orchestration solution for ML/DL jobs (K8s / Cloud / bare-metal)  
+- [MLOps](https://github.com/allegroai/clearml-agent) - Orchestration, Automation & Pipelines solution for ML/DL jobs (K8s / Cloud / bare-metal)  
 - [Data-Management](https://github.com/allegroai/clearml/blob/master/docs/datasets.md) - Fully differentiable data management & version control solution on top of object-storage 
-  (S3/GS/Azure/NAS)  
+  (S3 / GS / Azure / NAS)  
+-  **NEW**  :fire: [Model-Serving](https://github.com/allegroai/clearml-serving) :tada: - *cloud-ready* Scalable model serving solution! <br>:sparkles: **Deploy new model endpoints in under 5 minutes** :sparkles: <br> :muscle: includes optimized GPU serving support backed by Nvidia-Triton :mechanical_arm: <br> :bar_chart: **with out-of-the-box  Model Monitoring** :scream:
+
   
 
 Instrumenting these components is the **ClearML-server**, see [Self-Hosting](https://clear.ml/docs/latest/docs/deploying_clearml/clearml_server) & [Free tier Hosting](https://app.clear.ml)  

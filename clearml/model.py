@@ -83,6 +83,28 @@ class Framework(Options):
         '.cbm': (catboost, ),
     }
 
+    __parent_mapping = {
+        "tensorflow": (
+            tensorflow,
+            tensorflowjs,
+            tensorflowlite,
+            keras,
+        ),
+        "pytorch": (pytorch,),
+        "xgboost": (xgboost,),
+        "lightgbm": (lightgbm,),
+        "catboost": (catboost,),
+        "joblib": (scikitlearn, xgboost)
+    }
+
+    @classmethod
+    def get_framework_parents(cls, framework):
+        parents = []
+        for k, v in cls.__parent_mapping.items():
+            if framework in v:
+                parents.append(k)
+        return parents
+
     @classmethod
     def _get_file_ext(cls, framework, filename):
         mapping = cls.__file_extensions_mapping

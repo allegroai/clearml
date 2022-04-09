@@ -135,7 +135,7 @@ class Exporter(object):
                 self.draw_text(ax, text)
             for (text, ttp) in zip([ax.xaxis.label, ax.yaxis.label, ax.title],
                                    ["xlabel", "ylabel", "title"]):
-                if(hasattr(text, 'get_text') and text.get_text()):
+                if(hasattr(text, "get_text") and text.get_text()):
                     self.draw_text(ax, text, force_trans=ax.transAxes,
                                    text_type=ttp)
             for artist in ax.artists:
@@ -246,6 +246,8 @@ class Exporter(object):
         """Process a matplotlib collection and call renderer.draw_collection"""
         (transform, transOffset,
          offsets, paths) = collection._prepare_points()
+        if hasattr(collection, "_offsets3d"):
+            offsets = collection._offsets3d
 
         offset_coords, offsets = self.process_transform(
             transOffset, ax, offsets, force_trans=force_offsettrans)

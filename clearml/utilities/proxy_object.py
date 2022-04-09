@@ -87,18 +87,20 @@ def verify_basic_type(a_dict_list, basic_types=None):
     if isinstance(a_dict_list, basic_types):
         return True
     if isinstance(a_dict_list, (list, tuple)):
-        return all(verify_basic_type(v) for v in a_dict_list)
+        return all(verify_basic_type(v, basic_types=basic_types) for v in a_dict_list)
     elif isinstance(a_dict_list, dict):
-        return all(verify_basic_type(k) for k in a_dict_list.keys()) and \
-               all(verify_basic_type(v) for v in a_dict_list.values())
+        return all(verify_basic_type(k, basic_types=basic_types) for k in a_dict_list.keys()) and \
+               all(verify_basic_type(v, basic_types=basic_types) for v in a_dict_list.values())
+
 
 def convert_bool(s):
-  s = s.strip().lower()
-  if s == "true":
-    return True
-  elif s == "false" or not s:
-    return False
-  raise ValueError("Invalid value (boolean literal expected): %s".format(s))
+    s = s.strip().lower()
+    if s == "true":
+        return True
+    elif s == "false" or not s:
+        return False
+    raise ValueError("Invalid value (boolean literal expected): {}".format(s))
+
 
 def cast_basic_type(value, type_str):
     if not type_str:

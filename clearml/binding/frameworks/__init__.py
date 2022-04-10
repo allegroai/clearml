@@ -55,6 +55,7 @@ class WeightsFileHandler(object):
     _model_store_lookup_lock = threading.Lock()
     _model_pre_callbacks = {}
     _model_post_callbacks = {}
+    model_wildcards = {}
 
     class CallbackType(Enum):
         def __str__(self):

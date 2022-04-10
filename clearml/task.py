@@ -52,6 +52,7 @@ from .binding.hydra_bind import PatchHydra
 from .binding.click_bind import PatchClick
 from .binding.fire_bind import PatchFire
 from .binding.jsonargs_bind import PatchJsonArgParse
+from .binding.frameworks import WeightsFileHandler
 from .config import (
     config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, DEV_DEFAULT_OUTPUT_URI,
     deferred_config, TASK_SET_ITERATION_OFFSET, )
@@ -60,7 +61,7 @@ from .config.cache import SessionCache
 from .debugging.log import LoggerRoot
 from .errors import UsageError
 from .logger import Logger
-from .model import Model, InputModel, OutputModel
+from .model import Model, InputModel, OutputModel, Framework
 from .task_parameters import TaskParameters
 from .utilities.config import verify_basic_value
 from .binding.args import (
@@ -74,6 +75,7 @@ from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
 from .utilities.process.mp import BackgroundMonitor, leave_process
+from .utilities.matching import matches_any_wildcard
 # noinspection PyProtectedMember
 from .backend_interface.task.args import _Arguments
 
@@ -364,19 +366,27 @@ class Task(_Task):
             - ``True`` - Automatically connect (default)
             - ``False`` - Do not automatically connect
             - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
-                frameworks. The dictionary keys are frameworks and the values are booleans.
+                frameworks. The dictionary keys are frameworks and the values are booleans, other dictionaries used for
+                finer control or wildcard strings.
+                In case of wildcard strings, the local path of models have to match at least one wildcard to be
+                saved/loaded by ClearML.
                 Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
+                Supported keys for finer control:
+                    'tensorboard': {'report_hparams': bool}  # whether or not to report TensorBoard hyperparameters
 
             For example:
 
             .. code-block:: py
 
                auto_connect_frameworks={
-                   'matplotlib': True, 'tensorflow': True, 'tensorboard': True, 'pytorch': True,
-                   'xgboost': True, 'scikit': True, 'fastai': True,
+                   'matplotlib': True, 'tensorflow': ['*.hdf5, 'something_else*], 'tensorboard': True,
+                   'pytorch': ['*.pt'], 'xgboost': True, 'scikit': True, 'fastai': True,
                    'lightgbm': True, 'hydra': True, 'detect_repository': True, 'tfdefines': True,
                    'joblib': True, 'megengine': True, 'catboost': True
                }
+
+            .. code-block:: py
+                auto_connect_frameworks={'tensorboard': {'report_hparams': False}}
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
             These plots appear in in the **ClearML Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab,
@@ -559,38 +569,49 @@ class Task(_Task):
             # always patch OS forking because of ProcessPool and the alike
             PatchOsFork.patch_fork()
             if auto_connect_frameworks:
-                is_auto_connect_frameworks_bool = not isinstance(auto_connect_frameworks, dict)
-                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('hydra', True):
+                def should_connect(*keys):
+                    """
+                    Evaluates value of auto_connect_frameworks[keys[0]]...[keys[-1]].
+                    If at some point in the evaluation, the value of auto_connect_frameworks[keys[0]]...[keys[-1]] is a bool,
+                    that value will be returned. If a dictionary is empty, it will be evaluated to False.
+                    If a key will not be found in the current dictionary, True will be returned.
+                    """
+                    should_bind_framework = auto_connect_frameworks
+                    for key in keys:
+                        if not isinstance(should_bind_framework, dict):
+                            return bool(should_bind_framework)
+                        if should_bind_framework == {}:
+                            return False
+                        should_bind_framework = should_bind_framework.get(key, True)
+                    return bool(should_bind_framework)
+
+                if should_connect("hydra"):
                     PatchHydra.update_current_task(task)
-                if is_auto_connect_frameworks_bool or (
-                        auto_connect_frameworks.get('scikit', True) and
-                        auto_connect_frameworks.get('joblib', True)):
+                if should_connect("scikit") and should_connect("joblib"):
                     PatchedJoblib.update_current_task(task)
-                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('matplotlib', True):
+                if should_connect("matplotlib"):
                     PatchedMatplotlib.update_current_task(Task.__main_task)
-                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('tensorflow', True) \
-                        or auto_connect_frameworks.get('tensorboard', True):
+                if should_connect("tensorflow") or should_connect("tensorboard"):
                     # allow to disable tfdefines
-                    if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('tfdefines', True):
+                    if should_connect("tfdefines"):
                         PatchAbsl.update_current_task(Task.__main_task)
                     TensorflowBinding.update_current_task(
                         task,
-                        patch_reporting=(is_auto_connect_frameworks_bool
-                                         or auto_connect_frameworks.get('tensorboard', True)),
-                        patch_model_io=(is_auto_connect_frameworks_bool
-                                        or auto_connect_frameworks.get('tensorflow', True)),
+                        patch_reporting=should_connect("tensorboard"),
+                        patch_model_io=should_connect("tensorflow"),
+                        report_hparams=should_connect("tensorboard", "report_hparams"),
                     )
-                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('pytorch', True):
+                if should_connect("pytorch"):
                     PatchPyTorchModelIO.update_current_task(task)
-                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('megengine', True):
+                if should_connect("megengine"):
                     PatchMegEngineModelIO.update_current_task(task)
-                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('xgboost', True):
+                if should_connect("xgboost"):
                     PatchXGBoostModelIO.update_current_task(task)
-                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('catboost', True):
+                if should_connect("catboost"):
                     PatchCatBoostModelIO.update_current_task(task)
-                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('fastai', True):
+                if should_connect("fastai"):
                     PatchFastai.update_current_task(task)
-                if is_auto_connect_frameworks_bool or auto_connect_frameworks.get('lightgbm', True):
+                if should_connect("lightgbm"):
                     PatchLIGHTgbmModelIO.update_current_task(task)
             if auto_resource_monitoring and not is_sub_process_task_id:
                 resource_monitor_cls = auto_resource_monitoring \
@@ -599,6 +620,7 @@ class Task(_Task):
                     task, report_mem_used_per_process=not config.get(
                         'development.worker.report_global_mem_used', False))
                 task._resource_monitor.start()
+            cls.__add_model_wildcards(auto_connect_frameworks)
 
             # make sure all random generators are initialized with new seed
             make_deterministic(task.get_random_seed())
@@ -3819,6 +3841,28 @@ class Task(_Task):
 
             return True
         return False
+
+    @classmethod
+    def __add_model_wildcards(cls, auto_connect_frameworks):
+        if isinstance(auto_connect_frameworks, dict):
+            for k, v in auto_connect_frameworks.items():
+                if isinstance(v, str):
+                    v = [v]
+                if isinstance(v, list):
+                    WeightsFileHandler.model_wildcards[k] = v
+
+        def callback(_, model_info):
+            parents = Framework.get_framework_parents(model_info.framework)
+            wildcards = []
+            for parent in parents:
+                wildcards.extend(WeightsFileHandler.model_wildcards[parent])
+            if not wildcards:
+                return model_info
+            if not matches_any_wildcard(model_info.local_model_path, wildcards):
+                return None
+            return model_info
+
+        WeightsFileHandler.add_pre_callback(callback)
 
     def __getstate__(self):
         # type: () -> dict

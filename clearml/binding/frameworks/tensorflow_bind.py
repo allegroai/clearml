@@ -32,11 +32,11 @@ except ImportError:
 
 class TensorflowBinding(object):
     @classmethod
-    def update_current_task(cls, task, patch_reporting=True, patch_model_io=True):
+    def update_current_task(cls, task, patch_reporting=True, patch_model_io=True, report_hparams=True):
         if not task:
             IsTensorboardInit.clear_tensorboard_used()
 
-        EventTrainsWriter.update_current_task(task)
+        EventTrainsWriter.update_current_task(task, report_hparams=report_hparams)
 
         if patch_reporting:
             PatchSummaryToEventTransformer.update_current_task(task)
@@ -232,6 +232,7 @@ class EventTrainsWriter(object):
     ClearML events and reports the events (metrics) for an ClearML task (logger).
     """
     __main_task = None
+    __report_hparams = True
     _add_lock = threading.RLock()
     _series_name_lookup = {}
 
@@ -627,6 +628,24 @@ class EventTrainsWriter(object):
             max_history=self.max_keep_images,
         )
 
+    def _add_hparams(self, hparams_metadata):
+        if not EventTrainsWriter.__report_hparams:
+            return
+        # noinspection PyBroadException
+        try:
+            from tensorboard.plugins.hparams.metadata import parse_session_start_info_plugin_data
+
+            content = hparams_metadata["metadata"]["pluginData"]["content"]
+            content = base64.b64decode(content)
+            session_start_info = parse_session_start_info_plugin_data(content)
+            session_start_info = MessageToDict(session_start_info)
+            hparams = session_start_info["hparams"]
+            EventTrainsWriter.__main_task.update_parameters(
+                {"TB_hparams/{}".format(k): v for k, v in hparams.items()}
+            )
+        except Exception:
+            pass
+
     def _add_text(self, tag, step, tensor_bytes):
         # noinspection PyProtectedMember
         title, series = self.tag_splitter(tag, num_split_parts=3, default_title='Text', logdir_header='title',
@@ -718,6 +737,14 @@ class EventTrainsWriter(object):
                     LoggerRoot.get_base_logger(TensorflowBinding).debug(
                         'No tag for \'value\' existing keys %s' % ', '.join(vdict.keys()))
                     continue
+                try:
+                    from tensorboard.plugins.hparams.metadata import SESSION_START_INFO_TAG
+
+                    if tag == SESSION_START_INFO_TAG:
+                        self._add_hparams(vdict)
+                        continue
+                except ImportError:
+                    pass
                 metric, values = get_data(vdict, supported_metrics)
                 if metric == 'simpleValue':
                     self._add_scalar(tag=tag, step=step, scalar_data=values)
@@ -814,7 +841,8 @@ class EventTrainsWriter(object):
         return origin_tag
 
     @classmethod
-    def update_current_task(cls, task):
+    def update_current_task(cls, task, **kwargs):
+        cls.__report_hparams = kwargs.get('report_hparams', False)
         if cls.__main_task != task:
             with cls._add_lock:
                 cls._series_name_lookup = {}

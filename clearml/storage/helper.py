@@ -237,6 +237,13 @@ class StorageHelper(object):
         base_url = cls._resolve_base_url(url)
 
         instance_key = '%s_%s' % (base_url, threading.current_thread().ident or 0)
+        # noinspection PyBroadException
+        try:
+            configs = kwargs.get("configs")
+            if configs:
+                instance_key += "_{}".format(configs.cache_name)
+        except Exception:
+            pass
 
         force_create = kwargs.pop('__force_create', False)
         if (instance_key in cls._helpers) and (not force_create):

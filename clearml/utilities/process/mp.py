@@ -515,9 +515,11 @@ class BackgroundMonitor(object):
 
     def _daemon(self):
         self._start_ev.set()
-        self.daemon()
-        self.post_execution()
-        self._thread = False
+        try:
+            self.daemon()
+        finally:
+            self.post_execution()
+            self._thread = False
 
     def post_execution(self):
         self._done_ev.set()
@@ -553,11 +555,13 @@ class BackgroundMonitor(object):
             for d in BackgroundMonitor._instances.get(id(task.id), []):
                 d.set_subprocess_mode()
 
-            # todo: solve for standalone spawn subprocess
-            if ForkContext is not None and isinstance(get_context(), ForkContext):
-                cls.__start_subprocess_forkprocess(task_obj_id=id(task.id))
-            else:
-                cls.__start_subprocess_os_fork(task_obj_id=id(task.id))
+            # ToDo: solve for standalone spawn subprocess
+            # prefer os.fork, because multipprocessing.Process add atexit callback, which might later be invalid.
+            cls.__start_subprocess_os_fork(task_obj_id=id(task.id))
+            # if ForkContext is not None and isinstance(get_context(), ForkContext):
+            #     cls.__start_subprocess_forkprocess(task_obj_id=id(task.id))
+            # else:
+            #     cls.__start_subprocess_os_fork(task_obj_id=id(task.id))
 
             # wait until subprocess is up
             if wait_for_subprocess:

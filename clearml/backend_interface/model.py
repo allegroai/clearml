@@ -346,6 +346,14 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             return None
 
     @property
+    def project(self):
+        try:
+            return self.data.project
+        except ValueError:
+            # no project is yet specified
+            return None
+
+    @property
     def comment(self):
         try:
             return self.data.comment

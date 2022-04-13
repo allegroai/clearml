@@ -46,8 +46,8 @@ setup(
     long_description_content_type='text/markdown',
     # The project's main homepage.
     url='https://github.com/allegroai/clearml',
-    author='Allegroai',
-    author_email='clearml@allegro.ai',
+    author='ClearML',
+    author_email='support@clear.ml',
     license='Apache License 2.0',
     classifiers=[
         'Development Status :: 5 - Production/Stable',

@@ -663,7 +663,7 @@ class Task(_Task):
         # something to the log.
         task._dev_mode_setup_worker()
 
-        if (not task._reporter or not task._reporter.is_alive()) and \
+        if (not task._reporter or not task._reporter.is_constructed()) and \
                 is_sub_process_task_id and not cls._report_subprocess_enabled:
             task._setup_reporter()
 

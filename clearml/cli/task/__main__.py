@@ -70,6 +70,12 @@ def setup_parser(parser):
     parser.add_argument('--base-task-id', type=str, default=None,
                         help='Use a pre-existing task in the system, instead of a local repo/script. '
                              'Essentially clones an existing task and overrides arguments/requirements.')
+    parser.add_argument(
+        "--import-offline-session",
+        type=str,
+        default=None,
+        help="Specify the path to the offline session you want to import.",
+    )
 
 
 def cli():
@@ -89,7 +95,7 @@ def cli():
         print('Version {}'.format(__version__))
         exit(0)
 
-    if not args.name:
+    if not args.name and not args.import_offline_session:
         raise ValueError("Task name must be provided, use `--name <task-name>`")
 
     if args.docker_bash_setup_script and Path(args.docker_bash_setup_script).is_file():
@@ -101,42 +107,45 @@ def cli():
     else:
         bash_setup_script = args.docker_bash_setup_script or None
 
-    create_populate = CreateAndPopulate(
-        project_name=args.project,
-        task_name=args.name,
-        task_type=args.task_type,
-        repo=args.repo or args.folder,
-        branch=args.branch,
-        commit=args.commit,
-        script=args.script,
-        working_directory=args.cwd,
-        packages=args.packages,
-        requirements_file=args.requirements,
-        docker=args.docker,
-        docker_args=args.docker_args,
-        docker_bash_setup_script=bash_setup_script,
-        output_uri=args.output_uri,
-        base_task_id=args.base_task_id,
-        add_task_init_call=not args.skip_task_init,
-        raise_on_missing_entries=True,
-        verbose=True,
-    )
-    # verify args before creating the Task
-    create_populate.update_task_args(args.args)
+    if args.import_offline_session:
+        print("Importing offline session: {}".format(args.import_offline_session))
+        Task.import_offline_session(args.import_offline_session)
+    else:
+        create_populate = CreateAndPopulate(
+            project_name=args.project,
+            task_name=args.name,
+            task_type=args.task_type,
+            repo=args.repo or args.folder,
+            branch=args.branch,
+            commit=args.commit,
+            script=args.script,
+            working_directory=args.cwd,
+            packages=args.packages,
+            requirements_file=args.requirements,
+            docker=args.docker,
+            docker_args=args.docker_args,
+            docker_bash_setup_script=bash_setup_script,
+            output_uri=args.output_uri,
+            base_task_id=args.base_task_id,
+            add_task_init_call=not args.skip_task_init,
+            raise_on_missing_entries=True,
+            verbose=True,
+        )
+        # verify args before creating the Task
+        create_populate.update_task_args(args.args)
+        print('Creating new task')
+        create_populate.create_task()
+        # update Task args
+        create_populate.update_task_args(args.args)
 
-    print('Creating new task')
-    create_populate.create_task()
-    # update Task args
-    create_populate.update_task_args(args.args)
+        print('New task created id={}'.format(create_populate.get_id()))
+        if not args.queue:
+            print('Warning: No queue was provided, leaving task in draft-mode.')
+            exit(0)
 
-    print('New task created id={}'.format(create_populate.get_id()))
-    if not args.queue:
-        print('Warning: No queue was provided, leaving task in draft-mode.')
-        exit(0)
-
-    Task.enqueue(create_populate.task, queue_name=args.queue)
-    print('Task id={} sent for execution on queue {}'.format(create_populate.get_id(), args.queue))
-    print('Execution log at: {}'.format(create_populate.task.get_output_log_web_page()))
+        Task.enqueue(create_populate.task, queue_name=args.queue)
+        print('Task id={} sent for execution on queue {}'.format(create_populate.get_id(), args.queue))
+        print('Execution log at: {}'.format(create_populate.task.get_output_log_web_page()))
 
 
 def main():

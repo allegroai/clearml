@@ -5,6 +5,7 @@ import getpass
 import itertools
 import json
 import os
+import platform
 import shutil
 import sys
 import threading
@@ -906,6 +907,8 @@ class StorageHelper(object):
                 folder_uri = str(Path(folder_uri).absolute())
                 if folder_uri.startswith('/'):
                     folder_uri = _base_url + folder_uri
+                elif platform.system() == "Windows":
+                    folder_uri = ''.join((_base_url, folder_uri))
                 else:
                     folder_uri = '/'.join((_base_url, folder_uri))
 

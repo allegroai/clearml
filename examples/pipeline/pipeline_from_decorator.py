@@ -90,10 +90,10 @@ def executing_pipeline(pickle_url, mock_parameter='mock'):
 
 if __name__ == '__main__':
     # set the pipeline steps default execution queue (per specific step we can override it with the decorator)
-    PipelineDecorator.set_default_execution_queue('default')
+    # PipelineDecorator.set_default_execution_queue('default')
     # Run the pipeline steps as subprocesses on the current machine, great for local executions
     # (for easy development / debugging, use `PipelineDecorator.pipeline()` to execute steps as regular functions)
-    # PipelineDecorator.run_locally()
+    PipelineDecorator.run_locally()
 
     # Start the pipeline execution logic.
     executing_pipeline(

@@ -280,9 +280,20 @@ class StorageHelper(object):
         local_path = mktemp(suffix=file_name)
         return helper.download_to_file(remote_url, local_path, skip_zero_size_check=skip_zero_size_check)
 
-    def __init__(self, base_url, url, key=None, secret=None, region=None, verbose=False, logger=None, retries=5,
-                 **kwargs):
-        level = config.get('storage.log.level', None)
+    def __init__(
+        self,
+        base_url,
+        url,
+        key=None,
+        secret=None,
+        region=None,
+        verbose=False,
+        logger=None,
+        retries=5,
+        token=None,
+        **kwargs,
+    ):
+        level = config.get("storage.log.level", None)
 
         if level:
             try:
@@ -332,7 +343,8 @@ class StorageHelper(object):
                 secret=secret or self._conf.secret,
                 multipart=self._conf.multipart,
                 region=final_region,
-                use_credentials_chain=self._conf.use_credentials_chain
+                use_credentials_chain=self._conf.use_credentials_chain,
+                token=token or self._conf.token
             )
 
             if not self._conf.use_credentials_chain:
@@ -1352,9 +1364,11 @@ class _Boto3Driver(_Driver):
                 if not cfg.use_credentials_chain:
                     boto_kwargs["aws_access_key_id"] = cfg.key
                     boto_kwargs["aws_secret_access_key"] = cfg.secret
+                    if cfg.token:
+                        boto_kwargs["aws_session_token"] = cfg.token
 
                 self.resource = boto3.resource(
-                    's3',
+                    "s3",
                     **boto_kwargs
                 )
 

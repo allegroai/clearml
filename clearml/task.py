@@ -671,6 +671,7 @@ class Task(_Task):
         # monitoring are: Resource monitoring and Dev Worker monitoring classes
         BackgroundMonitor.start_all(task=task)
 
+        task.set_progress(0)
         return task
 
     @classmethod
@@ -1206,6 +1207,29 @@ class Task(_Task):
         res = cls._send(session=session, req=req)
         resp = res.response
         return resp
+
+    def set_progress(self, progress):
+        # type: (int) -> ()
+        """
+        Sets Task's progress (0 - 100)
+        Progress is a field computed and reported by the user.
+
+        :param progress: numeric value (0 - 100)
+        """
+        if not isinstance(progress, int) or progress < 0 or progress > 100:
+            self.log.warning("Can't set progress {} as it is not and int between 0 and 100".format(progress))
+            return
+        self._set_runtime_properties({"progress": str(progress)})
+
+    def get_progress(self):
+        # type: () -> (Optional[int])
+        """
+        Gets Task's progress (0 - 100)
+
+        :return: Task's progress as an int.
+            In case the progress doesn't exist, None will be returned
+        """
+        return self._get_runtime_properties().get("progress")
 
     def add_tags(self, tags):
         # type: (Union[Sequence[str], str]) -> None
@@ -3366,6 +3390,8 @@ class Task(_Task):
             except Exception:
                 pass
             self._edit_lock = None
+
+        self.set_progress(100)
 
         # make sure no one will re-enter the shutdown method
         self._at_exit_called = True

@@ -3245,11 +3245,11 @@ class Task(_Task):
         is_sub_process = self.__is_subprocess()
 
         # noinspection PyBroadException
+        task_status = None
         try:
             wait_for_uploads = True
             # first thing mark task as stopped, so we will not end up with "running" on lost tasks
             # if we are running remotely, the daemon will take care of it
-            task_status = None
             wait_for_std_log = True
             if (not running_remotely() or DEBUG_SIMULATE_REMOTE_TASK.get()) \
                     and self.is_main_task() and not is_sub_process:
@@ -3273,7 +3273,7 @@ class Task(_Task):
                     if (is_exception and not isinstance(is_exception, KeyboardInterrupt)
                         and is_exception != KeyboardInterrupt) \
                             or (not self.__exit_hook.remote_user_aborted and
-                                self.__exit_hook.signal not in (None, 2, 15)):
+                                (self.__exit_hook.signal not in (None, 2, 15) or self.__exit_hook.exit_code)):
                         task_status = (
                             'failed',
                             'Exception {}'.format(is_exception) if is_exception else
@@ -3391,7 +3391,8 @@ class Task(_Task):
                 pass
             self._edit_lock = None
 
-        self.set_progress(100)
+        if task_status and task_status[0] == "completed":
+            self.set_progress(100)
 
         # make sure no one will re-enter the shutdown method
         self._at_exit_called = True

@@ -17,7 +17,7 @@ def report_debug_images(logger, iteration=0):
     """
 
     # report image as float image
-    m = np.eye(256, 256, dtype=np.float)
+    m = np.eye(256, 256, dtype=float)
     logger.report_image("image", "image float", iteration=iteration, image=m)
 
     # report image as uint8

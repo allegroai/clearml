@@ -1,0 +1,4 @@
+clearml
+mmcv>=1.5.1
+torch
+torchvision

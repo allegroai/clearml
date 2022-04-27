@@ -3708,6 +3708,7 @@ class Task(_Task):
 
     @classmethod
     def _query_tasks(cls, task_ids=None, project_name=None, task_name=None, fetch_only_first_page=False, **kwargs):
+        res = None
         if not task_ids:
             task_ids = None
         elif isinstance(task_ids, six.string_types):
@@ -3739,13 +3740,13 @@ class Task(_Task):
             only_fields = list(set(kwargs.pop('only_fields')) | set(only_fields))
 
         # if we have specific page to look for, we should only get the requested one
-        if not fetch_only_first_page and 'page' in kwargs:
+        if not fetch_only_first_page and kwargs and 'page' in kwargs:
             fetch_only_first_page = True
 
         ret_tasks = []
         page = -1
         page_size = 500
-        while page == -1 or (len(res.response.tasks) == page_size and not fetch_only_first_page):
+        while page == -1 or (not fetch_only_first_page and res and len(res.response.tasks) == page_size):
             page += 1
             # work on a copy and make sure we override all fields with ours
             request_kwargs = dict(

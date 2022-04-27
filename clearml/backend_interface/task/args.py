@@ -216,6 +216,16 @@ class _Arguments(object):
                     _actions.extend(_action)
         return _actions
 
+    @classmethod
+    def _remove_req_flag_from_mutex_groups(cls, parser):
+        # noinspection PyBroadException
+        try:
+            # noinspection PyProtectedMember
+            for group in parser._mutually_exclusive_groups:
+                group.required = False
+        except Exception:
+            pass
+
     def copy_to_parser(self, parser, parsed_args):
         def cast_to_bool_int(value, strip=False):
             a_strip_v = value if not strip else str(value).lower().strip()
@@ -410,6 +420,8 @@ class _Arguments(object):
                     pass
                 except Exception:
                     pass
+
+        self._remove_req_flag_from_mutex_groups(parser)
 
         # if API supports sections, we can update back the Args section with all the missing default
         if Session.check_min_api_version('2.9') and not self._exclude_parser_args.get('*', None):

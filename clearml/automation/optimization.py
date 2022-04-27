@@ -1272,7 +1272,7 @@ class HyperParameterOptimizer(object):
         # type: (Optional[Callable[[str, float, int, dict, str], None]]) -> bool
         """
         Start the HyperParameterOptimizer controller completely locally. Both the optimizer task
-        and all spawned substasks are ran on the local machine using the current environment.
+        and all spawned substasks are run on the local machine using the current environment.
         If the calling process is stopped, then the controller stops as well.
 
         :param Callable job_complete_callback: Callback function, called when a job is completed.

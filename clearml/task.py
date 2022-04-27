@@ -877,6 +877,8 @@ class Task(_Task):
         :param str task_name: The full name or partial name of the Tasks to match within the specified
             ``project_name`` (or all projects if ``project_name`` is ``None``).
             This method supports regular expressions for name matching. (Optional)
+            To match an exact task name (i.e. not partial matching),
+            add ^/$ at the beginning/end of the string, for example: "^exact_task_name_here$"
         :param list(str) task_ids: list of unique task id string (if exists other parameters are ignored)
         :param str project_name: project name (str) the task belongs to (use None for all projects)
         :param str task_name: task name (str) in within the selected project
@@ -3736,22 +3738,29 @@ class Task(_Task):
         if kwargs and kwargs.get('only_fields'):
             only_fields = list(set(kwargs.pop('only_fields')) | set(only_fields))
 
+        # if we have specific page to look for, we should only get the requested one
+        if not fetch_only_first_page and 'page' in kwargs:
+            fetch_only_first_page = True
+
         ret_tasks = []
         page = -1
         page_size = 500
         while page == -1 or (len(res.response.tasks) == page_size and not fetch_only_first_page):
             page += 1
+            # work on a copy and make sure we override all fields with ours
+            request_kwargs = dict(
+                id=task_ids,
+                project=project_ids if project_ids else kwargs.pop("project", None),
+                name=task_name if task_name else kwargs.pop("name", None),
+                only_fields=only_fields,
+                page=page,
+                page_size=page_size,
+            )
+            # make sure we always override with the kwargs (specifically page selection / page_size)
+            request_kwargs.update(kwargs or {})
             res = cls._send(
                 session,
-                tasks.GetAllRequest(
-                    id=task_ids,
-                    project=project_ids if project_ids else kwargs.pop("project", None),
-                    name=task_name if task_name else kwargs.pop("name", None),
-                    only_fields=only_fields,
-                    page=page,
-                    page_size=page_size,
-                    **kwargs
-                ),
+                tasks.GetAllRequest(**request_kwargs),
             )
             ret_tasks.extend(res.response.tasks)
         return ret_tasks

@@ -520,9 +520,9 @@ def main():
         exit(cli())
     except KeyboardInterrupt:
         print('\nUser aborted')
-    #except Exception as ex:
-    #    print('\nError: {}'.format(ex))
-    #    exit(1)
+    except Exception as ex:
+        print('\nError: {}'.format(ex))
+        exit(1)
 
 
 if __name__ == '__main__':

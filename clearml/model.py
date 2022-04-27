@@ -13,7 +13,9 @@ from pathlib2 import Path
 
 from .utilities.config import config_dict_to_text, text_to_config_dict
 
-from .backend_interface.util import validate_dict, get_single_result, mutually_exclusive, exact_match_regex
+from .backend_interface.util import (
+    validate_dict, get_single_result, mutually_exclusive, exact_match_regex,
+    get_or_create_project, )
 from .debugging.log import get_logger
 from .storage.cache import CacheManager
 from .storage.helper import StorageHelper
@@ -161,6 +163,29 @@ class BaseModel(object):
         :param str value: The model name.
         """
         self._get_base_model().update(name=value)
+
+    @property
+    def project(self):
+        # type: () -> str
+        """
+        project id of the model.
+
+        :return: project id (str).
+        """
+        data = self._get_model_data()
+        return data.project
+
+    @project.setter
+    def project(self, value):
+        # type: (str) -> None
+        """
+        Set the project ID of the model.
+
+        :param value: project ID (str).
+
+        :type value: str
+        """
+        self._get_base_model().update(project_id=value)
 
     @property
     def comment(self):
@@ -621,6 +646,7 @@ class InputModel(Model):
         config_dict=None,  # type: Optional[dict]
         label_enumeration=None,  # type: Optional[Mapping[str, int]]
         name=None,  # type: Optional[str]
+        project=None,  # type: Optional[str]
         tags=None,  # type: Optional[List[str]]
         comment=None,  # type: Optional[str]
         is_package=False,  # type: bool
@@ -674,6 +700,7 @@ class InputModel(Model):
                     'person': 1
                }
         :param str name: The name of the newly imported model. (Optional)
+        :param str project: The project name to add the model into. (Optional)
         :param tags: The list of tags which describe the model. (Optional)
         :type tags: list(str)
         :param str comment: A comment / description for the model. (Optional)
@@ -744,6 +771,12 @@ class InputModel(Model):
         else:
             project_id = None
             task_id = None
+
+        if project:
+            project_id = get_or_create_project(
+                session=task.session if task else Task._get_default_session(),
+                project_name=project
+            )
 
         if not framework:
             # noinspection PyProtectedMember

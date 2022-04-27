@@ -291,7 +291,7 @@ class StorageHelper(object):
         logger=None,
         retries=5,
         token=None,
-        **kwargs,
+        **kwargs
     ):
         level = config.get("storage.log.level", None)
 

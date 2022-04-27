@@ -1701,6 +1701,7 @@ class Task(_Task):
             auto_pickle=True,  # type: bool
             preview=None,  # type: Any
             wait_on_upload=False,  # type: bool
+            extension_name=None,  # type: Optional[str]
     ):
         # type: (...) -> bool
         """
@@ -1710,10 +1711,12 @@ class Task(_Task):
 
         - string / pathlib2.Path - A path to artifact file. If a wildcard or a folder is specified, then ClearML
           creates and uploads a ZIP file.
-        - dict - ClearML stores a dictionary as ``.json`` file and uploads it.
-        - pandas.DataFrame - ClearML stores a pandas.DataFrame as ``.csv.gz`` (compressed CSV) file and uploads it.
-        - numpy.ndarray - ClearML stores a numpy.ndarray as ``.npz`` file and uploads it.
-        - PIL.Image - ClearML stores a PIL.Image as ``.png`` file and uploads it.
+        - dict - ClearML stores a dictionary as ``.json`` (or see ``extension_name``) file and uploads it.
+        - pandas.DataFrame - ClearML stores a pandas.DataFrame as ``.csv.gz`` (compressed CSV)
+            (or see ``extension_name``) file and uploads it.
+        - numpy.ndarray - ClearML stores a numpy.ndarray as ``.npz`` (or see ``extension_name``)
+            file and uploads it.
+        - PIL.Image - ClearML stores a PIL.Image as ``.png`` (or see ``extension_name``) file and uploads it.
         - Any - If called with auto_pickle=True, the object will be pickled and uploaded.
 
         :param str name: The artifact name.
@@ -1738,6 +1741,14 @@ class Task(_Task):
         :param bool wait_on_upload: Whether or not the upload should be synchronous, forcing the upload to complete
             before continuing.
 
+        :param str extension_name: File extension which indicates the format the artifact should be stored as.
+            The following are supported, depending on the artifact type
+            (default value applies when extension_name is None):
+        - dict - ``.json``, ``.yaml`` (default ``.json``)
+        - pandas.DataFrame - ``.csv.gz``, ``.parquet``, ``.feather``, ``.pickle`` (default ``.csv.gz``)
+        - numpy.ndarray - ``.npz``, ``.csv.gz`` (default ``.npz``)
+        - PIL.Image - whatever extensions PIL supports (default ``.png``)
+
         :return: The status of the upload.
 
         - ``True`` - Upload succeeded.
@@ -1747,7 +1758,7 @@ class Task(_Task):
         """
         return self._artifacts_manager.upload_artifact(
             name=name, artifact_object=artifact_object, metadata=metadata, delete_after_upload=delete_after_upload,
-            auto_pickle=auto_pickle, preview=preview, wait_on_upload=wait_on_upload)
+            auto_pickle=auto_pickle, preview=preview, wait_on_upload=wait_on_upload, extension_name=extension_name)
 
     def get_models(self):
         # type: () -> Mapping[str, Sequence[Model]]

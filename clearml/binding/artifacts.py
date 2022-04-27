@@ -1,4 +1,5 @@
 import json
+import yaml
 import mimetypes
 import os
 import pickle
@@ -308,8 +309,8 @@ class Artifacts(object):
         self.flush()
 
     def upload_artifact(self, name, artifact_object=None, metadata=None, preview=None,
-                        delete_after_upload=False, auto_pickle=True, wait_on_upload=False):
-        # type: (str, Optional[object], Optional[dict], Optional[str], bool, bool, bool) -> bool
+                        delete_after_upload=False, auto_pickle=True, wait_on_upload=False, extension_name=None):
+        # type: (str, Optional[object], Optional[dict], Optional[str], bool, bool, bool, Optional[str]) -> bool
         if not Session.check_min_api_version('2.3'):
             LoggerRoot.get_base_logger().warning('Artifacts not supported by your ClearML-server version, '
                                                  'please upgrade to the latest server version')
@@ -354,65 +355,133 @@ class Artifacts(object):
         override_filename_in_uri = None
         override_filename_ext_in_uri = None
         uri = None
+
+        def get_extension(extension_name_, valid_extensions, default_extension, artifact_type_):
+            if not extension_name_:
+                return default_extension
+            if extension_name_ in valid_extensions:
+                return extension_name_
+            LoggerRoot.get_base_logger().warning(
+                "{} artifact can not be uploaded with extension {}. Valid extensions are: {}. Defaulting to {}.".format(
+                    artifact_type_, extension_name_, ", ".join(valid_extensions), default_extension
+                )
+            )
+            return default_extension
+
         if np and isinstance(artifact_object, np.ndarray):
             artifact_type = 'numpy'
-            artifact_type_data.content_type = 'application/numpy'
             artifact_type_data.preview = preview or str(artifact_object.__repr__())
-            override_filename_ext_in_uri = '.npz'
+            override_filename_ext_in_uri = get_extension(
+                extension_name, [".npz", ".csv.gz"], ".npz", artifact_type
+            )
             override_filename_in_uri = name + override_filename_ext_in_uri
             fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
             os.close(fd)
-            np.savez_compressed(local_filename, **{name: artifact_object})
+            if override_filename_ext_in_uri == ".npz":
+                artifact_type_data.content_type = "application/numpy"
+                np.savez_compressed(local_filename, **{name: artifact_object})
+            elif override_filename_ext_in_uri == ".csv.gz":
+                artifact_type_data.content_type = "text/csv"
+                np.savetxt(local_filename, artifact_object, delimiter=",")
             delete_after_upload = True
         elif pd and isinstance(artifact_object, pd.DataFrame):
-            artifact_type = 'pandas'
-            artifact_type_data.content_type = 'text/csv'
+            artifact_type = "pandas"
             artifact_type_data.preview = preview or str(artifact_object.__repr__())
-            override_filename_ext_in_uri = self._save_format
+            override_filename_ext_in_uri = get_extension(
+                extension_name, [".csv.gz", ".parquet", ".feather", ".pickle"], ".csv.gz", artifact_type
+            )
             override_filename_in_uri = name
             fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
             os.close(fd)
-            artifact_object.to_csv(local_filename, compression=self._compression)
+            if override_filename_ext_in_uri == ".csv.gz":
+                artifact_type_data.content_type = "text/csv"
+                artifact_object.to_csv(local_filename, compression=self._compression)
+            elif override_filename_ext_in_uri == ".parquet":
+                artifact_type_data.content_type = "application/parquet"
+                artifact_object.to_parquet(local_filename)
+            elif override_filename_ext_in_uri == ".feather":
+                artifact_type_data.content_type = "application/feather"
+                artifact_object.to_feather(local_filename)
+            elif override_filename_ext_in_uri == ".pickle":
+                artifact_type_data.content_type = "application/pickle"
+                artifact_object.to_pickle(local_filename)
             delete_after_upload = True
         elif isinstance(artifact_object, Image.Image):
-            artifact_type = 'image'
-            artifact_type_data.content_type = 'image/png'
+            artifact_type = "image"
+            artifact_type_data.content_type = "image/png"
             desc = str(artifact_object.__repr__())
             artifact_type_data.preview = preview or desc[1:desc.find(' at ')]
-            override_filename_ext_in_uri = '.png'
+
+            # noinspection PyBroadException
+            try:
+                if not Image.EXTENSION:
+                    Image.init()
+                    if not Image.EXTENSION:
+                        raise Exception()
+                override_filename_ext_in_uri = get_extension(
+                    extension_name, Image.EXTENSION.keys(), ".png", artifact_type
+                )
+            except Exception:
+                override_filename_ext_in_uri = ".png"
+                if extension_name and extension_name != ".png":
+                    LoggerRoot.get_base_logger().warning(
+                        "image artifact can not be uploaded with extension {}. Defaulting to .png.".format(
+                            extension_name
+                        )
+                    )
+
             override_filename_in_uri = name + override_filename_ext_in_uri
+            artifact_type_data.content_type = "image/unknown-type"
+            guessed_type = mimetypes.guess_type(override_filename_in_uri)[0]
+            if guessed_type:
+                artifact_type_data.content_type = guessed_type
+
             fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
             os.close(fd)
             artifact_object.save(local_filename)
             delete_after_upload = True
         elif isinstance(artifact_object, dict):
-            artifact_type = 'JSON'
-            artifact_type_data.content_type = 'application/json'
-            # noinspection PyBroadException
-            try:
-                json_text = json.dumps(artifact_object, sort_keys=True, indent=4)
-            except Exception:
-                if not auto_pickle:
-                    raise
-                LoggerRoot.get_base_logger().warning(
-                    "JSON serialization of artifact \'{}\' failed, reverting to pickle".format(name))
-                store_as_pickle = True
-                json_text = None
+            artifact_type = "dict"
+            override_filename_ext_in_uri = get_extension(extension_name, [".json", ".yaml"], ".json", artifact_type)
+            if override_filename_ext_in_uri == ".json":
+                artifact_type_data.content_type = "application/json"
+                # noinspection PyBroadException
+                try:
+                    serialized_text = json.dumps(artifact_object, sort_keys=True, indent=4)
+                except Exception:
+                    if not auto_pickle:
+                        raise
+                    LoggerRoot.get_base_logger().warning(
+                        "JSON serialization of artifact \'{}\' failed, reverting to pickle".format(name))
+                    store_as_pickle = True
+                    serialized_text = None
+            else:
+                artifact_type_data.content_type = "application/yaml"
+                # noinspection PyBroadException
+                try:
+                    serialized_text = yaml.dump(artifact_object, sort_keys=True, indent=4)
+                except Exception:
+                    if not auto_pickle:
+                        raise
+                    LoggerRoot.get_base_logger().warning(
+                        "YAML serialization of artifact \'{}\' failed, reverting to pickle".format(name))
+                    store_as_pickle = True
+                    serialized_text = None
 
-            if json_text is not None:
-                override_filename_ext_in_uri = '.json'
+            if serialized_text is not None:
                 override_filename_in_uri = name + override_filename_ext_in_uri
-                fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
-                os.write(fd, bytes(json_text.encode()))
+                fd, local_filename = mkstemp(prefix=quote(name, safe="") + ".", suffix=override_filename_ext_in_uri)
+                os.write(fd, bytes(serialized_text.encode()))
                 os.close(fd)
-                preview = preview or json_text
+                preview = preview or serialized_text
                 if len(preview) < self.max_preview_size_bytes:
                     artifact_type_data.preview = preview
                 else:
-                    artifact_type_data.preview = '# full json too large to store, storing first {}kb\n{}'.format(
-                        self.max_preview_size_bytes//1024, preview[:self.max_preview_size_bytes]
+                    artifact_type_data.preview = (
+                        "# full serialized dict too large to store, storing first {}kb\n{}".format(
+                            self.max_preview_size_bytes // 1024, preview[: self.max_preview_size_bytes]
+                        )
                     )
-
                 delete_after_upload = True
         elif isinstance(artifact_object, pathlib_types):
             # check if single file

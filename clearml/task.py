@@ -76,6 +76,7 @@ from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
 from .utilities.process.mp import BackgroundMonitor, leave_process
 from .utilities.matching import matches_any_wildcard
+from .utilities.future_caller import FutureCaller
 # noinspection PyProtectedMember
 from .backend_interface.task.args import _Arguments
 
@@ -213,8 +214,9 @@ class Task(_Task):
             auto_connect_frameworks=True,  # type: Union[bool, Mapping[str, bool]]
             auto_resource_monitoring=True,  # type: bool
             auto_connect_streams=True,  # type: Union[bool, Mapping[str, bool]]
+            wait_for_task_init=True,  # type: bool
     ):
-        # type: (...) -> "Task"
+        # type: (...) -> Union[Task, FutureCaller[Task]]
         """
         Creates a new Task (experiment) if:
 
@@ -416,8 +418,35 @@ class Task(_Task):
 
                auto_connect_streams={'stdout': True, 'stderr': True, 'logging': False}
 
-        :return: The main execution Task (Task context).
+        :param wait_for_task_init: Wait for task to be initialized. If this is set to True, return the task after it was
+            initialized. If set to False, run the initialization in another thread and return a future that contains the task.
+            Wait and retrieve the task by calling result() on the returned future.
+            Note that the task will not capture information until it is initialized.
+
+            For example:
+
+            .. code-block:: py
+            task_future = Task.init(project_name='example', task_name='example', wait_for_task_init=False)
+            # execute some other code
+            task = task_future.result()
+
+        :return: The main execution Task (Task context) or a future to the Task (if wait_for_task_init=False).
         """
+        if not wait_for_task_init:
+            return FutureCaller().call(
+                cls.init,
+                project_name=project_name,
+                task_name=task_name,
+                tags=tags,
+                reuse_last_task_id=reuse_last_task_id,
+                continue_last_task=continue_last_task,
+                output_uri=output_uri,
+                auto_connect_arg_parser=auto_connect_arg_parser,
+                auto_connect_frameworks=auto_connect_frameworks,
+                auto_resource_monitoring=auto_resource_monitoring,
+                auto_connect_streams=auto_connect_streams,
+                wait_for_task_init=True,
+            )
 
         def verify_defaults_match():
             validate = [

@@ -556,10 +556,17 @@ class ScriptInfo(object):
         # we can safely assume that we can import the notebook package here
         # noinspection PyBroadException
         try:
-            # noinspection PyPackageRequirements
-            from notebook.notebookapp import list_running_servers
+            # noinspection PyBroadException
+            try:
+                # noinspection PyPackageRequirements
+                from notebook.notebookapp import list_running_servers  # <= Notebook v6
+            except Exception:
+                # noinspection PyPackageRequirements
+                from jupyter_server.serverapp import list_running_servers
+
             import requests
             current_kernel = sys.argv[2].split(os.path.sep)[-1].replace('kernel-', '').replace('.json', '')
+
             # noinspection PyBroadException
             try:
                 server_info = next(list_running_servers())

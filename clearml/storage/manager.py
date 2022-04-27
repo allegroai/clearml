@@ -7,6 +7,7 @@ from random import random
 from time import time
 from typing import List, Optional
 from zipfile import ZipFile
+from six.moves.urllib.parse import urlparse
 
 from pathlib2 import Path
 
@@ -25,9 +26,9 @@ class StorageManager(object):
 
     @classmethod
     def get_local_copy(
-        cls, remote_url, cache_context=None, extract_archive=True, name=None, force_download=False,
+        cls, remote_url, cache_context=None, extract_archive=True, name=None, force_download=False
     ):
-        # type: (str, Optional[str], bool, Optional[str], bool) -> str
+        # type: (str, Optional[str], bool, Optional[str], bool) -> [str, None]
         """
         Get a local copy of the remote file. If the remote URL is a direct file access,
         the returned link is the same, otherwise a link to a local copy of the url file is returned.
@@ -49,7 +50,6 @@ class StorageManager(object):
             cache_path_encoding = Path(cache.get_cache_folder()) / cache.get_hashed_url_file(remote_url)
             return cls._extract_to_cache(
                 cached_file, name, cache_context, cache_path_encoding=cache_path_encoding.as_posix())
-
         return cached_file
 
     @classmethod
@@ -249,17 +249,99 @@ class StorageManager(object):
                 res.wait()
 
     @classmethod
-    def download_folder(
-        cls, remote_url, local_folder=None, match_wildcard=None, overwrite=False, skip_zero_size_check=False
+    def download_file(
+        cls, remote_url, local_folder=None, overwrite=False, skip_zero_size_check=False, silence_errors=False
     ):
-        # type: (str, Optional[str], Optional[str], bool, bool) -> Optional[str]
+        # type: (str, Optional[str], bool, bool, bool) -> Optional[str]
+        """
+        Download remote file to the local machine, maintaining the sub folder structure from the
+        remote storage.
+
+        .. note::
+
+            If we have a remote file `s3://bucket/sub/file.ext` then
+            `StorageManager.download_file('s3://bucket/sub/file.ext', '~/folder/')`
+            will create `~/folder/sub/file.ext`
+        :param str remote_url: Source remote storage location, path of `remote_url` will
+            be created under the target local_folder. Supports S3/GS/Azure and shared filesystem.
+            Example: 's3://bucket/data/'
+        :param bool overwrite: If False, and target files exist do not download.
+            If True always download the remote files. Default False.
+        :param bool skip_zero_size_check: If True no error will be raised for files with zero bytes size.
+        :param bool silence_errors: If True, silence errors that might pop up when trying to downlaod
+            files stored remotely. Default False
+
+        :return: Path to downloaded file or None on error
+        """
+        if not local_folder:
+            local_folder = CacheManager.get_cache_manager().get_cache_folder()
+        local_path = os.path.join(
+            str(Path(local_folder).absolute()), str(Path(urlparse(remote_url).path)).lstrip(os.path.sep)
+        )
+        helper = StorageHelper.get(remote_url)
+        return helper.download_to_file(
+            remote_url,
+            local_path,
+            overwrite_existing=overwrite,
+            skip_zero_size_check=skip_zero_size_check,
+            silence_errors=silence_errors,
+        )
+
+    @classmethod
+    def exists_file(cls, remote_url):
+        # type: (str) -> bool
+        """
+        Check if remote file exists. Note that this function will return
+        False for directories.
+
+        :param str remote_url: The url where the file is stored.
+            E.g. 's3://bucket/some_file.txt', 'file://local/file'
+
+        :return: True is the remote_url stores a file and False otherwise
+        """
+        if remote_url.startswith('file://'):
+            return os.path.isfile(remote_url[len('file://'):])
+        helper = StorageHelper.get(remote_url)
+        obj = helper.get_object(remote_url)
+        if not obj:
+            return False
+        return len(StorageManager.list(remote_url)) == 0
+
+    @classmethod
+    def get_file_size_bytes(cls, remote_url, silence_errors=False):
+        # type: (str, bool) -> [int, None]
+        """
+        Get size of the remote file in bytes.
+
+        :param str remote_url: The url where the file is stored.
+            E.g. 's3://bucket/some_file.txt', 'file://local/file'
+        :param bool silence_errors: Silence errors that might occur
+            when fetching the size of the file. Default: False
+
+        :return: The size of the file in bytes.
+            None if the file could not be found or an error occurred.
+        """
+        helper = StorageHelper.get(remote_url)
+        return helper.get_object_size_bytes(remote_url)
+
+    @classmethod
+    def download_folder(
+        cls,
+        remote_url,
+        local_folder=None,
+        match_wildcard=None,
+        overwrite=False,
+        skip_zero_size_check=False,
+        silence_errors=False,
+    ):
+        # type: (str, Optional[str], Optional[str], bool, bool, bool) -> Optional[str]
         """
         Download remote folder recursively to the local machine, maintaining the sub folder structure
         from the remote storage.
 
         .. note::
 
-            If we have a local file `s3://bucket/sub/file.ext` then
+            If we have a remote file `s3://bucket/sub/file.ext` then
             `StorageManager.download_folder('s3://bucket/', '~/folder/')`
             will create `~/folder/sub/file.ext`
 
@@ -273,6 +355,8 @@ class StorageManager(object):
         :param bool overwrite: If False, and target files exist do not download.
             If True always download the remote files. Default False.
         :param bool skip_zero_size_check: If True no error will be raised for files with zero bytes size.
+        :param bool silence_errors: If True, silence errors that might pop up when trying to downlaod
+            files stored remotely. Default False
 
         :return: Target local folder
         """
@@ -293,26 +377,28 @@ class StorageManager(object):
 
         with ThreadPool() as pool:
             for path in helper.list(prefix=remote_url):
-                remote_path = str(Path(helper.base_url) / Path(path)) \
-                    if helper.get_driver_direct_access(helper.base_url) else \
-                    "{}/{}".format(helper.base_url.rstrip('/'), path.lstrip('/'))
+                remote_path = (
+                    str(Path(helper.base_url) / Path(path))
+                    if helper.get_driver_direct_access(helper.base_url)
+                    else "{}/{}".format(helper.base_url.rstrip("/"), path.lstrip("/"))
+                )
                 if match_wildcard and not fnmatch.fnmatch(remote_path, match_wildcard):
                     continue
-                local_url = os.path.join(
-                    str(Path(local_folder)),
-                    str(Path(remote_path[len(remote_url):])).lstrip(os.path.sep)
-                )
-                if not os.path.exists(local_url) or os.path.getsize(local_url) == 0:
-                    results.append(
-                        pool.apply_async(
-                            helper.download_to_file,
-                            args=(remote_path, local_url),
-                            kwds={"overwrite_existing": overwrite, "skip_zero_size_check": skip_zero_size_check},
-                        )
+                results.append(
+                    pool.apply_async(
+                        cls.download_file,
+                        args=(remote_path, local_folder),
+                        kwds={
+                            "overwrite": overwrite,
+                            "skip_zero_size_check": skip_zero_size_check,
+                            "silence_errors": silence_errors,
+                        },
                     )
+                )
             for res in results:
                 res.wait()
-
+        if not results and not silence_errors:
+            LoggerRoot.get_base_logger().warning("Did not download any files matching {}".format(remote_url))
         return local_folder
 
     @classmethod
@@ -338,4 +424,7 @@ class StorageManager(object):
         except Exception as ex:
             LoggerRoot.get_base_logger().warning("Can not list files for '{}' - {}".format(remote_url, ex))
             names_list = None
+
+        if helper.base_url == 'file://':
+            return ["{}/{}".format(remote_url.rstrip('/'), name) for name in names_list] if return_full_path else names_list
         return ["{}/{}".format(helper.base_url, name) for name in names_list] if return_full_path else names_list

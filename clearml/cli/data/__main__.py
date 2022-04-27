@@ -78,7 +78,7 @@ def cli():
     create.add_argument('--tags', type=str, nargs='*', help='Dataset user Tags')
     create.set_defaults(func=ds_create)
 
-    add = subparsers.add_parser('add', help='Add files to the dataset')
+    add = subparsers.add_parser('add', help='Add files or links to the dataset')
     add.add_argument('--id', type=str, required=False,
                      help='Previously created dataset id. Default: previously created/accessed dataset')
     add.add_argument('--dataset-folder', type=str, default=None,
@@ -86,6 +86,15 @@ def cli():
     add.add_argument('--files', type=str, nargs='*',
                      help='Files / folders to add (support for wildcard selection). '
                           'Example: ~/data/*.jpg ~/data/jsons')
+    add.add_argument(
+        "--links",
+        type=str,
+        nargs="*",
+        help=(
+            "Links to files / folders to add. Supports s3, gs, azure links. "
+            "Example: s3://bucket/data azure://bucket/folder"
+        ),
+    )
     add.add_argument('--non-recursive', action='store_true', default=False,
                      help='Disable recursive scan of files')
     add.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
@@ -120,17 +129,17 @@ def cli():
     sync.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
     sync.set_defaults(func=ds_sync)
 
-    remove = subparsers.add_parser('remove', help='Remove files from the dataset')
+    remove = subparsers.add_parser('remove', help='Remove files/links from the dataset')
     remove.add_argument('--id', type=str, required=False,
                         help='Previously created dataset id. Default: previously created/accessed dataset')
-    remove.add_argument('--files', type=str, required=True, nargs='*',
+    remove.add_argument('--files', type=str, required=False, nargs='*',
                         help='Files / folders to remove (support for wildcard selection). '
                              'Notice: File path is the dataset path not the local path. '
                              'Example: data/*.jpg data/jsons/')
     remove.add_argument('--non-recursive', action='store_true', default=False,
                         help='Disable recursive scan of files')
     remove.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
-    remove.set_defaults(func=ds_remove_files)
+    remove.set_defaults(func=ds_remove)
 
     upload = subparsers.add_parser('upload', help='Upload the local dataset changes to the server')
     upload.add_argument('--id', type=str, required=False,
@@ -271,7 +280,7 @@ def ds_verify(args):
 
 
 def ds_get(args):
-    print('Download dataset id {}'.format(args.id))
+    print("Download dataset id {}".format(args.id))
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
@@ -307,7 +316,7 @@ def ds_get(args):
         if args.link:
             os.symlink(ds_folder, args.link)
             ds_folder = args.link
-    print('Dataset local copy available: {}'.format(ds_folder))
+    print("Dataset local copy available for files at: {}".format(ds_folder))
     return 0
 
 
@@ -321,16 +330,18 @@ def ds_list(args):
     print('-' * len(formatting.replace(',', '').format('-', '-', '-')))
     filters = args.filter if args.filter else [None]
     file_entries = ds.file_entries_dict
+    link_entries = ds.link_entries_dict
     num_files = 0
     total_size = 0
     for mask in filters:
         files = ds.list_files(dataset_path=mask, dataset_id=ds.id if args.modified else None)
         num_files += len(files)
         for f in files:
-            e = file_entries[f]
-            print(formatting.format(e.relative_path, e.size, e.hash))
+            e = link_entries.get(f)
+            if file_entries.get(f):
+                e = file_entries[f]
+            print(formatting.format(e.relative_path, e.size, str(e.hash)))
             total_size += e.size
-
     print('Total {} files, {} bytes'.format(num_files, total_size))
     return 0
 
@@ -424,17 +435,16 @@ def ds_upload(args):
     return 0
 
 
-def ds_remove_files(args):
-    print('Removing files/folder from dataset id {}'.format(args.id))
+def ds_remove(args):
+    print("Removing files/folder from dataset id {}".format(args.id))
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
     num_files = 0
-    for file in args.files:
-        num_files += ds.remove_files(
-            dataset_path=file,
-            recursive=not args.non_recursive, verbose=args.verbose)
-    print('{} files removed'.format(num_files))
+    for file in (args.files or []):
+        num_files += ds.remove_files(dataset_path=file, recursive=not args.non_recursive, verbose=args.verbose)
+    message = "{} file{} removed".format(num_files, "s" if num_files != 1 else "")
+    print(message)
     return 0
 
 
@@ -476,16 +486,21 @@ def ds_sync(args):
 
 
 def ds_add(args):
-    print('Adding files/folder to dataset id {}'.format(args.id))
+    print("Adding files/folder/links to dataset id {}".format(args.id))
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
     num_files = 0
-    for file in args.files:
+    for file in args.files or []:
         num_files += ds.add_files(
-            path=file, recursive=not args.non_recursive,
-            verbose=args.verbose, dataset_path=args.dataset_folder or None)
-    print('{} file{} added'.format(num_files, 's' if num_files > 1 else ''))
+            path=file, recursive=not args.non_recursive, verbose=args.verbose, dataset_path=args.dataset_folder or None
+        )
+    for link in args.links or []:
+        num_files += ds.add_external_files(
+            link, dataset_path=args.dataset_folder or None, recursive=not args.non_recursive, verbose=args.verbose
+        )
+    message = "{} file{} added".format(num_files, "s" if num_files != 1 else "")
+    print(message)
     return 0
 
 
@@ -505,9 +520,9 @@ def main():
         exit(cli())
     except KeyboardInterrupt:
         print('\nUser aborted')
-    except Exception as ex:
-        print('\nError: {}'.format(ex))
-        exit(1)
+    #except Exception as ex:
+    #    print('\nError: {}'.format(ex))
+    #    exit(1)
 
 
 if __name__ == '__main__':

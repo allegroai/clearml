@@ -292,7 +292,7 @@ class TaskHandler(BufferingHandler):
         super(TaskHandler, self).close()
 
     @classmethod
-    def report_offline_session(cls, task, folder):
+    def report_offline_session(cls, task, folder, iteration_offset=0):
         filename = Path(folder) / cls.__offline_filename
         if not filename.is_file():
             return False
@@ -306,6 +306,11 @@ class TaskHandler(BufferingHandler):
                     list_requests = json.loads(line)
                     for r in list_requests:
                         r.pop('task', None)
+                        # noinspection PyBroadException
+                        try:
+                            r["iter"] += iteration_offset
+                        except Exception:
+                            pass
                     i += 1
                 except StopIteration:
                     break

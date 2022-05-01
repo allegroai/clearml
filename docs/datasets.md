@@ -71,7 +71,7 @@ from clearml import Dataset
 dataset = Dataset.create(dataset_name='dataset name',dataset_project='dataset project')
 dataset.add_files('/path_to_data')
 dataset.upload()
-dataset.close()
+dataset.finalize()
 
 ```
 

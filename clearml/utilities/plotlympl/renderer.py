@@ -243,7 +243,7 @@ class PlotlyRenderer(Renderer):
         horizontal = (
             abs(sum(heights[0] - heights[iii] for iii in range(len(heights)))) < tol
         )
-        if vertical and horizontal:
+        if (vertical and horizontal) or (not vertical and not horizontal):
             # Check for monotonic x. Can't both be true!
             x_zeros = [bar_props["x0"] for bar_props in trace]
             if all(

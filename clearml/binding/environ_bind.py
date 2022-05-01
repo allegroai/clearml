@@ -1,5 +1,4 @@
 import os
-from time import sleep
 
 import six
 
@@ -99,7 +98,16 @@ class PatchOsFork(object):
                 # just make sure we flush the internal state (the at exist caught by the external signal does the rest
                 # in theory we should not have to do any of that, but for some reason if we do not
                 # the signal is never caught by the signal call backs, not sure why....
-                sleep(0.1)
+
+                # Since at_exist handlers do not work on forked processes, we have to manually call them here
+                if task:
+                    try:
+                        # not to worry there is a double _at_exit protection implemented inside task._at_exit()
+                        # noinspection PyProtectedMember
+                        task._at_exit()
+                    except:  # noqa
+                        pass
+
                 # noinspection PyProtectedMember, PyUnresolvedReferences
                 return os._org_exit(*a_args, **a_kwargs)
 

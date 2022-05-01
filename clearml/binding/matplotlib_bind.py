@@ -375,6 +375,11 @@ class PatchedMatplotlib:
             if PatchedMatplotlib._force_report_as_image:
                 force_save_as_image = True
 
+            # if we have subplots, we will probably fail in conversion, so we just store as image
+            if not report_as_debug_sample and not force_save_as_image and \
+                    mpl_fig and getattr(mpl_fig, 'axes', None) and len(mpl_fig.axes) > 1:
+                force_save_as_image = True
+
             # convert to plotly
             image = None
             plotly_dict = None

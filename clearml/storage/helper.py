@@ -5,6 +5,7 @@ import getpass
 import itertools
 import json
 import os
+import platform
 import shutil
 import sys
 import threading
@@ -29,7 +30,6 @@ from requests.exceptions import ConnectionError
 from six import binary_type, StringIO
 from six.moves.queue import Queue, Empty
 from six.moves.urllib.parse import urlparse
-from six.moves.urllib.request import url2pathname
 
 from .callbacks import UploadProgressReport, DownloadProgressReport
 from .util import quote_url
@@ -236,9 +236,16 @@ class StorageHelper(object):
         base_url = cls._resolve_base_url(url)
 
         instance_key = '%s_%s' % (base_url, threading.current_thread().ident or 0)
+        # noinspection PyBroadException
+        try:
+            configs = kwargs.get("configs")
+            if configs:
+                instance_key += "_{}".format(configs.cache_name)
+        except Exception:
+            pass
 
         force_create = kwargs.pop('__force_create', False)
-        if (instance_key in cls._helpers) and (not force_create):
+        if (instance_key in cls._helpers) and (not force_create) and base_url != "file://":
             return cls._helpers[instance_key]
 
         # Don't canonize URL since we already did it
@@ -272,9 +279,20 @@ class StorageHelper(object):
         local_path = mktemp(suffix=file_name)
         return helper.download_to_file(remote_url, local_path, skip_zero_size_check=skip_zero_size_check)
 
-    def __init__(self, base_url, url, key=None, secret=None, region=None, verbose=False, logger=None, retries=5,
-                 **kwargs):
-        level = config.get('storage.log.level', None)
+    def __init__(
+        self,
+        base_url,
+        url,
+        key=None,
+        secret=None,
+        region=None,
+        verbose=False,
+        logger=None,
+        retries=5,
+        token=None,
+        **kwargs
+    ):
+        level = config.get("storage.log.level", None)
 
         if level:
             try:
@@ -324,7 +342,8 @@ class StorageHelper(object):
                 secret=secret or self._conf.secret,
                 multipart=self._conf.multipart,
                 region=final_region,
-                use_credentials_chain=self._conf.use_credentials_chain
+                use_credentials_chain=self._conf.use_credentials_chain,
+                token=token or self._conf.token
             )
 
             if not self._conf.use_credentials_chain:
@@ -352,24 +371,22 @@ class StorageHelper(object):
             # if this is not a known scheme assume local file
 
             # If the scheme is file, use only the path segment, If not, use the entire URL
-            if self._scheme == 'file':
+            if self._scheme == "file":
                 url = parsed.path
 
             url = url.replace("\\", "/")
 
             # url2pathname is specifically intended to operate on (urlparse result).path
             # and returns a cross-platform compatible result
-            driver_uri = url2pathname(url)
-            path_driver_uri = Path(driver_uri)
-            # if path_driver_uri.is_file():
-            #     driver_uri = str(path_driver_uri.parent)
-            # elif not path_driver_uri.exists():
-            #     # assume a folder and create
-            #     # Path(driver_uri).mkdir(parents=True, exist_ok=True)
-            #     pass
-
-            self._driver = _FileStorageDriver(str(path_driver_uri.root))
-            self._container = None
+            url = parsed.path
+            if parsed.netloc:
+                url = os.path.join(parsed.netloc, url.lstrip(os.path.sep))
+            self._driver = _FileStorageDriver(Path(url))
+            # noinspection PyBroadException
+            try:
+                self._container = self._driver.get_container("")
+            except Exception:
+                self._container = None
 
     @classmethod
     def terminate_uploads(cls, force=True, timeout=2.0):
@@ -485,6 +502,39 @@ class StorageHelper(object):
         Removes all path substitution rules, including ones from the configuration file.
         """
         cls._path_substitutions = list()
+
+    def get_object_size_bytes(self, remote_url, silence_errors=False):
+        # type: (str, bool) -> [int, None]
+        """
+        Get size of the remote file in bytes.
+
+        :param str remote_url: The url where the file is stored.
+            E.g. 's3://bucket/some_file.txt', 'file://local/file'
+        :param bool silence_errors: Silence errors that might occur
+            when fetching the size of the file. Default: False
+
+        :return: The size of the file in bytes.
+            None if the file could not be found or an error occurred.
+        """
+        size = None
+        obj = self.get_object(remote_url, silence_errors=silence_errors)
+        if not obj:
+            return None
+        try:
+            if isinstance(self._driver, _HttpDriver) and obj:
+                obj = self._driver._get_download_object(obj)  # noqa
+                size = obj.headers.get("Content-Length", 0)
+            elif hasattr(obj, "size"):
+                size = obj.size
+                # Google storage has the option to reload the object to get the size
+                if size is None and hasattr(obj, "reload"):
+                    obj.reload()
+                    size = obj.size
+            elif hasattr(obj, "content_length"):
+                size = obj.content_length
+        except (ValueError, AttributeError, KeyError):
+            pass
+        return size
 
     def verify_upload(self, folder_uri='', raise_on_error=True, log_on_error=True):
         """
@@ -616,11 +666,14 @@ class StorageHelper(object):
             except TypeError:
                 res = self._driver.list_container_objects(self._container)
 
-            return [
+            result = [
                 obj.name
-                for obj in res if
-                obj.name.startswith(prefix) and obj.name != prefix
+                for obj in res
+                if (obj.name.startswith(prefix) or self._base_url == "file://") and obj.name != prefix
             ]
+            if self._base_url == "file://":
+                result = [Path(f).as_posix() for f in result]
+            return result
         else:
             return [obj.name for obj in self._driver.list_container_objects(self._container)]
 
@@ -631,7 +684,9 @@ class StorageHelper(object):
             overwrite_existing=False,
             delete_on_failure=True,
             verbose=None,
-            skip_zero_size_check=False
+            skip_zero_size_check=False,
+            silence_errors=False,
+            direct_access=True
     ):
         def next_chunk(astream):
             if isinstance(astream, binary_type):
@@ -651,7 +706,7 @@ class StorageHelper(object):
 
         # Check if driver type supports direct access:
         direct_access_path = self.get_driver_direct_access(remote_path)
-        if direct_access_path:
+        if direct_access_path and direct_access:
             return direct_access_path
 
         temp_local_path = None
@@ -667,10 +722,14 @@ class StorageHelper(object):
                 )
 
                 return local_path
+            if remote_path.startswith("file://"):
+                Path(local_path).parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(direct_access_path, local_path)
+                return local_path
             # we download into temp_local_path so that if we accidentally stop in the middle,
             # we won't think we have the entire file
             temp_local_path = '{}_{}{}'.format(local_path, time(), self._temp_download_suffix)
-            obj = self._get_object(remote_path)
+            obj = self.get_object(remote_path, silence_errors=silence_errors)
             if not obj:
                 return None
 
@@ -685,23 +744,9 @@ class StorageHelper(object):
             # noinspection PyBroadException
             Path(temp_local_path).parent.mkdir(parents=True, exist_ok=True)
 
-            # try to get file size
-            try:
-                if isinstance(self._driver, _HttpDriver) and obj:
-                    obj = self._driver._get_download_object(obj)  # noqa
-                    total_size_mb = float(obj.headers.get('Content-Length', 0)) / (1024 * 1024)
-                elif hasattr(obj, 'size'):
-                    size = obj.size
-                    # Google storage has the option to reload the object to get the size
-                    if size is None and hasattr(obj, 'reload'):
-                        obj.reload()
-                        size = obj.size
-
-                    total_size_mb = 0 if size is None else float(size) / (1024 * 1024)
-                elif hasattr(obj, 'content_length'):
-                    total_size_mb = float(obj.content_length) / (1024 * 1024)
-            except (ValueError, AttributeError, KeyError):
-                pass
+            total_size_bytes = self.get_object_size_bytes(remote_path, silence_errors=silence_errors)
+            if total_size_bytes is not None:
+                total_size_mb = float(total_size_bytes) / (1024 * 1024)
 
             # if driver supports download with callback, use it (it might be faster)
             if hasattr(self._driver, 'download_object'):
@@ -767,7 +812,7 @@ class StorageHelper(object):
     def download_as_stream(self, remote_path, chunk_size=None):
         remote_path = self._canonize_url(remote_path)
         try:
-            obj = self._get_object(remote_path)
+            obj = self.get_object(remote_path)
             return self._driver.download_object_as_stream(
                 obj, chunk_size=chunk_size, verbose=self._verbose, log=self.log
             )
@@ -795,7 +840,7 @@ class StorageHelper(object):
             self._log.error("Could not download file : %s, err:%s " % (remote_path, str(e)))
 
     def delete(self, path):
-        return self._driver.delete_object(self._get_object(path))
+        return self._driver.delete_object(self.get_object(path))
 
     def check_write_permissions(self, dest_path=None):
         # create a temporary file, then delete it
@@ -906,6 +951,8 @@ class StorageHelper(object):
                 folder_uri = str(Path(folder_uri).absolute())
                 if folder_uri.startswith('/'):
                     folder_uri = _base_url + folder_uri
+                elif platform.system() == "Windows":
+                    folder_uri = ''.join((_base_url, folder_uri))
                 else:
                     folder_uri = '/'.join((_base_url, folder_uri))
 
@@ -1002,7 +1049,18 @@ class StorageHelper(object):
 
         return dest_path
 
-    def _get_object(self, path):
+    def get_object(self, path, silence_errors=False):
+        # type: (str, bool) -> object
+        """
+        Gets the remote object stored at path. The data held by the object
+        differs depending on where it is stored.
+
+        :param str path: the path where the remote object is stored
+        :param bool silence_errors: Silence errors that might occur
+            when fetching the remote object
+
+        :return: The remote object
+        """
         object_name = self._normalize_object_name(path)
         try:
             return self._driver.get_object(
@@ -1010,7 +1068,8 @@ class StorageHelper(object):
         except ConnectionError:
             raise DownloadError
         except Exception as e:
-            self.log.warning('Storage helper problem for {}: {}'.format(str(object_name), str(e)))
+            if not silence_errors:
+                self.log.warning("Storage helper problem for {}: {}".format(str(object_name), str(e)))
             return None
 
     @staticmethod
@@ -1342,9 +1401,11 @@ class _Boto3Driver(_Driver):
                 if not cfg.use_credentials_chain:
                     boto_kwargs["aws_access_key_id"] = cfg.key
                     boto_kwargs["aws_secret_access_key"] = cfg.secret
+                    if cfg.token:
+                        boto_kwargs["aws_session_token"] = cfg.token
 
                 self.resource = boto3.resource(
-                    's3',
+                    "s3",
                     **boto_kwargs
                 )
 
@@ -2229,6 +2290,16 @@ class _FileStorageDriver(_Driver):
 
         :return: An Object instance.
         """
+        if os.path.isfile(os.path.join(container_name, object_name)):
+            return self.Object(
+                name=object_name,
+                container=container_name,
+                size=Path(object_name).stat().st_size,
+                driver=self,
+                extra=None,
+                hash=None,
+                meta_data=None,
+            )
         container = self._make_container(container_name)
         return self._make_object(container, object_name)
 
@@ -2328,8 +2399,8 @@ class _FileStorageDriver(_Driver):
         :param extra: (optional) Extra attributes (driver specific).
         :type extra: ``dict``
         """
-
-        path = self.get_container_cdn_url(container, check=True)
+        print(file_path, container, object_name)
+        path = self.get_container_cdn_url(container, check=False)
         obj_path = os.path.join(path, object_name)
         base_path = os.path.dirname(obj_path)
 

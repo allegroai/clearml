@@ -76,6 +76,7 @@ from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
 from .utilities.process.mp import BackgroundMonitor, leave_process
 from .utilities.matching import matches_any_wildcard
+from .utilities.future_caller import FutureCaller
 # noinspection PyProtectedMember
 from .backend_interface.task.args import _Arguments
 
@@ -213,8 +214,9 @@ class Task(_Task):
             auto_connect_frameworks=True,  # type: Union[bool, Mapping[str, bool]]
             auto_resource_monitoring=True,  # type: bool
             auto_connect_streams=True,  # type: Union[bool, Mapping[str, bool]]
+            wait_for_task_init=True,  # type: bool
     ):
-        # type: (...) -> "Task"
+        # type: (...) -> Union[Task, FutureCaller[Task]]
         """
         Creates a new Task (experiment) if:
 
@@ -416,8 +418,35 @@ class Task(_Task):
 
                auto_connect_streams={'stdout': True, 'stderr': True, 'logging': False}
 
-        :return: The main execution Task (Task context).
+        :param wait_for_task_init: Wait for task to be initialized. If this is set to True, return the task after it was
+            initialized. If set to False, run the initialization in another thread and return a future that contains the task.
+            Wait and retrieve the task by calling result() on the returned future.
+            Note that the task will not capture information until it is initialized.
+
+            For example:
+
+            .. code-block:: py
+            task_future = Task.init(project_name='example', task_name='example', wait_for_task_init=False)
+            # execute some other code
+            task = task_future.result()
+
+        :return: The main execution Task (Task context) or a future to the Task (if wait_for_task_init=False).
         """
+        if not wait_for_task_init:
+            return FutureCaller().call(
+                cls.init,
+                project_name=project_name,
+                task_name=task_name,
+                tags=tags,
+                reuse_last_task_id=reuse_last_task_id,
+                continue_last_task=continue_last_task,
+                output_uri=output_uri,
+                auto_connect_arg_parser=auto_connect_arg_parser,
+                auto_connect_frameworks=auto_connect_frameworks,
+                auto_resource_monitoring=auto_resource_monitoring,
+                auto_connect_streams=auto_connect_streams,
+                wait_for_task_init=True,
+            )
 
         def verify_defaults_match():
             validate = [
@@ -663,7 +692,7 @@ class Task(_Task):
         # something to the log.
         task._dev_mode_setup_worker()
 
-        if (not task._reporter or not task._reporter.is_alive()) and \
+        if (not task._reporter or not task._reporter.is_constructed()) and \
                 is_sub_process_task_id and not cls._report_subprocess_enabled:
             task._setup_reporter()
 
@@ -671,6 +700,7 @@ class Task(_Task):
         # monitoring are: Resource monitoring and Dev Worker monitoring classes
         BackgroundMonitor.start_all(task=task)
 
+        task.set_progress(0)
         return task
 
     @classmethod
@@ -847,6 +877,8 @@ class Task(_Task):
         :param str task_name: The full name or partial name of the Tasks to match within the specified
             ``project_name`` (or all projects if ``project_name`` is ``None``).
             This method supports regular expressions for name matching. (Optional)
+            To match an exact task name (i.e. not partial matching),
+            add ^/$ at the beginning/end of the string, for example: "^exact_task_name_here$"
         :param list(str) task_ids: list of unique task id string (if exists other parameters are ignored)
         :param str project_name: project name (str) the task belongs to (use None for all projects)
         :param str task_name: task name (str) in within the selected project
@@ -1206,6 +1238,29 @@ class Task(_Task):
         res = cls._send(session=session, req=req)
         resp = res.response
         return resp
+
+    def set_progress(self, progress):
+        # type: (int) -> ()
+        """
+        Sets Task's progress (0 - 100)
+        Progress is a field computed and reported by the user.
+
+        :param progress: numeric value (0 - 100)
+        """
+        if not isinstance(progress, int) or progress < 0 or progress > 100:
+            self.log.warning("Can't set progress {} as it is not and int between 0 and 100".format(progress))
+            return
+        self._set_runtime_properties({"progress": str(progress)})
+
+    def get_progress(self):
+        # type: () -> (Optional[int])
+        """
+        Gets Task's progress (0 - 100)
+
+        :return: Task's progress as an int.
+            In case the progress doesn't exist, None will be returned
+        """
+        return self._get_runtime_properties().get("progress")
 
     def add_tags(self, tags):
         # type: (Union[Sequence[str], str]) -> None
@@ -1677,6 +1732,7 @@ class Task(_Task):
             auto_pickle=True,  # type: bool
             preview=None,  # type: Any
             wait_on_upload=False,  # type: bool
+            extension_name=None,  # type: Optional[str]
     ):
         # type: (...) -> bool
         """
@@ -1686,10 +1742,12 @@ class Task(_Task):
 
         - string / pathlib2.Path - A path to artifact file. If a wildcard or a folder is specified, then ClearML
           creates and uploads a ZIP file.
-        - dict - ClearML stores a dictionary as ``.json`` file and uploads it.
-        - pandas.DataFrame - ClearML stores a pandas.DataFrame as ``.csv.gz`` (compressed CSV) file and uploads it.
-        - numpy.ndarray - ClearML stores a numpy.ndarray as ``.npz`` file and uploads it.
-        - PIL.Image - ClearML stores a PIL.Image as ``.png`` file and uploads it.
+        - dict - ClearML stores a dictionary as ``.json`` (or see ``extension_name``) file and uploads it.
+        - pandas.DataFrame - ClearML stores a pandas.DataFrame as ``.csv.gz`` (compressed CSV)
+            (or see ``extension_name``) file and uploads it.
+        - numpy.ndarray - ClearML stores a numpy.ndarray as ``.npz`` (or see ``extension_name``)
+            file and uploads it.
+        - PIL.Image - ClearML stores a PIL.Image as ``.png`` (or see ``extension_name``) file and uploads it.
         - Any - If called with auto_pickle=True, the object will be pickled and uploaded.
 
         :param str name: The artifact name.
@@ -1714,6 +1772,14 @@ class Task(_Task):
         :param bool wait_on_upload: Whether or not the upload should be synchronous, forcing the upload to complete
             before continuing.
 
+        :param str extension_name: File extension which indicates the format the artifact should be stored as.
+            The following are supported, depending on the artifact type
+            (default value applies when extension_name is None):
+        - dict - ``.json``, ``.yaml`` (default ``.json``)
+        - pandas.DataFrame - ``.csv.gz``, ``.parquet``, ``.feather``, ``.pickle`` (default ``.csv.gz``)
+        - numpy.ndarray - ``.npz``, ``.csv.gz`` (default ``.npz``)
+        - PIL.Image - whatever extensions PIL supports (default ``.png``)
+
         :return: The status of the upload.
 
         - ``True`` - Upload succeeded.
@@ -1723,7 +1789,7 @@ class Task(_Task):
         """
         return self._artifacts_manager.upload_artifact(
             name=name, artifact_object=artifact_object, metadata=metadata, delete_after_upload=delete_after_upload,
-            auto_pickle=auto_pickle, preview=preview, wait_on_upload=wait_on_upload)
+            auto_pickle=auto_pickle, preview=preview, wait_on_upload=wait_on_upload, extension_name=extension_name)
 
     def get_models(self):
         # type: () -> Mapping[str, Sequence[Model]]
@@ -2424,14 +2490,19 @@ class Task(_Task):
         return target_task
 
     @classmethod
-    def import_offline_session(cls, session_folder_zip):
-        # type: (str) -> (Optional[str])
+    def import_offline_session(cls, session_folder_zip, previous_task_id=None, iteration_offset=0):
+        # type: (str, Optional[str], Optional[int]) -> (Optional[str])
         """
         Upload an off line session (execution) of a Task.
         Full Task execution includes repository details, installed packages, artifacts, logs, metric and debug samples.
+        This function may also be used to continue a previously executed task with a task executed offline.
 
         :param session_folder_zip: Path to a folder containing the session, or zip-file of the session folder.
-        :return: Newly created task ID (str)
+        :param previous_task_id: Task ID of the task you wish to continue with this offline session.
+        :param iteration_offset: Reporting of the offline session will be offset with the
+            number specified by this parameter. Useful for avoiding overwriting metrics.
+
+        :return: Newly created task ID or the ID of the continued task (previous_task_id)
         """
         print('ClearML: Importing offline session from {}'.format(session_folder_zip))
 
@@ -2452,38 +2523,44 @@ class Task(_Task):
         except Exception as ex:
             raise ValueError(
                 "Could not read Task object {}: Exception {}".format(session_folder / cls._offline_filename, ex))
-        task = cls.import_task(export_data)
-        task.mark_started(force=True)
+        current_task = cls.import_task(export_data)
+        if previous_task_id:
+            task_holding_reports = cls.get_task(task_id=previous_task_id)
+            task_holding_reports.mark_started(force=True)
+            task_holding_reports = cls.import_task(export_data, target_task=task_holding_reports, update=True)
+        else:
+            task_holding_reports = current_task
+            task_holding_reports.mark_started(force=True)
         # fix artifacts
-        if task.data.execution.artifacts:
+        if current_task.data.execution.artifacts:
             from . import StorageManager
             # noinspection PyProtectedMember
             offline_folder = os.path.join(export_data.get('offline_folder', ''), 'data/')
 
             # noinspection PyProtectedMember
-            remote_url = task._get_default_report_storage_uri()
+            remote_url = current_task._get_default_report_storage_uri()
             if remote_url and remote_url.endswith('/'):
                 remote_url = remote_url[:-1]
 
-            for artifact in task.data.execution.artifacts:
+            for artifact in current_task.data.execution.artifacts:
                 local_path = artifact.uri.replace(offline_folder, '', 1)
                 local_file = session_folder / 'data' / local_path
                 if local_file.is_file():
                     remote_path = local_path.replace(
-                        '.{}{}'.format(export_data['id'], os.sep), '.{}{}'.format(task.id, os.sep), 1)
+                        '.{}{}'.format(export_data['id'], os.sep), '.{}{}'.format(current_task.id, os.sep), 1)
                     artifact.uri = '{}/{}'.format(remote_url, remote_path)
                     StorageManager.upload_file(local_file=local_file.as_posix(), remote_url=artifact.uri)
             # noinspection PyProtectedMember
-            task._edit(execution=task.data.execution)
+            task_holding_reports._edit(execution=current_task.data.execution)
         # logs
-        TaskHandler.report_offline_session(task, session_folder)
+        TaskHandler.report_offline_session(task_holding_reports, session_folder, iteration_offset=iteration_offset)
         # metrics
-        Metrics.report_offline_session(task, session_folder)
+        Metrics.report_offline_session(task_holding_reports, session_folder, iteration_offset=iteration_offset)
         # print imported results page
-        print('ClearML results page: {}'.format(task.get_output_log_web_page()))
-        task.mark_completed()
+        print('ClearML results page: {}'.format(task_holding_reports.get_output_log_web_page()))
+        task_holding_reports.mark_completed()
         # close task
-        task.close()
+        task_holding_reports.close()
 
         # cleanup
         if temp_folder:
@@ -2493,7 +2570,7 @@ class Task(_Task):
             except Exception:
                 pass
 
-        return task.id
+        return task_holding_reports.id
 
     @classmethod
     def set_credentials(
@@ -3221,11 +3298,11 @@ class Task(_Task):
         is_sub_process = self.__is_subprocess()
 
         # noinspection PyBroadException
+        task_status = None
         try:
             wait_for_uploads = True
             # first thing mark task as stopped, so we will not end up with "running" on lost tasks
             # if we are running remotely, the daemon will take care of it
-            task_status = None
             wait_for_std_log = True
             if (not running_remotely() or DEBUG_SIMULATE_REMOTE_TASK.get()) \
                     and self.is_main_task() and not is_sub_process:
@@ -3249,7 +3326,7 @@ class Task(_Task):
                     if (is_exception and not isinstance(is_exception, KeyboardInterrupt)
                         and is_exception != KeyboardInterrupt) \
                             or (not self.__exit_hook.remote_user_aborted and
-                                self.__exit_hook.signal not in (None, 2, 15)):
+                                (self.__exit_hook.signal not in (None, 2, 15) or self.__exit_hook.exit_code)):
                         task_status = (
                             'failed',
                             'Exception {}'.format(is_exception) if is_exception else
@@ -3366,6 +3443,9 @@ class Task(_Task):
             except Exception:
                 pass
             self._edit_lock = None
+
+        if task_status and task_status[0] == "completed":
+            self.set_progress(100)
 
         # make sure no one will re-enter the shutdown method
         self._at_exit_called = True
@@ -3602,25 +3682,33 @@ class Task(_Task):
 
     @classmethod
     def __get_tasks(
-            cls,
-            task_ids=None,  # type: Optional[Sequence[str]]
-            project_name=None,  # type: Optional[Union[Sequence[str],str]]
-            task_name=None,  # type: Optional[str]
-            **kwargs  # type: Any
+        cls,
+        task_ids=None,  # type: Optional[Sequence[str]]
+        project_name=None,  # type: Optional[Union[Sequence[str],str]]
+        task_name=None,  # type: Optional[str]
+        **kwargs  # type: Any
     ):
         # type: (...) -> List[Task]
 
         if task_ids:
             if isinstance(task_ids, six.string_types):
                 task_ids = [task_ids]
-            return [cls(private=cls.__create_protection, task_id=task_id, log_to_backend=False)
-                    for task_id in task_ids]
+            return [cls(private=cls.__create_protection, task_id=task_id, log_to_backend=False) for task_id in task_ids]
 
-        return [cls(private=cls.__create_protection, task_id=task.id, log_to_backend=False)
-                for task in cls._query_tasks(project_name=project_name, task_name=task_name, **kwargs)]
+        queried_tasks = cls._query_tasks(
+            project_name=project_name, task_name=task_name, fetch_only_first_page=True, **kwargs
+        )
+        if len(queried_tasks) == 500:
+            LoggerRoot.get_base_logger().warning(
+                "Too many requests when calling Task.get_tasks()."
+                " Returning only the first 500 results."
+                " Use Task.query_tasks() to fetch all task IDs"
+            )
+        return [cls(private=cls.__create_protection, task_id=task.id, log_to_backend=False) for task in queried_tasks]
 
     @classmethod
-    def _query_tasks(cls, task_ids=None, project_name=None, task_name=None, **kwargs):
+    def _query_tasks(cls, task_ids=None, project_name=None, task_name=None, fetch_only_first_page=False, **kwargs):
+        res = None
         if not task_ids:
             task_ids = None
         elif isinstance(task_ids, six.string_types):
@@ -3651,18 +3739,32 @@ class Task(_Task):
         if kwargs and kwargs.get('only_fields'):
             only_fields = list(set(kwargs.pop('only_fields')) | set(only_fields))
 
-        res = cls._send(
-            session,
-            tasks.GetAllRequest(
-                id=task_ids,
-                project=project_ids if project_ids else kwargs.pop('project', None),
-                name=task_name if task_name else kwargs.pop('name', None),
-                only_fields=only_fields,
-                **kwargs
-            )
-        )
+        # if we have specific page to look for, we should only get the requested one
+        if not fetch_only_first_page and kwargs and 'page' in kwargs:
+            fetch_only_first_page = True
 
-        return res.response.tasks
+        ret_tasks = []
+        page = -1
+        page_size = 500
+        while page == -1 or (not fetch_only_first_page and res and len(res.response.tasks) == page_size):
+            page += 1
+            # work on a copy and make sure we override all fields with ours
+            request_kwargs = dict(
+                id=task_ids,
+                project=project_ids if project_ids else kwargs.pop("project", None),
+                name=task_name if task_name else kwargs.pop("name", None),
+                only_fields=only_fields,
+                page=page,
+                page_size=page_size,
+            )
+            # make sure we always override with the kwargs (specifically page selection / page_size)
+            request_kwargs.update(kwargs or {})
+            res = cls._send(
+                session,
+                tasks.GetAllRequest(**request_kwargs),
+            )
+            ret_tasks.extend(res.response.tasks)
+        return ret_tasks
 
     @classmethod
     def __get_hash_key(cls, *args):

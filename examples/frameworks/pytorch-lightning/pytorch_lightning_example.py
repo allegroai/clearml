@@ -1,3 +1,4 @@
+import os
 from argparse import ArgumentParser
 import torch
 import pytorch_lightning as pl
@@ -73,9 +74,9 @@ if __name__ == '__main__':
     mnist_test = MNIST('', train=False, download=True, transform=transforms.ToTensor())
     mnist_train, mnist_val = random_split(dataset, [55000, 5000])
 
-    train_loader = DataLoader(mnist_train, batch_size=args.batch_size)
-    val_loader = DataLoader(mnist_val, batch_size=args.batch_size)
-    test_loader = DataLoader(mnist_test, batch_size=args.batch_size)
+    train_loader = DataLoader(mnist_train, batch_size=args.batch_size, num_workers=os.cpu_count())
+    val_loader = DataLoader(mnist_val, batch_size=args.batch_size, num_workers=os.cpu_count())
+    test_loader = DataLoader(mnist_test, batch_size=args.batch_size, num_workers=os.cpu_count())
 
     # ------------
     # model
@@ -91,4 +92,4 @@ if __name__ == '__main__':
     # ------------
     # testing
     # ------------
-    trainer.test(test_dataloaders=test_loader)
+    trainer.test(dataloaders=test_loader)

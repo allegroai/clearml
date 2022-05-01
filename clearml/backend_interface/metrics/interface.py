@@ -257,7 +257,7 @@ class Metrics(InterfaceBase):
                 pass
 
     @classmethod
-    def report_offline_session(cls, task, folder):
+    def report_offline_session(cls, task, folder, iteration_offset=0):
         from ... import StorageManager
         filename = Path(folder) / cls.__offline_filename
         if not filename.is_file():
@@ -277,6 +277,11 @@ class Metrics(InterfaceBase):
                         break
                     list_requests = json.loads(line)
                     for r in list_requests:
+                        # noinspection PyBroadException
+                        try:
+                            r["iter"] += iteration_offset
+                        except Exception:
+                            pass
                         org_task_id = r['task']
                         r['task'] = task_id
                         if r.get('key') and r.get('url'):

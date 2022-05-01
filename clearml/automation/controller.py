@@ -505,7 +505,7 @@ class PipelineController(object):
         :param function_return: Provide a list of names for all the results.
             If not provided no results will be stored as artifacts.
         :param project_name: Set the project name for the task. Required if base_task_id is None.
-        :param task_name: Set the name of the remote task. Required if base_task_id is None.
+        :param task_name: Set the name of the remote task, if not provided use `name` argument.
         :param task_type: Optional, The task type to be created. Supported values: 'training', 'testing', 'inference',
             'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc', 'custom'
         :param auto_connect_frameworks: Control the frameworks auto connect, see `Task.init` auto_connect_frameworks
@@ -628,6 +628,8 @@ class PipelineController(object):
             )
 
         job_code_section = None
+        task_name = task_name or name or None
+
         if self._mock_execution:
             project_name = project_name or self._get_target_project() or self._task.get_project_name()
 
@@ -2197,6 +2199,7 @@ class PipelineController(object):
                 project=[self._task.project], system_tags=[self._tag],
                 order_by=['-created'],
                 page_size=page_size,
+                fetch_only_first_page=True,
             )
         )
         max_value = len(prev_pipelines_ids) if prev_pipelines_ids else 0

@@ -51,6 +51,10 @@ class CacheManager(object):
         ):
             # type: (str, bool, bool) -> Optional[str]
             helper = StorageHelper.get(remote_url)
+
+            if helper.base_url == "file://":
+                remote_url = os.path.expanduser(remote_url)
+
             if not helper:
                 raise ValueError("Storage access failed: {}".format(remote_url))
             # check if we need to cache the file

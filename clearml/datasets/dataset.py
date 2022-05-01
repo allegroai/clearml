@@ -2,7 +2,6 @@ import json
 import os
 import shutil
 from copy import deepcopy, copy
-from fnmatch import fnmatch
 from multiprocessing import cpu_count
 from multiprocessing.pool import ThreadPool
 from tempfile import mkstemp, mkdtemp
@@ -21,6 +20,7 @@ from ..debugging.log import LoggerRoot
 from ..storage.helper import StorageHelper
 from ..storage.cache import CacheManager
 from ..storage.util import sha256sum, is_windows, md5text, format_size
+from ..utilities.matching import matches_any_wildcard
 
 try:
     from pathlib import Path as _Path  # noqa
@@ -48,6 +48,24 @@ class FileEntry(object):
         return state
 
 
+@attrs
+class LinkEntry(object):
+    link = attrib(default=None, type=str)
+    relative_path = attrib(default=None, type=str)
+    parent_dataset_id = attrib(default=None, type=str)
+    size = attrib(default=None, type=int)
+    hash = attrib(default=None, type=str)
+
+    def as_dict(self):
+        # type: () -> Dict
+        return dict(
+            link=self.link,
+            relative_path=self.relative_path,
+            parent_dataset_id=self.parent_dataset_id,
+            size=self.size,
+        )
+
+
 class Dataset(object):
     __private_magic = 42 * 1337
     __state_entry_name = 'state'
@@ -55,6 +73,7 @@ class Dataset(object):
     __data_entry_name_prefix = 'data_'
     __cache_context = 'datasets'
     __tag = 'dataset'
+    __external_files_tag = 'external files'
     __cache_folder_prefix = 'ds_'
     __dataset_folder_template = CacheManager.set_context_folder_lookup(__cache_context, "{0}_archive_{1}")
     __preview_max_file_entries = 15000
@@ -69,6 +88,7 @@ class Dataset(object):
         assert _private == self.__private_magic
         # key for the dataset file entries are the relative path within the data
         self._dataset_file_entries = {}  # type: Dict[str, FileEntry]
+        self._dataset_link_entries = {}  # type: Dict[str, LinkEntry]
         # this will create a graph of all the dependencies we have, each entry lists it's own direct parents
         self._dependency_graph = {}  # type: Dict[str, List[str]]
         if task:
@@ -98,9 +118,8 @@ class Dataset(object):
             # e.g. add_files is called multiple times
             task_state = task.artifacts.get('state')
             if task_state:
-                # Metadata is visible in UI, so there will be no underscores there, hence the replace
-                self.changed_files = {key: task_state.metadata.get(key.replace('_', ' '), 0)
-                                      for key in {'files_added', 'files_removed', 'files_modified'}}
+                self.changed_files = {key: int(task_state.metadata.get(key, 0))
+                                      for key in {'files added', 'files removed', 'files modified'}}
             else:
                 self.changed_files = {'files added': 0, 'files removed': 0, 'files modified': 0}
         else:
@@ -161,6 +180,11 @@ class Dataset(object):
         return list(self._dataset_file_entries.values())
 
     @property
+    def link_entries(self):
+        # type: () -> List[LinkEntry]
+        return list(self._dataset_link_entries.values())
+
+    @property
     def file_entries_dict(self):
         # type: () -> Mapping[str, FileEntry]
         """
@@ -168,6 +192,15 @@ class Dataset(object):
         :return: dict with relative file path as key, and FileEntry as value
         """
         return self._dataset_file_entries
+
+    @property
+    def link_entries_dict(self):
+        # type: () -> Mapping[str, LinkEntry]
+        """
+        Notice this call returns an internal representation, do not modify!
+        :return: dict with relative file path as key, and LinkEntry as value
+        """
+        return self._dataset_link_entries
 
     @property
     def project(self):
@@ -205,7 +238,7 @@ class Dataset(object):
 
         :param path: Add a folder/file to the dataset
         :param wildcard: add only specific set of files.
-            Wildcard matching, can be a single string or a list of wildcards)
+            Wildcard matching, can be a single string or a list of wildcards.
         :param local_base_folder: files will be located based on their relative path from local_base_folder
         :param dataset_path: where in the dataset the folder/files should be located
         :param recursive: If True match all wildcard files recursively
@@ -232,13 +265,126 @@ class Dataset(object):
 
         return num_added
 
+    def add_external_files(
+        self,
+        source_url,  # type: str
+        wildcard=None,  # type: Optional[Union[str, Sequence[str]]]
+        dataset_path=None,  # type: Optional[str]
+        recursive=True,  # type: bool
+        verbose=False,  # type: bool
+    ):
+        # type: (...) -> ()
+        """
+        Adds an external files or a folder to the current dataset.
+        External file links can be from cloud storage (s3://, gs://, azure://) or local / network storage (file://).
+        Calculates file size for each file and compare against parent.
+        A few examples:
+        # Adds file.jpg to the dataset. When retrieving a copy of the entire dataset (see dataset.get_local_copy())
+        # this file will be located in "./my_dataset/new_folder/file.jpg"
+        add_external_files(source_url="s3://my_bucket/stuff/file.jpg", target_dataset_folder="/my_dataset/new_folder/")
+        # Adds all jpg files located in s3 bucket called "my_bucket" to the dataset.
+        add_external_files(source_url="s3://my/bucket/", wildcard = "*.jpg",target_dataset_folder="/my_dataset/new_folder/")
+        # Adds the entire content of "remote_folder" to the dataset.
+        add_external_files(source_url="s3://bucket/remote_folder/", target_dataset_folder="/my_dataset/new_folder/")
+        # Adds the local file "/folder/local_file.jpg" to the dataset.
+        add_external_files(source_url="file:///folder/local_file.jpg", target_dataset_folder="/my_dataset/new_folder/")
+
+        :param source_url: Source url link to add to the dataset,
+            e.g. s3://bucket/folder/path, s3://bucket/folder/file.csv
+        :param wildcard: add only specific set of files.
+            Wildcard matching, can be a single string or a list of wildcards.
+        :param dataset_path: The location in the dataset where the file will be downloaded into.
+            E.g: for source_url='s3://bucket/remote_folder/image.jpg' and dataset_path='s3_files',
+            'image.jpg' will be downloaded to 's3_files/image.jpg' (relative path to the dataset)
+        :param recursive: If True match all wildcard files recursively
+        :param verbose: If True print to console files added/modified
+        :return: number of file links added
+        """
+        self._dirty = True
+        if dataset_path:
+            dataset_path = dataset_path.lstrip("/")
+        if StorageManager.exists_file(source_url):
+            links = [source_url]
+        else:
+            if source_url[-1] != "/":
+                source_url = source_url + "/"
+            links = StorageManager.list(source_url, return_full_path=True)
+        num_added = 0
+        num_modified = 0
+        for link in links:
+            relative_path = link[len(source_url):]
+            if not relative_path:
+                relative_path = source_url.split("/")[-1]
+            if not matches_any_wildcard(relative_path, wildcard, recursive=recursive):
+                continue
+            try:
+                relative_path = Path(os.path.join(dataset_path or ".", relative_path)).as_posix()
+                size = StorageManager.get_file_size_bytes(link, silence_errors=True)
+                already_added_file = self._dataset_file_entries.get(relative_path)
+                if relative_path not in self._dataset_link_entries:
+                    if verbose:
+                        self._task.get_logger().report_text(
+                            "External file {} added".format(link),
+                            print_console=False,
+                        )
+                    self._dataset_link_entries[relative_path] = LinkEntry(
+                        link=link, relative_path=relative_path, parent_dataset_id=self._id, size=size
+                    )
+                    num_added += 1
+                elif already_added_file and already_added_file.size != size:
+                    if verbose:
+                        self._task.get_logger().report_text(
+                            "External file {} modified".format(link),
+                            print_console=False,
+                        )
+                    del self._dataset_file_entries[relative_path]
+                    self._dataset_link_entries[relative_path] = LinkEntry(
+                        link=link, relative_path=relative_path, parent_dataset_id=self._id, size=size
+                    )
+                    num_modified += 1
+                elif relative_path in self._dataset_link_entries and self._dataset_link_entries[relative_path].size != size:
+                    if verbose:
+                        self._task.get_logger().report_text(
+                            "External file {} modified".format(link),
+                            print_console=False,
+                        )
+                    self._dataset_link_entries[relative_path] = LinkEntry(
+                        link=link, relative_path=relative_path, parent_dataset_id=self._id, size=size
+                    )
+                    num_modified += 1
+                else:
+                    if verbose:
+                        self._task.get_logger().report_text(
+                            "External file {} skipped as it was not modified".format(link),
+                            print_console=False,
+                        )
+            except Exception as e:
+                if verbose:
+                    self._task.get_logger().report_text(
+                        "Error '{}' encountered trying to add external file {}".format(e, link),
+                        print_console=False,
+                    )
+        self._task.add_tags([self.__external_files_tag])
+        self._add_script_call(
+            "add_external_files",
+            source_url=source_url,
+            wildcard=wildcard,
+            dataset_path=dataset_path,
+            recursive=recursive,
+            verbose=verbose,
+        )
+        self.update_changed_files(num_files_added=num_added, num_files_modified=num_modified)
+        self._serialize()
+        return num_added
+
     def remove_files(self, dataset_path=None, recursive=True, verbose=False):
         # type: (Optional[str], bool, bool) -> int
         """
         Remove files from the current dataset
 
         :param dataset_path: Remove files from the dataset.
-            The path is always relative to the dataset (e.g 'folder/file.bin')
+            The path is always relative to the dataset (e.g 'folder/file.bin').
+            External files can also be removed by their links (e.g. 's3://bucket/file')
         :param recursive: If True match all wildcard files recursively
         :param verbose: If True print to console files removed
         :return: Number of files removed
@@ -251,42 +397,44 @@ class Dataset(object):
         if dataset_path and dataset_path.startswith('/'):
             dataset_path = dataset_path[1:]
 
-        num_files = len(self._dataset_file_entries)
-        org_files = list(self._dataset_file_entries.keys()) if verbose else None
+        org_files = list(self._dataset_file_entries.keys()) + list(self._dataset_link_entries.keys())
 
-        if not recursive:
-            self._dataset_file_entries = {
-                k: v for k, v in self._dataset_file_entries.items()
-                if not fnmatch(k + '/', dataset_path + '/')}
-        else:
-            wildcard = dataset_path.split('/')[-1]
-            path = dataset_path[:-len(dataset_path)] + '*'
+        self._dataset_file_entries = {
+            k: v
+            for k, v in self._dataset_file_entries.items()
+            if not matches_any_wildcard(k, dataset_path, recursive=recursive)
+        }
+        self._dataset_link_entries = {
+            k: v
+            for k, v in self._dataset_link_entries.items()
+            if not matches_any_wildcard(k, dataset_path, recursive=recursive)
+            and not matches_any_wildcard(v.link, dataset_path, recursive=recursive)
+        }
 
-            self._dataset_file_entries = {
-                k: v for k, v in self._dataset_file_entries.items()
-                if not (fnmatch(k, path) and fnmatch(k if '/' in k else '/{}'.format(k), '*/' + wildcard))}
-
-        if verbose and org_files:
-            for f in org_files:
-                if f not in self._dataset_file_entries:
+        removed = 0
+        for f in org_files:
+            if f not in self._dataset_file_entries and f not in self._dataset_link_entries:
+                if verbose:
                     self._task.get_logger().report_text('Remove {}'.format(f))
+                removed += 1
 
         # update the task script
         self._add_script_call(
             'remove_files', dataset_path=dataset_path, recursive=recursive)
-
-        num_removed = num_files - len(self._dataset_file_entries)
         self._serialize()
         # Update state
-        self.update_changed_files(num_files_removed=num_removed)
-
-        return num_removed
+        self.update_changed_files(num_files_removed=removed)
+        return removed
 
     def sync_folder(self, local_path, dataset_path=None, verbose=False):
         # type: (Union[Path, _Path, str], Union[Path, _Path, str], bool) -> (int, int)
         """
         Synchronize the dataset with a local folder. The dataset is synchronized from the
-            relative_base_folder (default: dataset root)  and deeper with the specified local path.
+        relative_base_folder (default: dataset root)  and deeper with the specified local path.
+        Note that if a remote file is identified in as being modified when syncing, it will
+        be added as a FileEntry, ready to be uploaded to the ClearML server. This version of the
+        file is considered "newer" and it will be downloaded instead of the one stored at its
+        remote address when calling Dataset.get_local_copy().
 
         :param local_path: Local folder to sync (assumes all files and recursive)
         :param dataset_path: Target dataset path to sync with (default the root of the dataset)
@@ -610,7 +758,7 @@ class Dataset(object):
             part=0 -> chunks[0,5], part=1 -> chunks[1,6], part=2 -> chunks[2,7], part=3 -> chunks[3, ]
         :param raise_on_error: If True raise exception if dataset merging failed on any file
 
-        :return: A the target folder containing the entire dataset
+        :return: The target folder containing the entire dataset
         """
         assert self._id
         target_folder = Path(target_folder).absolute()
@@ -634,7 +782,7 @@ class Dataset(object):
         # type: (Optional[str], bool, Optional[str]) -> List[str]
         """
         returns a list of files in the current dataset
-        If dataset_id is provided, return a list of files that remained unchanged since the specified dataset_version
+        If dataset_id is provided, return a list of files that remained unchanged since the specified dataset_id
 
         :param dataset_path: Only match files matching the dataset_path (including wildcards).
             Example: 'folder/sub/*.json'
@@ -645,26 +793,44 @@ class Dataset(object):
         :return: List of files with relative path
             (files might not be available locally until get_local_copy() is called)
         """
-        files = self._dataset_file_entries.keys() if not dataset_id else \
-            [k for k, v in self._dataset_file_entries.items() if v.parent_dataset_id == dataset_id]
+        files = (
+            list(self._dataset_file_entries.keys())
+            if not dataset_id
+            else [
+                k
+                for k, v in self._dataset_file_entries.items()
+                if v.parent_dataset_id == dataset_id
+            ]
+        )
+        files.extend(
+            list(self._dataset_link_entries.keys())
+            if not dataset_id
+            else [
+                k
+                for k, v in self._dataset_link_entries.items()
+                if v.parent_dataset_id == dataset_id
+            ]
+        )
+        files = list(set(files))
 
         if not dataset_path:
             return sorted(files)
 
-        if dataset_path.startswith('/'):
+        if dataset_path.startswith("/"):
             dataset_path = dataset_path[1:]
 
-        if not recursive:
-            return sorted([k for k in files if fnmatch(k + '/', dataset_path + '/')])
-
-        wildcard = dataset_path.split('/')[-1]
-        path = dataset_path[:-len(wildcard)] + '*'
-        return sorted([k for k in files if fnmatch(k, path) and fnmatch(k, '*/' + wildcard)])
+        return sorted(
+            [
+                f
+                for f in files
+                if matches_any_wildcard(f, dataset_path, recursive=recursive)
+            ]
+        )
 
     def list_removed_files(self, dataset_id=None):
         # type: (str) -> List[str]
         """
-        return a list of files removed when comparing to a specific dataset_version
+        return a list of files removed when comparing to a specific dataset_id
 
         :param dataset_id: dataset id (str) to compare against, if None is given compare against the parents datasets
         :return: List of files with relative path
@@ -675,14 +841,17 @@ class Dataset(object):
         for ds_id in datasets:
             dataset = self.get(dataset_id=ds_id)
             unified_list |= set(dataset._dataset_file_entries.keys())
+            unified_list |= set(dataset._dataset_link_entries.keys())
 
-        removed_list = [f for f in unified_list if f not in self._dataset_file_entries]
+        removed_list = [
+            f for f in unified_list if f not in self._dataset_file_entries and f not in self._dataset_link_entries
+        ]
         return sorted(removed_list)
 
     def list_modified_files(self, dataset_id=None):
         # type: (str) -> List[str]
         """
-        return a list of files modified when comparing to a specific dataset_version
+        return a list of files modified when comparing to a specific dataset_id
 
         :param dataset_id: dataset id (str) to compare against, if None is given compare against the parents datasets
         :return: List of files with relative path
@@ -693,15 +862,29 @@ class Dataset(object):
         for ds_id in datasets:
             dataset = self.get(dataset_id=ds_id)
             unified_list.update(dict((k, v.hash) for k, v in dataset._dataset_file_entries.items()))
-
         modified_list = [k for k, v in self._dataset_file_entries.items()
                          if k in unified_list and v.hash != unified_list[k]]
-        return sorted(modified_list)
+        unified_list_sizes = dict()
+        for ds_id in datasets:
+            dataset = self.get(dataset_id=ds_id)
+            for k, v in dataset._dataset_link_entries.items():
+                unified_list_sizes[k] = v.size
+                if k in dataset._dataset_file_entries:
+                    unified_list_sizes[k] = dataset._dataset_file_entries[k].size
+        for k, v in self._dataset_link_entries.items():
+            if k not in unified_list_sizes:
+                continue
+            size = v.size
+            if k in self._dataset_file_entries:
+                size = self._dataset_file_entries[k].size
+            if size != unified_list_sizes[k]:
+                modified_list.append(k)
+        return sorted(list(set(modified_list)))
 
     def list_added_files(self, dataset_id=None):
         # type: (str) -> List[str]
         """
-        return a list of files added when comparing to a specific dataset_version
+        return a list of files added when comparing to a specific dataset_id
 
         :param dataset_id: dataset id (str) to compare against, if None is given compare against the parents datasets
         :return: List of files with relative path
@@ -712,9 +895,13 @@ class Dataset(object):
         for ds_id in datasets:
             dataset = self.get(dataset_id=ds_id)
             unified_list |= set(dataset._dataset_file_entries.keys())
-
-        added_list = [f for f in self._dataset_file_entries.keys() if f not in unified_list]
-        return sorted(added_list)
+            unified_list |= set(dataset._dataset_link_entries.keys())
+        added_list = [
+            f
+            for f in list(self._dataset_file_entries.keys()) + list(self._dataset_link_entries.keys())
+            if f not in unified_list
+        ]
+        return sorted(list(set(added_list)))
 
     def get_dependency_graph(self):
         """
@@ -813,6 +1000,10 @@ class Dataset(object):
         if any(not p.is_final() for p in parent_datasets):
             raise ValueError("Cannot inherit from a parent that was not finalized/closed")
 
+        if dataset_name and not dataset_project and Task.current_task():
+            LoggerRoot.get_base_logger().info('Dataset project not provided, using Current Task\'s project')
+            dataset_project = Task.current_task().get_project_name()
+
         # if dataset name + project are None, default to use current_task
         if dataset_project is None and dataset_name is None and not use_current_task:
             LoggerRoot.get_base_logger().info('New dataset project/name not provided, storing on Current Task')
@@ -827,9 +1018,11 @@ class Dataset(object):
 
         # merge datasets according to order
         dataset_file_entries = {}
+        dataset_link_entries = {}
         dependency_graph = {}
         for p in parent_datasets:
             dataset_file_entries.update(deepcopy(p._dataset_file_entries))
+            dataset_link_entries.update(deepcopy(p._dataset_link_entries))
             dependency_graph.update(deepcopy(p._dependency_graph))
         instance = cls(_private=cls.__private_magic,
                        dataset_project=dataset_project,
@@ -839,6 +1032,7 @@ class Dataset(object):
         instance._using_current_task = use_current_task
         instance._task.get_logger().report_text('Dataset created', print_console=False)
         instance._dataset_file_entries = dataset_file_entries
+        instance._dataset_link_entries = dataset_link_entries
         instance._dependency_graph = dependency_graph
         instance._dependency_graph[instance._id] = [p._id for p in parent_datasets]
         instance._serialize()
@@ -1069,7 +1263,7 @@ class Dataset(object):
             temp_folder = Path(mkdtemp(prefix='squash-datasets.'))
             pool = ThreadPool()
             for ds in datasets:
-                base_folder = Path(ds._extract_dataset_archive())
+                base_folder = Path(ds._get_dataset_files())
                 files = [f.relative_path for f in ds.file_entries if f.parent_dataset_id == ds.id]
                 pool.map(
                     lambda x:
@@ -1083,6 +1277,8 @@ class Dataset(object):
             dataset_project=datasets[0].project, dataset_name=dataset_name, parent_datasets=list(parents))
         squashed_ds._task.get_logger().report_text('Squashing dataset', print_console=False)
         squashed_ds.add_files(temp_folder)
+        for ds in datasets:
+            squashed_ds._dataset_link_entries.update(ds._dataset_link_entries)
         squashed_ds.upload(output_url=output_url)
         squashed_ds.finalize()
         return squashed_ds
@@ -1144,11 +1340,13 @@ class Dataset(object):
         :param recursive: If True match all wildcard files recursively
         :param verbose: If True print to console added files
         """
-        if dataset_path and dataset_path.startswith('/'):
-            dataset_path = dataset_path[1:]
+        if dataset_path:
+            dataset_path = dataset_path.lstrip("/")
         path = Path(path)
         local_base_folder = Path(local_base_folder or path)
-        wildcard = wildcard or '*'
+        wildcard = wildcard or ["*"]
+        if isinstance(wildcard, str):
+            wildcard = [wildcard]
         # single file, no need for threading
         if path.is_file():
             if not local_base_folder.is_dir():
@@ -1164,13 +1362,19 @@ class Dataset(object):
                 raise ValueError("Could not find file/folder \'{}\'", path.as_posix())
 
             # prepare a list of files
-            files = list(path.rglob(wildcard)) if recursive else list(path.glob(wildcard))
+            file_entries = []
+            for w in wildcard:
+                files = list(path.rglob(w)) if recursive else list(path.glob(w))
+                file_entries.extend([f for f in files if f.is_file()])
+            file_entries = list(set(file_entries))
             file_entries = [
                 FileEntry(
                     parent_dataset_id=self._id,
                     local_path=f.absolute().as_posix(),
-                    relative_path=(Path(dataset_path or '.') / f.relative_to(local_base_folder)).as_posix())
-                for f in files if f.is_file()]
+                    relative_path=(Path(dataset_path or ".") / f.relative_to(local_base_folder)).as_posix(),
+                )
+                for f in file_entries
+            ]
             self._task.get_logger().report_text('Generating SHA2 hash for {} files'.format(len(file_entries)))
             pool = ThreadPool(cpu_count() * 2)
             try:
@@ -1192,10 +1396,16 @@ class Dataset(object):
         for f in file_entries:
             ds_cur_f = self._dataset_file_entries.get(f.relative_path)
             if not ds_cur_f:
+                if (
+                    f.relative_path in self._dataset_link_entries
+                    and f.size == self._dataset_link_entries[f.relative_path].size
+                ):
+                    continue
                 if verbose:
                     self._task.get_logger().report_text('Add {}'.format(f.relative_path))
                 self._dataset_file_entries[f.relative_path] = f
-                count += 1
+                if f.relative_path not in self._dataset_link_entries:
+                    count += 1
             elif ds_cur_f.hash != f.hash:
                 if verbose:
                     self._task.get_logger().report_text('Modified {}'.format(f.relative_path))
@@ -1251,6 +1461,7 @@ class Dataset(object):
 
         state = dict(
             dataset_file_entries=[f.as_dict() for f in self._dataset_file_entries.values()],
+            dataset_link_entries=[link.as_dict() for link in self._dataset_link_entries.values()],
             dependency_graph=self._dependency_graph,
             id=self._id,
             dirty=self._dirty,
@@ -1282,11 +1493,11 @@ class Dataset(object):
         :param num_files_removed: Amount of files removed when compared to the parent dataset
         """
         if num_files_added:
-            self.changed_files['files added'] += num_files_added
+            self.changed_files["files added"] += num_files_added
         if num_files_removed:
-            self.changed_files['files removed'] += num_files_removed
+            self.changed_files["files removed"] += num_files_removed
         if num_files_modified:
-            self.changed_files['files modified'] += num_files_modified
+            self.changed_files["files modified"] += num_files_modified
 
     def _download_dataset_archives(self):
         """
@@ -1294,6 +1505,104 @@ class Dataset(object):
         :return: List of paths to locally stored zip files
         """
         pass  # TODO: implement
+
+    def _get_dataset_files(
+        self,
+        force=False,
+        selected_chunks=None,
+        lock_target_folder=False,
+        cleanup_target_folder=True,
+        target_folder=None,
+    ):
+        # type: (bool, Optional[List[int]], bool, bool, Optional[Path]) -> str
+        """
+        First, extracts the archive present on the ClearML server containing this dataset's files.
+        Then, download the remote files. Note that if a remote file was added to the ClearML server, then
+        it won't be downloaded from the remote storage unless it is added again using
+        Dataset.add_external_files().
+
+        :param force: If True extract dataset content even if target folder exists and is not empty
+        :param selected_chunks: Optional, if provided only download the selected chunks (index) of the Dataset.
+            Example: Assuming 8 chunks on this version
+            selected_chunks=[0,1,2]
+        :param lock_target_folder: If True, local the target folder so the next cleanup will not delete
+            Notice you should unlock it manually, or wait for the process to finish for auto unlocking.
+        :param cleanup_target_folder: If True remove target folder recursively
+        :param target_folder: If provided use the specified target folder, default, auto generate from Dataset ID.
+
+        :return: Path to the local storage where the data was downloaded
+        """
+        local_folder = self._extract_dataset_archive(
+            force=force,
+            selected_chunks=selected_chunks,
+            lock_target_folder=lock_target_folder,
+            cleanup_target_folder=cleanup_target_folder,
+            target_folder=target_folder,
+        )
+        self._download_external_files(
+            target_folder=target_folder, lock_target_folder=lock_target_folder
+        )
+        return local_folder
+
+    def _download_external_files(
+        self, target_folder=None, lock_target_folder=False
+    ):
+        # (Union(Path, str), bool) -> None
+        """
+        Downloads external files in the dataset. These files will be downloaded
+        at relative_path (the path relative to the target_folder). Note that
+        the download will not overwrite any existing files. Hence, if the file
+        was already downloaded from the ClearML server, it will not be overwritten.
+
+        :param target_folder: If provided use the specified target folder, default, auto generate from Dataset ID.
+        :param lock_target_folder: If True, local the target folder so the next cleanup will not delete
+            Notice you should unlock it manually, or wait for the process to finish for auto unlocking.
+        """
+        target_folder = (
+            Path(target_folder)
+            if target_folder
+            else self._create_ds_target_folder(
+                lock_target_folder=lock_target_folder
+            )
+        ).as_posix()
+        dependencies = self._get_dependencies_by_order(
+            include_unused=False, include_current=True
+        )
+        links = {}
+        for dependency in dependencies:
+            ds = Dataset.get(dependency)
+            links.update(ds._dataset_link_entries)
+        links.update(self._dataset_link_entries)
+        for relative_path, link in links.items():
+            target_path = os.path.join(target_folder, relative_path)
+            if os.path.exists(target_path):
+                LoggerRoot.get_base_logger().info(
+                    "{} already exists. Skipping downloading {}".format(
+                        target_path, link
+                    )
+                )
+                continue
+            ok = False
+            error = None
+            try:
+                helper = StorageHelper.get(link.link)
+                ok = helper.download_to_file(
+                    link.link,
+                    target_path,
+                    overwrite_existing=False,
+                    verbose=False,
+                    direct_access=False,
+                    silence_errors=True
+                )
+            except Exception as e:
+                error = e
+            if not ok:
+                log_string = "Failed downloading {}".format(link.link)
+                if error:
+                    log_string += " Error is '{}'".format(error)
+                LoggerRoot.get_base_logger().info(log_string)
+            else:
+                link.size = Path(target_path).stat().st_size
 
     def _extract_dataset_archive(
             self,
@@ -1313,7 +1622,7 @@ class Dataset(object):
             Example: Assuming 8 chunks on this version
             selected_chunks=[0,1,2]
         :param lock_target_folder: If True, local the target folder so the next cleanup will not delete
-            Notice you should unlock it manually, or wait fro the process to fnish for auto unlocking.
+            Notice you should unlock it manually, or wait for the process to finish for auto unlocking.
         :param cleanup_target_folder: If True remove target folder recursively
         :param target_folder: If provided use the specified target folder, default, auto generate from Dataset ID.
 
@@ -1362,13 +1671,6 @@ class Dataset(object):
                 cached_file=local_zip, name=self._id,
                 cache_context=self.__cache_context, target_folder=local_folder, force=True)
 
-        # download al parts in parallel
-        # if len(data_artifact_entries) > 1:
-        #     pool = ThreadPool()
-        #     pool.map(_download_part, data_artifact_entries)
-        #     pool.close()
-        # else:
-        #     _download_part(data_artifact_entries[0])
         for d in data_artifact_entries:
             _download_part(d)
 
@@ -1454,7 +1756,7 @@ class Dataset(object):
 
         # first get our dataset
         if self._id in dependencies_by_order:
-            self._extract_dataset_archive(
+            self._get_dataset_files(
                 force=True,
                 selected_chunks=chunk_selection.get(self._id) if chunk_selection else None,
                 cleanup_target_folder=True,
@@ -1560,7 +1862,11 @@ class Dataset(object):
         instance._dependency_graph = stored_state.get('dependency_graph', {})
         instance._dirty = stored_state.get('dirty', False)
         instance._dataset_file_entries = {
-            s['relative_path']: FileEntry(**s) for s in stored_state.get('dataset_file_entries', [])}
+            s["relative_path"]: FileEntry(**s) for s in stored_state.get("dataset_file_entries", [])
+        }
+        instance._dataset_link_entries = {
+            s["relative_path"]: LinkEntry(**s) for s in stored_state.get("dataset_link_entries", [])
+        }
         if stored_state.get('dependency_chunk_lookup') is not None:
             instance._dependency_chunk_lookup = stored_state.get('dependency_chunk_lookup')
 
@@ -1814,7 +2120,7 @@ class Dataset(object):
             selected_chunks = chunk_selection.get(dataset_version_id) if chunk_selection else None
 
             ds = Dataset.get(dataset_id=dataset_version_id)
-            ds_base_folder = Path(ds._extract_dataset_archive(
+            ds_base_folder = Path(ds._get_dataset_files(
                 selected_chunks=selected_chunks,
                 force=force,
                 lock_target_folder=True,
@@ -1876,6 +2182,11 @@ class Dataset(object):
                         continue
 
                 # check if the local size and the stored size match (faster than comparing hash)
+                if (target_base_folder / f.relative_path).stat().st_size != f.size:
+                    verified = False
+                    break
+
+            for f in self._dataset_link_entries.values():
                 if (target_base_folder / f.relative_path).stat().st_size != f.size:
                     verified = False
                     break

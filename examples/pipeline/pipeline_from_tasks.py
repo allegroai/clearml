@@ -26,9 +26,16 @@ pipe = PipelineController(
     add_pipeline_tags=False,
 )
 
+pipe.add_parameter(
+    "url",
+    "https://files.community.clear.ml/examples%252F.pipelines%252FPipeline%20demo/stage_data.8f17b6316ce442ce8904f6fccb1763de/artifacts/dataset/f6d08388e9bc44c86cab497ad31403c4.iris_dataset.pkl",
+    "dataset_url")
+
 pipe.set_default_execution_queue('default')
 
-pipe.add_step(name='stage_data', base_task_project='examples', base_task_name='Pipeline step 1 dataset artifact')
+pipe.add_step(name='stage_data', base_task_project='examples', base_task_name='Pipeline step 1 dataset artifact',
+              parameter_override={'General/dataset_url': '${pipeline.url}'})
+
 pipe.add_step(name='stage_process', parents=['stage_data', ],
               base_task_project='examples', base_task_name='Pipeline step 2 process dataset',
               parameter_override={'General/dataset_url': '${stage_data.artifacts.dataset.url}',

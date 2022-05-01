@@ -101,6 +101,8 @@ class Framework(Options):
 
     @classmethod
     def get_framework_parents(cls, framework):
+        if not framework:
+            return []
         parents = []
         for k, v in cls.__parent_mapping.items():
             if framework in v:
@@ -542,7 +544,7 @@ class Model(BaseModel):
         res = _Model._get_default_session().send(
             models.GetAllRequest(
                 project=[project.id] if project else None,
-                name=model_name or None,
+                name=exact_match_regex(model_name) if model_name is not None else None,
                 only_fields=only_fields,
                 tags=tags or None,
                 system_tags=["-" + cls._archived_tag] if not include_archived else None,

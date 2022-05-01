@@ -211,7 +211,7 @@ class Task(_Task):
             continue_last_task=False,  # type: Union[bool, str, int]
             output_uri=None,  # type: Optional[Union[str, bool]]
             auto_connect_arg_parser=True,  # type: Union[bool, Mapping[str, bool]]
-            auto_connect_frameworks=True,  # type: Union[bool, Mapping[str, bool]]
+            auto_connect_frameworks=True,  # type: Union[bool, Mapping[str, Union[bool, str, list]]]
             auto_resource_monitoring=True,  # type: bool
             auto_connect_streams=True,  # type: Union[bool, Mapping[str, bool]]
             wait_for_task_init=True,  # type: bool
@@ -370,11 +370,12 @@ class Task(_Task):
             - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
                 frameworks. The dictionary keys are frameworks and the values are booleans, other dictionaries used for
                 finer control or wildcard strings.
-                In case of wildcard strings, the local path of models have to match at least one wildcard to be
-                saved/loaded by ClearML.
+                In case of wildcard strings, the local path of a model file has to match at least one wildcard to be
+                saved/loaded by ClearML. Example:
+                    {'pytorch' : '*.pt', 'tensorflow': '*'}
                 Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
                 Supported keys for finer control:
-                    'tensorboard': {'report_hparams': bool}  # whether or not to report TensorBoard hyperparameters
+                    {'tensorboard': {'report_hparams': bool}}  # whether to report TensorBoard hyperparameters
 
             For example:
 
@@ -3950,14 +3951,15 @@ class Task(_Task):
             for k, v in auto_connect_frameworks.items():
                 if isinstance(v, str):
                     v = [v]
-                if isinstance(v, list):
-                    WeightsFileHandler.model_wildcards[k] = v
+                if isinstance(v, (list, tuple)):
+                    WeightsFileHandler.model_wildcards[k] = [str(i) for i in v]
 
         def callback(_, model_info):
             parents = Framework.get_framework_parents(model_info.framework)
             wildcards = []
             for parent in parents:
-                wildcards.extend(WeightsFileHandler.model_wildcards[parent])
+                if WeightsFileHandler.model_wildcards.get(parent):
+                    wildcards.extend(WeightsFileHandler.model_wildcards[parent])
             if not wildcards:
                 return model_info
             if not matches_any_wildcard(model_info.local_model_path, wildcards):

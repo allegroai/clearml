@@ -14,6 +14,7 @@
 <br>
 [![PyPI Downloads](https://pepy.tech/badge/clearml/month)](https://pypi.org/project/clearml/)
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/allegroai)](https://artifacthub.io/packages/search?repo=allegroai)
+[![Youtube](https://img.shields.io/badge/ClearML-DD0000?logo=youtube&logoColor=white)](https://www.youtube.com/c/clearml)
 [![Slack Channel](https://img.shields.io/badge/slack-%23clearml--community-blueviolet?logo=slack)](https://join.slack.com/t/clearml/shared_invite/zt-c0t13pty-aVUZZW1TSSSg2vyIGVPBhg)
 [![Signup](https://img.shields.io/badge/Clear%7CML-Signup-blueviolet)](https://app.clear.ml)
 </div>

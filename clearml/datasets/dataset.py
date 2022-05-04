@@ -279,14 +279,14 @@ class Dataset(object):
         External file links can be from cloud storage (s3://, gs://, azure://) or local / network storage (file://).
         Calculates file size for each file and compare against parent.
         A few examples:
-        # Adds file.jpg to the dataset. When retrieving a copy of the entire dataset (see dataset.get_local_copy())
-        # this file will be located in "./my_dataset/new_folder/file.jpg"
+        * Add file.jpg to the dataset. When retrieving a copy of the entire dataset (see dataset.get_local_copy()) this
+        file will be located in "./my_dataset/new_folder/file.jpg".
         add_external_files(source_url="s3://my_bucket/stuff/file.jpg", target_dataset_folder="/my_dataset/new_folder/")
-        # Adds all jpg files located in s3 bucket called "my_bucket" to the dataset.
+        * Add all jpg files located in s3 bucket called "my_bucket" to the dataset.
         add_external_files(source_url="s3://my/bucket/", wildcard = "*.jpg",target_dataset_folder="/my_dataset/new_folder/")
-        # Adds the entire content of "remote_folder" to the dataset.
+        * Add the entire content of "remote_folder" to the dataset.
         add_external_files(source_url="s3://bucket/remote_folder/", target_dataset_folder="/my_dataset/new_folder/")
-        # Adds the local file "/folder/local_file.jpg" to the dataset.
+        * Add the local file "/folder/local_file.jpg" to the dataset.
         add_external_files(source_url="file:///folder/local_file.jpg", target_dataset_folder="/my_dataset/new_folder/")
 
         :param source_url: Source url link to add to the dataset,

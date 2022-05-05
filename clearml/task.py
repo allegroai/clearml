@@ -548,6 +548,8 @@ class Task(_Task):
                     def completed_cb(x):
                         Task.__main_task = x
 
+                    getLogger().warning("ClearML initializing Task in the background")
+
                     task = FutureTaskCaller(
                         func=cls.init,
                         func_cb=completed_cb,

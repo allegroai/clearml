@@ -189,12 +189,15 @@ class PatchedMatplotlib:
         return True
 
     @staticmethod
-    def update_current_task(task):
+    def _get_global_image_counter_limit():
         # make sure we have a default vale
         if PatchedMatplotlib._global_image_counter_limit is None:
             from ..config import config
             PatchedMatplotlib._global_image_counter_limit = config.get('metric.matplotlib_untitled_history_size', 100)
+        return PatchedMatplotlib._global_image_counter_limit
 
+    @staticmethod
+    def update_current_task(task):
         # if we already patched it, just update the current task
         if PatchedMatplotlib._patched_original_plot is not None:
             PatchedMatplotlib._current_task = task
@@ -535,11 +538,11 @@ class PatchedMatplotlib:
                 elif report_as_debug_sample:
                     PatchedMatplotlib._global_image_counter += 1
                     title = 'untitled {:02d}'.format(
-                        PatchedMatplotlib._global_image_counter % PatchedMatplotlib._global_image_counter_limit)
+                        PatchedMatplotlib._global_image_counter % PatchedMatplotlib._get_global_image_counter_limit())
                 else:
                     PatchedMatplotlib._global_plot_counter += 1
                     title = 'untitled {:02d}'.format(
-                        PatchedMatplotlib._global_plot_counter % PatchedMatplotlib._global_image_counter_limit)
+                        PatchedMatplotlib._global_plot_counter % PatchedMatplotlib._get_global_image_counter_limit())
 
             # by now we should have a title, if the iteration was known list us as globally reported.
             # we later use it to check if externally someone was actually reporting iterations

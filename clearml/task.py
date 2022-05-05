@@ -77,7 +77,7 @@ from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
 from .utilities.process.mp import BackgroundMonitor, leave_process
 from .utilities.matching import matches_any_wildcard
-from .utilities.future_caller import FutureCaller
+from .utilities.future_caller import FutureTaskCaller
 # noinspection PyProtectedMember
 from .backend_interface.task.args import _Arguments
 
@@ -373,7 +373,7 @@ class Task(_Task):
                 finer control or wildcard strings.
                 In case of wildcard strings, the local path of a model file has to match at least one wildcard to be
                 saved/loaded by ClearML. Example:
-                    {'pytorch' : '*.pt', 'tensorflow': '*'}
+                    {'pytorch' : '*.pt', 'tensorflow': ['*.h5', '*']}
                 Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
                 Supported keys for finer control:
                     {'tensorboard': {'report_hparams': bool}}  # whether to report TensorBoard hyperparameters
@@ -548,7 +548,7 @@ class Task(_Task):
                     def completed_cb(x):
                         Task.__main_task = x
 
-                    task = FutureCaller(
+                    task = FutureTaskCaller(
                         func=cls.init,
                         func_cb=completed_cb,
                         override_cls=cls,
@@ -676,6 +676,22 @@ class Task(_Task):
 
             # if we are deferred, stop here (the rest we do in the actual init)
             if is_deferred:
+                from .backend_interface.logger import StdStreamPatch
+                # patch console outputs, we will keep them in memory until we complete the Task init
+                # notice we do not load config defaults, as they are not threadsafe
+                # we might also need to override them with the vault
+                StdStreamPatch.patch_std_streams(
+                    task.get_logger(),
+                    connect_stdout=(
+                        auto_connect_streams is True) or (
+                            isinstance(auto_connect_streams, dict) and auto_connect_streams.get('stdout', False)
+                    ),
+                    connect_stderr=(
+                        auto_connect_streams is True) or (
+                            isinstance(auto_connect_streams, dict) and auto_connect_streams.get('stderr', False)
+                    ),
+                    load_config_defaults=False,
+                )
                 return task  # noqa
 
             if auto_resource_monitoring and not is_sub_process_task_id:
@@ -4004,6 +4020,8 @@ class Task(_Task):
                     WeightsFileHandler.model_wildcards[k] = [str(i) for i in v]
 
         def callback(_, model_info):
+            if not model_info:
+                return None
             parents = Framework.get_framework_parents(model_info.framework)
             wildcards = []
             for parent in parents:

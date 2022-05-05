@@ -1,40 +1,56 @@
-from concurrent.futures import ThreadPoolExecutor
-from typing import Any, Callable, Optional
-
-from ..errors import UsageError
+from threading import Thread
+from typing import Any, Callable, Optional, Type
 
 
-class FutureCaller:
+class FutureCaller(object):
     """
-    FutureCaller is used to call functions async, in another thread.
+    FutureCaller is used to create a class via a functions async, in another thread.
 
     For example:
 
     .. code-block:: py
 
-        future = FutureCaller().call(max, 1, 2)
+        future = FutureCaller().call(func=max, func_cb=None, override_cls=None, 1, 2)
         print('Running other code')
         print(future.result())  # will print '2'
     """
+    __slots__ = ('__object', '__object_cls', '__executor')
 
-    def __init__(self):
-        self._executor = None
-        self._future = None
+    @property
+    def __class__(self):
+        return self.__object_cls
 
-    def call(self, fn, *args, **kwargs):
-        # type: (Callable, *Any, **Any) -> FutureCaller
+    def __init__(self, func, func_cb, override_cls, *args, **kwargs):
+        # type: (Callable, Optional[Callable], Type, *Any, **Any) -> None
         """
-        Call fn(*args, **kwargs) in another thread
+        __init__(*args, **kwargs) in another thread
 
         :return: This FutureCaller instance
         """
-        self._executor = ThreadPoolExecutor(max_workers=1)
-        if self._future:
-            raise UsageError("A function is currently running in this FutureCaller instance")
-        self._future = self._executor.submit(fn, *args, **kwargs)
-        return self
+        self.__object = None
+        self.__object_cls = override_cls
 
-    def result(self, timeout=None):
+        self.__executor = Thread(target=self.__submit__, args=(func, func_cb, args, kwargs))
+        self.__executor.daemon = True
+        self.__executor.start()
+
+    def __submit__(self, fn, fn_cb, args, kwargs):
+        self.__object = fn(*args, **kwargs)
+        if fn_cb is not None:
+            fn_cb(self.__object)
+
+    def __getattr__(self, item):
+        # if we get here, by definition this is not a __slot__ entry, pass to the object
+        return getattr(self.__result__(), item)
+
+    def __setattr__(self, item, value):
+        # make sure we can set the slots
+        if item in ["_FutureCaller__executor", "_FutureCaller__object", "_FutureCaller__object_cls"]:
+            return super(FutureCaller, self).__setattr__(item, value)
+
+        setattr(self.__result__(), item, value)
+
+    def __result__(self, timeout=None):
         # type: (Optional[float]) -> Any
         """
         Wait and get the result of the function called with self.call()
@@ -44,9 +60,7 @@ class FutureCaller:
 
         :return: The result of the called function
         """
-        if not self._executor:
-            raise UsageError("No function has been called in this FutureCaller instance")
-        result_ = self._future.result(timeout=timeout)
-        self._future = None
-        self._executor.shutdown(wait=False)
-        return result_
+        if self.__executor:
+            self.__executor.join(timeout=timeout)
+            self.__executor = None
+        return self.__object

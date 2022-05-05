@@ -310,6 +310,9 @@ class WeightsFileHandler(object):
         if task is None:
             return saved_path
 
+        # Make sure that if we have a deferred object it is completed
+        task.id  # noqa
+
         try:
             WeightsFileHandler._model_store_lookup_lock.acquire()
 

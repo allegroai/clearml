@@ -216,7 +216,7 @@ class Task(_Task):
             auto_connect_streams=True,  # type: Union[bool, Mapping[str, bool]]
             wait_for_task_init=True,  # type: bool
     ):
-        # type: (...) -> Union[Task, FutureCaller[Task]]
+        # type: (...) -> Task
         """
         Creates a new Task (experiment) if:
 

@@ -14,12 +14,14 @@ class StdStreamPatch(object):
     _stderr_original_write = None
 
     @staticmethod
-    def patch_std_streams(a_logger, connect_stdout=True, connect_stderr=True):
+    def patch_std_streams(a_logger, connect_stdout=True, connect_stderr=True, load_config_defaults=True):
         if (connect_stdout or connect_stderr) and not PrintPatchLogger.patched and \
                 (not running_remotely() or DEBUG_SIMULATE_REMOTE_TASK.get()):
-            StdStreamPatch._stdout_proxy = PrintPatchLogger(sys.stdout, a_logger, level=logging.INFO) \
+            StdStreamPatch._stdout_proxy = PrintPatchLogger(
+                sys.stdout, a_logger, level=logging.INFO, load_config_defaults=load_config_defaults) \
                 if connect_stdout else None
-            StdStreamPatch._stderr_proxy = PrintPatchLogger(sys.stderr, a_logger, level=logging.ERROR) \
+            StdStreamPatch._stderr_proxy = PrintPatchLogger(
+                sys.stderr, a_logger, level=logging.ERROR, load_config_defaults=load_config_defaults) \
                 if connect_stderr else None
 
             if StdStreamPatch._stdout_proxy:
@@ -178,8 +180,8 @@ class PrintPatchLogger(object):
     recursion_protect_lock = threading.RLock()
     cr_flush_period = None
 
-    def __init__(self, stream, logger=None, level=logging.INFO):
-        if PrintPatchLogger.cr_flush_period is None:
+    def __init__(self, stream, logger=None, level=logging.INFO, load_config_defaults=True):
+        if load_config_defaults and PrintPatchLogger.cr_flush_period is None:
             PrintPatchLogger.cr_flush_period = config.get("development.worker.console_cr_flush_period", 0)
         PrintPatchLogger.patched = True
         self._terminal = stream
@@ -249,6 +251,20 @@ class PrintPatchLogger(object):
                 self._terminal.write(message)
 
     def connect(self, logger):
+        # refresh if needed
+        if PrintPatchLogger.cr_flush_period is None:
+            PrintPatchLogger.cr_flush_period = config.get("development.worker.console_cr_flush_period", 0)
+
+        # if we had a previous log object, call flush before switching
+        if self._log and hasattr(self._log, '_flush_into_logger'):
+            # since we are not sure how flush should be called, we protect it
+            # noinspection PyBroadException
+            try:
+                # noinspection PyProtectedMember
+                self._log._flush_into_logger(a_future_func=logger)
+            except Exception:
+                pass
+
         self._cur_line = ''
         self._log = logger
 

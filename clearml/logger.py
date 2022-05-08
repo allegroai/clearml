@@ -79,6 +79,7 @@ class Logger(object):
             if private_task.is_main_task() or (connect_stdout or connect_stderr or connect_logging) else None
         self._connect_std_streams = connect_stdout or connect_stderr
         self._connect_logging = connect_logging
+        self._default_max_sample_history = None
 
         # Make sure urllib is never in debug/info,
         disable_urllib3_info = config.get('log.disable_urllib3_info', True)
@@ -94,8 +95,6 @@ class Logger(object):
             base_logger = LoggerRoot.get_base_logger()
             if base_logger and base_logger.handlers:
                 StdStreamPatch.patch_logging_formatter(self, base_logger.handlers[0])
-
-        self._default_max_sample_history = None
 
     @classmethod
     def current_logger(cls):

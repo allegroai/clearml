@@ -872,7 +872,7 @@ class PipelineController(object):
 
         The currently supported upload artifact types include:
         - string / Path - A path to artifact file. If a wildcard or a folder is specified, then ClearML
-          creates and uploads a ZIP file.
+        creates and uploads a ZIP file.
         - dict - ClearML stores a dictionary as ``.json`` file and uploads it.
         - pandas.DataFrame - ClearML stores a pandas.DataFrame as ``.csv.gz`` (compressed CSV) file and uploads it.
         - numpy.ndarray - ClearML stores a numpy.ndarray as ``.npz`` file and uploads it.

@@ -28,6 +28,7 @@ from .backend_config.defs import get_active_config_file, get_config_file
 from .backend_api.services import tasks, projects
 from .backend_api.session.session import (
     Session, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_HOST, ENV_WEB_HOST, ENV_FILES_HOST, )
+from .backend_api.session.defs import ENV_DEFERRED_TASK_INIT
 from .backend_interface.metrics import Metrics
 from .backend_interface.model import Model as BackendModel
 from .backend_interface.task import Task as _Task
@@ -76,7 +77,7 @@ from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
 from .utilities.process.mp import BackgroundMonitor, leave_process
 from .utilities.matching import matches_any_wildcard
-from .utilities.future_caller import FutureCaller
+from .utilities.future_caller import FutureTaskCaller
 # noinspection PyProtectedMember
 from .backend_interface.task.args import _Arguments
 
@@ -214,9 +215,9 @@ class Task(_Task):
             auto_connect_frameworks=True,  # type: Union[bool, Mapping[str, Union[bool, str, list]]]
             auto_resource_monitoring=True,  # type: bool
             auto_connect_streams=True,  # type: Union[bool, Mapping[str, bool]]
-            wait_for_task_init=True,  # type: bool
+            deferred_init=False,  # type: bool
     ):
-        # type: (...) -> Union[Task, FutureCaller[Task]]
+        # type: (...) -> Task
         """
         Creates a new Task (experiment) if:
 
@@ -372,7 +373,7 @@ class Task(_Task):
                 finer control or wildcard strings.
                 In case of wildcard strings, the local path of a model file has to match at least one wildcard to be
                 saved/loaded by ClearML. Example:
-                    {'pytorch' : '*.pt', 'tensorflow': '*'}
+                    {'pytorch' : '*.pt', 'tensorflow': ['*.h5', '*']}
                 Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
                 Supported keys for finer control:
                     {'tensorboard': {'report_hparams': bool}}  # whether to report TensorBoard hyperparameters
@@ -419,35 +420,28 @@ class Task(_Task):
 
                auto_connect_streams={'stdout': True, 'stderr': True, 'logging': False}
 
-        :param wait_for_task_init: Wait for task to be initialized. If this is set to True, return the task after it was
-            initialized. If set to False, run the initialization in another thread and return a future that contains the task.
-            Wait and retrieve the task by calling result() on the returned future.
-            Note that the task will not capture information until it is initialized.
+        :param deferred_init: (default: False) Wait for Task to be fully initialized (regular behaviour).
 
-            For example:
+            ** BETA feature! use with care **
 
-            .. code-block:: py
-            task_future = Task.init(project_name='example', task_name='example', wait_for_task_init=False)
-            # execute some other code
-            task = task_future.result()
+            If set to True, `Task.init` function returns immediately and all initialization / communication
+            to the clearml-server is running in a background thread. The returned object is
+            a full proxy to the regular Task object, hence everything will be working as expected.
+            Default behaviour can be controlled with:
+                `CLEARML_DEFERRED_TASK_INIT=1`
 
-        :return: The main execution Task (Task context) or a future to the Task (if wait_for_task_init=False).
+            Notes:
+
+            - Any access to the returned proxy `Task` object will essentially wait for the `Task.init`
+                to be completed. For example: `print(task.name)` will wait for `Task.init` to complete in the
+                background and then return the `name` property of the task original object
+            - Before `Task.init` completes in the background, auto-magic logging
+                (console/metric) might be missed
+            - If running via an agent, this argument is ignored,
+                and Task init is called synchronously (default)
+
+        :return: The main execution Task (Task context)
         """
-        if not wait_for_task_init:
-            return FutureCaller().call(
-                cls.init,
-                project_name=project_name,
-                task_name=task_name,
-                tags=tags,
-                reuse_last_task_id=reuse_last_task_id,
-                continue_last_task=continue_last_task,
-                output_uri=output_uri,
-                auto_connect_arg_parser=auto_connect_arg_parser,
-                auto_connect_frameworks=auto_connect_frameworks,
-                auto_resource_monitoring=auto_resource_monitoring,
-                auto_connect_streams=auto_connect_streams,
-                wait_for_task_init=True,
-            )
 
         def verify_defaults_match():
             validate = [
@@ -469,7 +463,8 @@ class Task(_Task):
                         )
                     )
 
-        if cls.__main_task is not None:
+        # if deferred_init==0 this means this is the nested call that actually generates the Task.init
+        if cls.__main_task is not None and deferred_init != 0:
             # if this is a subprocess, regardless of what the init was called for,
             # we have to fix the main task hooks and stdout bindings
             if cls.__forked_proc_main_pid != os.getpid() and cls.__is_subprocess():
@@ -542,10 +537,40 @@ class Task(_Task):
                     task_type, Task.TaskTypes.__members__.keys()))
             task_type = Task.TaskTypes.__members__[str(task_type)]
 
+        is_deferred = False
         try:
             if not running_remotely():
+                # only allow if running locally and creating the first Task
+                # otherwise we ignore and perform in order
+                if deferred_init != 0 and ENV_DEFERRED_TASK_INIT.get():
+                    deferred_init = True
+                if not is_sub_process_task_id and deferred_init:
+                    def completed_cb(x):
+                        Task.__main_task = x
+
+                    getLogger().warning("ClearML initializing Task in the background")
+
+                    task = FutureTaskCaller(
+                        func=cls.init,
+                        func_cb=completed_cb,
+                        override_cls=cls,
+                        project_name=project_name,
+                        task_name=task_name,
+                        tags=tags,
+                        reuse_last_task_id=reuse_last_task_id,
+                        continue_last_task=continue_last_task,
+                        output_uri=output_uri,
+                        auto_connect_arg_parser=auto_connect_arg_parser,
+                        auto_connect_frameworks=auto_connect_frameworks,
+                        auto_resource_monitoring=auto_resource_monitoring,
+                        auto_connect_streams=auto_connect_streams,
+                        deferred_init=0,  # notice we use it as a flag to mark the nested call
+                    )
+                    is_deferred = True
+                    # mark as temp master
+                    cls.__update_master_pid_task()
                 # if this is the main process, create the task
-                if not is_sub_process_task_id:
+                elif not is_sub_process_task_id:
                     task = cls._create_dev_task(
                         default_project_name=project_name,
                         default_task_name=task_name,
@@ -594,10 +619,15 @@ class Task(_Task):
             raise
         else:
             Task.__main_task = task
-            # register the main task for at exit hooks (there should only be one)
-            task.__register_at_exit(task._at_exit)
+
+            # register at exist only on the real (none deferred) Task
+            if not is_deferred:
+                # register the main task for at exit hooks (there should only be one)
+                task.__register_at_exit(task._at_exit)
+
             # always patch OS forking because of ProcessPool and the alike
             PatchOsFork.patch_fork()
+
             if auto_connect_frameworks:
                 def should_connect(*keys):
                     """
@@ -615,16 +645,16 @@ class Task(_Task):
                         should_bind_framework = should_bind_framework.get(key, True)
                     return bool(should_bind_framework)
 
-                if should_connect("hydra"):
+                if not is_deferred and should_connect("hydra"):
                     PatchHydra.update_current_task(task)
                 if should_connect("scikit") and should_connect("joblib"):
                     PatchedJoblib.update_current_task(task)
                 if should_connect("matplotlib"):
-                    PatchedMatplotlib.update_current_task(Task.__main_task)
+                    PatchedMatplotlib.update_current_task(task)
                 if should_connect("tensorflow") or should_connect("tensorboard"):
-                    # allow to disable tfdefines
-                    if should_connect("tfdefines"):
-                        PatchAbsl.update_current_task(Task.__main_task)
+                    # allow disabling tfdefines
+                    if not is_deferred and should_connect("tfdefines"):
+                        PatchAbsl.update_current_task(task)
                     TensorflowBinding.update_current_task(
                         task,
                         patch_reporting=should_connect("tensorboard"),
@@ -643,6 +673,29 @@ class Task(_Task):
                     PatchFastai.update_current_task(task)
                 if should_connect("lightgbm"):
                     PatchLIGHTgbmModelIO.update_current_task(task)
+
+                cls.__add_model_wildcards(auto_connect_frameworks)
+
+            # if we are deferred, stop here (the rest we do in the actual init)
+            if is_deferred:
+                from .backend_interface.logger import StdStreamPatch
+                # patch console outputs, we will keep them in memory until we complete the Task init
+                # notice we do not load config defaults, as they are not threadsafe
+                # we might also need to override them with the vault
+                StdStreamPatch.patch_std_streams(
+                    task.get_logger(),
+                    connect_stdout=(
+                        auto_connect_streams is True) or (
+                            isinstance(auto_connect_streams, dict) and auto_connect_streams.get('stdout', False)
+                    ),
+                    connect_stderr=(
+                        auto_connect_streams is True) or (
+                            isinstance(auto_connect_streams, dict) and auto_connect_streams.get('stderr', False)
+                    ),
+                    load_config_defaults=False,
+                )
+                return task  # noqa
+
             if auto_resource_monitoring and not is_sub_process_task_id:
                 resource_monitor_cls = auto_resource_monitoring \
                     if isinstance(auto_resource_monitoring, six.class_types) else ResourceMonitor
@@ -650,7 +703,6 @@ class Task(_Task):
                     task, report_mem_used_per_process=not config.get(
                         'development.worker.report_global_mem_used', False))
                 task._resource_monitor.start()
-            cls.__add_model_wildcards(auto_connect_frameworks)
 
             # make sure all random generators are initialized with new seed
             make_deterministic(task.get_random_seed())
@@ -3768,6 +3820,21 @@ class Task(_Task):
         return ret_tasks
 
     @classmethod
+    def _wait_for_deferred(cls, task):
+        # type: (Optional[Task]) -> None
+        """
+        Make sure the task object deferred `Task.init` is completed.
+        Accessing any of the `task` object's property will ensure the Task.init call was also complete
+        This is an internal utility function
+
+        :param task: Optional deferred Task object as returned form Task.init
+        """
+        if not task:
+            return
+        # force deferred init to complete
+        task.id  # noqa
+
+    @classmethod
     def __get_hash_key(cls, *args):
         def normalize(x):
             return "<{}>".format(x) if x is not None else ""
@@ -3955,6 +4022,8 @@ class Task(_Task):
                     WeightsFileHandler.model_wildcards[k] = [str(i) for i in v]
 
         def callback(_, model_info):
+            if not model_info:
+                return None
             parents = Framework.get_framework_parents(model_info.framework)
             wildcards = []
             for parent in parents:

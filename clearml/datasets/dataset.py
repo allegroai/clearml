@@ -275,18 +275,19 @@ class Dataset(object):
     ):
         # type: (...) -> ()
         """
-        Adds an external files or a folder to the current dataset.
+        Adds an external file or a folder to the current dataset.
         External file links can be from cloud storage (s3://, gs://, azure://) or local / network storage (file://).
-        Calculates file size for each file and compare against parent.
+        Calculates file size for each file and compares against parent.
+
         A few examples:
-        * Add file.jpg to the dataset. When retrieving a copy of the entire dataset (see dataset.get_local_copy()) this
-        file will be located in "./my_dataset/new_folder/file.jpg".
+        - Add file.jpg to the dataset. When retrieving a copy of the entire dataset (see dataset.get_local_copy()).
+        This file will be located in "./my_dataset/new_folder/file.jpg".
         add_external_files(source_url="s3://my_bucket/stuff/file.jpg", target_dataset_folder="/my_dataset/new_folder/")
-        * Add all jpg files located in s3 bucket called "my_bucket" to the dataset.
+        - Add all jpg files located in s3 bucket called "my_bucket" to the dataset.
         add_external_files(source_url="s3://my/bucket/", wildcard = "*.jpg",target_dataset_folder="/my_dataset/new_folder/")
-        * Add the entire content of "remote_folder" to the dataset.
+        - Add the entire content of "remote_folder" to the dataset.
         add_external_files(source_url="s3://bucket/remote_folder/", target_dataset_folder="/my_dataset/new_folder/")
-        * Add the local file "/folder/local_file.jpg" to the dataset.
+        - Add the local file "/folder/local_file.jpg" to the dataset.
         add_external_files(source_url="file:///folder/local_file.jpg", target_dataset_folder="/my_dataset/new_folder/")
 
         :param source_url: Source url link to add to the dataset,
@@ -294,7 +295,7 @@ class Dataset(object):
         :param wildcard: add only specific set of files.
             Wildcard matching, can be a single string or a list of wildcards.
         :param dataset_path: The location in the dataset where the file will be downloaded into.
-            E.g: for source_url='s3://bucket/remote_folder/image.jpg' and dataset_path='s3_files',
+            e.g: for source_url='s3://bucket/remote_folder/image.jpg' and dataset_path='s3_files',
             'image.jpg' will be downloaded to 's3_files/image.jpg' (relative path to the dataset)
         :param recursive: If True match all wildcard files recursively
         :param verbose: If True print to console files added/modified

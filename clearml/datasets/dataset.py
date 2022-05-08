@@ -282,13 +282,13 @@ class Dataset(object):
         A few examples:
         - Add file.jpg to the dataset. When retrieving a copy of the entire dataset (see dataset.get_local_copy()).
         This file will be located in "./my_dataset/new_folder/file.jpg".
-        add_external_files(source_url="s3://my_bucket/stuff/file.jpg", target_dataset_folder="/my_dataset/new_folder/")
+        add_external_files(source_url="s3://my_bucket/stuff/file.jpg", dataset_path="/my_dataset/new_folder/")
         - Add all jpg files located in s3 bucket called "my_bucket" to the dataset.
-        add_external_files(source_url="s3://my/bucket/", wildcard = "*.jpg",target_dataset_folder="/my_dataset/new_folder/")
+        add_external_files(source_url="s3://my/bucket/", wildcard = "*.jpg", dataset_path="/my_dataset/new_folder/")
         - Add the entire content of "remote_folder" to the dataset.
-        add_external_files(source_url="s3://bucket/remote_folder/", target_dataset_folder="/my_dataset/new_folder/")
+        add_external_files(source_url="s3://bucket/remote_folder/", dataset_path="/my_dataset/new_folder/")
         - Add the local file "/folder/local_file.jpg" to the dataset.
-        add_external_files(source_url="file:///folder/local_file.jpg", target_dataset_folder="/my_dataset/new_folder/")
+        add_external_files(source_url="file:///folder/local_file.jpg", dataset_path="/my_dataset/new_folder/")
 
         :param source_url: Source url link to add to the dataset,
             e.g. s3://bucket/folder/path, s3://bucket/folder/file.csv

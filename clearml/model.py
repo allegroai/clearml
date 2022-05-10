@@ -944,7 +944,7 @@ class InputModel(Model):
 
         - Imported models (InputModel objects created using the :meth:`Logger.import_model` method).
         - Models whose metadata is already in the ClearML platform, meaning the InputModel object is instantiated
-          from the ``InputModel`` class specifying the the model's ClearML Id as an argument.
+          from the ``InputModel`` class specifying the model's ClearML Id as an argument.
         - Models whose origin is not ClearML that are used to create an InputModel object. For example,
           models created using TensorFlow models.
 

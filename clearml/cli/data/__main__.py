@@ -82,7 +82,7 @@ def cli():
     add.add_argument('--id', type=str, required=False,
                      help='Previously created dataset id. Default: previously created/accessed dataset')
     add.add_argument('--dataset-folder', type=str, default=None,
-                     help='Dataset base folder top add the files to (default: Dataset root)')
+                     help='Dataset base folder to add the files to (default: Dataset root)')
     add.add_argument('--files', type=str, nargs='*',
                      help='Files / folders to add (support for wildcard selection). '
                           'Example: ~/data/*.jpg ~/data/jsons')
@@ -104,7 +104,7 @@ def cli():
     sync.add_argument('--id', type=str, required=False,
                       help='Previously created dataset id. Default: previously created/accessed dataset')
     sync.add_argument('--dataset-folder', type=str, default=None,
-                      help='Dataset base folder top add the files to (default: Dataset root)')
+                      help='Dataset base folder to add the files to (default: Dataset root)')
     sync.add_argument('--folder', type=str, required=True,
                       help='Local folder to sync (support for wildcard selection). '
                            'Example: ~/data/*.jpg')

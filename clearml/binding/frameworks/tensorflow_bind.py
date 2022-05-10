@@ -269,7 +269,7 @@ class EventTrainsWriter(object):
         :param str tag:
         :param int num_split_parts:
         :param str split_char: a character to split the tag on
-        :param str join_char: a character to join the the splits
+        :param str join_char: a character to join the splits
         :param str default_title: variant to use in case no variant can be inferred automatically
         :param str logdir_header: if 'series_last' then series=header: series, if 'series then series=series :header,
             if 'title_last' then title=header title, if 'title' then title=title header

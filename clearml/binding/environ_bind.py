@@ -78,10 +78,18 @@ class PatchOsFork(object):
 
     @staticmethod
     def _patched_fork(*args, **kwargs):
+        from ..task import Task
+
+        # ensure deferred is done, but never try to generate a Task object
+        # noinspection PyProtectedMember
+        task = Task._Task__main_task
+        # this will force the deferred init call to finish
+        # noinspection PyProtectedMember
+        Task._wait_for_deferred(task)
+
         ret = PatchOsFork._original_fork(*args, **kwargs)
         # Make sure the new process stdout is logged
         if not ret:
-            from ..task import Task
             # force creating a Task
             task = Task.current_task()
             if task is None:

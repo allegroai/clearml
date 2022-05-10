@@ -2040,15 +2040,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._storage_uri = None
         self._data.output.destination = self._storage_uri
 
-        self._update_requirements('')
-
         if Session.check_min_api_version('2.13'):
             self._set_task_property("system_tags", system_tags)
+            self._data.script.requirements = dict()
             self._edit(system_tags=self._data.system_tags, comment=self._data.comment,
                        script=self._data.script, execution=self._data.execution, output_dest='',
                        hyperparams=dict(), configuration=dict(),
                        container=self._data.container, models=self._data.models)
         elif Session.check_min_api_version('2.9'):
+            self._update_requirements('')
             self._set_task_property("system_tags", system_tags)
             self._edit(system_tags=self._data.system_tags, comment=self._data.comment,
                        script=self._data.script, execution=self._data.execution, output_dest='',

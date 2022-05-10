@@ -135,6 +135,7 @@ class Artifact(object):
         self._timestamp = datetime.fromtimestamp(artifact_api_object.timestamp or 0)
         self._metadata = dict(artifact_api_object.display_data) if artifact_api_object.display_data else {}
         self._preview = artifact_api_object.type_data.preview if artifact_api_object.type_data else None
+        self._content_type = artifact_api_object.type_data.content_type if artifact_api_object.type_data else None
         self._object = None
 
     def get(self, force_download=False):
@@ -142,8 +143,15 @@ class Artifact(object):
         """
         Return an object constructed from the artifact file
 
-        Currently supported types: Numpy.array, pandas.DataFrame, PIL.Image, dict (json)
-        All other types will return a pathlib2.Path object pointing to a local copy of the artifacts file (or directory)
+        Currently supported types: Numpy.array, pandas.DataFrame, PIL.Image, dict.
+        Supported content types are:
+            - dict - ``.json``, ``.yaml``
+            - pandas.DataFrame - ``.csv.gz``, ``.parquet``, ``.feather``, ``.pickle``
+            - numpy.ndarray - ``.npz``, ``.csv.gz``
+            - PIL.Image - whatever content types PIL supports
+        All other types will return a pathlib2.Path object pointing to a local copy of the artifacts file (or directory).
+        In case the content of a supported type could not be parsed, a pathlib2.Path object
+        pointing to a local copy of the artifacts file (or directory) will be returned
 
         :param bool force_download: download file from remote even if exists in local cache
         :return: One of the following objects Numpy.array, pandas.DataFrame, PIL.Image, dict (json), or pathlib2.Path.
@@ -153,24 +161,44 @@ class Artifact(object):
 
         local_file = self.get_local_copy(raise_on_error=True, force_download=force_download)
 
-        # noinspection PyProtectedMember
-        if self.type == 'numpy' and np:
-            self._object = np.load(local_file)[self.name]
-        elif self.type == Artifacts._pd_artifact_type and pd:
-            self._object = pd.read_csv(local_file)
-        elif self.type == 'pandas' and pd:
-            self._object = pd.read_csv(local_file, index_col=[0])
-        elif self.type == 'image':
-            self._object = Image.open(local_file)
-        elif self.type == 'JSON':
-            with open(local_file, 'rt') as f:
-                self._object = json.load(f)
-        elif self.type == 'string':
-            with open(local_file, 'rt') as f:
-                self._object = f.read()
-        elif self.type == 'pickle':
-            with open(local_file, 'rb') as f:
-                self._object = pickle.load(f)
+        # noinspection PyBroadException
+        try:
+            if self.type == "numpy" and np:
+                if self._content_type == "text/csv":
+                    self._object = np.genfromtxt(local_file, delimiter=",")
+                else:
+                    self._object = np.load(local_file)[self.name]
+            elif self.type == Artifacts._pd_artifact_type or self.type == "pandas" and pd:
+                if self._content_type == "application/parquet":
+                    self._object = pd.read_parquet(local_file)
+                elif self._content_type == "application/feather":
+                    self._object = pd.read_feather(local_file)
+                elif self._content_type == "application/pickle":
+                    self._object = pd.read_pickle(local_file)
+                elif self.type == Artifacts._pd_artifact_type:
+                    self._object = pd.read_csv(local_file)
+                else:
+                    self._object = pd.read_csv(local_file, index_col=[0])
+            elif self.type == "image":
+                self._object = Image.open(local_file)
+            elif self.type == "JSON" or self.type == "dict":
+                with open(local_file, "rt") as f:
+                    if self.type == "JSON" or self._content_type == "application/json":
+                        self._object = json.load(f)
+                    else:
+                        self._object = yaml.safe_load(f)
+            elif self.type == "string":
+                with open(local_file, "rt") as f:
+                    self._object = f.read()
+            elif self.type == "pickle":
+                with open(local_file, "rb") as f:
+                    self._object = pickle.load(f)
+        except Exception as e:
+            LoggerRoot.get_base_logger().warning(
+                "Exception '{}' encountered when getting artifact with type {} and content type {}".format(
+                    e, self.type, self._content_type
+                )
+            )
 
         local_file = Path(local_file)
 
@@ -397,11 +425,29 @@ class Artifacts(object):
                 artifact_type_data.content_type = "text/csv"
                 artifact_object.to_csv(local_filename, compression=self._compression)
             elif override_filename_ext_in_uri == ".parquet":
-                artifact_type_data.content_type = "application/parquet"
-                artifact_object.to_parquet(local_filename)
+                try:
+                    artifact_type_data.content_type = "application/parquet"
+                    artifact_object.to_parquet(local_filename)
+                except Exception as e:
+                    LoggerRoot.get_base_logger().warning(
+                        "Exception '{}' encountered when uploading artifact as .parquet. Defaulting to .csv.gz".format(
+                            e
+                        )
+                    )
+                    artifact_type_data.content_type = "text/csv"
+                    artifact_object.to_csv(local_filename, compression=self._compression)
             elif override_filename_ext_in_uri == ".feather":
-                artifact_type_data.content_type = "application/feather"
-                artifact_object.to_feather(local_filename)
+                try:
+                    artifact_type_data.content_type = "application/feather"
+                    artifact_object.to_feather(local_filename)
+                except Exception as e:
+                    LoggerRoot.get_base_logger().warning(
+                        "Exception '{}' encountered when uploading artifact as .feather. Defaulting to .csv.gz".format(
+                            e
+                        )
+                    )
+                    artifact_type_data.content_type = "text/csv"
+                    artifact_object.to_csv(local_filename, compression=self._compression)
             elif override_filename_ext_in_uri == ".pickle":
                 artifact_type_data.content_type = "application/pickle"
                 artifact_object.to_pickle(local_filename)

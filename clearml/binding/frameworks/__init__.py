@@ -179,7 +179,7 @@ class WeightsFileHandler(object):
             model=None, upload_filename=None, local_model_path=local_model_path,
             local_model_id=filepath, framework=framework, task=task)
         # call pre model callback functions
-        for cb in WeightsFileHandler._model_pre_callbacks.values():
+        for cb in list(WeightsFileHandler._model_pre_callbacks.values()):
             # noinspection PyBroadException
             try:
                 model_info = cb(WeightsFileHandler.CallbackType.load, model_info)
@@ -252,7 +252,7 @@ class WeightsFileHandler(object):
 
             model_info.model = trains_in_model
             # call post model callback functions
-            for cb in WeightsFileHandler._model_post_callbacks.values():
+            for cb in list(WeightsFileHandler._model_post_callbacks.values()):
                 # noinspection PyBroadException
                 try:
                     model_info = cb(WeightsFileHandler.CallbackType.load, model_info)
@@ -310,6 +310,9 @@ class WeightsFileHandler(object):
         if task is None:
             return saved_path
 
+        # Make sure that if we have a deferred object it is completed
+        task.id  # noqa
+
         try:
             WeightsFileHandler._model_store_lookup_lock.acquire()
 
@@ -361,7 +364,7 @@ class WeightsFileHandler(object):
 
             # call pre model callback functions
             model_info.upload_filename = target_filename
-            for cb in WeightsFileHandler._model_pre_callbacks.values():
+            for cb in list(WeightsFileHandler._model_pre_callbacks.values()):
                 # noinspection PyBroadException
                 try:
                     model_info = cb(WeightsFileHandler.CallbackType.save, model_info)
@@ -421,7 +424,7 @@ class WeightsFileHandler(object):
 
             model_info.model = trains_out_model
             # call post model callback functions
-            for cb in WeightsFileHandler._model_post_callbacks.values():
+            for cb in list(WeightsFileHandler._model_post_callbacks.values()):
                 # noinspection PyBroadException
                 try:
                     model_info = cb(WeightsFileHandler.CallbackType.save, model_info)

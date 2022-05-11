@@ -904,7 +904,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             - ``False`` - ClearML does not copy the Task's label enumeration from the input model.
 
         :param name: Model section name to be stored on the Task (unrelated to the model object name itself)
-            Default: the the model weight filename is used (excluding file extension)
+            Default: the model weight filename is used (excluding file extension)
         """
         if model_id is None and not model_name:
             raise ValueError('Expected one of [model_id, model_name]')
@@ -1183,7 +1183,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def delete_parameter(self, name):
         # type: (str) -> bool
         """
-        Delete a parameter byt it's full name Section/name.
+        Delete a parameter by its full name Section/name.
 
         :param name: Parameter name in full, i.e. Section/name. For example, 'Args/batch_size'
         :return: True if the parameter was deleted successfully
@@ -1317,7 +1317,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def _add_artifacts(self, artifacts_list):
         # type: (Sequence[tasks.Artifact]) -> Optional[List[tasks.Artifact]]
         """
-        List of artifacts (tasks.Artifact) to add to the the task
+        List of artifacts (tasks.Artifact) to add to the task
         If an artifact by the same name already exists it will overwrite the existing artifact.
 
         :param list artifacts_list: list of artifacts (type tasks.Artifact)

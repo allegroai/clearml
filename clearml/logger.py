@@ -1133,7 +1133,7 @@ class Logger(object):
     def get_default_debug_sample_history(self):
         # type: () -> int
         """
-        Return the the default max debug sample history when reporting media/debug samples.
+        Return the default max debug sample history when reporting media/debug samples.
         If value was not set specifically, the functions returns the configuration file default value.
 
         :return: default number of samples (files) to store on a unique set of title/series being reported

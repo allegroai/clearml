@@ -94,7 +94,7 @@ class Task(_Task):
     configuration, label enumeration, models, and other artifacts.
 
     The term "main execution Task" refers to the Task context for current running experiment. Python experiment scripts
-    can create one, and only one, main execution Task. It is a traceable, and after a script runs and ClearML stores
+    can create one, and only one, main execution Task. It is traceable, and after a script runs and ClearML stores
     the Task in the **ClearML Server** (backend), it is modifiable, reproducible, executable by a worker, and you
     can duplicate it for further experimentation.
 
@@ -303,7 +303,7 @@ class Task(_Task):
 
             The values are:
 
-            - ``True`` - Continue the the last Task ID.
+            - ``True`` - Continue the last Task ID.
                 specified explicitly by reuse_last_task_id or implicitly with the same logic as reuse_last_task_id
             - ``False`` - Overwrite the execution of previous Task  (default).
             - A string - You can also specify a Task ID (string) to be continued.
@@ -393,7 +393,7 @@ class Task(_Task):
                 auto_connect_frameworks={'tensorboard': {'report_hparams': False}}
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
-            These plots appear in in the **ClearML Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab,
+            These plots appear in the **ClearML Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab,
             with a title of **:resource monitor:**.
 
             The values are:
@@ -926,7 +926,7 @@ class Task(_Task):
             If ``task_ids`` specified, then ``project_name`` and ``task_name`` are ignored.
         :param str project_name: The project name of the Tasks to get. To get the experiment
             in all projects, use the default value of ``None``. (Optional)
-            Use a list of string for multiple optional project names.
+            Use a list of strings for multiple optional project names.
         :param str task_name: The full name or partial name of the Tasks to match within the specified
             ``project_name`` (or all projects if ``project_name`` is ``None``).
             This method supports regular expressions for name matching. (Optional)
@@ -984,7 +984,7 @@ class Task(_Task):
 
         :param str project_name: The project name of the Tasks to get. To get the experiment
             in all projects, use the default value of ``None``. (Optional)
-            Use a list of string for multiple optional project names.
+            Use a list of strings for multiple optional project names.
         :param str task_name: The full name or partial name of the Tasks to match within the specified
             ``project_name`` (or all projects if ``project_name`` is ``None``).
             This method supports regular expressions for name matching. (Optional)
@@ -1149,7 +1149,7 @@ class Task(_Task):
 
             - If ``parent`` is not specified, then ``parent`` is set to ``source_task.parent``.
             - If ``parent`` is not specified and ``source_task.parent`` is not available, then
-              ``parent`` set to to ``source_task``.
+              ``parent`` set to ``source_task``.
 
         :param str project: The Id of the project in which to create the new Task.
             If ``None``, the new task inherits the original Task's project. (Optional)
@@ -1691,7 +1691,7 @@ class Task(_Task):
     ):
         # type: (bool, bool, bool, Callable[[str, str], bool]) -> bool
         """
-        Delete the task as well as it's output models and artifacts.
+        Delete the task as well as its output models and artifacts.
         Models and artifacts are deleted from their storage locations, each using its URI.
 
         Note: in order to delete models and artifacts using their URI, make sure the proper storage credentials are
@@ -1720,7 +1720,7 @@ class Task(_Task):
     def register_artifact(self, name, artifact, metadata=None, uniqueness_columns=True):
         # type: (str, pandas.DataFrame, Dict, Union[bool, Sequence[str]]) -> None
         """
-        Register (add) an artifact for the current Task. Registered artifacts are dynamically sychronized with the
+        Register (add) an artifact for the current Task. Registered artifacts are dynamically synchronized with the
         **ClearML Server** (backend). If a registered artifact is updated, the update is stored in the
         **ClearML Server** (backend). Registered artifacts are primarily used for Data Auditing.
 
@@ -1730,7 +1730,7 @@ class Task(_Task):
 
         .. note::
            ClearML also supports uploaded artifacts which are one-time uploads of static artifacts that are not
-           dynamically sychronized with the **ClearML Server** (backend). These static artifacts include
+           dynamically synchronized with the **ClearML Server** (backend). These static artifacts include
            additional object types. For more information, see :meth:`Task.upload_artifact`.
 
         :param str name: The name of the artifact.
@@ -2037,6 +2037,7 @@ class Task(_Task):
         """
         Get user properties for this task.
         Returns a dictionary mapping user property name to user property details dict.
+
         :param value_only: If True, returned user property details will be a string representing the property value.
         """
         if not Session.check_min_api_version("2.9"):
@@ -2366,11 +2367,11 @@ class Task(_Task):
 
         :param func: A function to execute remotely as a single Task.
             On the remote executed Task the entry-point and the environment are copied from this
-            calling process, only this function call redirect the the execution flow to the called func,
+            calling process, only this function call redirect the execution flow to the called func,
             alongside the passed arguments
         :param func_name: A unique identifier of the function. Default the function name without the namespace.
             For example Class.foo() becomes 'foo'
-        :param task_name: The newly create Task name. Default: the calling Task name + function name
+        :param task_name: The newly created Task name. Default: the calling Task name + function name
         :param kwargs: name specific arguments for the target function.
             These arguments will appear under the configuration, "Function" section
 
@@ -2546,7 +2547,7 @@ class Task(_Task):
     def import_offline_session(cls, session_folder_zip, previous_task_id=None, iteration_offset=0):
         # type: (str, Optional[str], Optional[int]) -> (Optional[str])
         """
-        Upload an off line session (execution) of a Task.
+        Upload an offline session (execution) of a Task.
         Full Task execution includes repository details, installed packages, artifacts, logs, metric and debug samples.
         This function may also be used to continue a previously executed task with a task executed offline.
 

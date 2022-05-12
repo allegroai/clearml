@@ -11,12 +11,14 @@ from ...model import Framework
 
 
 class PatchLIGHTgbmModelIO(PatchBaseModelIO):
-    __main_task = None
+    _current_task = None
     __patched = None
 
     @staticmethod
     def update_current_task(task, **kwargs):
-        PatchLIGHTgbmModelIO.__main_task = task
+        PatchLIGHTgbmModelIO._current_task = task
+        if not task:
+            return
         PatchLIGHTgbmModelIO._patch_model_io()
         PostImportHookPatching.add_on_import('lightgbm', PatchLIGHTgbmModelIO._patch_model_io)
 
@@ -43,7 +45,7 @@ class PatchLIGHTgbmModelIO(PatchBaseModelIO):
     @staticmethod
     def _save(original_fn, obj, f, *args, **kwargs):
         ret = original_fn(obj, f, *args, **kwargs)
-        if not PatchLIGHTgbmModelIO.__main_task:
+        if not PatchLIGHTgbmModelIO._current_task:
             return ret
 
         if isinstance(f, six.string_types):
@@ -64,12 +66,15 @@ class PatchLIGHTgbmModelIO(PatchBaseModelIO):
             model_name = Path(filename).stem
         except Exception:
             model_name = None
-        WeightsFileHandler.create_output_model(obj, filename, Framework.lightgbm, PatchLIGHTgbmModelIO.__main_task,
+        WeightsFileHandler.create_output_model(obj, filename, Framework.lightgbm, PatchLIGHTgbmModelIO._current_task,
                                                singlefile=True, model_name=model_name)
         return ret
 
     @staticmethod
     def _load(original_fn, model_file, *args, **kwargs):
+        if not PatchLIGHTgbmModelIO._current_task:
+            return original_fn(model_file, *args, **kwargs)
+
         if isinstance(model_file, six.string_types):
             filename = model_file
         elif hasattr(model_file, 'name'):
@@ -79,21 +84,18 @@ class PatchLIGHTgbmModelIO(PatchBaseModelIO):
         else:
             filename = None
 
-        if not PatchLIGHTgbmModelIO.__main_task:
-            return original_fn(model_file, *args, **kwargs)
-
         # register input model
         empty = _Empty()
         # Hack: disabled
         if False and running_remotely():
             filename = WeightsFileHandler.restore_weights_file(empty, filename, Framework.xgboost,
-                                                               PatchLIGHTgbmModelIO.__main_task)
+                                                               PatchLIGHTgbmModelIO._current_task)
             model = original_fn(model_file=filename or model_file, *args, **kwargs)
         else:
             # try to load model before registering, in case we fail
             model = original_fn(model_file=model_file, *args, **kwargs)
             WeightsFileHandler.restore_weights_file(empty, filename, Framework.lightgbm,
-                                                    PatchLIGHTgbmModelIO.__main_task)
+                                                    PatchLIGHTgbmModelIO._current_task)
 
         if empty.trains_in_model:
             # noinspection PyBroadException
@@ -110,7 +112,7 @@ class PatchLIGHTgbmModelIO(PatchBaseModelIO):
                 # logging the results to scalars section
                 # noinspection PyBroadException
                 try:
-                    logger = PatchLIGHTgbmModelIO.__main_task.get_logger()
+                    logger = PatchLIGHTgbmModelIO._current_task.get_logger()
                     iteration = env.iteration
                     for data_title, data_series, value, _ in env.evaluation_result_list:
                         logger.report_scalar(title=data_title, series=data_series, value="{:.6f}".format(value),
@@ -121,12 +123,12 @@ class PatchLIGHTgbmModelIO(PatchBaseModelIO):
 
         kwargs.setdefault("callbacks", []).append(trains_lightgbm_callback())
         ret = original_fn(*args, **kwargs)
-        if not PatchLIGHTgbmModelIO.__main_task:
+        if not PatchLIGHTgbmModelIO._current_task:
             return ret
         params = args[0] if args else kwargs.get('params', {})
         for k, v in params.items():
             if isinstance(v, set):
                 params[k] = list(v)
         if params:
-            PatchLIGHTgbmModelIO.__main_task.connect(params)
+            PatchLIGHTgbmModelIO._current_task.connect(params)
         return ret

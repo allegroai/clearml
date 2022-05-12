@@ -8,12 +8,15 @@ from ..config import running_remotely
 class PatchAbsl(object):
     _original_DEFINE_flag = None
     _original_FLAGS_parse_call = None
-    _task = None
+    _current_task = None
+    __patched = False
 
     @classmethod
-    def update_current_task(cls, current_task):
-        cls._task = current_task
-        cls._patch_absl()
+    def update_current_task(cls, task):
+        cls._current_task = task
+        if not cls.__patched:
+            cls._patch_absl()
+            cls.__patched = True
 
     @classmethod
     def _patch_absl(cls):
@@ -53,7 +56,7 @@ class PatchAbsl(object):
 
     @staticmethod
     def _patched_define_flag(*args, **kwargs):
-        if not PatchAbsl._task or not PatchAbsl._original_DEFINE_flag:
+        if not PatchAbsl._current_task or not PatchAbsl._original_DEFINE_flag:
             if PatchAbsl._original_DEFINE_flag:
                 return PatchAbsl._original_DEFINE_flag(*args, **kwargs)
             else:
@@ -73,7 +76,7 @@ class PatchAbsl(object):
             # noinspection PyBroadException
             try:
                 if param_name and flag:
-                    param_dict = PatchAbsl._task._arguments.copy_to_dict(
+                    param_dict = PatchAbsl._current_task._arguments.copy_to_dict(
                         {param_name: flag.value}, prefix=_Arguments._prefix_tf_defines)
                     flag.value = param_dict.get(param_name, flag.value)
             except Exception:
@@ -82,13 +85,17 @@ class PatchAbsl(object):
         else:
             if flag and param_name:
                 value = flag.value
-                PatchAbsl._task.update_parameters({_Arguments._prefix_tf_defines + param_name: value}, )
+                PatchAbsl._current_task.update_parameters(
+                    {_Arguments._prefix_tf_defines + param_name: value},
+                )
             ret = PatchAbsl._original_DEFINE_flag(*args, **kwargs)
         return ret
 
     @staticmethod
     def _patched_FLAGS_parse_call(self, *args, **kwargs):
         ret = PatchAbsl._original_FLAGS_parse_call(self, *args, **kwargs)
+        if not PatchAbsl._current_task:
+            return ret
         # noinspection PyBroadException
         try:
             PatchAbsl._update_current_flags(self)
@@ -98,13 +105,13 @@ class PatchAbsl(object):
 
     @classmethod
     def _update_current_flags(cls, FLAGS):
-        if not cls._task:
+        if not cls._current_task:
             return
         # noinspection PyBroadException
         try:
             if running_remotely():
                 param_dict = dict((k, FLAGS[k].value) for k in FLAGS)
-                param_dict = cls._task._arguments.copy_to_dict(param_dict, prefix=_Arguments._prefix_tf_defines)
+                param_dict = cls._current_task._arguments.copy_to_dict(param_dict, prefix=_Arguments._prefix_tf_defines)
                 for k, v in param_dict.items():
                     # noinspection PyBroadException
                     try:
@@ -127,7 +134,7 @@ class PatchAbsl(object):
                     param_types = dict([(k, FLAGS[k].flag_type() or None) for k in FLAGS])
                 except Exception:
                     param_types = None
-                cls._task._arguments.copy_from_dict(
+                cls._current_task._arguments.copy_from_dict(
                     parameters,
                     prefix=_Arguments._prefix_tf_defines,
                     descriptions=descriptions, param_types=param_types,

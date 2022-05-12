@@ -10,14 +10,14 @@ from ...model import Framework
 
 
 class PatchMegEngineModelIO(PatchBaseModelIO):
-    __main_task = None
+    _current_task = None
     __patched = None
-
-    # __patched_lightning = None
 
     @staticmethod
     def update_current_task(task, **_):
-        PatchMegEngineModelIO.__main_task = task
+        PatchMegEngineModelIO._current_task = task
+        if not task:
+            return
         PatchMegEngineModelIO._patch_model_io()
         PostImportHookPatching.add_on_import(
             'megengine', PatchMegEngineModelIO._patch_model_io
@@ -58,7 +58,7 @@ class PatchMegEngineModelIO(PatchBaseModelIO):
         ret = original_fn(obj, f, *args, **kwargs)
 
         # if there is no main task or this is a nested call
-        if not PatchMegEngineModelIO.__main_task:
+        if not PatchMegEngineModelIO._current_task:
             return ret
 
         # noinspection PyBroadException
@@ -93,7 +93,7 @@ class PatchMegEngineModelIO(PatchBaseModelIO):
 
         WeightsFileHandler.create_output_model(
             obj, filename, Framework.megengine,
-            PatchMegEngineModelIO.__main_task,
+            PatchMegEngineModelIO._current_task,
             singlefile=True, model_name=model_name,
         )
 
@@ -102,7 +102,7 @@ class PatchMegEngineModelIO(PatchBaseModelIO):
     @staticmethod
     def _load(original_fn, f, *args, **kwargs):
         # if there is no main task or this is a nested call
-        if not PatchMegEngineModelIO.__main_task:
+        if not PatchMegEngineModelIO._current_task:
             return original_fn(f, *args, **kwargs)
 
         # noinspection PyBroadException
@@ -124,7 +124,7 @@ class PatchMegEngineModelIO(PatchBaseModelIO):
         model = original_fn(f, *args, **kwargs)
         WeightsFileHandler.restore_weights_file(
             empty, filename, Framework.megengine,
-            PatchMegEngineModelIO.__main_task
+            PatchMegEngineModelIO._current_task
         )
 
         if empty.trains_in_model:
@@ -139,7 +139,7 @@ class PatchMegEngineModelIO(PatchBaseModelIO):
     @staticmethod
     def _load_from_obj(original_fn, obj, f, *args, **kwargs):
         # if there is no main task or this is a nested call
-        if not PatchMegEngineModelIO.__main_task:
+        if not PatchMegEngineModelIO._current_task:
             return original_fn(obj, f, *args, **kwargs)
 
         # noinspection PyBroadException
@@ -161,7 +161,7 @@ class PatchMegEngineModelIO(PatchBaseModelIO):
         model = original_fn(obj, f, *args, **kwargs)
         WeightsFileHandler.restore_weights_file(
             empty, filename, Framework.megengine,
-            PatchMegEngineModelIO.__main_task,
+            PatchMegEngineModelIO._current_task,
         )
 
         if empty.trains_in_model:

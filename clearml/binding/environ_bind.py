@@ -1,4 +1,5 @@
 import os
+from time import sleep
 
 import six
 
@@ -7,26 +8,29 @@ from ..utilities.process.mp import BackgroundMonitor
 
 
 class EnvironmentBind(object):
-    _task = None
+    _current_task = None
     _environment_section = 'Environment'
+    __patched = False
 
     @classmethod
-    def update_current_task(cls, current_task):
-        cls._task = current_task
+    def update_current_task(cls, task):
+        cls._current_task = task
         # noinspection PyBroadException
         try:
-            cls._bind_environment()
+            if not cls.__patched:
+                cls.__patched = True
+                cls._bind_environment()
         except Exception:
             pass
 
     @classmethod
     def _bind_environment(cls):
-        if not cls._task:
+        if not cls._current_task:
             return
 
         # get ENVIRONMENT and put it into the OS environment
         if running_remotely():
-            params = cls._task.get_parameters_as_dict()
+            params = cls._current_task.get_parameters_as_dict()
             if params and cls._environment_section in params:
                 # put back into os:
                 os.environ.update(params[cls._environment_section])
@@ -55,14 +59,18 @@ class EnvironmentBind(object):
             elif match in os.environ:
                 env_param.update({match: os.environ.get(match)})
         # store os environments
-        cls._task.connect(env_param, cls._environment_section)
+        cls._current_task.connect(env_param, cls._environment_section)
 
 
 class PatchOsFork(object):
     _original_fork = None
+    _current_task = None
 
     @classmethod
-    def patch_fork(cls):
+    def patch_fork(cls, task):
+        cls._current_task = task
+        if not task:
+            return
         # noinspection PyBroadException
         try:
             # only once
@@ -88,11 +96,13 @@ class PatchOsFork(object):
         Task._wait_for_deferred(task)
 
         ret = PatchOsFork._original_fork(*args, **kwargs)
+        if not PatchOsFork._current_task:
+            return ret
         # Make sure the new process stdout is logged
         if not ret:
             # force creating a Task
             task = Task.current_task()
-            if task is None:
+            if not task:
                 return ret
 
             # # Hack: now make sure we setup the reporter threads (Log+Reporter)
@@ -106,7 +116,7 @@ class PatchOsFork(object):
                 # just make sure we flush the internal state (the at exist caught by the external signal does the rest
                 # in theory we should not have to do any of that, but for some reason if we do not
                 # the signal is never caught by the signal call backs, not sure why....
-
+                sleep(0.1)
                 # Since at_exist handlers do not work on forked processes, we have to manually call them here
                 if task:
                     try:

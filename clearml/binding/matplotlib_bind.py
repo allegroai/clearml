@@ -207,12 +207,15 @@ class PatchedMatplotlib:
             PatchedMatplotlib._current_task = task
             PostImportHookPatching.add_on_import('matplotlib.pyplot', PatchedMatplotlib.patch_matplotlib)
             PostImportHookPatching.add_on_import('matplotlib.pylab', PatchedMatplotlib.patch_matplotlib)
-        elif PatchedMatplotlib.patch_matplotlib():
+        else:
+            PatchedMatplotlib.patch_matplotlib()
             PatchedMatplotlib._current_task = task
 
     @staticmethod
     def patched_imshow(*args, **kw):
         ret = PatchedMatplotlib._patched_original_imshow(*args, **kw)
+        if not PatchedMatplotlib._current_task:
+            return ret
         try:
             from matplotlib import _pylab_helpers
             # store on the plot that this is an imshow plot
@@ -227,6 +230,8 @@ class PatchedMatplotlib:
     @staticmethod
     def patched_savefig(self, *args, **kw):
         ret = PatchedMatplotlib._patched_original_savefig(self, *args, **kw)
+        if not PatchedMatplotlib._current_task:
+            return ret
         # noinspection PyBroadException
         try:
             fname = kw.get('fname') or args[0]
@@ -256,6 +261,8 @@ class PatchedMatplotlib:
 
     @staticmethod
     def patched_figure_show(self, *args, **kw):
+        if not PatchedMatplotlib._current_task:
+            return PatchedMatplotlib._patched_original_figure(self, *args, **kw)
         tid = threading._get_ident() if six.PY2 else threading.get_ident()
         if PatchedMatplotlib._recursion_guard.get(tid):
             # we are inside a gaurd do nothing
@@ -269,6 +276,8 @@ class PatchedMatplotlib:
 
     @staticmethod
     def patched_show(*args, **kw):
+        if not PatchedMatplotlib._current_task:
+            return PatchedMatplotlib._patched_original_plot(*args, **kw)
         tid = threading._get_ident() if six.PY2 else threading.get_ident()
         PatchedMatplotlib._recursion_guard[tid] = True
         # noinspection PyBroadException

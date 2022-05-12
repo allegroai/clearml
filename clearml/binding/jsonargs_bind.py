@@ -14,7 +14,7 @@ from ..utilities.proxy_object import flatten_dictionary
 
 class PatchJsonArgParse(object):
     _args = {}
-    _main_task = None
+    _current_task = None
     _args_sep = "/"
     _args_type = {}
     _commands_sep = "."
@@ -25,13 +25,18 @@ class PatchJsonArgParse(object):
     __patched = False
 
     @classmethod
+    def update_current_task(cls, task):
+        cls._current_task = task
+        if not task:
+            return
+        cls.patch(task)
+
+    @classmethod
     def patch(cls, task):
         if ArgumentParser is None:
             return
 
-        if task:
-            cls._main_task = task
-            PatchJsonArgParse._update_task_args()
+        PatchJsonArgParse._update_task_args()
 
         if not cls.__patched:
             cls.__patched = True
@@ -39,14 +44,16 @@ class PatchJsonArgParse(object):
 
     @classmethod
     def _update_task_args(cls):
-        if running_remotely() or not cls._main_task or not cls._args:
+        if running_remotely() or not cls._current_task or not cls._args:
             return
         args = {cls._section_name + cls._args_sep + k: v for k, v in cls._args.items()}
         args_type = {cls._section_name + cls._args_sep + k: v for k, v in cls._args_type.items()}
-        cls._main_task._set_parameters(args, __update=True, __parameters_types=args_type)
+        cls._current_task._set_parameters(args, __update=True, __parameters_types=args_type)
 
     @staticmethod
     def _parse_args(original_fn, obj, *args, **kwargs):
+        if not PatchJsonArgParse._current_task:
+            return original_fn(obj, *args, **kwargs)
         if len(args) == 1:
             kwargs["args"] = args[0]
             args = []

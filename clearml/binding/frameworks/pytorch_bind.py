@@ -11,13 +11,15 @@ from ...model import Framework
 
 
 class PatchPyTorchModelIO(PatchBaseModelIO):
-    __main_task = None
+    _current_task = None
     __patched = None
     __patched_lightning = None
 
     @staticmethod
     def update_current_task(task, **_):
-        PatchPyTorchModelIO.__main_task = task
+        PatchPyTorchModelIO._current_task = task
+        if not task:
+            return
         PatchPyTorchModelIO._patch_model_io()
         PatchPyTorchModelIO._patch_lightning_io()
         PostImportHookPatching.add_on_import('torch', PatchPyTorchModelIO._patch_model_io)
@@ -112,7 +114,7 @@ class PatchPyTorchModelIO(PatchBaseModelIO):
         ret = original_fn(obj, f, *args, **kwargs)
 
         # if there is no main task or this is a nested call
-        if not PatchPyTorchModelIO.__main_task:
+        if not PatchPyTorchModelIO._current_task:
             return ret
 
         # pytorch-lightning check if rank is zero
@@ -154,14 +156,14 @@ class PatchPyTorchModelIO(PatchBaseModelIO):
             model_name = None
 
         WeightsFileHandler.create_output_model(
-            obj, filename, Framework.pytorch, PatchPyTorchModelIO.__main_task, singlefile=True, model_name=model_name)
+            obj, filename, Framework.pytorch, PatchPyTorchModelIO._current_task, singlefile=True, model_name=model_name)
 
         return ret
 
     @staticmethod
     def _load(original_fn, f, *args, **kwargs):
         # if there is no main task or this is a nested call
-        if not PatchPyTorchModelIO.__main_task:
+        if not PatchPyTorchModelIO._current_task:
             return original_fn(f, *args, **kwargs)
 
         # noinspection PyBroadException
@@ -182,13 +184,13 @@ class PatchPyTorchModelIO(PatchBaseModelIO):
         # Hack: disabled
         if False and running_remotely():
             filename = WeightsFileHandler.restore_weights_file(
-                empty, filename, Framework.pytorch, PatchPyTorchModelIO.__main_task)
+                empty, filename, Framework.pytorch, PatchPyTorchModelIO._current_task)
             model = original_fn(filename or f, *args, **kwargs)
         else:
             # try to load model before registering, in case we fail
             model = original_fn(f, *args, **kwargs)
             WeightsFileHandler.restore_weights_file(
-                empty, filename, Framework.pytorch, PatchPyTorchModelIO.__main_task)
+                empty, filename, Framework.pytorch, PatchPyTorchModelIO._current_task)
 
         if empty.trains_in_model:
             # noinspection PyBroadException
@@ -202,7 +204,7 @@ class PatchPyTorchModelIO(PatchBaseModelIO):
     @staticmethod
     def _load_from_obj(original_fn, obj, f, *args, **kwargs):
         # if there is no main task or this is a nested call
-        if not PatchPyTorchModelIO.__main_task:
+        if not PatchPyTorchModelIO._current_task:
             return original_fn(obj, f, *args, **kwargs)
 
         # noinspection PyBroadException
@@ -223,13 +225,13 @@ class PatchPyTorchModelIO(PatchBaseModelIO):
         # Hack: disabled
         if False and running_remotely():
             filename = WeightsFileHandler.restore_weights_file(
-                empty, filename, Framework.pytorch, PatchPyTorchModelIO.__main_task)
+                empty, filename, Framework.pytorch, PatchPyTorchModelIO._current_task)
             model = original_fn(obj, filename or f, *args, **kwargs)
         else:
             # try to load model before registering, in case we fail
             model = original_fn(obj, f, *args, **kwargs)
             WeightsFileHandler.restore_weights_file(
-                empty, filename, Framework.pytorch, PatchPyTorchModelIO.__main_task)
+                empty, filename, Framework.pytorch, PatchPyTorchModelIO._current_task)
 
         if empty.trains_in_model:
             # noinspection PyBroadException

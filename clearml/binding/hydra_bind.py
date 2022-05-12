@@ -2,7 +2,7 @@ import io
 import sys
 from functools import partial
 
-from ..config import running_remotely, get_remote_task_id, DEV_TASK_NO_REUSE
+from ..config import running_remotely, DEV_TASK_NO_REUSE
 from ..debugging.log import LoggerRoot
 
 
@@ -46,6 +46,8 @@ class PatchHydra(object):
     def update_current_task(task):
         # set current Task before patching
         PatchHydra._current_task = task
+        if not task:
+            return
         if PatchHydra.patch_hydra():
             # check if we have an untracked state, store it.
             if PatchHydra._last_untracked_state.get('connect'):
@@ -66,9 +68,6 @@ class PatchHydra(object):
         # noinspection PyBroadException
         try:
             if running_remotely():
-                if not PatchHydra._current_task:
-                    from ..task import Task
-                    PatchHydra._current_task = Task.get_task(task_id=get_remote_task_id())
                 # get the _parameter_allow_full_edit casted back to boolean
                 connected_config = dict()
                 connected_config[PatchHydra._parameter_allow_full_edit] = False
@@ -126,8 +125,9 @@ class PatchHydra(object):
 
         if pre_app_task_init_call and not running_remotely():
             LoggerRoot.get_base_logger(PatchHydra).info(
-                'Task.init called outside of Hydra-App. For full Hydra multi-run support, '
-                'move the Task.init call into the Hydra-App main function')
+                "Task.init called outside of Hydra-App. For full Hydra multi-run support, "
+                "move the Task.init call into the Hydra-App main function"
+            )
 
         kwargs["config"] = config
         kwargs["task_function"] = partial(PatchHydra._patched_task_function, task_function,)

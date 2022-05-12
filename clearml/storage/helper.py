@@ -369,13 +369,6 @@ class StorageHelper(object):
             self._container = self._driver.get_container(container_name=self._base_url)
         else:  # elif self._scheme == 'file':
             # if this is not a known scheme assume local file
-
-            # If the scheme is file, use only the path segment, If not, use the entire URL
-            if self._scheme == "file":
-                url = parsed.path
-
-            url = url.replace("\\", "/")
-
             # url2pathname is specifically intended to operate on (urlparse result).path
             # and returns a cross-platform compatible result
             url = parsed.path

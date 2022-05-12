@@ -4,6 +4,7 @@ import inspect
 import json
 import os
 import re
+import six
 from copy import copy, deepcopy
 from datetime import datetime
 from logging import getLogger
@@ -2032,6 +2033,8 @@ class PipelineController(object):
             for g in pattern.findall(value):
                 # update with actual value
                 new_val = self.__parse_step_reference(g)
+                if not isinstance(new_val, six.string_types):
+                    return new_val
                 updated_value = updated_value.replace(g, new_val, 1)
         return updated_value
 

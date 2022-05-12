@@ -2058,7 +2058,6 @@ class Task(_Task):
         """
         Get user properties for this task.
         Returns a dictionary mapping user property name to user property details dict.
-
         :param value_only: If True, returned user property details will be a string representing the property value.
         """
         if not Session.check_min_api_version("2.9"):
@@ -3482,6 +3481,7 @@ class Task(_Task):
                 elif task_status[0] == 'failed':
                     self.mark_failed(status_reason=task_status[1])
                 elif task_status[0] == 'completed':
+                    self.set_progress(100)
                     self.mark_completed()
                 elif task_status[0] == 'stopped':
                     self.stopped()
@@ -3518,9 +3518,6 @@ class Task(_Task):
             except Exception:
                 pass
             self._edit_lock = None
-
-        if task_status and task_status[0] == "completed":
-            self.set_progress(100)
 
         # make sure no one will re-enter the shutdown method
         self._at_exit_called = True

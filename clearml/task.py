@@ -922,6 +922,10 @@ class Task(_Task):
             project name (including partial match), task name (including partial match), tags
             Apply Additional advanced filtering with `task_filter`
 
+        .. note::
+            This function returns the most recent 500 tasks. If you wish to retrieve older tasks
+            use ``Task.query_tasks()``
+
         :param list(str) task_ids: The Ids (system UUID) of experiments to get.
             If ``task_ids`` specified, then ``project_name`` and ``task_name`` are ignored.
         :param str project_name: The project name of the Tasks to get. To get the experiment

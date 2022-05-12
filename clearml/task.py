@@ -77,7 +77,7 @@ from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
 from .utilities.process.mp import BackgroundMonitor, leave_process
 from .utilities.matching import matches_any_wildcard
-from .utilities.future_caller import FutureTaskCaller
+from .utilities.parallel import FutureTaskCaller
 # noinspection PyProtectedMember
 from .backend_interface.task.args import _Arguments
 

@@ -77,7 +77,7 @@ from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
 from .utilities.process.mp import BackgroundMonitor, leave_process
 from .utilities.matching import matches_any_wildcard
-from .utilities.future_caller import FutureTaskCaller
+from .utilities.parallel import FutureTaskCaller
 # noinspection PyProtectedMember
 from .backend_interface.task.args import _Arguments
 
@@ -626,8 +626,7 @@ class Task(_Task):
                 task.__register_at_exit(task._at_exit)
 
             # always patch OS forking because of ProcessPool and the alike
-            PatchOsFork.patch_fork()
-
+            PatchOsFork.patch_fork(task)
             if auto_connect_frameworks:
                 def should_connect(*keys):
                     """
@@ -708,13 +707,15 @@ class Task(_Task):
             make_deterministic(task.get_random_seed())
 
             if auto_connect_arg_parser:
-                EnvironmentBind.update_current_task(Task.__main_task)
+                EnvironmentBind.update_current_task(task)
+
+                PatchJsonArgParse.update_current_task(task)
 
                 # Patch ArgParser to be aware of the current task
-                argparser_update_currenttask(Task.__main_task)
-                PatchClick.patch(Task.__main_task)
-                PatchFire.patch(Task.__main_task)
-                PatchJsonArgParse.patch(Task.__main_task)
+                argparser_update_currenttask(task)
+
+                PatchClick.patch(task)
+                PatchFire.patch(task)
 
                 # set excluded arguments
                 if isinstance(auto_connect_arg_parser, dict):
@@ -921,6 +922,10 @@ class Task(_Task):
         - Filter Tasks based on specific fields:
             project name (including partial match), task name (including partial match), tags
             Apply Additional advanced filtering with `task_filter`
+
+        .. note::
+            This function returns the most recent 500 tasks. If you wish to retrieve older tasks
+            use ``Task.query_tasks()``
 
         :param list(str) task_ids: The Ids (system UUID) of experiments to get.
             If ``task_ids`` specified, then ``project_name`` and ``task_name`` are ignored.
@@ -1682,6 +1687,22 @@ class Task(_Task):
                 # noinspection PyProtectedMember
                 Logger._remove_std_logger()
 
+                # unbind everything
+                PatchHydra.update_current_task(None)
+                PatchedJoblib.update_current_task(None)
+                PatchedMatplotlib.update_current_task(None)
+                PatchAbsl.update_current_task(None)
+                TensorflowBinding.update_current_task(None)
+                PatchPyTorchModelIO.update_current_task(None)
+                PatchMegEngineModelIO.update_current_task(None)
+                PatchXGBoostModelIO.update_current_task(None)
+                PatchCatBoostModelIO.update_current_task(None)
+                PatchFastai.update_current_task(None)
+                PatchLIGHTgbmModelIO.update_current_task(None)
+                EnvironmentBind.update_current_task(None)
+                PatchJsonArgParse.update_current_task(None)
+                PatchOsFork.patch_fork(None)
+
     def delete(
             self,
             delete_artifacts_and_models=True,
@@ -2037,7 +2058,6 @@ class Task(_Task):
         """
         Get user properties for this task.
         Returns a dictionary mapping user property name to user property details dict.
-
         :param value_only: If True, returned user property details will be a string representing the property value.
         """
         if not Session.check_min_api_version("2.9"):
@@ -3461,6 +3481,7 @@ class Task(_Task):
                 elif task_status[0] == 'failed':
                     self.mark_failed(status_reason=task_status[1])
                 elif task_status[0] == 'completed':
+                    self.set_progress(100)
                     self.mark_completed()
                 elif task_status[0] == 'stopped':
                     self.stopped()
@@ -3497,9 +3518,6 @@ class Task(_Task):
             except Exception:
                 pass
             self._edit_lock = None
-
-        if task_status and task_status[0] == "completed":
-            self.set_progress(100)
 
         # make sure no one will re-enter the shutdown method
         self._at_exit_called = True

@@ -25,11 +25,9 @@ class PatchFastai(object):
         try:
             if Version(fastai.__version__) < Version("2.0.0"):
                 PatchFastaiV1.update_current_task(task)
-                PatchFastaiV1.patch_model_callback()
                 PostImportHookPatching.add_on_import("fastai", PatchFastaiV1.patch_model_callback)
             else:
                 PatchFastaiV2.update_current_task(task)
-                PatchFastaiV2.patch_model_callback()
                 PostImportHookPatching.add_on_import("fastai", PatchFastaiV2.patch_model_callback)
         except Exception:
             pass
@@ -38,11 +36,17 @@ class PatchFastai(object):
 class PatchFastaiV1(object):
     __metrics_names = {}
     __gradient_hist_helpers = {}
-    _main_task = None
+    _current_task = None
+    __patched = False
 
     @staticmethod
     def update_current_task(task, **_):
-        PatchFastaiV1._main_task = task
+        PatchFastaiV1._current_task = task
+        if not task:
+            return
+        if not PatchFastaiV1.__patched:
+            PatchFastaiV1.__patched = True
+            PatchFastaiV1.patch_model_callback()
 
     @staticmethod
     def patch_model_callback():
@@ -52,7 +56,6 @@ class PatchFastaiV1(object):
 
         try:
             from fastai.basic_train import Recorder
-
             Recorder.on_batch_end = _patched_call(Recorder.on_batch_end, PatchFastaiV1._on_batch_end)
             Recorder.on_backward_end = _patched_call(Recorder.on_backward_end, PatchFastaiV1._on_backward_end)
             Recorder.on_epoch_end = _patched_call(Recorder.on_epoch_end, PatchFastaiV1._on_epoch_end)
@@ -65,7 +68,7 @@ class PatchFastaiV1(object):
     @staticmethod
     def _on_train_begin(original_fn, recorder, *args, **kwargs):
         original_fn(recorder, *args, **kwargs)
-        if not PatchFastaiV1._main_task:
+        if not PatchFastaiV1._current_task:
             return
         # noinspection PyBroadException
         try:
@@ -84,7 +87,7 @@ class PatchFastaiV1(object):
 
         original_fn(recorder, *args, **kwargs)
 
-        if not PatchFastaiV1._main_task:
+        if not PatchFastaiV1._current_task:
             return
 
         # noinspection PyBroadException
@@ -112,7 +115,7 @@ class PatchFastaiV1(object):
                 min_gradient=gradient_stats[:, 5].min(),
             )
 
-            logger = PatchFastaiV1._main_task.get_logger()
+            logger = PatchFastaiV1._current_task.get_logger()
             iteration = kwargs.get("iteration", 0)
             for name, val in stats_report.items():
                 logger.report_scalar(title="model_stats_gradients", series=name, value=val, iteration=iteration)
@@ -122,26 +125,26 @@ class PatchFastaiV1(object):
     @staticmethod
     def _on_epoch_end(original_fn, recorder, *args, **kwargs):
         original_fn(recorder, *args, **kwargs)
-        if not PatchFastaiV1._main_task:
+        if not PatchFastaiV1._current_task:
             return
 
         # noinspection PyBroadException
         try:
-            logger = PatchFastaiV1._main_task.get_logger()
+            logger = PatchFastaiV1._current_task.get_logger()
             iteration = kwargs.get("iteration")
             for series, value in zip(
                 PatchFastaiV1.__metrics_names[id(recorder)],
                 [kwargs.get("smooth_loss")] + kwargs.get("last_metrics", []),
             ):
                 logger.report_scalar(title="metrics", series=series, value=value, iteration=iteration)
-            PatchFastaiV1._main_task.flush()
+            PatchFastaiV1._current_task.flush()
         except Exception:
             pass
 
     @staticmethod
     def _on_batch_end(original_fn, recorder, *args, **kwargs):
         original_fn(recorder, *args, **kwargs)
-        if not PatchFastaiV1._main_task:
+        if not PatchFastaiV1._current_task:
             return
 
         # noinspection PyBroadException
@@ -150,7 +153,7 @@ class PatchFastaiV1(object):
             if iteration == 0 or not kwargs.get("train"):
                 return
 
-            logger = PatchFastaiV1._main_task.get_logger()
+            logger = PatchFastaiV1._current_task.get_logger()
             logger.report_scalar(
                 title="metrics",
                 series="train_loss",
@@ -174,11 +177,17 @@ class PatchFastaiV1(object):
 
 
 class PatchFastaiV2(object):
-    _main_task = None
+    _current_task = None
+    __patched = False
 
     @staticmethod
     def update_current_task(task, **_):
-        PatchFastaiV2._main_task = task
+        PatchFastaiV2._current_task = task
+        if not task:
+            return
+        if not PatchFastaiV2.__patched:
+            PatchFastaiV2.__patched = True
+            PatchFastaiV2.patch_model_callback()
 
     @staticmethod
     def patch_model_callback():
@@ -212,13 +221,15 @@ class PatchFastaiV2(object):
             self.logger = noop
             self.__id = str(PatchFastaiV2.PatchFastaiCallbacks.__id)
             PatchFastaiV2.PatchFastaiCallbacks.__id += 1
-            self.__gradient_hist_helper = WeightsGradientHistHelper(PatchFastaiV2._main_task.get_logger())
+            self.__gradient_hist_helper = WeightsGradientHistHelper(PatchFastaiV2._current_task.get_logger())
 
         def after_batch(self):
             # noinspection PyBroadException
             try:
                 super().after_batch()  # noqa
-                logger = PatchFastaiV2._main_task.get_logger()
+                if not PatchFastaiV2._current_task:
+                    return
+                logger = PatchFastaiV2._current_task.get_logger()
                 if not self.training:  # noqa
                     return
                 self.__train_iter += 1
@@ -254,7 +265,9 @@ class PatchFastaiV2(object):
             # noinspection PyBroadException
             try:
                 super().after_epoch()  # noqa
-                logger = PatchFastaiV2._main_task.get_logger()
+                if not PatchFastaiV2._current_task:
+                    return
+                logger = PatchFastaiV2._current_task.get_logger()
                 for metric in self._valid_mets:  # noqa
                     logger.report_scalar(
                         title="metrics_" + self.__id,
@@ -270,7 +283,9 @@ class PatchFastaiV2(object):
             try:
                 if hasattr(fastai.learner.Recorder, "before_step"):
                     super().before_step()  # noqa
-                logger = PatchFastaiV2._main_task.get_logger()
+                if not PatchFastaiV2._current_task:
+                    return
+                logger = PatchFastaiV2._current_task.get_logger()
                 gradients = [
                     x.grad.clone().detach().cpu() for x in self.learn.model.parameters() if x.grad is not None
                 ]  # noqa

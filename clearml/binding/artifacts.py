@@ -48,6 +48,8 @@ class Artifact(object):
     Read-Only Artifact object
     """
 
+    _not_set = object()
+
     @property
     def url(self):
         # type: () -> str
@@ -136,7 +138,7 @@ class Artifact(object):
         self._metadata = dict(artifact_api_object.display_data) if artifact_api_object.display_data else {}
         self._preview = artifact_api_object.type_data.preview if artifact_api_object.type_data else None
         self._content_type = artifact_api_object.type_data.content_type if artifact_api_object.type_data else None
-        self._object = None
+        self._object = self._not_set
 
     def get(self, force_download=False):
         # type: (bool) -> Any
@@ -156,7 +158,7 @@ class Artifact(object):
         :param bool force_download: download file from remote even if exists in local cache
         :return: One of the following objects Numpy.array, pandas.DataFrame, PIL.Image, dict (json), or pathlib2.Path.
         """
-        if self._object:
+        if self._object is not self._not_set:
             return self._object
 
         local_file = self.get_local_copy(raise_on_error=True, force_download=force_download)
@@ -200,9 +202,8 @@ class Artifact(object):
                 )
             )
 
-        local_file = Path(local_file)
-
-        if self._object is None:
+        if self._object is self._not_set:
+            local_file = Path(local_file)
             self._object = local_file
 
         return self._object
@@ -640,7 +641,7 @@ class Artifacts(object):
             artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
             if preview:
                 artifact_type_data.preview = preview
-        elif isinstance(artifact_object, six.string_types):
+        elif isinstance(artifact_object, six.string_types) and artifact_object:
             # if we got here, we should store it as text file.
             artifact_type = 'string'
             artifact_type_data.content_type = 'text/plain'
@@ -652,23 +653,22 @@ class Artifacts(object):
                 artifact_type_data.preview = '# full text too large to store, storing first {}kb\n{}'.format(
                     self.max_preview_size_bytes//1024, artifact_object[:self.max_preview_size_bytes]
                 )
-            if artifact_object:
-                delete_after_upload = True
-                override_filename_ext_in_uri = '.txt'
-                override_filename_in_uri = name + override_filename_ext_in_uri
-                fd, local_filename = mkstemp(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
-                os.close(fd)
-                # noinspection PyBroadException
-                try:
-                    with open(local_filename, 'wt') as f:
-                        f.write(artifact_object)
-                except Exception:
-                    # cleanup and raise exception
-                    os.unlink(local_filename)
-                    raise
+            delete_after_upload = True
+            override_filename_ext_in_uri = ".txt"
+            override_filename_in_uri = name + override_filename_ext_in_uri
+            fd, local_filename = mkstemp(prefix=quote(name, safe="") + ".", suffix=override_filename_ext_in_uri)
+            os.close(fd)
+            # noinspection PyBroadException
+            try:
+                with open(local_filename, "wt") as f:
+                    f.write(artifact_object)
+            except Exception:
+                # cleanup and raise exception
+                os.unlink(local_filename)
+                raise
         elif artifact_object is None or (isinstance(artifact_object, str) and artifact_object == ""):
             artifact_type = ''
-            store_as_pickle = False
+            store_as_pickle = True
         elif auto_pickle:
             # revert to pickling the object
             store_as_pickle = True

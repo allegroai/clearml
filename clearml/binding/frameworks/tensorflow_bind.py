@@ -232,7 +232,7 @@ class EventTrainsWriter(object):
     TF SummaryWriter implementation that converts the tensorboard's summary into
     ClearML events and reports the events (metrics) for an ClearML task (logger).
     """
-    __main_task = None
+    _current_task = None
     __report_hparams = True
     _add_lock = threading.RLock()
     _series_name_lookup = {}
@@ -641,7 +641,7 @@ class EventTrainsWriter(object):
             session_start_info = parse_session_start_info_plugin_data(content)
             session_start_info = MessageToDict(session_start_info)
             hparams = session_start_info["hparams"]
-            EventTrainsWriter.__main_task.update_parameters(
+            EventTrainsWriter._current_task.update_parameters(
                 {"TB_hparams/{}".format(k): v for k, v in hparams.items()}
             )
         except Exception:
@@ -844,13 +844,13 @@ class EventTrainsWriter(object):
     @classmethod
     def update_current_task(cls, task, **kwargs):
         cls.__report_hparams = kwargs.get('report_hparams', False)
-        if cls.__main_task != task:
+        if cls._current_task != task:
             with cls._add_lock:
                 cls._series_name_lookup = {}
                 cls._title_series_writers_lookup = {}
                 cls._event_writers_id_to_logdir = {}
                 cls._title_series_wraparound_counter = {}
-        cls.__main_task = task
+        cls._current_task = task
 
 
 # noinspection PyCallingNonCallable
@@ -905,9 +905,10 @@ class ProxyEventsWriter(object):
 
 # noinspection PyPep8Naming
 class PatchSummaryToEventTransformer(object):
-    __main_task = None
+    _current_task = None
     __original_getattribute = None
     __original_getattributeX = None
+    __patched = False
     _original_add_event = None
     _original_add_eventT = None
     _original_add_eventX = None
@@ -930,15 +931,19 @@ class PatchSummaryToEventTransformer(object):
     @staticmethod
     def update_current_task(task, **kwargs):
         PatchSummaryToEventTransformer.defaults_dict.update(kwargs)
-        PatchSummaryToEventTransformer.__main_task = task
-        # make sure we patched the SummaryToEventTransformer
-        PatchSummaryToEventTransformer._patch_summary_to_event_transformer()
-        PostImportHookPatching.add_on_import('tensorflow',
-                                             PatchSummaryToEventTransformer._patch_summary_to_event_transformer)
-        PostImportHookPatching.add_on_import('torch',
-                                             PatchSummaryToEventTransformer._patch_summary_to_event_transformer)
-        PostImportHookPatching.add_on_import('tensorboardX',
-                                             PatchSummaryToEventTransformer._patch_summary_to_event_transformer)
+        PatchSummaryToEventTransformer._current_task = task
+        if not task:
+            return
+        if not PatchSummaryToEventTransformer.__patched:
+            PatchSummaryToEventTransformer.__patched = True
+            # make sure we patched the SummaryToEventTransformer
+            PatchSummaryToEventTransformer._patch_summary_to_event_transformer()
+            PostImportHookPatching.add_on_import('tensorflow',
+                                                 PatchSummaryToEventTransformer._patch_summary_to_event_transformer)
+            PostImportHookPatching.add_on_import('torch',
+                                                 PatchSummaryToEventTransformer._patch_summary_to_event_transformer)
+            PostImportHookPatching.add_on_import('tensorboardX',
+                                                 PatchSummaryToEventTransformer._patch_summary_to_event_transformer)
 
     @staticmethod
     def _patch_summary_to_event_transformer():
@@ -1002,7 +1007,7 @@ class PatchSummaryToEventTransformer(object):
 
     @staticmethod
     def _patched_add_eventT(self, *args, **kwargs):
-        if not hasattr(self, 'clearml') or not PatchSummaryToEventTransformer.__main_task:
+        if not hasattr(self, 'clearml') or not PatchSummaryToEventTransformer._current_task:
             return PatchSummaryToEventTransformer._original_add_eventT(self, *args, **kwargs)
         if not self.clearml:  # noqa
             # noinspection PyBroadException
@@ -1010,7 +1015,7 @@ class PatchSummaryToEventTransformer(object):
                 logdir = self.get_logdir()
             except Exception:
                 logdir = None
-            self.clearml = EventTrainsWriter(PatchSummaryToEventTransformer.__main_task.get_logger(),
+            self.clearml = EventTrainsWriter(PatchSummaryToEventTransformer._current_task.get_logger(),
                                              logdir=logdir, **PatchSummaryToEventTransformer.defaults_dict)
         # noinspection PyBroadException
         try:
@@ -1021,7 +1026,7 @@ class PatchSummaryToEventTransformer(object):
 
     @staticmethod
     def _patched_add_eventX(self, *args, **kwargs):
-        if not hasattr(self, 'clearml') or not PatchSummaryToEventTransformer.__main_task:
+        if not hasattr(self, 'clearml') or not PatchSummaryToEventTransformer._current_task:
             return PatchSummaryToEventTransformer._original_add_eventX(self, *args, **kwargs)
         if not self.clearml:
             # noinspection PyBroadException
@@ -1029,7 +1034,7 @@ class PatchSummaryToEventTransformer(object):
                 logdir = self.get_logdir()
             except Exception:
                 logdir = None
-            self.clearml = EventTrainsWriter(PatchSummaryToEventTransformer.__main_task.get_logger(),
+            self.clearml = EventTrainsWriter(PatchSummaryToEventTransformer._current_task.get_logger(),
                                              logdir=logdir, **PatchSummaryToEventTransformer.defaults_dict)
         # noinspection PyBroadException
         try:
@@ -1051,7 +1056,7 @@ class PatchSummaryToEventTransformer(object):
     @staticmethod
     def _patched_getattribute_(self, attr, get_base):
         # no main task, zero chance we have an ClearML event logger
-        if PatchSummaryToEventTransformer.__main_task is None:
+        if PatchSummaryToEventTransformer._current_task is None:
             return get_base(self, attr)
 
         # check if we already have an ClearML event logger
@@ -1068,7 +1073,7 @@ class PatchSummaryToEventTransformer(object):
         except Exception:
             logdir = None
         defaults_dict = __dict__.get('_trains_defaults') or PatchSummaryToEventTransformer.defaults_dict
-        trains_event = EventTrainsWriter(PatchSummaryToEventTransformer.__main_task.get_logger(),
+        trains_event = EventTrainsWriter(PatchSummaryToEventTransformer._current_task.get_logger(),
                                          logdir=logdir, **defaults_dict)
 
         # order is important, the return value of ProxyEventsWriter is the last object in the list
@@ -1111,8 +1116,9 @@ class _ModelAdapter(object):
 
 
 class PatchModelCheckPointCallback(object):
-    __main_task = None
+    _current_task = None
     __original_getattribute = None
+    __patched = False
     defaults_dict = dict(
         config_text=None,
         config_dict=None,
@@ -1132,11 +1138,15 @@ class PatchModelCheckPointCallback(object):
     @staticmethod
     def update_current_task(task, **kwargs):
         PatchModelCheckPointCallback.defaults_dict.update(kwargs)
-        PatchModelCheckPointCallback.__main_task = task
-        # make sure we patched the SummaryToEventTransformer
-        PatchModelCheckPointCallback._patch_model_checkpoint()
-        PostImportHookPatching.add_on_import('keras', PatchModelCheckPointCallback._patch_model_checkpoint)
-        PostImportHookPatching.add_on_import('tensorflow', PatchModelCheckPointCallback._patch_model_checkpoint)
+        PatchModelCheckPointCallback._current_task = task
+        if not task:
+            return
+        if not PatchModelCheckPointCallback.__patched:
+            PatchModelCheckPointCallback.__patched = True
+            # make sure we patched the SummaryToEventTransformer
+            PatchModelCheckPointCallback._patch_model_checkpoint()
+            PostImportHookPatching.add_on_import('keras', PatchModelCheckPointCallback._patch_model_checkpoint)
+            PostImportHookPatching.add_on_import('tensorflow', PatchModelCheckPointCallback._patch_model_checkpoint)
 
     @staticmethod
     def _patch_model_checkpoint():
@@ -1176,7 +1186,7 @@ class PatchModelCheckPointCallback(object):
         get_base = PatchModelCheckPointCallback.__original_getattribute
 
         # no main task, zero chance we have an ClearML event logger
-        if PatchModelCheckPointCallback.__main_task is None:
+        if PatchModelCheckPointCallback._current_task is None:
             return get_base(self, attr)
 
         # check if we already have an ClearML event logger
@@ -1189,17 +1199,17 @@ class PatchModelCheckPointCallback(object):
         base_model = __dict__['model']
         defaults_dict = __dict__.get('_trains_defaults') or PatchModelCheckPointCallback.defaults_dict
         output_model = OutputModel(
-            PatchModelCheckPointCallback.__main_task,
+            PatchModelCheckPointCallback._current_task,
             config_text=defaults_dict.get('config_text'),
             config_dict=defaults_dict.get('config_dict'),
             name=defaults_dict.get('name'),
             comment=defaults_dict.get('comment'),
             label_enumeration=defaults_dict.get('label_enumeration') or
-            PatchModelCheckPointCallback.__main_task.get_labels_enumeration(),
+            PatchModelCheckPointCallback._current_task.get_labels_enumeration(),
             framework=Framework.keras,
         )
         output_model.set_upload_destination(
-            PatchModelCheckPointCallback.__main_task.get_output_destination(raise_on_error=False))
+            PatchModelCheckPointCallback._current_task.get_output_destination(raise_on_error=False))
         trains_model = _ModelAdapter(base_model, output_model)
 
         # order is important, the return value of ProxyEventsWriter is the last object in the list
@@ -1209,26 +1219,32 @@ class PatchModelCheckPointCallback(object):
 
 # noinspection PyProtectedMember,PyUnresolvedReferences
 class PatchTensorFlowEager(object):
-    __main_task = None
+    _current_task = None
     __original_fn_scalar = None
     __original_fn_hist = None
     __original_fn_image = None
+    __original_fn_write_summary = None
     __trains_event_writer = {}
     __tf_tb_writer_id_to_logdir = {}
+    __patched = False
     defaults_dict = dict(
         report_freq=1, image_report_freq=1, histogram_update_freq_multiplier=5,
         histogram_granularity=50)
 
     @staticmethod
     def update_current_task(task, **kwargs):
-        if task != PatchTensorFlowEager.__main_task:
+        if task != PatchTensorFlowEager._current_task:
             PatchTensorFlowEager.__trains_event_writer = {}
 
         PatchTensorFlowEager.defaults_dict.update(kwargs)
-        PatchTensorFlowEager.__main_task = task
-        # make sure we patched the SummaryToEventTransformer
-        PatchTensorFlowEager._patch_summary_ops()
-        PostImportHookPatching.add_on_import('tensorflow', PatchTensorFlowEager._patch_summary_ops)
+        PatchTensorFlowEager._current_task = task
+        if not task:
+            return
+        if not PatchTensorFlowEager.__patched:
+            PatchTensorFlowEager.__patched = True
+            # make sure we patched the SummaryToEventTransformer
+            PatchTensorFlowEager._patch_summary_ops()
+            PostImportHookPatching.add_on_import('tensorflow', PatchTensorFlowEager._patch_summary_ops)
 
     @staticmethod
     def _patch_summary_ops():
@@ -1245,7 +1261,7 @@ class PatchTensorFlowEager(object):
                 gen_summary_ops.write_image_summary = PatchTensorFlowEager._write_image_summary
                 PatchTensorFlowEager.__original_fn_hist = gen_summary_ops.write_histogram_summary
                 gen_summary_ops.write_histogram_summary = PatchTensorFlowEager._write_hist_summary
-                PatchTensorFlowEager.__write_summary = gen_summary_ops.write_summary
+                PatchTensorFlowEager.__original_fn_write_summary = gen_summary_ops.write_summary
                 gen_summary_ops.write_summary = PatchTensorFlowEager._write_summary
                 gen_summary_ops.create_summary_file_writer = partial(IsTensorboardInit._patched_tb__init__,
                                                                      gen_summary_ops.create_summary_file_writer)
@@ -1270,6 +1286,8 @@ class PatchTensorFlowEager(object):
 
     @staticmethod
     def _create_summary_file_writer(original_fn, *args, **kwargs):
+        if not PatchTensorFlowEager._current_task:
+            return original_fn(*args, **kwargs)
         # noinspection PyBroadException
         try:
             a_logdir = None
@@ -1294,7 +1312,7 @@ class PatchTensorFlowEager(object):
 
     @staticmethod
     def _get_event_writer(writer):
-        if not PatchTensorFlowEager.__main_task:
+        if not PatchTensorFlowEager._current_task:
             return None
         if not PatchTensorFlowEager.__trains_event_writer.get(id(writer)):
             # noinspection PyBroadException
@@ -1324,7 +1342,7 @@ class PatchTensorFlowEager(object):
                     logdir = None
 
             PatchTensorFlowEager.__trains_event_writer[id(writer)] = EventTrainsWriter(
-                logger=PatchTensorFlowEager.__main_task.get_logger(), logdir=logdir,
+                logger=PatchTensorFlowEager._current_task.get_logger(), logdir=logdir,
                 **PatchTensorFlowEager.defaults_dict)
         return PatchTensorFlowEager.__trains_event_writer[id(writer)]
 
@@ -1337,6 +1355,10 @@ class PatchTensorFlowEager(object):
 
     @staticmethod
     def _write_summary(writer, step, tensor, tag, summary_metadata, name=None, **kwargs):
+        if not PatchTensorFlowEager._current_task:
+            return PatchTensorFlowEager.__original_fn_write_summary(
+                writer, step, tensor, tag, summary_metadata, name, **kwargs
+            )
         event_writer = PatchTensorFlowEager._get_event_writer(writer)
         # make sure we can get the tensors values
         if event_writer and isinstance(step, int) or hasattr(step, 'numpy'):
@@ -1370,13 +1392,17 @@ class PatchTensorFlowEager(object):
                                                 step=int(step.numpy()) if not isinstance(step, int) else step,
                                                 values=None, audio_data=audio_bytes)
                 else:
-                    pass  # print('unsupported plugin_type', plugin_type)
+                    pass
             except Exception:
                 pass
-        return PatchTensorFlowEager.__write_summary(writer, step, tensor, tag, summary_metadata, name, **kwargs)
+        return PatchTensorFlowEager.__original_fn_write_summary(
+            writer, step, tensor, tag, summary_metadata, name, **kwargs
+        )
 
     @staticmethod
     def _write_scalar_summary(writer, step, tag, value, name=None, **kwargs):
+        if not PatchTensorFlowEager._current_task:
+            return PatchTensorFlowEager.__original_fn_scalar(writer, step, tag, value, name, **kwargs)
         event_writer = PatchTensorFlowEager._get_event_writer(writer)
         if event_writer and isinstance(step, int) or hasattr(step, 'numpy'):
             try:
@@ -1417,6 +1443,8 @@ class PatchTensorFlowEager(object):
 
     @staticmethod
     def _write_hist_summary(writer, step, tag, values, name, **kwargs):
+        if not PatchTensorFlowEager._current_task:
+            return PatchTensorFlowEager.__original_fn_hist(writer, step, tag, values, name, **kwargs)
         event_writer = PatchTensorFlowEager._get_event_writer(writer)
         if event_writer and isinstance(step, int) or hasattr(step, 'numpy'):
             try:
@@ -1459,6 +1487,9 @@ class PatchTensorFlowEager(object):
 
     @staticmethod
     def _write_image_summary(writer, step, tag, tensor, bad_color, max_images, name, **kwargs):
+        if not PatchTensorFlowEager._current_task:
+            return PatchTensorFlowEager.__original_fn_image(
+                writer, step, tag, tensor, bad_color, max_images, name, **kwargs)
         event_writer = PatchTensorFlowEager._get_event_writer(writer)
         if event_writer and isinstance(step, int) or hasattr(step, 'numpy'):
             try:
@@ -1526,13 +1557,15 @@ class PatchTensorFlowEager(object):
 
 # noinspection PyPep8Naming,SpellCheckingInspection
 class PatchKerasModelIO(object):
-    __main_task = None
+    _current_task = None
     __patched_keras = None
     __patched_tensorflow = None
 
     @staticmethod
     def update_current_task(task, **_):
-        PatchKerasModelIO.__main_task = task
+        PatchKerasModelIO._current_task = task
+        if not task:
+            return
         PatchKerasModelIO._patch_model_checkpoint()
         PostImportHookPatching.add_on_import('tensorflow', PatchKerasModelIO._patch_model_checkpoint)
         PostImportHookPatching.add_on_import('keras', PatchKerasModelIO._patch_model_checkpoint)
@@ -1692,7 +1725,7 @@ class PatchKerasModelIO(object):
     def _updated_config(original_fn, self):
         config = original_fn(self)
         # check if we have main task
-        if PatchKerasModelIO.__main_task is None:
+        if PatchKerasModelIO._current_task is None:
             return config
 
         try:
@@ -1717,10 +1750,10 @@ class PatchKerasModelIO(object):
             else:
                 # todo: support multiple models for the same task
                 self.trains_out_model.append(OutputModel(
-                    task=PatchKerasModelIO.__main_task,
+                    task=PatchKerasModelIO._current_task,
                     config_dict=safe_config,
-                    name=PatchKerasModelIO.__main_task.name + ' ' + model_name_id,
-                    label_enumeration=PatchKerasModelIO.__main_task.get_labels_enumeration(),
+                    name=PatchKerasModelIO._current_task.name + ' ' + model_name_id,
+                    label_enumeration=PatchKerasModelIO._current_task.get_labels_enumeration(),
                     framework=Framework.keras,
                 ))
         except Exception as ex:
@@ -1738,7 +1771,7 @@ class PatchKerasModelIO(object):
             self = _Empty()
 
         # check if we have main task
-        if PatchKerasModelIO.__main_task is None:
+        if PatchKerasModelIO._current_task is None:
             return self
 
         try:
@@ -1751,10 +1784,10 @@ class PatchKerasModelIO(object):
             # check if object already has InputModel
             self.trains_in_model = InputModel.empty(
                 config_dict=config_dict,
-                label_enumeration=PatchKerasModelIO.__main_task.get_labels_enumeration(),
+                label_enumeration=PatchKerasModelIO._current_task.get_labels_enumeration(),
             )
             # todo: support multiple models for the same task
-            PatchKerasModelIO.__main_task.connect(self.trains_in_model)
+            PatchKerasModelIO._current_task.connect(self.trains_in_model)
             # if we are running remotely we should deserialize the object
             # because someone might have changed the configuration
             # Hack: disabled
@@ -1781,7 +1814,7 @@ class PatchKerasModelIO(object):
     @staticmethod
     def _load_weights(original_fn, self, *args, **kwargs):
         # check if we have main task
-        if PatchKerasModelIO.__main_task is None:
+        if PatchKerasModelIO._current_task is None:
             return original_fn(self, *args, **kwargs)
 
         # get filepath
@@ -1794,7 +1827,7 @@ class PatchKerasModelIO(object):
         if False and running_remotely():
             # register/load model weights
             filepath = WeightsFileHandler.restore_weights_file(self, filepath, Framework.keras,
-                                                               PatchKerasModelIO.__main_task)
+                                                               PatchKerasModelIO._current_task)
             if 'filepath' in kwargs:
                 kwargs['filepath'] = filepath
             else:
@@ -1805,11 +1838,13 @@ class PatchKerasModelIO(object):
         # try to load the files, if something happened exception will be raised before we register the file
         model = original_fn(self, *args, **kwargs)
         # register/load model weights
-        WeightsFileHandler.restore_weights_file(self, filepath, Framework.keras, PatchKerasModelIO.__main_task)
+        WeightsFileHandler.restore_weights_file(self, filepath, Framework.keras, PatchKerasModelIO._current_task)
         return model
 
     @staticmethod
     def _save(original_fn, self, *args, **kwargs):
+        if not PatchKerasModelIO._current_task:
+            return original_fn(self, *args, **kwargs)
         if hasattr(self, 'trains_out_model') and self.trains_out_model:
             # noinspection PyProtectedMember
             self.trains_out_model[-1]._processed = False
@@ -1823,12 +1858,13 @@ class PatchKerasModelIO(object):
     @staticmethod
     def _save_weights(original_fn, self, *args, **kwargs):
         original_fn(self, *args, **kwargs)
-        PatchKerasModelIO._update_outputmodel(self, *args, **kwargs)
+        if PatchKerasModelIO._current_task:
+            PatchKerasModelIO._update_outputmodel(self, *args, **kwargs)
 
     @staticmethod
     def _update_outputmodel(self, *args, **kwargs):
         # check if we have main task
-        if PatchKerasModelIO.__main_task is None:
+        if not PatchKerasModelIO._current_task:
             return
 
         try:
@@ -1851,7 +1887,7 @@ class PatchKerasModelIO(object):
 
             if filepath:
                 WeightsFileHandler.create_output_model(
-                    self, filepath, Framework.keras, PatchKerasModelIO.__main_task,
+                    self, filepath, Framework.keras, PatchKerasModelIO._current_task,
                     config_obj=config or None, singlefile=True)
 
         except Exception as ex:
@@ -1860,12 +1896,12 @@ class PatchKerasModelIO(object):
     @staticmethod
     def _save_model(original_fn, model, filepath, *args, **kwargs):
         original_fn(model, filepath, *args, **kwargs)
-        if PatchKerasModelIO.__main_task:
+        if PatchKerasModelIO._current_task:
             PatchKerasModelIO._update_outputmodel(model, filepath)
 
     @staticmethod
     def _load_model(original_fn, filepath, *args, **kwargs):
-        if not PatchKerasModelIO.__main_task:
+        if not PatchKerasModelIO._current_task:
             return original_fn(filepath, *args, **kwargs)
 
         empty = _Empty()
@@ -1873,12 +1909,12 @@ class PatchKerasModelIO(object):
         if False and running_remotely():
             # register/load model weights
             filepath = WeightsFileHandler.restore_weights_file(empty, filepath, Framework.keras,
-                                                               PatchKerasModelIO.__main_task)
+                                                               PatchKerasModelIO._current_task)
             model = original_fn(filepath, *args, **kwargs)
         else:
             model = original_fn(filepath, *args, **kwargs)
             # register/load model weights
-            WeightsFileHandler.restore_weights_file(empty, filepath, Framework.keras, PatchKerasModelIO.__main_task)
+            WeightsFileHandler.restore_weights_file(empty, filepath, Framework.keras, PatchKerasModelIO._current_task)
         # update the input model object
         if empty.trains_in_model:
             # noinspection PyBroadException
@@ -1891,12 +1927,14 @@ class PatchKerasModelIO(object):
 
 
 class PatchTensorflowModelIO(object):
-    __main_task = None
+    _current_task = None
     __patched = None
 
     @staticmethod
     def update_current_task(task, **_):
-        PatchTensorflowModelIO.__main_task = task
+        PatchTensorflowModelIO._current_task = task
+        if not task:
+            return
         PatchTensorflowModelIO._patch_model_checkpoint()
         PostImportHookPatching.add_on_import('tensorflow', PatchTensorflowModelIO._patch_model_checkpoint)
 
@@ -2028,29 +2066,31 @@ class PatchTensorflowModelIO(object):
     @staticmethod
     def _save(original_fn, self, sess, save_path, *args, **kwargs):
         saved_path = original_fn(self, sess, save_path, *args, **kwargs)
-        if not saved_path:
+        if not saved_path or not PatchTensorflowModelIO._current_task:
             return saved_path
         # store output Model
         return WeightsFileHandler.create_output_model(self, saved_path, Framework.tensorflow,
-                                                      PatchTensorflowModelIO.__main_task)
+                                                      PatchTensorflowModelIO._current_task)
 
     @staticmethod
     def _save_model(original_fn, obj, export_dir, *args, **kwargs):
         original_fn(obj, export_dir, *args, **kwargs)
+        if not PatchKerasModelIO._current_task:
+            return
         # store output Model
         WeightsFileHandler.create_output_model(obj, export_dir, Framework.tensorflow,
-                                               PatchTensorflowModelIO.__main_task)
+                                               PatchTensorflowModelIO._current_task)
 
     @staticmethod
     def _restore(original_fn, self, sess, save_path, *args, **kwargs):
-        if PatchTensorflowModelIO.__main_task is None:
+        if PatchTensorflowModelIO._current_task is None:
             return original_fn(self, sess, save_path, *args, **kwargs)
 
         # Hack: disabled
         if False and running_remotely():
             # register/load model weights
             save_path = WeightsFileHandler.restore_weights_file(self, save_path, Framework.tensorflow,
-                                                                PatchTensorflowModelIO.__main_task)
+                                                                PatchTensorflowModelIO._current_task)
             # load model
             return original_fn(self, sess, save_path, *args, **kwargs)
 
@@ -2058,12 +2098,12 @@ class PatchTensorflowModelIO(object):
         model = original_fn(self, sess, save_path, *args, **kwargs)
         # register/load model weights
         WeightsFileHandler.restore_weights_file(self, save_path, Framework.tensorflow,
-                                                PatchTensorflowModelIO.__main_task)
+                                                PatchTensorflowModelIO._current_task)
         return model
 
     @staticmethod
     def _load_lt_2_0(original_fn, sess, tags=None, export_dir=None, *args, **saver_kwargs):
-        if PatchTensorflowModelIO.__main_task is None:
+        if PatchTensorflowModelIO._current_task is None:
             return original_fn(sess, tags, export_dir, *args, **saver_kwargs)
 
         # register input model
@@ -2072,7 +2112,7 @@ class PatchTensorflowModelIO(object):
         if False and running_remotely():
             export_dir = WeightsFileHandler.restore_weights_file(
                 empty, export_dir, Framework.tensorflow,
-                PatchTensorflowModelIO.__main_task
+                PatchTensorflowModelIO._current_task
             )
             model = original_fn(sess, tags, export_dir, *args, **saver_kwargs)
         else:
@@ -2080,7 +2120,7 @@ class PatchTensorflowModelIO(object):
             model = original_fn(sess, tags, export_dir, *args, **saver_kwargs)
             WeightsFileHandler.restore_weights_file(
                 empty, export_dir, Framework.tensorflow,
-                PatchTensorflowModelIO.__main_task
+                PatchTensorflowModelIO._current_task
             )
 
         if empty.trains_in_model:
@@ -2093,7 +2133,7 @@ class PatchTensorflowModelIO(object):
 
     @staticmethod
     def _load(original_fn, export_dir, *args, **saver_kwargs):
-        if PatchTensorflowModelIO.__main_task is None:
+        if PatchTensorflowModelIO._current_task is None:
             return original_fn(export_dir, *args, **saver_kwargs)
 
         # register input model
@@ -2102,7 +2142,7 @@ class PatchTensorflowModelIO(object):
         if False and running_remotely():
             export_dir = WeightsFileHandler.restore_weights_file(
                 empty, export_dir, Framework.tensorflow,
-                PatchTensorflowModelIO.__main_task
+                PatchTensorflowModelIO._current_task
             )
             model = original_fn(export_dir, *args, **saver_kwargs)
         else:
@@ -2110,7 +2150,7 @@ class PatchTensorflowModelIO(object):
             model = original_fn(export_dir, *args, **saver_kwargs)
             WeightsFileHandler.restore_weights_file(
                 empty, export_dir, Framework.tensorflow,
-                PatchTensorflowModelIO.__main_task
+                PatchTensorflowModelIO._current_task
             )
 
         if empty.trains_in_model:
@@ -2124,24 +2164,24 @@ class PatchTensorflowModelIO(object):
     @staticmethod
     def _ckpt_save(original_fn, self, file_prefix, *args, **kwargs):
         checkpoint_path = original_fn(self, file_prefix, *args, **kwargs)
-        if PatchTensorflowModelIO.__main_task is None:
+        if PatchTensorflowModelIO._current_task is None:
             return checkpoint_path
         WeightsFileHandler.create_output_model(self, checkpoint_path, Framework.tensorflow,
-                                               PatchTensorflowModelIO.__main_task)
+                                               PatchTensorflowModelIO._current_task)
         return checkpoint_path
 
     @staticmethod
     def _ckpt_write(original_fn, self, file_prefix, *args, **kwargs):
         checkpoint_path = original_fn(self, file_prefix, *args, **kwargs)
-        if PatchTensorflowModelIO.__main_task is None:
+        if PatchTensorflowModelIO._current_task is None:
             return checkpoint_path
         WeightsFileHandler.create_output_model(self, checkpoint_path, Framework.tensorflow,
-                                               PatchTensorflowModelIO.__main_task)
+                                               PatchTensorflowModelIO._current_task)
         return checkpoint_path
 
     @staticmethod
     def _ckpt_restore(original_fn, self, save_path, *args, **kwargs):
-        if PatchTensorflowModelIO.__main_task is None:
+        if PatchTensorflowModelIO._current_task is None:
             return original_fn(self, save_path, *args, **kwargs)
 
         # register input model
@@ -2149,13 +2189,13 @@ class PatchTensorflowModelIO(object):
         # Hack: disabled
         if False and running_remotely():
             save_path = WeightsFileHandler.restore_weights_file(empty, save_path, Framework.tensorflow,
-                                                                PatchTensorflowModelIO.__main_task)
+                                                                PatchTensorflowModelIO._current_task)
             model = original_fn(self, save_path, *args, **kwargs)
         else:
             # try to load model before registering it, in case it fails.
             model = original_fn(self, save_path, *args, **kwargs)
             WeightsFileHandler.restore_weights_file(empty, save_path, Framework.tensorflow,
-                                                    PatchTensorflowModelIO.__main_task)
+                                                    PatchTensorflowModelIO._current_task)
 
         if empty.trains_in_model:
             # noinspection PyBroadException
@@ -2167,12 +2207,14 @@ class PatchTensorflowModelIO(object):
 
 
 class PatchTensorflow2ModelIO(object):
-    __main_task = None
+    _current_task = None
     __patched = None
 
     @staticmethod
     def update_current_task(task, **_):
-        PatchTensorflow2ModelIO.__main_task = task
+        PatchTensorflow2ModelIO._current_task = task
+        if not task:
+            return
         PatchTensorflow2ModelIO._patch_model_checkpoint()
         PostImportHookPatching.add_on_import('tensorflow', PatchTensorflow2ModelIO._patch_model_checkpoint)
 
@@ -2210,18 +2252,20 @@ class PatchTensorflow2ModelIO(object):
     @staticmethod
     def _save(original_fn, self, file_prefix, *args, **kwargs):
         model = original_fn(self, file_prefix, *args, **kwargs)
+        if not PatchTensorflow2ModelIO._current_task:
+            return model
         # store output Model
         # noinspection PyBroadException
         try:
             WeightsFileHandler.create_output_model(self, file_prefix, Framework.tensorflow,
-                                                   PatchTensorflow2ModelIO.__main_task)
+                                                   PatchTensorflow2ModelIO._current_task)
         except Exception:
             pass
         return model
 
     @staticmethod
     def _restore(original_fn, self, save_path, *args, **kwargs):
-        if PatchTensorflow2ModelIO.__main_task is None:
+        if not PatchTensorflow2ModelIO._current_task:
             return original_fn(self, save_path, *args, **kwargs)
 
         # Hack: disabled
@@ -2230,7 +2274,7 @@ class PatchTensorflow2ModelIO(object):
             # noinspection PyBroadException
             try:
                 save_path = WeightsFileHandler.restore_weights_file(self, save_path, Framework.tensorflow,
-                                                                    PatchTensorflow2ModelIO.__main_task)
+                                                                    PatchTensorflow2ModelIO._current_task)
             except Exception:
                 pass
             # load model
@@ -2242,7 +2286,7 @@ class PatchTensorflow2ModelIO(object):
         # noinspection PyBroadException
         try:
             WeightsFileHandler.restore_weights_file(self, save_path, Framework.tensorflow,
-                                                    PatchTensorflow2ModelIO.__main_task)
+                                                    PatchTensorflow2ModelIO._current_task)
         except Exception:
             pass
         return model

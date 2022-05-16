@@ -11,13 +11,15 @@ from ...model import Framework
 
 
 class PatchXGBoostModelIO(PatchBaseModelIO):
-    __main_task = None
+    _current_task = None
     __patched = None
     __callback_cls = None
 
     @staticmethod
     def update_current_task(task, **kwargs):
-        PatchXGBoostModelIO.__main_task = task
+        PatchXGBoostModelIO._current_task = task
+        if not task:
+            return
         PatchXGBoostModelIO._patch_model_io()
         PostImportHookPatching.add_on_import('xgboost', PatchXGBoostModelIO._patch_model_io)
 
@@ -55,7 +57,7 @@ class PatchXGBoostModelIO(PatchBaseModelIO):
     @staticmethod
     def _save(original_fn, obj, f, *args, **kwargs):
         ret = original_fn(obj, f, *args, **kwargs)
-        if not PatchXGBoostModelIO.__main_task:
+        if not PatchXGBoostModelIO._current_task:
             return ret
 
         if isinstance(f, six.string_types):
@@ -76,12 +78,15 @@ class PatchXGBoostModelIO(PatchBaseModelIO):
             model_name = Path(filename).stem
         except Exception:
             model_name = None
-        WeightsFileHandler.create_output_model(obj, filename, Framework.xgboost, PatchXGBoostModelIO.__main_task,
+        WeightsFileHandler.create_output_model(obj, filename, Framework.xgboost, PatchXGBoostModelIO._current_task,
                                                singlefile=True, model_name=model_name)
         return ret
 
     @staticmethod
     def _load(original_fn, f, *args, **kwargs):
+        if not PatchXGBoostModelIO._current_task:
+            return original_fn(f, *args, **kwargs)
+
         if isinstance(f, six.string_types):
             filename = f
         elif hasattr(f, 'name'):
@@ -91,21 +96,18 @@ class PatchXGBoostModelIO(PatchBaseModelIO):
         else:
             filename = None
 
-        if not PatchXGBoostModelIO.__main_task:
-            return original_fn(f, *args, **kwargs)
-
         # register input model
         empty = _Empty()
         # Hack: disabled
         if False and running_remotely():
             filename = WeightsFileHandler.restore_weights_file(empty, filename, Framework.xgboost,
-                                                               PatchXGBoostModelIO.__main_task)
+                                                               PatchXGBoostModelIO._current_task)
             model = original_fn(filename or f, *args, **kwargs)
         else:
             # try to load model before registering, in case we fail
             model = original_fn(f, *args, **kwargs)
             WeightsFileHandler.restore_weights_file(empty, filename, Framework.xgboost,
-                                                    PatchXGBoostModelIO.__main_task)
+                                                    PatchXGBoostModelIO._current_task)
 
         if empty.trains_in_model:
             # noinspection PyBroadException
@@ -117,10 +119,12 @@ class PatchXGBoostModelIO(PatchBaseModelIO):
 
     @staticmethod
     def _train(original_fn, *args, **kwargs):
+        if not PatchXGBoostModelIO._current_task:
+            return original_fn(*args, **kwargs)
         if PatchXGBoostModelIO.__callback_cls:
             callbacks = kwargs.get('callbacks') or []
             kwargs['callbacks'] = callbacks + [
-                PatchXGBoostModelIO.__callback_cls(task=PatchXGBoostModelIO.__main_task)
+                PatchXGBoostModelIO.__callback_cls(task=PatchXGBoostModelIO._current_task)
             ]
         return original_fn(*args, **kwargs)
 

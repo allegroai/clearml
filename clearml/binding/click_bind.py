@@ -16,7 +16,7 @@ class PatchClick:
     _num_commands = 0
     _command_type = 'click.Command'
     _section_name = 'Args'
-    _main_task = None
+    _current_task = None
     __remote_task_params = None
     __remote_task_params_dict = {}
     __patched = False
@@ -26,8 +26,8 @@ class PatchClick:
         if Command is None:
             return
 
+        cls._current_task = task
         if task:
-            cls._main_task = task
             PatchClick._update_task_args()
 
         if not cls.__patched:
@@ -53,11 +53,11 @@ class PatchClick:
 
     @classmethod
     def _update_task_args(cls):
-        if running_remotely() or not cls._main_task or not cls._args:
+        if running_remotely() or not cls._current_task or not cls._args:
             return
         param_val, param_types, param_desc = cls.args()
         # noinspection PyProtectedMember
-        cls._main_task._set_parameters(
+        cls._current_task._set_parameters(
             param_val,
             __update=True,
             __parameters_descriptions=param_desc,

@@ -20,7 +20,7 @@ class PatchFire:
     _section_name = "Args"
     _args_sep = "/"
     _commands_sep = "."
-    _main_task = None
+    _current_task = None
     __remote_task_params = None
     __remote_task_params_dict = {}
     __patched = False
@@ -38,8 +38,8 @@ class PatchFire:
         if fire is None:
             return
 
+        cls._current_task = task
         if task:
-            cls._main_task = task
             cls._update_task_args()
 
         if not cls.__patched:
@@ -53,7 +53,7 @@ class PatchFire:
 
     @classmethod
     def _update_task_args(cls):
-        if running_remotely() or not cls._main_task:
+        if running_remotely() or not cls._current_task:
             return
         args = {}
         parameters_types = {}
@@ -118,7 +118,7 @@ class PatchFire:
             parameters_types = {**parameters_types, **unused_paramenters_types}
 
         # noinspection PyProtectedMember
-        cls._main_task._set_parameters(
+        cls._current_task._set_parameters(
             args,
             __update=True,
             __parameters_types=parameters_types,
@@ -126,25 +126,25 @@ class PatchFire:
 
     @staticmethod
     def __Fire(original_fn, component, args_, parsed_flag_args, context, name, *args, **kwargs):  # noqa
-        if running_remotely():
-            command = PatchFire._load_task_params()
-            if command is not None:
-                replaced_args = command.split(PatchFire._commands_sep)
-            else:
-                replaced_args = []
-            for param in PatchFire.__remote_task_params[PatchFire._section_name].values():
-                if command is not None and param.type == PatchFire._command_arg_type_template % command:
-                    replaced_args.append("--" + param.name[len(command + PatchFire._args_sep):])
-                    value = PatchFire.__remote_task_params_dict[param.name]
-                    if len(value) > 0:
-                        replaced_args.append(value)
-                if param.type == PatchFire._shared_arg_type:
-                    replaced_args.append("--" + param.name)
-                    value = PatchFire.__remote_task_params_dict[param.name]
-                    if len(value) > 0:
-                        replaced_args.append(value)
-            return original_fn(component, replaced_args, parsed_flag_args, context, name, *args, **kwargs)
-        return original_fn(component, args_, parsed_flag_args, context, name, *args, **kwargs)
+        if not running_remotely():
+            return original_fn(component, args_, parsed_flag_args, context, name, *args, **kwargs)
+        command = PatchFire._load_task_params()
+        if command is not None:
+            replaced_args = command.split(PatchFire._commands_sep)
+        else:
+            replaced_args = []
+        for param in PatchFire.__remote_task_params[PatchFire._section_name].values():
+            if command is not None and param.type == PatchFire._command_arg_type_template % command:
+                replaced_args.append("--" + param.name[len(command + PatchFire._args_sep):])
+                value = PatchFire.__remote_task_params_dict[param.name]
+                if len(value) > 0:
+                    replaced_args.append(value)
+            if param.type == PatchFire._shared_arg_type:
+                replaced_args.append("--" + param.name)
+                value = PatchFire.__remote_task_params_dict[param.name]
+                if len(value) > 0:
+                    replaced_args.append(value)
+        return original_fn(component, replaced_args, parsed_flag_args, context, name, *args, **kwargs)
 
     @staticmethod
     def __CallAndUpdateTrace(  # noqa

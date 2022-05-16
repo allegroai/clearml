@@ -77,6 +77,8 @@ class PatchedJoblib(object):
     @staticmethod
     def update_current_task(task):
         PatchedJoblib._current_task = task
+        if not task:
+            return
         PatchedJoblib.patch_joblib()
 
     @staticmethod

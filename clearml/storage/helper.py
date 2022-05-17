@@ -1548,6 +1548,7 @@ class _Boto3Driver(_Driver):
             bucket = boto_resource.Bucket(bucket_name)
             bucket.put_object(Key=filename, Body=six.b(json.dumps(data)))
 
+
             region = cls._get_bucket_region(conf=conf, log=log, report_info=True)
             if region and ((conf.region and region != conf.region) or (not conf.region and region != 'us-east-1')):
                 msg = "incorrect region specified for bucket %s (detected region %s)" % (conf.bucket, region)

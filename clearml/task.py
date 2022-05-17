@@ -3460,6 +3460,7 @@ class Task(_Task):
                 elif task_status[0] == 'failed':
                     self.mark_failed(status_reason=task_status[1])
                 elif task_status[0] == 'completed':
+                    self.set_progress(100)
                     self.mark_completed()
                 elif task_status[0] == 'stopped':
                     self.stopped()
@@ -3496,9 +3497,6 @@ class Task(_Task):
             except Exception:
                 pass
             self._edit_lock = None
-
-        if task_status and task_status[0] == "completed":
-            self.set_progress(100)
 
         # make sure no one will re-enter the shutdown method
         self._at_exit_called = True

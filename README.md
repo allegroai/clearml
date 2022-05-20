@@ -1,4 +1,4 @@
-<p align="center" style="text-align: center">
+<p style="text-align: center">
   <img align="center" src="docs/clearml-logo.svg#gh-light-mode-only" alt="Clear|ML"><img align="center" src="docs/clearml-logo-dark.svg#gh-dark-mode-only" alt="Clear|ML">
 </p>
 

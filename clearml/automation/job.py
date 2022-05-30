@@ -605,7 +605,7 @@ class LocalClearmlJob(ClearmlJob):
         else:
             local_filename = self.task.data.script.entry_point
 
-        cwd = os.path.join(os.getcwd(), self.task.data.script.working_dir)
+        cwd = os.path.join(os.getcwd(), self.task.data.script.working_dir or '')
         # try to check based on current root repo + entrypoint
         if Task.current_task() and not (Path(cwd)/local_filename).is_file():
             working_dir = Task.current_task().data.script.working_dir or ''

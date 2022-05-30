@@ -631,8 +631,8 @@ class Task(_Task):
                 def should_connect(*keys):
                     """
                     Evaluates value of auto_connect_frameworks[keys[0]]...[keys[-1]].
-                    If at some point in the evaluation, the value of auto_connect_frameworks[keys[0]]...[keys[-1]] is a bool,
-                    that value will be returned. If a dictionary is empty, it will be evaluated to False.
+                    If at some point in the evaluation, the value of auto_connect_frameworks[keys[0]]...[keys[-1]]
+                    is a bool, that value will be returned. If a dictionary is empty, it will be evaluated to False.
                     If a key will not be found in the current dictionary, True will be returned.
                     """
                     should_bind_framework = auto_connect_frameworks
@@ -948,8 +948,8 @@ class Task(_Task):
             `parent`: (str) filter by parent task-id matching
             `search_text`: (str) free text search (in task fields comment/name/id)
             `status`: List[str] List of valid statuses
-                (options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed", "failed",
-                "completed", "unknown")
+                (options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed",
+                "failed", "completed", "unknown")
             `type`: List[str] List of valid task type
                 (options are: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor',
                 'controller', 'optimizer', 'service', 'qc'. 'custom')
@@ -1008,8 +1008,8 @@ class Task(_Task):
             `parent`: (str) filter by parent task-id matching
             `search_text`: (str) free text search (in task fields comment/name/id)
             `status`: List[str] List of valid statuses
-                (options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed", "failed",
-                "completed", "unknown")
+                (options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed",
+                "failed", "completed", "unknown")
             `type`: List[str] List of valid task type
                 (options are: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor',
                 'controller', 'optimizer', 'service', 'qc'. 'custom')
@@ -3371,8 +3371,8 @@ class Task(_Task):
 
         is_sub_process = self.__is_subprocess()
 
-        # noinspection PyBroadException
         task_status = None
+        # noinspection PyBroadException
         try:
             wait_for_uploads = True
             # first thing mark task as stopped, so we will not end up with "running" on lost tasks
@@ -3681,6 +3681,7 @@ class Task(_Task):
 
     def _remove_at_exit_callbacks(self):
         self.__register_at_exit(None, only_remove_signal_and_exception_hooks=True)
+        # noinspection PyProtectedMember
         atexit.unregister(self.__exit_hook._exit_callback)
         self._at_exit_called = True
 

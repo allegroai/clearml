@@ -641,7 +641,7 @@ class PipelineController(object):
                 packages, project_name, task_name,
                 task_type, repo, repo_branch, repo_commit, helper_functions)
 
-        elif self._task.running_locally():
+        elif self._task.running_locally() or self._task.get_configuration_object(name=name) is None:
             project_name = project_name or self._get_target_project() or self._task.get_project_name()
 
             task_definition = self._create_task_from_function(
@@ -1218,7 +1218,9 @@ class PipelineController(object):
 
         # serialize pipeline state
         if self._task and self._auto_connect_task:
-            if self._task.running_locally():
+            # check if we are either running locally or that we are running remotely,
+            # but we have no configuration, so we need to act as if this is a local run and create everything
+            if self._task.running_locally() or self._task.get_configuration_object(name=self._config_section) is None:
                 # noinspection PyProtectedMember
                 self._task._set_configuration(
                     name=self._config_section, config_type='dictionary',

@@ -2101,7 +2101,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 if kwargs and all(k in ('name', 'comment', 'tags', 'system_tags', 'runtime') for k in kwargs.keys()):
                     pass
                 else:
-                    raise ValueError('Task object can only be updated if created or in_progress')
+                    raise ValueError('Task object can only be updated if created or in_progress '
+                                     '[status={} fields={}]'.format(status, list(kwargs.keys())))
 
             res = self.send(tasks.EditRequest(task=self.id, force=True, **kwargs), raise_on_errors=False)
             return res

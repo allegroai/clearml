@@ -2283,17 +2283,17 @@ class _FileStorageDriver(_Driver):
 
         :return: An Object instance.
         """
+        container = self._make_container(container_name)
         if os.path.isfile(os.path.join(container_name, object_name)):
             return self.Object(
                 name=object_name,
-                container=container_name,
+                container=container,
                 size=Path(object_name).stat().st_size,
                 driver=self,
                 extra=None,
                 hash=None,
                 meta_data=None,
             )
-        container = self._make_container(container_name)
         return self._make_object(container, object_name)
 
     def get_object_cdn_url(self, obj):
@@ -2392,7 +2392,6 @@ class _FileStorageDriver(_Driver):
         :param extra: (optional) Extra attributes (driver specific).
         :type extra: ``dict``
         """
-        print(file_path, container, object_name)
         path = self.get_container_cdn_url(container, check=False)
         obj_path = os.path.join(path, object_name)
         base_path = os.path.dirname(obj_path)

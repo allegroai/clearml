@@ -13,7 +13,7 @@ try:
         get_image_files,
         ImageDataLoaders,
         Resize,
-        cnn_learner,
+        vision_learner,
         resnet34,
         error_rate,
     )
@@ -34,7 +34,7 @@ def main(epochs):
 
     dls = ImageDataLoaders.from_name_func(path, files, label_func, item_tfms=Resize(224), num_workers=0)
     dls.show_batch()
-    learn = cnn_learner(dls, resnet34, metrics=error_rate)
+    learn = vision_learner(dls, resnet34, metrics=error_rate)
     learn.fine_tune(epochs, cbs=[TensorBoardCallback()])
     learn.show_results()
 

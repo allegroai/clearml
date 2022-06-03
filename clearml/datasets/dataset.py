@@ -1692,7 +1692,12 @@ class Dataset(object):
         if lock_target_folder:
             cache.lock_cache_folder(local_folder)
         local_folder.mkdir(parents=True, exist_ok=True)
-        return local_folder
+        return local_folder, cache
+
+    def _release_lock_ds_target_folder(self, target_folder):
+        # type: () -> None
+        cache = CacheManager.get_cache_manager(cache_context=self.__cache_context)
+        cache.unlock_cache_folder(target_folder)
 
     def _get_data_artifact_names(self):
         # type: () -> List[str]
@@ -1746,7 +1751,7 @@ class Dataset(object):
             num_parts = self.get_num_chunks()
 
         # just create the dataset target folder
-        target_base_folder = self._create_ds_target_folder(
+        target_base_folder, cache = self._create_ds_target_folder(
             part=part, num_parts=num_parts, lock_target_folder=True)
 
         # selected specific chunks if `part` was passed
@@ -1756,6 +1761,7 @@ class Dataset(object):
         if target_base_folder and next(target_base_folder.iterdir(), None):
             if self._verify_dataset_folder(target_base_folder, part, chunk_selection):
                 target_base_folder.touch()
+                self._release_lock_ds_target_folder(target_base_folder)
                 return target_base_folder.as_posix()
             else:
                 LoggerRoot.get_base_logger().info('Dataset needs refreshing, fetching all parent datasets')
@@ -1784,6 +1790,7 @@ class Dataset(object):
 
         # if we have no dependencies, we can just return now
         if not dependencies_by_order:
+            self._release_lock_ds_target_folder(target_base_folder)
             return target_base_folder.absolute().as_posix()
 
         # extract parent datasets
@@ -1801,6 +1808,7 @@ class Dataset(object):
                 chunk_selection=chunk_selection, use_soft_links=use_soft_links,
                 raise_on_error=raise_on_error, force=True)
 
+        self._release_lock_ds_target_folder(target_base_folder)
         return target_base_folder.absolute().as_posix()
 
     def _get_dependencies_by_order(self, include_unused=False, include_current=True):

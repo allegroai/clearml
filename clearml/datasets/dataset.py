@@ -1692,7 +1692,7 @@ class Dataset(object):
         if lock_target_folder:
             cache.lock_cache_folder(local_folder)
         local_folder.mkdir(parents=True, exist_ok=True)
-        return local_folder, cache
+        return local_folder
 
     def _release_lock_ds_target_folder(self, target_folder):
         # type: () -> None
@@ -1751,7 +1751,7 @@ class Dataset(object):
             num_parts = self.get_num_chunks()
 
         # just create the dataset target folder
-        target_base_folder, cache = self._create_ds_target_folder(
+        target_base_folder = self._create_ds_target_folder(
             part=part, num_parts=num_parts, lock_target_folder=True)
 
         # selected specific chunks if `part` was passed

@@ -1843,12 +1843,22 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         :return: A list of all the projects in the system. Each entry is a `services.projects.Project` object.
         """
-        res = cls._send(
-            cls._get_default_session(),
-            projects.GetAllRequest(order_by=['last_update']), raise_on_errors=True)
-        if res and res.response and res.response.projects:
-            return [projects.Project(**p.to_dict()) for p in res.response.projects]
-        return []
+        ret_projects = []
+        page = -1
+        page_size = 500
+        res = None
+        while page == -1 or (
+            res and res.response and res.response.projects and len(res.response.projects) == page_size
+        ):
+            page += 1
+            res = cls._send(
+                cls._get_default_session(),
+                projects.GetAllRequest(order_by=["last_update"], page=page, page_size=page_size),
+                raise_on_errors=True,
+            )
+            if res and res.response and res.response.projects:
+                ret_projects.extend([projects.Project(**p.to_dict()) for p in res.response.projects])
+        return ret_projects
 
     @classmethod
     def get_project_id(cls, project_name):

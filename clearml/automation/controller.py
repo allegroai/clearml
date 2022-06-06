@@ -2955,9 +2955,15 @@ class PipelineDecorator(PipelineController):
                     kwargs[inspect_func.args[i]] = v
 
                 kwargs_artifacts.update(
-                    {k: walk_nested_dict_tuple_list(
-                        v, lambda x: x._remoteref() if isinstance(x, LazyEvalWrapper) else x)
-                     for k, v in kwargs.items() if isinstance(v, LazyEvalWrapper)}
+                    {
+                        k: walk_nested_dict_tuple_list(
+                            v,
+                            lambda x: x._remoteref() if isinstance(x, LazyEvalWrapper) else x,
+                            stop_condition=lambda x: isinstance(x, LazyEvalWrapper) and x._remoteref(),
+                        )
+                        for k, v in kwargs.items()
+                        if isinstance(v, LazyEvalWrapper)
+                    }
                 )
                 kwargs = {k: deepcopy(v) for k, v in kwargs.items() if not isinstance(v, LazyEvalWrapper)}
 

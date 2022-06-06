@@ -221,9 +221,9 @@ def naive_nested_from_flat_dictionary(flat_dict, sep='/'):
     }
 
 
-def walk_nested_dict_tuple_list(dict_list_tuple, callback):
+def walk_nested_dict_tuple_list(dict_list_tuple, callback, stop_condition=None):
     nested = (dict, tuple, list)
-    if not isinstance(dict_list_tuple, nested):
+    if not isinstance(dict_list_tuple, nested) or (stop_condition and stop_condition(dict_list_tuple)):
         return callback(dict_list_tuple)
 
     if isinstance(dict_list_tuple, dict):

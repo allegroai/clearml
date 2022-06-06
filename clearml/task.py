@@ -1318,7 +1318,10 @@ class Task(_Task):
         :return: Task's progress as an int.
             In case the progress doesn't exist, None will be returned
         """
-        return self._get_runtime_properties().get("progress")
+        progress = self._get_runtime_properties().get("progress")
+        if progress is None or not progress.isnumeric():
+            return None
+        return int(progress)
 
     def add_tags(self, tags):
         # type: (Union[Sequence[str], str]) -> None
@@ -1843,7 +1846,7 @@ class Task(_Task):
 
         :param Any preview: The artifact preview
 
-        :param bool wait_on_upload: Whether or not the upload should be synchronous, forcing the upload to complete
+        :param bool wait_on_upload: Whether the upload should be synchronous, forcing the upload to complete
             before continuing.
 
         :param str extension_name: File extension which indicates the format the artifact should be stored as.

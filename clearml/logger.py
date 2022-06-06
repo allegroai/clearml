@@ -172,6 +172,17 @@ class Logger(object):
         # noinspection PyProtectedMember
         return self._task._reporter.report_scalar(title=title, series=series, value=float(value), iter=iteration)
 
+    def report_single_value(self, name, value):
+        # type: (str, float) -> None
+        """
+        Reports a single value metric (for example, total experiment accuracy or mAP)
+        You can view the metrics in the **ClearML Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab.
+
+        :param name: Metric's name
+        :param value: Metric's value
+        """
+        return self.report_scalar(title="Summary", series=name, value=value, iteration=-2**31)
+
     def report_vector(
             self,
             title,  # type: str

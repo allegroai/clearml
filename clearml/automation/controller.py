@@ -480,6 +480,9 @@ class PipelineController(object):
         into the hyper-parameter section as kwargs, and storing function results as named artifacts
 
         Example:
+
+        .. code-block:: py
+
             def mock_func(a=6, b=9):
                 c = a*b
                 print(a, b, c)
@@ -488,6 +491,9 @@ class PipelineController(object):
             create_task_from_function(mock_func, function_return=['mul', 'square'])
 
         Example arguments from other Tasks (artifact):
+
+        .. code-block:: py
+
             def mock_func(matrix_np):
                 c = matrix_np*matrix_np
                 print(matrix_np, c)
@@ -777,9 +783,9 @@ class PipelineController(object):
         Notice: when running pipeline steps locally, it assumes local code execution
         (i.e. it is running the local code as is, regardless of the git commit/diff on the pipeline steps Task)
 
-        :param run_pipeline_steps_locally: (default False) If True, run the
-        pipeline steps themselves locally as a subprocess (use for debugging the pipeline locally,
-        notice the pipeline code is expected to be available on the local machine)
+        :param run_pipeline_steps_locally: (default False) If True, run the pipeline steps themselves locally as a
+            subprocess (use for debugging the pipeline locally, notice the pipeline code is expected to be available
+            on the local machine)
         """
         if not self._task:
             raise ValueError(

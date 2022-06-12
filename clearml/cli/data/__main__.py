@@ -458,10 +458,11 @@ def ds_sync(args):
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
-    removed, added = ds.sync_folder(
-        local_path=args.folder, dataset_path=args.dataset_folder or None, verbose=args.verbose)
+    removed, added, modified = ds.sync_folder(
+        local_path=args.folder, dataset_path=args.dataset_folder or None, verbose=args.verbose
+    )
 
-    print('Sync completed: {} files removed, {} added / modified'.format(removed, added))
+    print("Sync completed: {} files removed, {} added, {} modified".format(removed, added, modified))
 
     if not args.skip_close:
         if dataset_created and not removed and not added:

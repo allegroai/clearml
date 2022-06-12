@@ -1,24 +1,24 @@
 """
 Create a ClearML Monitoring Service that posts alerts on Slack Channel groups based on some logic
 
-Creating a new Slack Bot (Allegro ClearML Bot):
+Creating a new Slack Bot (ClearML Bot):
 1. Login to your Slack account
 2. Go to https://api.slack.com/apps/new
-3. Give the new App a name (For example "Allegro Train Bot") and select your workspace
+3. Give the new App a name (For example "ClearML Bot") and select your workspace
 4. Press Create App
 5. In "Basic Information" under "Display Information" fill in the following fields
-    - In "Short description" insert "Allegro Train Bot"
+    - In "Short description" insert "ClearML Bot"
     - In "Background color" insert #202432
 6. Press Save Changes
 7. In "OAuth & Permissions" under "Scopes" click on "Add an OAuth Scope" and
-   select from the drop down list the following three permissions:
+   select from the dropdown list the following three permissions:
         channels:join
         channels:read
         chat:write
 8. Now under "OAuth Tokens & Redirect URLs" press on "Install App to Workspace",
    then hit "Allow" on the confirmation dialog
 9. Under "OAuth Tokens & Redirect URLs" copy the "Bot User OAuth Access Token" by clicking on "Copy" button
-10. To use the copied API Token in the Allegro ClearML Slack service,
+10. To use the copied API Token in the ClearML Slack service,
     execute the script with --slack_api "<api_token_here>"  (notice the use of double quotes around the token)
 
 We are done!
@@ -311,7 +311,7 @@ def main():
 
     # Let everyone know we are up and running
     start_message = \
-        '{}Allegro ClearML Slack monitoring service started\nMonitoring project \'{}\''.format(
+        '{}ClearML Slack monitoring service started\nMonitoring project \'{}\''.format(
             (args.message_prefix + ' ') if args.message_prefix else '',
             args.project or 'all')
     slack_monitor.post_message(start_message)

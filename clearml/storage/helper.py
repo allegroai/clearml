@@ -1207,7 +1207,7 @@ class _HttpDriver(_Driver):
             obj.url, timeout=(int(self.timeout_connection), int(self.timeout_total)),
             headers=container.get_headers(obj.url))
         if res.status_code != requests.codes.ok:
-            raise ValueError('Failed getting object %s (%d): %s' % (obj.object_name, res.status_code, res.text))
+            raise ValueError('Failed getting object %s (%d): %s' % (obj.object_name, res.status_code, res.reason))
         return res
 
     def download_object_as_stream(self, obj, chunk_size=64 * 1024, **_):

@@ -5,7 +5,6 @@ Upload artifacts from a Task, and then a different Task can access and utilize t
 from clearml import Task
 from time import sleep
 
-
 task1 = Task.init(project_name='examples', task_name='Create artifact')
 # upload data file to the initialized task, inputting a name and file location
 task1.upload_artifact(name='data file', artifact_object='data_samples/sample.json')
@@ -15,7 +14,8 @@ task1.close()
 # initialize another task to use some other task's artifacts
 task2 = Task.init(project_name='examples', task_name='Use artifact from other task')
 # get instance of Task that created artifact (task1), using Task's project and name. You could also use its ID number.
-preprocess_task = Task.get_task(project_name='examples', task_name='Create artifact')
+preprocess_task = Task.get_task(project_name='examples', task_name='Create artifact',
+                                task_filter={'status': ['completed']})
 # access artifact from task1, using the artifact's name
 # get_local_copy() caches the files for later use and returns a path to the cached file
 local_json = preprocess_task.artifacts['data file'].get_local_copy()

@@ -1836,7 +1836,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             config_text=config_text, config_dict=config_dict)
 
     @classmethod
-    def get_projects(cls):
+    def get_projects(cls, **kwargs):
         # type: () -> (List['projects.Project'])
         """
         Return a list of projects in the system, sorted by last updated time
@@ -1844,8 +1844,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :return: A list of all the projects in the system. Each entry is a `services.projects.Project` object.
         """
         ret_projects = []
-        page = -1
-        page_size = 500
+        page = kwargs.pop("page", -1)
+        page_size = kwargs.pop("page_size", 500)
+        order_by = kwargs.pop("order_by", ["last_update"])
         res = None
         while page == -1 or (
             res and res.response and res.response.projects and len(res.response.projects) == page_size
@@ -1853,7 +1854,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             page += 1
             res = cls._send(
                 cls._get_default_session(),
-                projects.GetAllRequest(order_by=["last_update"], page=page, page_size=page_size),
+                projects.GetAllRequest(order_by=order_by, page=page, page_size=page_size, **kwargs),
                 raise_on_errors=True,
             )
             if res and res.response and res.response.projects:
@@ -2097,10 +2098,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 for k, v in kwargs.items():
                     setattr(self.data, k, v)
                 Path(self.get_offline_mode_folder()).mkdir(parents=True, exist_ok=True)
-                with open((self.get_offline_mode_folder() / self._offline_filename).as_posix(), 'wt') as f:
+                with open((self.get_offline_mode_folder() / self._offline_filename).as_posix(), "wt") as f:
                     export_data = self.data.to_dict()
-                    export_data['project_name'] = self.get_project_name()
-                    export_data['offline_folder'] = self.get_offline_mode_folder().as_posix()
+                    export_data["project_name"] = self.get_project_name()
+                    export_data["offline_folder"] = self.get_offline_mode_folder().as_posix()
                     json.dump(export_data, f, ensure_ascii=True, sort_keys=True)
                 return None
 
@@ -2108,11 +2109,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             status = self._data.status if self._data and self._reload_skip_flag else self.data.status
             if status not in (tasks.TaskStatusEnum.created, tasks.TaskStatusEnum.in_progress):
                 # the exception being name/comment that we can always change.
-                if kwargs and all(k in ('name', 'comment', 'tags', 'system_tags', 'runtime') for k in kwargs.keys()):
+                if kwargs and all(
+                    k in ("name", "project", "comment", "tags", "system_tags", "runtime") for k in kwargs.keys()
+                ):
                     pass
                 else:
-                    raise ValueError('Task object can only be updated if created or in_progress '
-                                     '[status={} fields={}]'.format(status, list(kwargs.keys())))
+                    raise ValueError(
+                        "Task object can only be updated if created or in_progress "
+                        "[status={} fields={}]".format(status, list(kwargs.keys()))
+                    )
 
             res = self.send(tasks.EditRequest(task=self.id, force=True, **kwargs), raise_on_errors=False)
             return res

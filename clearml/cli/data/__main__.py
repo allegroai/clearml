@@ -104,6 +104,21 @@ def cli():
     add.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
     add.set_defaults(func=ds_add)
 
+    set_description = subparsers.add_parser("set-description", help="Set description to the dataset")
+    set_description.add_argument(
+        "--description",
+        type=str,
+        required=True,
+        help="Description of the dataset",
+    )
+    set_description.add_argument(
+        "--id",
+        type=str,
+        required=False,
+        help="Previously created dataset id. Default: previously created/accessed dataset",
+    )
+    set_description.set_defaults(func=ds_set_description)
+
     sync = subparsers.add_parser('sync', help='Sync a local folder with the dataset')
     sync.add_argument('--id', type=str, required=False,
                       help='Previously created dataset id. Default: previously created/accessed dataset')
@@ -120,6 +135,13 @@ def cli():
     sync.add_argument('--name', type=str, required=False, default=None,
                       help='[Optional] Dataset project name')
     sync.add_argument("--version", type=str, required=False, default=None, help="[Optional] Dataset version")
+    sync.add_argument(
+        "--output-uri",
+        type=str,
+        required=False,
+        default=None,
+        help="[Optional] Output URI for artifacts/debug samples. Useable when creating the dataset",
+    )
     sync.add_argument('--tags', type=str, nargs='*',
                       help='[Optional] Dataset user Tags')
     sync.add_argument('--storage', type=str, default=None,
@@ -178,12 +200,42 @@ def cli():
     publish.add_argument('--id', type=str, required=True, help='The dataset task id to be published.')
     publish.set_defaults(func=ds_publish)
 
-    delete = subparsers.add_parser('delete', help='Delete a dataset')
-    delete.add_argument('--id', type=str, required=False,
-                        help='Previously created dataset id. Default: previously created/accessed dataset')
-    delete.add_argument('--force', action='store_true', default=False,
-                        help='Force dataset deletion even if other dataset versions depend on it')
+    delete = subparsers.add_parser("delete", help="Delete a dataset")
+    delete.add_argument(
+        "--id",
+        type=str,
+        required=False,
+        help="Previously created dataset id. Default: previously created/accessed dataset",
+    )
+    delete.add_argument(
+        "--project", type=str, required=False, help="The project the dataset(s) to be deleted belong(s) to"
+    )
+    delete.add_argument("--name", type=str, required=False, help="The name of the dataset(s) to be deleted")
+    delete.add_argument("--version", type=str, required=False, help="The version of the dataset(s) to be deleted")
+    delete.add_argument(
+        "--force",
+        action="store_true",
+        default=False,
+        help="Force dataset deletion even if other dataset versions depend on it. Must also be used if entire-dataset flag is used",
+    )
+    delete.add_argument("--entire-dataset", action="store_true", default=False, help="Delete all found datasets")
     delete.set_defaults(func=ds_delete)
+
+    rename = subparsers.add_parser("rename", help="Rename a dataset")
+    rename.add_argument("--new-name", type=str, required=True, help="The new name of the dataset(s)")
+    rename.add_argument(
+        "--project", type=str, required=True, help="The project the dataset(s) to be renamed belong(s) to"
+    )
+    rename.add_argument("--name", type=str, required=True, help="The name of the dataset(s) to be renamed")
+    rename.set_defaults(func=ds_rename)
+
+    move = subparsers.add_parser("move", help="Move a dataset to another project")
+    move.add_argument("--new-project", type=str, required=True, help="The new project of the dataset(s)")
+    move.add_argument(
+        "--project", type=str, required=True, help="The project the dataset(s) to be moved belong(s) to"
+    )
+    move.add_argument("--name", type=str, required=True, help="The name of the dataset(s) to be moved")
+    move.set_defaults(func=ds_move)
 
     compare = subparsers.add_parser('compare', help='Compare two datasets (target vs source)')
     compare.add_argument('--source', type=str, required=True, help='Source dataset id (used as baseline)')
@@ -263,11 +315,54 @@ def cli():
 
 
 def ds_delete(args):
-    print('Deleting dataset id {}'.format(args.id))
-    check_null_id(args)
+    if args.id:
+        print("Deleting dataset id {}".format(args.id))
+    else:
+        print("Deleting dataset with project={}, name={}, version={}".format(args.project, args.name, args.version))
     print_args(args)
-    Dataset.delete(dataset_id=args.id)
-    print('Dataset {} deleted'.format(args.id))
+    Dataset.delete(
+        dataset_id=args.id,
+        dataset_project=args.project,
+        dataset_name=args.name,
+        dataset_version=args.version,
+        entire_dataset=args.entire_dataset,
+        force=args.force,
+    )
+    print("Dataset(s) deleted")
+    clear_state()
+    return 0
+
+
+def ds_rename(args):
+    print(
+        "Renaming dataset with project={}, name={} to {}".format(
+            args.project, args.name, args.new_name
+        )
+    )
+    print_args(args)
+    Dataset.rename(
+        args.new_name,
+        dataset_project=args.project,
+        dataset_name=args.name,
+    )
+    print("Dataset(s) renamed")
+    clear_state()
+    return 0
+
+
+def ds_move(args):
+    print(
+        "Moving dataset with project={}, name={} to {}".format(
+            args.project, args.name, args.new_project
+        )
+    )
+    print_args(args)
+    Dataset.move_to_project(
+        args.new_project,
+        dataset_project=args.project,
+        dataset_name=args.name,
+    )
+    print("Dataset(s) moved")
     clear_state()
     return 0
 
@@ -531,6 +626,15 @@ def ds_create(args):
     print("New dataset created id={}".format(ds.id))
     clear_state({"id": ds.id})
     return ds.id
+
+
+def ds_set_description(args):
+    check_null_id(args)
+    print("Setting description '{}' to dataset {}".format(args.description, args.id))
+    print_args(args)
+    ds = Dataset.get(dataset_id=args.id)
+    ds.set_description(args.description)
+    return 0
 
 
 def main():

@@ -2,7 +2,7 @@ import getpass
 import re
 from _socket import gethostname
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Any
 
 try:
     from datetime import timezone
@@ -61,6 +61,26 @@ def get_existing_project(session, project_name):
     if res.response and res.response.projects:
         return res.response.projects[0].id
     return ""
+
+
+def rename_project(session, project_name, new_project_name):
+    # type: (Any, str, str) -> bool
+    """
+    Rename a project
+
+    :param session: Session to send the request through
+    :param project_name: Name of the project you want to rename
+    :param new_project_name: New name for the project
+
+    :return: True if the rename succeded and False otherwise
+    """
+    project_id = get_existing_project(session, project_name)
+    if not project_id:
+        return False
+    res = session.send(projects.UpdateRequest(project=project_id, name=new_project_name))
+    if res and res.response and res.response.updated:
+        return True
+    return False
 
 
 def get_or_create_project(session, project_name, description=None, system_tags=None, project_id=None):

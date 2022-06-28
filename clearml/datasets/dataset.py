@@ -18,7 +18,7 @@ from .. import Task, StorageManager, Logger
 from ..backend_api.session.client import APIClient
 from ..backend_api import Session
 from ..backend_interface.task.development.worker import DevWorker
-from ..backend_interface.util import mutually_exclusive, exact_match_regex, get_or_create_project
+from ..backend_interface.util import mutually_exclusive, exact_match_regex, get_or_create_project, rename_project
 from ..config import deferred_config, running_remotely, get_remote_task_id
 from ..debugging.log import LoggerRoot
 from ..storage.helper import StorageHelper
@@ -106,6 +106,7 @@ class Dataset(object):
     __dataset_folder_template = CacheManager.set_context_folder_lookup(__cache_context, "{0}_archive_{1}")
     __preview_max_file_entries = 15000
     __preview_max_size = 5 * 1024 * 1024
+    __min_api_version = "2.20"
     __hyperparams_section = "Datasets"
     __datasets_runtime_prop = "datasets"
     __orig_datasets_runtime_prop_prefix = "orig_datasets"
@@ -169,7 +170,7 @@ class Dataset(object):
             dataset_project, parent_project = self._build_hidden_project_name(dataset_project, dataset_name)
             task = Task.create(
                 project_name=dataset_project, task_name=dataset_name, task_type=Task.TaskTypes.data_processing)
-            if bool(Session.check_min_api_server_version("2.17")):
+            if bool(Session.check_min_api_server_version(Dataset.__min_api_version)):
                 get_or_create_project(task.session, project_name=parent_project, system_tags=[self.__hidden_tag])
                 get_or_create_project(
                     task.session,
@@ -184,10 +185,12 @@ class Dataset(object):
                 task.set_tags((task.get_tags() or []) + list(dataset_tags))
             task.mark_started()
             # generate the script section
-            script = \
-                'from clearml import Dataset\n\n' \
-                'ds = Dataset.create(dataset_project=\'{dataset_project}\', dataset_name=\'{dataset_name}\')\n'.format(
-                    dataset_project=dataset_project, dataset_name=dataset_name)
+            script = (
+                "from clearml import Dataset\n\n"
+                "ds = Dataset.create(dataset_project='{dataset_project}', dataset_name='{dataset_name}', dataset_version='{dataset_version}')\n".format(
+                    dataset_project=dataset_project, dataset_name=dataset_name, dataset_version=dataset_version
+                )
+            )
             task.data.script.diff = script
             task.data.script.working_dir = '.'
             task.data.script.entry_point = 'register_dataset.py'
@@ -223,12 +226,13 @@ class Dataset(object):
                         )
                     )
         runtime_props = {
-            "orig_dataset_name": self._task._get_runtime_properties().get("orig_dataset_name", self._task.name),
-            "orig_dataset_id": self._task._get_runtime_properties().get("orig_dataset_id", self._task.id),
+            "orig_dataset_name": self._task._get_runtime_properties().get("orig_dataset_name", self._task.name),  # noqa
+            "orig_dataset_id": self._task._get_runtime_properties().get("orig_dataset_id", self._task.id),  # noqa
         }
         if not self._dataset_version:
             self._dataset_version = self.__default_dataset_version
         runtime_props["version"] = self._dataset_version
+        # noinspection PyProtectedMember
         self._task.set_user_properties(version=self._dataset_version)
         # noinspection PyProtectedMember
         self._task._set_runtime_properties(runtime_props)
@@ -246,6 +250,19 @@ class Dataset(object):
         self._dependency_chunk_lookup = None  # type: Optional[Dict[str, int]]
         self._ds_total_size = None
         self._ds_total_size_compressed = None
+        (
+            self.__preview_tables_count,
+            self.__preview_image_count,
+            self.__preview_video_count,
+            self.__preview_audio_count,
+            self.__preview_html_count,
+        ) = (
+            0,
+            0,
+            0,
+            0,
+            0,
+        )
 
     @property
     def id(self):
@@ -288,6 +305,8 @@ class Dataset(object):
     @property
     def name(self):
         # type: () -> str
+        if bool(Session.check_min_api_server_version(Dataset.__min_api_version)):
+            return self._task.get_project_name().partition("/.datasets/")[-1]
         return self._task.name
 
     @property
@@ -601,6 +620,8 @@ class Dataset(object):
         :param max_workers: Numbers of threads to be spawned when zipping and uploading the files.
             Defaults to the number of logical cores.
         """
+        self._report_dataset_preview()
+
         if not max_workers:
             max_workers = psutil.cpu_count()
 
@@ -727,7 +748,6 @@ class Dataset(object):
         self._add_script_call('finalize')
         if verbose:
             print('Updating statistics and genealogy')
-        self._report_dataset_preview()
         self._report_dataset_struct()
         self._report_dataset_genealogy()
         if self._using_current_task:
@@ -1151,15 +1171,16 @@ class Dataset(object):
         instance._task.get_logger().report_text(
             "ClearML results page: {}".format(instance._task.get_output_log_web_page())
         )
-        instance._task.get_logger().report_text(
-            "ClearML dataset page: {}".format(
-                "{}/datasets/simple/{}/experiments/{}".format(
-                    instance._task._get_app_server(),
-                    instance._task.project if instance._task.project is not None else "*",
-                    instance._task.id,
+        if bool(Session.check_min_api_server_version(cls.__min_api_version)):
+            instance._task.get_logger().report_text(
+                "ClearML dataset page: {}".format(
+                    "{}/datasets/simple/{}/experiments/{}".format(
+                        instance._task._get_app_server(),
+                        instance._task.project if instance._task.project is not None else "*",
+                        instance._task.id,
+                    )
                 )
             )
-        )
         # noinspection PyProtectedMember
         instance._task.flush(wait_for_uploads=True)
         # noinspection PyProtectedMember
@@ -1266,8 +1287,8 @@ class Dataset(object):
         raise an Exception or move the entire dataset if `entire_dataset` is True and `force` is True
 
         :param dataset_id: The ID of the dataset(s) to be deleted
-        :param dataset_project: The project the dataset(s) to be deletedd belongs to
-        :param dataset_name: The name of the dataset(s) (before renaming)
+        :param dataset_project: The project the dataset(s) to be deleted belong(s) to
+        :param dataset_name: The name of the dataset(s) to be deleted
         :param force: If True, deleted the dataset(s) even when being used. Also required to be set to
             True when `entire_dataset` is set.
         :param dataset_version: The version of the dataset(s) to be deletedd
@@ -1318,55 +1339,31 @@ class Dataset(object):
     @classmethod
     def rename(
         cls,
-        new_name,  # str
-        dataset_id=None,  # Optional[str]
-        dataset_project=None,  # Optional[str]
-        dataset_name=None,  # Optional[str]
-        dataset_version=None,  # Optional[str]
-        entire_dataset=False,  # bool
-        force=False,  # bool
+        new_dataset_name,  # str
+        dataset_project,  # str
+        dataset_name,  # str
     ):
         # type: (...) -> ()
         """
-        Rename the dataset(s). If multiple datasets match the parameters,
-        raise an Exception or move the entire dataset if `entire_dataset` is True and `force` is True
+        Rename the dataset.
 
-        :param new_name: The new name of the dataset(s) to be renamed
-        :param dataset_id: The ID of the dataset(s) to be rename
-        :param dataset_project: The project the dataset(s) to be renamed belongs to
-        :param dataset_name: The name of the dataset(s) (before renaming)
-        :param dataset_version: The version of the dataset(s) to be renamed
-        :param entire_dataset: If True, rename all all datasets that match the given `dataset_project`,
-            `dataset_name`, `dataset_version`. Note that `force` has to be True if this paramer is True
-        :param force: If True, rename the dataset(s) even when being used. Also required to be set to
-            True when `entire_dataset` is set.
+        :param new_dataset_name: The new name of the datasets to be renamed
+        :param dataset_project: The project the datasets to be renamed belongs to
+        :param dataset_name: The name of the datasets (before renaming)
         """
-        if not any([dataset_id, dataset_project, dataset_name]):
-            raise ValueError("Dataset rename criteria not met. Didn't provide id/name/project correctly.")
-
-        mutually_exclusive(dataset_id=dataset_id, dataset_project=dataset_project)
-        mutually_exclusive(dataset_id=dataset_id, dataset_name=dataset_name)
-
-        # noinspection PyBroadException
-        try:
-            dataset_ids = cls._get_dataset_ids_respecting_params(
-                dataset_id=dataset_id,
-                dataset_project=dataset_project,
-                dataset_name=dataset_name,
-                force=force,
-                dataset_version=dataset_version,
-                entire_dataset=entire_dataset,
-                action="rename",
+        if not bool(Session.check_min_api_server_version(cls.__min_api_version)):
+            LoggerRoot.get_base_logger().warning(
+                "Could not rename dataset because API version < {}".format(cls.__min_api_version)
             )
-        except Exception as e:
-            LoggerRoot.get_base_logger().warning("Error: {}".format(str(e)))
             return
-        for dataset_id in dataset_ids:
-            task = Task.get_task(task_id=dataset_id)
-            if not task.rename(new_name):
-                LoggerRoot.get_base_logger().warning("Could not rename dataset with ID {}".format(dataset_id))
-                continue
-            cls._move_to_project_aux(task, task.get_project_name(), new_name)
+        project, _ = cls._build_hidden_project_name(dataset_project, dataset_name)
+        new_project, _ = cls._build_hidden_project_name(dataset_project, new_dataset_name)
+        # noinspection PyProtectedMember
+        result = rename_project(Task._get_default_session(), project, new_project)
+        if not result:
+            LoggerRoot.get_base_logger().warning(
+                "Could not rename dataset with dataset_project={} dataset_name={}".format(dataset_project, dataset_name)
+            )
 
     @classmethod
     def _move_to_project_aux(cls, task, new_project, dataset_name):
@@ -1387,45 +1384,31 @@ class Dataset(object):
     @classmethod
     def move_to_project(
         cls,
-        new_project,  # str
-        dataset_id=None,  # Optional[str]
-        dataset_project=None,  # Optional[str]
-        dataset_name=None,  # Optional[str]
-        dataset_version=None,  # Optional[str]
-        entire_dataset=False,  # bool
-        force=False,  # bool
+        new_dataset_project,  # str
+        dataset_project,  # str
+        dataset_name,  # str
     ):
         # type: (...) -> ()
         """
-        Move the dataset(s) to a another project. If multiple datasets match the parameters,
-        raise an Exception or move the entire dataset if `entire_dataset` is True and `force` is True
+        Move the dataset to a another project.
 
-        :param new_project: New project to move the dataset(s) to
-        :param dataset_id: ID of the datasets(s) to move to new project
+        :param new_dataset_project: New project to move the dataset(s) to
         :param dataset_project: Project of the dataset(s) to move to new project
         :param dataset_name: Name of the dataset(s) to move to new project
-        :param dataset_version: Version of the dataset(s) to move to new project
-        :param entire_dataset: If True, move  all datasets that match the given `dataset_project`,
-            `dataset_name`, `dataset_version`. Note that `force` has to be True if this paramer is True
-        :param force: If True, move the dataset(s) even when being used. Also required to be set to
-            True when `entire_dataset` is set.
         """
-        if not any([dataset_id, dataset_project, dataset_name]):
-            raise ValueError("Dataset move criteria not met. Didn't provide id/name/project correctly.")
-
-        mutually_exclusive(dataset_id=dataset_id, dataset_project=dataset_project)
-        mutually_exclusive(dataset_id=dataset_id, dataset_name=dataset_name)
-
+        if not bool(Session.check_min_api_server_version(cls.__min_api_version)):
+            LoggerRoot.get_base_logger().warning(
+                "Could not move dataset to another project because API version < {}".format(cls.__min_api_version)
+            )
+            return
         # noinspection PyBroadException
         try:
             dataset_ids = cls._get_dataset_ids_respecting_params(
-                dataset_id=dataset_id,
                 dataset_project=dataset_project,
                 dataset_name=dataset_name,
-                force=force,
-                dataset_version=dataset_version,
-                entire_dataset=entire_dataset,
-                action="move to project",
+                entire_dataset=True,
+                force=True,
+                action="move",
             )
         except Exception as e:
             LoggerRoot.get_base_logger().warning("Error: {}".format(str(e)))
@@ -1439,12 +1422,7 @@ class Dataset(object):
             if not dataset:
                 LoggerRoot.get_base_logger().warning("Could not find dataset to move to another project")
                 continue
-            if not bool(Session.check_min_api_server_version("2.17")):
-                LoggerRoot.get_base_logger().warning(
-                    "Could not move dataset to another project because API version < 2.17"
-                )
-                continue
-            cls._move_to_project_aux(dataset._task, new_project, dataset.name)
+            cls._move_to_project_aux(dataset._task, new_dataset_project, dataset.name)
 
     @classmethod
     def get(
@@ -2675,13 +2653,6 @@ class Dataset(object):
 
         compression_extensions = {".gz", ".bz2", ".zip", ".xz", ".zst"}
         tabular_extensions = {".csv", ".parquet", ".parq", ".npz", ".npy"}
-        preview_tables_count, preview_image_count, preview_video_count, preview_audio_count, preview_html_count = (
-            0,
-            0,
-            0,
-            0,
-            0,
-        )
         for file in self._dataset_file_entries.values():
             if file.local_path:
                 file_path = file.local_path
@@ -2695,7 +2666,7 @@ class Dataset(object):
             if file_extension in compression_extensions:
                 compression = file_extension
                 _, file_extension = os.path.splitext(file_path[: -len(file_extension)])
-            if file_extension in tabular_extensions and preview_tables_count >= self.__preview_tabular_table_count:
+            if file_extension in tabular_extensions and self.__preview_tables_count >= self.__preview_tabular_table_count:
                 continue
             artifact = convert_to_tabular_artifact(file_path, file_extension, compression)
             if artifact is not None:
@@ -2704,7 +2675,7 @@ class Dataset(object):
                     self._task.get_logger().report_media(
                         "Tables", file_name, stream=artifact.to_csv(index=False), file_extension=".txt"
                     )
-                    preview_tables_count += 1
+                    self.__preview_tables_count += 1
                 except Exception:
                     pass
                 continue
@@ -2714,18 +2685,18 @@ class Dataset(object):
             if not guessed_type or not guessed_type[0]:
                 continue
             guessed_type = guessed_type[0]
-            if guessed_type.startswith("image") and preview_image_count < self.__preview_media_image_count:
+            if guessed_type.startswith("image") and self.__preview_image_count < self.__preview_media_image_count:
                 self._task.get_logger().report_media("Images", file_name, local_path=file_path)
-                preview_image_count += 1
-            elif guessed_type.startswith("video") and preview_video_count < self.__preview_media_video_count:
+                self.__preview_image_count += 1
+            elif guessed_type.startswith("video") and self.__preview_video_count < self.__preview_media_video_count:
                 self._task.get_logger().report_media("Videos", file_name, local_path=file_path)
-                preview_video_count += 1
-            elif guessed_type.startswith("audio") and preview_audio_count < self.__preview_media_audio_count:
+                self.__preview_video_count += 1
+            elif guessed_type.startswith("audio") and self.__preview_audio_count < self.__preview_media_audio_count:
                 self._task.get_logger().report_media("Audio", file_name, local_path=file_path)
-                preview_audio_count += 1
-            elif guessed_type == "text/html" and preview_html_count < self.__preview_media_html_count:
+                self.__preview_audio_count += 1
+            elif guessed_type == "text/html" and self.__preview_html_count < self.__preview_media_html_count:
                 self._task.get_logger().report_media("HTML", file_name, local_path=file_path)
-                preview_html_count += 1
+                self.__preview_html_count += 1
 
     @classmethod
     def _set_project_system_tags(cls, task):
@@ -3005,7 +2976,7 @@ class Dataset(object):
             is the parent project
         """
         dataset_project = cls._remove_hidden_part_from_dataset_project(dataset_project)
-        if bool(Session.check_min_api_server_version("2.17")):
+        if bool(Session.check_min_api_server_version(cls.__min_api_version)):
             parent_project = "{}.datasets".format(dataset_project + "/" if dataset_project else "")
             project_name = "{}/{}".format(parent_project, dataset_name)
         else:

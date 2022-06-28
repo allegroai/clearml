@@ -711,7 +711,10 @@ class Task(_Task):
                 task._resource_monitor.start()
 
             # make sure all random generators are initialized with new seed
-            make_deterministic(task.get_random_seed())
+            random_seed = task.get_random_seed()
+            if random_seed is not None:
+                make_deterministic(random_seed)
+            task._set_random_seed_used(random_seed)
 
             if auto_connect_arg_parser:
                 EnvironmentBind.update_current_task(task)

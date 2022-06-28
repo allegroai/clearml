@@ -75,6 +75,10 @@ def cli():
                              'Example: a17b4fID1 f0ee5ID2 a17b4f09eID3')
     create.add_argument('--project', type=str, required=False, default=None, help='Dataset project name')
     create.add_argument('--name', type=str, required=True, default=None, help='Dataset name')
+    create.add_argument("--version", type=str, required=False, default=None, help="Dataset version")
+    create.add_argument(
+        "--output-uri", type=str, required=False, default=None, help="Output URI for files in this dataset"
+    )
     create.add_argument('--tags', type=str, nargs='*', help='Dataset user Tags')
     create.set_defaults(func=ds_create)
 
@@ -115,6 +119,7 @@ def cli():
                       help='[Optional] Dataset project name')
     sync.add_argument('--name', type=str, required=False, default=None,
                       help='[Optional] Dataset project name')
+    sync.add_argument("--version", type=str, required=False, default=None, help="[Optional] Dataset version")
     sync.add_argument('--tags', type=str, nargs='*',
                       help='[Optional] Dataset user Tags')
     sync.add_argument('--storage', type=str, default=None,
@@ -219,6 +224,7 @@ def cli():
                     help='Specify dataset id (or use project/name instead). Default: previously accessed dataset.')
     ls.add_argument('--project', type=str, help='Specify dataset project name')
     ls.add_argument('--name', type=str, help='Specify dataset name')
+    ls.add_argument("--version", type=str, help="Specify dataset version", default=None)
     ls.add_argument('--filter', type=str, nargs='*',
                     help='Filter files based on folder / wildcard, multiple filters are supported. '
                          'Example: folder/date_*.json folder/sub-folder')
@@ -323,7 +329,12 @@ def ds_get(args):
 def ds_list(args):
     print('List dataset content: {}'.format(args.id or (args.project, args.name)))
     print_args(args)
-    ds = Dataset.get(dataset_id=args.id or None, dataset_project=args.project or None, dataset_name=args.name or None)
+    ds = Dataset.get(
+        dataset_id=args.id or None,
+        dataset_project=args.project or None,
+        dataset_name=args.name or None,
+        dataset_version=args.version,
+    )
     print('Listing dataset content')
     formatting = '{:64} | {:10,} | {:64}'
     print(formatting.replace(',', '').format('file name', 'size', 'hash'))
@@ -506,13 +517,19 @@ def ds_add(args):
 
 
 def ds_create(args):
-    print('Creating a new dataset:')
+    print("Creating a new dataset:")
     print_args(args)
-    ds = Dataset.create(dataset_project=args.project, dataset_name=args.name, parent_datasets=args.parents)
+    ds = Dataset.create(
+        dataset_project=args.project,
+        dataset_name=args.name,
+        parent_datasets=args.parents,
+        dataset_version=args.version,
+        output_uri=args.output_uri,
+    )
     if args.tags:
         ds.tags = ds.tags + args.tags
-    print('New dataset created id={}'.format(ds.id))
-    clear_state({'id': ds.id})
+    print("New dataset created id={}".format(ds.id))
+    clear_state({"id": ds.id})
     return ds.id
 
 

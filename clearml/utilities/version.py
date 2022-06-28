@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
-import collections
-import re
+from copy import deepcopy
+from attr import attrs, attrib
 
+import re
 import six
 
 if six.PY3:
@@ -17,9 +18,14 @@ class InvalidVersion(ValueError):
     """
 
 
-_Version = collections.namedtuple(
-    "_Version", ["epoch", "release", "dev", "pre", "post", "local"]
-)
+@attrs
+class _Version:
+    epoch = attrib()
+    release = attrib()
+    dev = attrib()
+    pre = attrib()
+    post = attrib()
+    local = attrib()
 
 
 class _BaseVersion(object):
@@ -148,6 +154,29 @@ class Version(_BaseVersion):
             parts.append("+{0}".format(self.local))
 
         return "".join(parts)
+
+    def get_next_version(self):
+        def increment(part):
+            if isinstance(part, int):
+                return part + 1
+            type_ = type(part)
+            part = list(part)
+            if isinstance(part[-1], int):
+                part[-1] += 1
+            return type_(part)
+
+        next_version = deepcopy(self)
+        if next_version._version.dev:
+            next_version._version.dev = increment(next_version._version.dev)
+        elif next_version._version.post:
+            next_version._version.post = increment(next_version._version.post)
+        elif next_version._version.pre:
+            next_version._version.pre = increment(next_version._version.pre)
+        elif next_version._version.release:
+            next_version._version.release = increment(next_version._version.release)
+        elif next_version._version.epoch:
+            next_version._version.epoch = increment(next_version._version.epoch)
+        return next_version
 
     @property
     def epoch(self):

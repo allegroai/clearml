@@ -144,14 +144,18 @@ def is_windows():
     return sys.platform == 'win32'
 
 
-def format_size(size_in_bytes, binary=False):
-    # type: (Union[int, float], bool) -> str
+def format_size(size_in_bytes, binary=False, use_nonbinary_notation=False, use_b_instead_of_bytes=False):
+    # type: (Union[int, float], bool, bool, bool) -> str
     """
     Return the size in human readable format (string)
     Matching humanfriendly.format_size outputs
 
     :param size_in_bytes: number of bytes
     :param binary: If `True` 1 Kb equals 1024 bytes, if False (default) 1 KB = 1000 bytes
+    :param use_nonbinary_notation: Only applies if binary is `True`. If this is `True`,
+        the binary scale (KiB, MiB etc.) will be replaced with the regular scale (KB, MB etc.)
+    :param use_b_instead_of_bytes: If `True`, return the formatted size with `B` as the
+        scale instead of `byte(s)` (when applicable)
     :return: string representation of the number of bytes (b,Kb,Mb,Gb, Tb,)
         >>> format_size(0)
         '0 bytes'
@@ -168,16 +172,25 @@ def format_size(size_in_bytes, binary=False):
     """
     size = float(size_in_bytes)
     # single byte is the exception here
-    if size == 1:
-        return '{} byte'.format(int(size))
+    if size == 1 and not use_b_instead_of_bytes:
+        return "{} byte".format(int(size))
     k = 1024 if binary else 1000
-    scale = ('bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB') if binary else ('bytes', 'KB', 'MB', 'GB', 'TB', 'PB')
+    scale = (
+        ["bytes", "KiB", "MiB", "GiB", "TiB", "PiB"]
+        if (binary and not use_nonbinary_notation)
+        else ["bytes", "KB", "MB", "GB", "TB", "PB"]
+    )
+    if use_b_instead_of_bytes:
+        scale[0] = "B"
     for i, m in enumerate(scale):
-        if size < k**(i+1) or i == len(scale)-1:
-            return ('{:.2f}'.format(size/(k**i)).rstrip('0').rstrip('.')
-                    if i > 0 else '{}'.format(int(size))) + ' ' + m
+        if size < k ** (i + 1) or i == len(scale) - 1:
+            return (
+                ("{:.2f}".format(size / (k ** i)).rstrip("0").rstrip(".") if i > 0 else "{}".format(int(size)))
+                + " "
+                + m
+            )
     # we should never get here
-    return '{} {}'.format(int(size), scale[0])
+    return "{} {}".format(int(size), scale[0])
 
 
 def parse_size(size, binary=False):

@@ -274,23 +274,23 @@ class TriggerScheduler(BaseScheduler):
         self._model_triggers.append(trigger)
 
     def add_dataset_trigger(
-            self,
-            schedule_task_id=None,  # type: Union[str, Task]
-            schedule_queue=None,  # type: str
-            schedule_function=None,  # type: Callable[[str], None]
-            trigger_project=None,  # type: str
-            trigger_name=None,  # type: Optional[str]
-            trigger_on_publish=None,  # type: bool
-            trigger_on_tags=None,  # type: Optional[List[str]]
-            trigger_on_archive=None,  # type: bool
-            trigger_required_tags=None,  # type: Optional[List[str]]
-            name=None,  # type: Optional[str]
-            target_project=None,  # type: Optional[str]
-            add_tag=True,  # type: Union[bool, str]
-            single_instance=False,  # type: bool
-            reuse_task=False,  # type: bool
-            task_parameters=None,  # type: Optional[dict]
-            task_overrides=None,  # type: Optional[dict]
+        self,
+        schedule_task_id=None,  # type: Union[str, Task]
+        schedule_queue=None,  # type: str
+        schedule_function=None,  # type: Callable[[str], None]
+        trigger_project=None,  # type: str
+        trigger_name=None,  # type: Optional[str]
+        trigger_on_publish=None,  # type: bool
+        trigger_on_tags=None,  # type: Optional[List[str]]
+        trigger_on_archive=None,  # type: bool
+        trigger_required_tags=None,  # type: Optional[List[str]]
+        name=None,  # type: Optional[str]
+        target_project=None,  # type: Optional[str]
+        add_tag=True,  # type: Union[bool, str]
+        single_instance=False,  # type: bool
+        reuse_task=False,  # type: bool
+        task_parameters=None,  # type: Optional[dict]
+        task_overrides=None,  # type: Optional[dict]
     ):
         # type: (...) -> None
         """
@@ -331,26 +331,51 @@ class TriggerScheduler(BaseScheduler):
         for example {'script.version_num': None, 'script.branch': 'main'} Notice: not available when reuse_task=True
         :return: True if job is successfully added to the scheduling list
         """
-        trigger = DatasetTrigger(
-            base_task_id=schedule_task_id,
-            base_function=schedule_function,
-            queue=schedule_queue,
-            name=name,
-            target_project=target_project,
-            single_instance=single_instance,
-            task_parameters=task_parameters,
-            task_overrides=task_overrides,
-            add_tag=(add_tag if isinstance(add_tag, str) else (name or schedule_task_id)) if add_tag else None,
-            clone_task=not bool(reuse_task),
-            match_name=trigger_name,
-            project=Task.get_project_id(trigger_project) if trigger_project else None,
-            tags=trigger_on_tags,
-            required_tags=trigger_required_tags,
-            on_publish=trigger_on_publish,
-            on_archive=trigger_on_archive,
-        )
-        trigger.verify()
-        self._dataset_triggers.append(trigger)
+        if trigger_project:
+            trigger_project_list = Task.get_projects(
+                name="^{}/\\.datasets/.*".format(trigger_project), search_hidden=True, _allow_extra_fields_=True
+            )
+            for project in trigger_project_list:
+                trigger = DatasetTrigger(
+                    base_task_id=schedule_task_id,
+                    base_function=schedule_function,
+                    queue=schedule_queue,
+                    name=name,
+                    target_project=target_project,
+                    single_instance=single_instance,
+                    task_parameters=task_parameters,
+                    task_overrides=task_overrides,
+                    add_tag=(add_tag if isinstance(add_tag, str) else (name or schedule_task_id)) if add_tag else None,
+                    clone_task=not bool(reuse_task),
+                    match_name=trigger_name,
+                    project=project.id,
+                    tags=trigger_on_tags,
+                    required_tags=trigger_required_tags,
+                    on_publish=trigger_on_publish,
+                    on_archive=trigger_on_archive,
+                )
+                trigger.verify()
+                self._dataset_triggers.append(trigger)
+        else:
+            trigger = DatasetTrigger(
+                base_task_id=schedule_task_id,
+                base_function=schedule_function,
+                queue=schedule_queue,
+                name=name,
+                target_project=target_project,
+                single_instance=single_instance,
+                task_parameters=task_parameters,
+                task_overrides=task_overrides,
+                add_tag=(add_tag if isinstance(add_tag, str) else (name or schedule_task_id)) if add_tag else None,
+                clone_task=not bool(reuse_task),
+                match_name=trigger_name,
+                tags=trigger_on_tags,
+                required_tags=trigger_required_tags,
+                on_publish=trigger_on_publish,
+                on_archive=trigger_on_archive,
+            )
+            trigger.verify()
+            self._dataset_triggers.append(trigger)
 
     def add_task_trigger(
             self,

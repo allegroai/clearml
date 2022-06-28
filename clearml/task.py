@@ -36,7 +36,14 @@ from .backend_interface.task.log import TaskHandler
 from .backend_interface.task.development.worker import DevWorker
 from .backend_interface.task.repo import ScriptInfo
 from .backend_interface.task.models import TaskModels
-from .backend_interface.util import get_single_result, exact_match_regex, make_message, mutually_exclusive, get_queue_id
+from .backend_interface.util import (
+    get_single_result,
+    exact_match_regex,
+    make_message,
+    mutually_exclusive,
+    get_queue_id,
+    get_or_create_project,
+)
 from .binding.absl_bind import PatchAbsl
 from .binding.artifacts import Artifacts, Artifact
 from .binding.environ_bind import EnvironmentBind, PatchOsFork
@@ -2514,6 +2521,39 @@ class Task(_Task):
         """
         return bool(self.import_task(task_data=task_data, target_task=self, update=True))
 
+    def rename(self, new_name):
+        # type: (str) -> bool
+        """
+        Rename this task
+
+        :param new_name: The new name of this task
+
+        :return: True if the rename was successful and False otherwise
+        """
+        result = bool(self._edit(name=new_name))
+        self.reload()
+        return result
+
+    def move_to_project(self, new_project_id=None, new_project_name=None, system_tags=None):
+        # type: (Optional[str], Optional[str], Optional[Sequence[str]]) -> bool
+        """
+        Move this task to another project
+
+        :param new_project_id: The ID of the project the task should be moved to.
+            Not required if `new_project_name` is passed.
+        :param new_project_name: Name of the new project the task should be moved to.
+            Not required if `new_project_id` is passed.
+        :param system_tags: System tags for the project the task should be moved to.
+
+        :return: True if the move was successful and False otherwise
+        """
+        new_project_id = get_or_create_project(
+            self.session, project_name=new_project_name, project_id=new_project_id, system_tags=system_tags
+        )
+        result = bool(self._edit(project=new_project_id))
+        self.reload()
+        return result
+
     @classmethod
     def import_task(cls, task_data, target_task=None, update=False):
         # type: (dict, Optional[Union[str, Task]], bool) -> Optional[Task]
@@ -3801,7 +3841,9 @@ class Task(_Task):
                 res = cls._send(
                     cls._get_default_session(),
                     projects.GetAllRequest(
-                        name=exact_match_regex(name)
+                        name=exact_match_regex(name),
+                        search_hidden=kwargs.get("search_hidden", False),
+                        _allow_extra_fields_=kwargs.get("_allow_extra_fields_", False)
                     )
                 )
                 project = get_single_result(entity='project', query=name, results=res.response.projects)

@@ -843,11 +843,16 @@ class StorageHelper(object):
         # do not check http/s connection permissions
         if dest_path.startswith('http'):
             return True
+
+        err_msg = 'Insufficient permissions ({} failed) for ' + base_url
         try:
             self.upload_from_stream(stream=six.BytesIO(b'clearml'), dest_path=dest_path)
+        except Exception:
+            raise ValueError(err_msg.format("write"))
+        try:
             self.delete(path=dest_path)
         except Exception:
-            raise ValueError('Insufficient permissions for {}'.format(base_url))
+            raise ValueError(err_msg.format("delete"))
         return True
 
     @classmethod

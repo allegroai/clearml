@@ -15,6 +15,7 @@ from ..config import get_cache_dir, deferred_config
 from ..debugging.log import LoggerRoot
 from ..utilities.locks.utils import Lock as FileLock
 from ..utilities.locks.exceptions import LockException
+from ..utilities.files import get_filename_max_length
 
 
 class CacheManager(object):
@@ -40,6 +41,7 @@ class CacheManager(object):
             self._context = str(cache_context)
             self._file_limit = int(default_cache_file_limit)
             self._rlock = RLock()
+            self._max_file_name_length = None
 
         def set_cache_limit(self, cache_file_limit):
             # type: (int) -> int
@@ -108,6 +110,50 @@ class CacheManager(object):
             filename = url.split("/")[-1]
             return "{}.{}".format(str_hash, quote_url(filename))
 
+        def _conform_filename(self, file_name):
+            # type: (str) -> str
+            """
+            Renames very long filename by reducing characters from the end
+            without the extensions from 2 floating point.
+            :param file_name: base file name
+            :return: new_file name (if it has very long name) or original
+            """
+            if self._max_file_name_length is None:
+                self._max_file_name_length = get_filename_max_length(self.get_cache_folder())
+
+            # Maximum character supported for filename
+            # (FS limit) - (32 for temporary file name addition)
+            allowed_length = self._max_file_name_length - 32
+
+            if len(file_name) <= allowed_length:
+                return file_name  # File name size is in limit
+
+            file_ext = "".join(Path(file_name).suffixes[-2:])
+            file_ext = file_ext.rstrip(" ")
+
+            file_basename = file_name[:-len(file_ext)]
+            file_basename = file_basename.strip()
+
+            # Omit characters from extensionss
+            if len(file_ext) > allowed_length:
+                file_ext = file_ext[-(allowed_length - 1):]
+                file_ext = "." + file_ext.lstrip(".")
+
+            # Updating maximum character length
+            allowed_length -= len(file_ext)
+
+            # Omit characters from filename (without extension)
+            if len(file_basename) > allowed_length:
+                file_basename = file_basename[:allowed_length].strip()
+
+            new_file_name = file_basename + file_ext
+
+            LoggerRoot.get_base_logger().warning(
+                'Renaming file to "{}" due to filename length limit'.format(new_file_name)
+            )
+
+            return new_file_name
+
         def get_cache_folder(self):
             # type: () -> str
             """
@@ -153,6 +199,7 @@ class CacheManager(object):
             )
             folder.mkdir(parents=True, exist_ok=True)
             local_filename = local_filename or self.get_hashed_url_file(remote_url)
+            local_filename = self._conform_filename(local_filename)
             new_file = folder / local_filename
             new_file_exists = new_file.exists()
             if new_file_exists:

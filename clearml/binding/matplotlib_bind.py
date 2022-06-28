@@ -470,9 +470,10 @@ class PatchedMatplotlib:
                             pass
 
                         # let plotly deal with the range in realtime (otherwise there is no real way to change it to
-                        plotly_renderer.plotly_fig.get('layout', {}).get('xaxis', {}).pop('range', None)
-                        plotly_renderer.plotly_fig.get('layout', {}).get('yaxis', {}).pop('range', None)
-
+                        if not plotly_renderer.plotly_fig.get("layout", {}).get("xaxis", {}).pop("custom_range", False):
+                            plotly_renderer.plotly_fig.get("layout", {}).get("xaxis", {}).pop("range", None)
+                        if not plotly_renderer.plotly_fig.get("layout", {}).get("yaxis", {}).pop("custom_range", False):
+                            plotly_renderer.plotly_fig.get("layout", {}).get("yaxis", {}).pop("range", None)
                         return deepcopy(plotly_renderer.plotly_fig)
 
                     plotly_dict = our_mpl_to_plotly(mpl_fig)

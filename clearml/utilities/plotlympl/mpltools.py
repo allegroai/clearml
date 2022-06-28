@@ -485,6 +485,12 @@ def prep_ticks(ax, index, ax_type, props):
             axis_dict["tick0"] = tick0
             axis_dict["dtick"] = dtick
             axis_dict["tickmode"] = None
+        if ax_type == "x" and "xlim" in props:
+            axis_dict["range"] = [props["xlim"][0], props["xlim"][1]]
+            axis_dict["custom_range"] = True
+        elif ax_type == "y" and "ylim" in props:
+            axis_dict["range"] = [props["ylim"][0], props["ylim"][1]]
+            axis_dict["custom_range"] = True
     elif scale == "log":
         try:
             axis_dict["tick0"] = props["axes"][index]["tickvalues"][0]
@@ -497,16 +503,18 @@ def prep_ticks(ax, index, ax_type, props):
             axis_dict = dict(nticks=props["axes"][index]["nticks"])
         base = axis.get_transform().base
         if base == 10:
-            if ax_type == "x":
+            if ax_type == "x" and "xlim" in props:
                 axis_dict["range"] = [
                     math.log10(props["xlim"][0]),
                     math.log10(props["xlim"][1]),
                 ]
-            elif ax_type == "y":
+                axis_dict["custom_range"] = True
+            elif ax_type == "y" and "ylim" in props:
                 axis_dict["range"] = [
                     math.log10(props["ylim"][0]),
                     math.log10(props["ylim"][1]),
                 ]
+                axis_dict["custom_range"] = True
         else:
             axis_dict = dict(range=None, type="linear")
             warnings.warn(

@@ -7,7 +7,7 @@ from omegaconf import OmegaConf
 from clearml import Task
 
 
-@hydra.main(config_path="config_files", config_name="config")
+@hydra.main(config_path="config_files", config_name="config", version_base=None)
 def my_app(cfg):
     # type (DictConfig) -> None
     task = Task.init(project_name="examples", task_name="Hydra configuration")

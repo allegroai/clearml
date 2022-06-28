@@ -1,2 +1,3 @@
 clearml
-hydra-core
+hydra-core>=1.2.0
+

@@ -206,7 +206,7 @@ class StorageManager(object):
 
     @classmethod
     def upload_folder(cls, local_folder, remote_url, match_wildcard=None):
-        # type: (str, str, Optional[str]) -> None
+        # type: (str, str, Optional[str]) -> Optional[str]
         """
         Upload local folder recursively to a remote storage, maintaining the sub folder structure
         in the remote storage.
@@ -225,6 +225,7 @@ class StorageManager(object):
             Example: `*.json`
             Notice: target file size/date are not checked. Default True, always upload.
             Notice if uploading to http, we will always overwrite the target.
+        :return: Newly uploaded remote URL or None on error.
         """
 
         base_logger = LoggerRoot.get_base_logger()
@@ -245,8 +246,21 @@ class StorageManager(object):
                         args=(str(path), str(path).replace(local_folder, remote_url)),
                     )
                 )
+
+            success = 0
+            failed = 0
             for res in results:
-                res.wait()
+                # noinspection PyBroadException
+                try:
+                    res.get()  # Reraise the exceptions from remote call (if any)
+                    success += 1
+                except Exception:
+                    failed += 1
+
+            if failed == 0:
+                return remote_url
+
+            base_logger.error("Failed uploading {}/{} files from {}".format(failed, success + failed, local_folder))
 
     @classmethod
     def download_file(

@@ -43,7 +43,8 @@ params = {
     'feature_fraction': 0.9,
     'bagging_fraction': 0.8,
     'bagging_freq': 5,
-    'verbose': 0
+    'verbose': 0,
+    'force_col_wise': True,
 }
 
 print('Starting training...')
@@ -53,8 +54,8 @@ gbm = lgb.train(
     params,
     lgb_train,
     num_boost_round=20,
-    valid_sets=lgb_eval,
-    early_stopping_rounds=5
+    valid_sets=[lgb_eval],
+    callbacks=[lgb.early_stopping(stopping_rounds=5)],
 )
 
 print('Saving model...')

@@ -3841,12 +3841,15 @@ class Task(_Task):
         project_ids = []
         if project_names:
             for name in project_names:
+                aux_kwargs = {}
+                if kwargs.get("_allow_extra_fields_"):
+                    aux_kwargs["_allow_extra_fields_"] = True
+                    aux_kwargs["search_hidden"] = kwargs.get("search_hidden", False)
                 res = cls._send(
                     cls._get_default_session(),
                     projects.GetAllRequest(
                         name=exact_match_regex(name),
-                        search_hidden=kwargs.get("search_hidden", False),
-                        _allow_extra_fields_=kwargs.get("_allow_extra_fields_", False)
+                        **aux_kwargs
                     )
                 )
                 project = get_single_result(entity='project', query=name, results=res.response.projects)

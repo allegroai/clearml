@@ -20,4 +20,3 @@ def get_filename_max_length(dir_path):
         print(err)
 
     return 255  # Common filesystems like NTFS, EXT4 and HFS+ limited with 255
-

@@ -148,6 +148,8 @@ class PatchClick:
             }
 
         params = PatchClick.__remote_task_params
+        if not params:
+            return None
         command = [
             p.name for p in params['Args'].values()
             if p.type == PatchClick._command_type and cast_str_to_bool(p.value, strip=True)]

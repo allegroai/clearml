@@ -2121,6 +2121,9 @@ class Dataset(object):
                 extract_archive=False, name=self._id)
             if not local_zip:
                 raise ValueError("Could not download dataset id={} entry={}".format(self._id, data_artifact_name))
+            return local_zip
+
+        def _extract_part(local_zip):
             # noinspection PyProtectedMember
             StorageManager._extract_to_cache(
                 cached_file=local_zip, name=self._id,
@@ -2133,7 +2136,8 @@ class Dataset(object):
 
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
             for d in data_artifact_entries:
-                pool.submit(_download_part, d)
+                local_zip = _download_part(d)
+                pool.submit(_extract_part, local_zip)
 
         return local_folder
 

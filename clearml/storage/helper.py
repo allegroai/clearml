@@ -1548,7 +1548,7 @@ class _Boto3Driver(_Driver):
             }
 
             boto_session = boto3.Session(conf.key, conf.secret, aws_session_token=conf.token)
-            endpoint = (('https://' if cfg.secure else 'http://') + cfg.host) if (conf.host and len(conf.host.split(':')) > 1) else None
+            endpoint = (('https://' if conf.secure else 'http://') + conf.host) if conf.host else None
             boto_resource = boto_session.resource('s3', region_name=conf.region, endpoint_url=endpoint)
             bucket = boto_resource.Bucket(bucket_name)
             bucket.put_object(Key=filename, Body=six.b(json.dumps(data)))

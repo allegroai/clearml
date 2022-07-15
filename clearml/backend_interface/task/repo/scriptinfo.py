@@ -708,7 +708,7 @@ class ScriptInfo(object):
         try:
             # Use os.path.relpath as it calculates up dir movements (../)
             entry_point = os.path.relpath(
-                str(script_path), str(cls._get_working_dir(repo_root, return_abs=True)))
+                str(os.path.realpath(script_path)), str(cls._get_working_dir(repo_root, return_abs=True)))
         except ValueError:
             # Working directory not under repository root
             entry_point = script_path.relative_to(repo_root)

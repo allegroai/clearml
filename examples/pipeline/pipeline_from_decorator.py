@@ -77,9 +77,6 @@ def executing_pipeline(pickle_url, mock_parameter='mock'):
     print('launch step two')
     processed_data = step_two(data_frame)
 
-    # Notice we can actually process/modify the returned values inside the pipeline logic context.
-    # This means the modified object will be stored on the pipeline Task.
-    processed_data = [processed_data[0], processed_data[1]*2, processed_data[2], processed_data[3]]
     print('launch step three')
     model = step_three(processed_data)
 

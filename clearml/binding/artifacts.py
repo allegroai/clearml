@@ -588,7 +588,7 @@ class Artifacts(object):
 
                 override_filename_in_uri = artifact_object.parts[-1]
                 artifact_type_data.preview = preview or '{} - {}\n'.format(
-                    artifact_object, format_size(artifact_object.stat().st_size))
+                    artifact_object.name, format_size(artifact_object.stat().st_size))
                 artifact_object = artifact_object.as_posix()
                 artifact_type = 'custom'
                 artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]

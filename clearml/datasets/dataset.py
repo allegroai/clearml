@@ -689,7 +689,7 @@ class Dataset(object):
                 self._serialize()
 
         self._task.get_logger().report_text(
-            "File compression and upload completed: total size {}, {} chunked stored (average size {})".format(
+            "File compression and upload completed: total size {}, {} chunk(s) stored (average size {})".format(
                 format_size(total_size, binary=True, use_b_instead_of_bytes=True),
                 chunks_count,
                 format_size(0 if chunks_count == 0 else total_size / chunks_count, binary=True, use_b_instead_of_bytes=True),

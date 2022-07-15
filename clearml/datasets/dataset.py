@@ -2013,7 +2013,7 @@ class Dataset(object):
             if target_folder
             else self._create_ds_target_folder(
                 lock_target_folder=lock_target_folder
-            )
+            )[0]
         ).as_posix()
         dependencies = self._get_dependencies_by_order(
             include_unused=False, include_current=True
@@ -2097,7 +2097,7 @@ class Dataset(object):
 
         # get cache manager
         local_folder = Path(target_folder) if target_folder else \
-            self._create_ds_target_folder(lock_target_folder=lock_target_folder)
+            self._create_ds_target_folder(lock_target_folder=lock_target_folder)[0]
 
         # check if we have a dataset with empty change set
         if not data_artifact_entries:
@@ -2142,13 +2142,13 @@ class Dataset(object):
         return local_folder
 
     def _create_ds_target_folder(self, part=None, num_parts=None, lock_target_folder=True):
-        # type: (Optional[int], Optional[int], bool) -> Path
+        # type: (Optional[int], Optional[int], bool) -> Tuple[Path, CacheManager.CacheContext]
         cache = CacheManager.get_cache_manager(cache_context=self.__cache_context)
         local_folder = Path(cache.get_cache_folder()) / self._get_cache_folder_name(part=part, num_parts=num_parts)
         if lock_target_folder:
             cache.lock_cache_folder(local_folder)
         local_folder.mkdir(parents=True, exist_ok=True)
-        return local_folder
+        return local_folder, cache
 
     def _release_lock_ds_target_folder(self, target_folder):
         # type: () -> None
@@ -2207,7 +2207,7 @@ class Dataset(object):
             num_parts = self.get_num_chunks()
 
         # just create the dataset target folder
-        target_base_folder = self._create_ds_target_folder(
+        target_base_folder, _ = self._create_ds_target_folder(
             part=part, num_parts=num_parts, lock_target_folder=True)
 
         # selected specific chunks if `part` was passed

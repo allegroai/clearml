@@ -290,7 +290,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 if self._force_use_pip_freeze:
                     if isinstance(self._force_use_pip_freeze, (str, Path)):
                         conda_requirements = ''
-                        req_file = Path(self._force_use_pip_freeze)
+                        try:
+                            req_file = Path(self._force_use_pip_freeze)
+                        except TypeError:
+                            # LazyEvaluator loading when casting
+                            req_file = Path(str(self._force_use_pip_freeze))
+
                         requirements = req_file.read_text() if req_file.is_file() else None
                     else:
                         requirements, conda_requirements = pip_freeze(

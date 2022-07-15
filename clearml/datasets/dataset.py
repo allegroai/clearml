@@ -1203,7 +1203,10 @@ class Dataset(object):
         )
         compressed_size = 0
         for runtime_task in runtime_tasks:
-            compressed_size += runtime_task.runtime.get("ds_total_size_compressed", 0)
+            try:
+                compressed_size += int(runtime_task.runtime.get("ds_total_size_compressed") or 0)
+            except (TypeError, ValueError):
+                pass
         return compressed_size
 
     @classmethod

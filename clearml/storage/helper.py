@@ -354,8 +354,8 @@ class StorageHelper(object):
                     )
 
             self._driver = _Boto3Driver()
-            self._container = self._driver.get_container(container_name=self._base_url, retries=retries,
-                                                         config=self._conf)
+            self._container = self._driver.get_container(
+                container_name=self._base_url, retries=retries, config=self._conf)
 
         elif self._scheme == _GoogleCloudStorageDriver.scheme:
             self._conf = copy(self._gs_configurations.get_config_by_uri(url))
@@ -2648,7 +2648,7 @@ def get_file_mimetype(file_path):
         if mimetype:
             return mimetype
     except Exception:
-        return None
+        pass
     return 'binary/octet-stream'
 
 

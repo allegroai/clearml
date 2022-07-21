@@ -3029,8 +3029,7 @@ class PipelineDecorator(PipelineController):
                     {
                         k: walk_nested_dict_tuple_list(
                             v,
-                            lambda x: x._remoteref() if isinstance(x, LazyEvalWrapper) else x,
-                            stop_condition=lambda x: isinstance(x, LazyEvalWrapper) and x._remoteref(),
+                            lambda x: x._remoteref() if isinstance(x, LazyEvalWrapper) else x
                         )
                         for k, v in kwargs.items()
                         if isinstance(v, LazyEvalWrapper)
@@ -3129,11 +3128,15 @@ class PipelineDecorator(PipelineController):
                             'Pipeline step "{}", Task ID={} failed'.format(_node.name, _node.job.task_id()))
 
                     _node.executed = _node.job.task_id()
-                    tid = current_thread().ident
-                    if cls._add_to_evaluated_return_values.get(tid, True):
-                        if tid not in cls._evaluated_return_values:
-                            cls._evaluated_return_values[tid] = []
-                        cls._evaluated_return_values[tid].append(_node.name)
+
+                    # make sure we mark the current state of the DAG execution tree
+                    # so that later we can find the "parents" to the current node
+                    _tid = current_thread().ident
+                    if cls._add_to_evaluated_return_values.get(_tid, True):
+                        if _tid not in cls._evaluated_return_values:
+                            cls._evaluated_return_values[_tid] = []
+                        cls._evaluated_return_values[_tid].append(_node.name)
+
                     return Task.get_task(_node.job.task_id()).artifacts[return_name].get()
 
                 return_w = [LazyEvalWrapper(
@@ -3453,7 +3456,8 @@ class PipelineDecorator(PipelineController):
                         break
         if kwargs:
             leaves = cls._singleton._find_executed_node_leaves()
-            _node.parents = (_node.parents or []) + [x for x in cls._evaluated_return_values.get(tid, []) if x in leaves]
+            _node.parents = (_node.parents or []) + \
+                            [x for x in cls._evaluated_return_values.get(tid, []) if x in leaves]
         for k, v in kwargs.items():
             if v is None or isinstance(v, (bool, int, float, str)):
                 _node.parameters["{}/{}".format(CreateFromFunction.kwargs_section, k)] = v

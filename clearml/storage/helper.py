@@ -1454,7 +1454,7 @@ class _Boto3Driver(_Driver):
                 max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
                 num_download_attempts=container.config.retries),
                 Callback=callback,
-                ExtraArgs={'ContentType': get_file_mimetype(file_path)}
+                ExtraArgs={'ContentType': get_file_mimetype(object_name or file_path)}
             )
         except Exception as ex:
             self.get_logger().error('Failed uploading: %s' % ex)
@@ -1970,7 +1970,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 blob_name,
                 file_path,
                 max_connections=2,
-                content_settings=ContentSettings(content_type=get_file_mimetype(file_path)),
+                content_settings=ContentSettings(content_type=get_file_mimetype(object_name or file_path)),
                 progress_callback=callback,
             )
             return True
@@ -2644,7 +2644,7 @@ def get_file_mimetype(file_path):
     # noinspection PyBroadException
     try:
         file_path = Path(file_path).resolve()
-        mimetype, _ = mimetypes.guess_type(file_path)
+        mimetype, _ = mimetypes.guess_type(file_path.as_posix())
         if mimetype:
             return mimetype
     except Exception:

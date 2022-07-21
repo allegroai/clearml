@@ -165,16 +165,17 @@ class Dataset(object):
                                       for key in {'files added', 'files removed', 'files modified'}}
             else:
                 self.changed_files = {'files added': 0, 'files removed': 0, 'files modified': 0}
-            dataset_project, parent_project = self._build_hidden_project_name(task.get_project_name(), task.name)
-            task.move_to_project(new_project_name=dataset_project)
-            if bool(Session.check_min_api_server_version(Dataset.__min_api_version)):
-                get_or_create_project(task.session, project_name=parent_project, system_tags=[self.__hidden_tag])
-                get_or_create_project(
-                    task.session,
-                    project_name=dataset_project,
-                    project_id=task.project,
-                    system_tags=[self.__hidden_tag, self.__tag],
-                )
+            if "/.datasets/" not in task.get_project_name() or "":
+                dataset_project, parent_project = self._build_hidden_project_name(task.get_project_name(), task.name)
+                task.move_to_project(new_project_name=dataset_project)
+                if bool(Session.check_min_api_server_version(Dataset.__min_api_version)):
+                    get_or_create_project(task.session, project_name=parent_project, system_tags=[self.__hidden_tag])
+                    get_or_create_project(
+                        task.session,
+                        project_name=dataset_project,
+                        project_id=task.project,
+                        system_tags=[self.__hidden_tag, self.__tag],
+                    )
         else:
             self._created_task = True
             dataset_project, parent_project = self._build_hidden_project_name(dataset_project, dataset_name)
@@ -1251,7 +1252,7 @@ class Dataset(object):
         dataset_version=None,  # Optional[str]
         entire_dataset=False,  # bool
         action=None,  # Optional[str]
-        shallow_search=True,  # bool
+        shallow_search=False,  # bool
     ):
         # type: (...) -> List[str]
         """
@@ -1316,7 +1317,7 @@ class Dataset(object):
         force=False,  # bool
         dataset_version=None,  # Optional[str]
         entire_dataset=False,  # bool
-        shallow_search=True  # bool
+        shallow_search=False  # bool
     ):
         # type: (...) -> ()
         """
@@ -1478,7 +1479,7 @@ class Dataset(object):
         dataset_version=None,  # type: Optional[str]
         alias=None,  # type: Optional[str]
         overridable=False,  # type: bool
-        shallow_search=True,  # type: bool
+        shallow_search=False,  # type: bool
         **kwargs
     ):
         # type: (...) -> "Dataset"

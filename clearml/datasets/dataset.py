@@ -165,6 +165,16 @@ class Dataset(object):
                                       for key in {'files added', 'files removed', 'files modified'}}
             else:
                 self.changed_files = {'files added': 0, 'files removed': 0, 'files modified': 0}
+            dataset_project, parent_project = self._build_hidden_project_name(task.get_project_name(), task.name)
+            task.move_to_project(new_project_name=dataset_project)
+            if bool(Session.check_min_api_server_version(Dataset.__min_api_version)):
+                get_or_create_project(task.session, project_name=parent_project, system_tags=[self.__hidden_tag])
+                get_or_create_project(
+                    task.session,
+                    project_name=dataset_project,
+                    project_id=task.project,
+                    system_tags=[self.__hidden_tag, self.__tag],
+                )
         else:
             self._created_task = True
             dataset_project, parent_project = self._build_hidden_project_name(dataset_project, dataset_name)
@@ -214,7 +224,7 @@ class Dataset(object):
             # noinspection PyProtectedMember
             self._dataset_version = self._task._get_runtime_properties().get("version")
         if not self._dataset_version:
-            _, latest_version = self._get_dataset_id_by_version(self.project, self.name)
+            _, latest_version = self._get_dataset_id(self.project, self.name)
             if latest_version is not None:
                 # noinspection PyBroadException
                 try:
@@ -1234,14 +1244,33 @@ class Dataset(object):
     @classmethod
     def _get_dataset_ids_respecting_params(
         cls,
-        dataset_id=None,
-        dataset_project=None,
-        dataset_name=None,
-        force=False,
-        dataset_version=None,
-        entire_dataset=None,
-        action=None
+        dataset_id=None,  # Optional[str]
+        dataset_project=None,  # Optional[str]
+        dataset_name=None,  # Optional[str]
+        force=False,  # bool
+        dataset_version=None,  # Optional[str]
+        entire_dataset=False,  # bool
+        action=None,  # Optional[str]
+        shallow_search=True,  # bool
     ):
+        # type: (...) -> List[str]
+        """
+        Get datasets IDs based on certain criteria, like the dataset_project, dataset_name etc.
+
+        :param dataset_id: If set, only this ID is returned
+        :param dataset_project: Corresponding dataset project
+        :param dataset_name: Corresponding dataset name
+        :param force: If True, get the dataset(s) even when being used. Also required to be set to
+            True when `entire_dataset` is set.
+        :param dataset_version: The version of the corresponding dataset. If set to `None` (default),
+            then get the dataset with the latest version
+        :param entire_dataset: If True, get all datasets that match the given `dataset_project`,
+            `dataset_name`, `dataset_version`. Note that `force` has to be True if this paramer is True
+        :param action: Corresponding action, used for logging/building error texts
+        :param shallow_search: If True, search only the first 500 results (first page)
+
+        :return: A list of datasets that matched the parameters
+        """
         if dataset_id:
             return [dataset_id]
         if entire_dataset:
@@ -1260,8 +1289,12 @@ class Dataset(object):
                 _allow_extra_fields_=True,
             )
             return [d.id for d in datasets]
-        dataset_id = cls._find_dataset_id(
-            dataset_project=dataset_project, dataset_name=dataset_name, dataset_version=dataset_version
+        dataset_id, _ = cls._get_dataset_id(
+            dataset_project=dataset_project,
+            dataset_name=dataset_name,
+            dataset_version=dataset_version,
+            raise_on_multiple=True,
+            shallow_search=shallow_search
         )
         if not dataset_id:
             raise ValueError(
@@ -1283,6 +1316,7 @@ class Dataset(object):
         force=False,  # bool
         dataset_version=None,  # Optional[str]
         entire_dataset=False,  # bool
+        shallow_search=True  # bool
     ):
         # type: (...) -> ()
         """
@@ -1295,8 +1329,9 @@ class Dataset(object):
         :param force: If True, deleted the dataset(s) even when being used. Also required to be set to
             True when `entire_dataset` is set.
         :param dataset_version: The version of the dataset(s) to be deletedd
-        :param entire_dataset: If True, deleted all all datasets that match the given `dataset_project`,
+        :param entire_dataset: If True, delete all datasets that match the given `dataset_project`,
             `dataset_name`, `dataset_version`. Note that `force` has to be True if this paramer is True
+        :param shallow_search: If True, search only the first 500 results (first page)
         """
         if not any([dataset_id, dataset_project, dataset_name]):
             raise ValueError("Dataset deletion criteria not met. Didn't provide id/name/project correctly.")
@@ -1313,6 +1348,7 @@ class Dataset(object):
                 force=force,
                 dataset_version=dataset_version,
                 entire_dataset=entire_dataset,
+                shallow_search=shallow_search,
                 action="delete",
             )
         except Exception as e:
@@ -1410,6 +1446,7 @@ class Dataset(object):
                 dataset_project=dataset_project,
                 dataset_name=dataset_name,
                 entire_dataset=True,
+                shallow_search=False,
                 force=True,
                 action="move",
             )
@@ -1441,11 +1478,12 @@ class Dataset(object):
         dataset_version=None,  # type: Optional[str]
         alias=None,  # type: Optional[str]
         overridable=False,  # type: bool
+        shallow_search=True,  # type: bool
         **kwargs
     ):
         # type: (...) -> "Dataset"
         """
-        Get a specific Dataset. If multiple datasets are found, the most recent one is returned
+        Get a specific Dataset. If multiple datasets are found, the dataset with the highest version is returned
 
         :param dataset_id: Requested dataset ID
         :param dataset_project: Requested dataset project name
@@ -1462,6 +1500,7 @@ class Dataset(object):
         :param overridable: If True, allow overriding the dataset ID with a given alias in the
             hyperparameters section. Useful when one wants to change the dataset used when running
             a task remotely. If the alias parameter is not set, this parameter has no effect
+        :param shallow_search: If True, search only the first 500 results (first page)
 
         :return: Dataset object
         """
@@ -1534,24 +1573,21 @@ class Dataset(object):
             return dataset
 
         if not dataset_id:
-            dataset_id = cls._find_dataset_id(
+            dataset_id, _ = cls._get_dataset_id(
                 dataset_project=dataset_project,
                 dataset_name=dataset_name,
                 dataset_version=dataset_version,
-                raise_on_error=False,
-                dataset_tags=dataset_tags,
                 dataset_filter=dict(
+                    tags=dataset_tags,
                     system_tags=[cls.__tag, "-archived"],
-                    order_by=["-created"],
                     type=[str(Task.TaskTypes.data_processing)],
-                    page_size=1,
-                    page=0,
                     status=["published"]
                     if only_published
                     else ["published", "completed", "closed"]
                     if only_completed
                     else None,
                 ),
+                shallow_search=shallow_search
             )
             if not dataset_id and not auto_create:
                 raise ValueError(
@@ -2880,102 +2916,79 @@ class Dataset(object):
         return chunk_selection
 
     @classmethod
-    def _get_dataset_id_by_version(cls, dataset_project, dataset_name, dataset_version="latest"):
+    def _get_dataset_id(
+        cls,
+        dataset_project,
+        dataset_name,
+        dataset_version=None,
+        dataset_filter=None,
+        raise_on_multiple=False,
+        shallow_search=True,
+    ):
         # type: (str, str, Optional[str]) -> Tuple[str, str]
         """
         Gets the dataset ID that matches a project, name and a version.
 
         :param dataset_project: Corresponding dataset project
         :param dataset_name: Corresponding dataset name
-        :param dataset_version: The version of the corresponding dataset. If set to 'latest',
+        :param dataset_version: The version of the corresponding dataset. If set to `None` (default),
             then get the dataset with the latest version
+        :param dataset_filter: Filter the found datasets based on the criteria present in this dict.
+            Has the same behaviour as `task_filter` parameter in Task.get_tasks. If None,
+            the filter will have parameters set specific to datasets
+        :param raise_on_multiple: If True and more than 1 dataset is found raise an Exception
+        :param shallow_search: If True, search only the first 500 results (first page)
 
         :return: A tuple containing 2 strings: the dataset ID and the version of that dataset
         """
+        dataset_filter = dataset_filter or {}
+        unmodifiable_params = ["project_name", "task_name", "only_fields", "search_hidden", "_allow_extra_fields_"]
+        for unmodifiable_param in unmodifiable_params:
+            if unmodifiable_param in dataset_filter:
+                del dataset_filter[unmodifiable_param]
+        dataset_filter.setdefault("system_tags", [cls.__tag])
+        # dataset_filter.setdefault("type", [str(Task.TaskTypes.data_processing)])
+        dataset_filter.setdefault("order_by", ["-last_update"])
         # making sure we have the right project name here
         hidden_dataset_project, _ = cls._build_hidden_project_name(dataset_project, dataset_name)
         # noinspection PyProtectedMember
         datasets = Task._query_tasks(
-            project_name=[hidden_dataset_project],
+            project_name=[hidden_dataset_project] if hidden_dataset_project else None,
             task_name=exact_match_regex(dataset_name) if dataset_name else None,
-            system_tags=[cls.__tag],
+            fetch_only_first_page=shallow_search,
             only_fields=["id", "runtime.version"],
             search_hidden=True,
-            _allow_extra_fields_=True
+            _allow_extra_fields_=True,
+            **dataset_filter,
         )
+        if raise_on_multiple and len(datasets) > 1:
+            raise ValueError(
+                "Multiple datasets found with dataset_project={}, dataset_name={}, dataset_version={}".format(
+                    dataset_project, dataset_name, dataset_version
+                )
+            )
         result_dataset = None
         for dataset in datasets:
             current_version = dataset.runtime.get("version")
             if not current_version:
                 continue
-            if dataset_version == "latest" and (
+            if dataset_version is None and (
                 not result_dataset or Version(result_dataset.runtime["version"]) < Version(current_version)
             ):
                 result_dataset = dataset
             elif dataset_version == current_version:
+                if result_dataset and raise_on_multiple:
+                    raise ValueError(
+                        "Multiple datasets found with dataset_project={}, dataset_name={}, dataset_version={}".format(
+                            dataset_project, dataset_name, dataset_version
+                        )
+                    )
                 result_dataset = dataset
-                break
+                if not raise_on_multiple:
+                    break
         if not result_dataset:
             return None, None
         return result_dataset.id, result_dataset.runtime.get("version")
-
-    @classmethod
-    def _find_dataset_id(
-        cls,
-        dataset_project=None,  # Optional[str]
-        dataset_name=None,  # Optional[str]
-        dataset_version=None,  # Optional[str]
-        dataset_tags=None,  # Optional[Sequence[str]]
-        dataset_filter=None,  # Optional[dict]
-        raise_on_error=True,  # bool
-    ):
-        # type: (...) -> Optional[str]
-        """
-        Find a dataset ID based on the given parameters
-
-        :param dataset_project: Project of the dataset searched
-        :param dataset_name: Name of the dataset searched
-        :param dataset_verion: Version of the dataset searched
-        :param dataset_tags: List of tags of the dataset searched
-        :param dataset_filter: Filter the found datasets based on the criteria present in this dict.
-            Has the same behaviour as `task_filter` parameter in Task.get_tasks. If None,
-            the filter will have parameters set specific to datasets.
-        :param raise_on_error: If True and no dataset is found or more than 1 dataset is found,
-            raise an Exception.
-        """
-        if not dataset_version:
-            if dataset_filter is None:
-                dataset_filter = dict(
-                    system_tags=[cls.__tag],
-                    type=[str(Task.TaskTypes.data_processing)],
-                    page_size=2,
-                    page=0,
-                )
-            dataset_filter["search_hidden"] = True
-            dataset_filter["_allow_extra_fields_"] = True
-            hidden_dataset_project, _ = cls._build_hidden_project_name(dataset_project, dataset_name)
-            tasks = Task.get_tasks(
-                project_name=hidden_dataset_project,
-                task_name=exact_match_regex(dataset_name) if dataset_name else None,
-                tags=dataset_tags,
-                task_filter=dataset_filter,
-            )
-            if not tasks and raise_on_error:
-                raise ValueError("Dataset project={} name={} could not be found".format(dataset_project, dataset_name))
-            if len(tasks) > 1 and raise_on_error:
-                raise ValueError("Too many datasets matching project={} name={}".format(dataset_project, dataset_name))
-            dataset_id = tasks[0].id
-        else:
-            dataset_id, _ = cls._get_dataset_id_by_version(
-                dataset_project, dataset_name, dataset_version=dataset_version
-            )
-            if not dataset_id and raise_on_error:
-                raise ValueError(
-                    "Dataset project={} name={} version={} could not be found".format(
-                        dataset_project, dataset_name, dataset_version
-                    )
-                )
-        return dataset_id
 
     @classmethod
     def _build_hidden_project_name(cls, dataset_project, dataset_name):
@@ -2990,10 +3003,13 @@ class Dataset(object):
         :return: Tuple of 2 strings, one is the corresponding hidden dataset project and one
             is the parent project
         """
-        dataset_project = cls._remove_hidden_part_from_dataset_project(dataset_project)
+        if not dataset_project:
+            return None, None
+        project_name = cls._remove_hidden_part_from_dataset_project(dataset_project)
         if bool(Session.check_min_api_server_version(cls.__min_api_version)):
             parent_project = "{}.datasets".format(dataset_project + "/" if dataset_project else "")
-            project_name = "{}/{}".format(parent_project, dataset_name)
+            if dataset_name:
+                project_name = "{}/{}".format(parent_project, dataset_name)
         else:
             parent_project = None
             project_name = dataset_project or "Datasets"

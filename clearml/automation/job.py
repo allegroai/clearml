@@ -202,11 +202,8 @@ class BaseJob(object):
             return self._worker
 
         if self._worker is None:
-            # the last console outputs will update the worker
-            self.get_console_output(number_of_reports=1)
-            # if we still do not have it, store empty string
-            if not self._worker:
-                self._worker = ''
+            self.task.reload()
+            self._worker = self.task.last_worker
 
         return self._worker
 
@@ -779,10 +776,6 @@ class _JobStub(object):
     def task_id(self):
         # type: () -> str
         return 'stub'
-
-    def worker(self):
-        # type: () -> ()
-        return None
 
     def status(self):
         # type: () -> str

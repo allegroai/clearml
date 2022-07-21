@@ -1058,6 +1058,10 @@ class Task(_Task):
         # type: () -> str
         return self.storage_uri
 
+    @property
+    def last_worker(self):
+        return self._data.last_worker
+
     @output_uri.setter
     def output_uri(self, value):
         # type: (Union[str, bool]) -> None

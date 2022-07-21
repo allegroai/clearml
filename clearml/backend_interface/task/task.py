@@ -2129,7 +2129,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
             # Since we ae using forced update, make sure he task status is valid
             status = self._data.status if self._data and self._reload_skip_flag else self.data.status
-            if status not in (tasks.TaskStatusEnum.created, tasks.TaskStatusEnum.in_progress):
+            if not kwargs.pop("force", False) and status not in (tasks.TaskStatusEnum.created, tasks.TaskStatusEnum.in_progress):
                 # the exception being name/comment that we can always change.
                 if kwargs and all(
                     k in ("name", "project", "comment", "tags", "system_tags", "runtime") for k in kwargs.keys()
@@ -2174,7 +2174,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self.data.script = script
             self._edit(script=script)
 
-    def _set_configuration(self, name, description=None, config_type=None, config_text=None, config_dict=None):
+    def _set_configuration(self, name, description=None, config_type=None, config_text=None, config_dict=None, **kwargs):
         # type: (str, Optional[str], Optional[str], Optional[str], Optional[Union[Mapping, list]]) -> None
         """
         Set Task configuration text/dict. Multiple configurations are supported.
@@ -2203,7 +2203,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             configuration = self.data.configuration or {}
             configuration[name] = tasks.ConfigurationItem(
                 name=name, value=a_config, description=description or None, type=config_type or None)
-            self._edit(configuration=configuration)
+            self._edit(configuration=configuration, **kwargs)
 
     def _get_configuration_text(self, name):
         # type: (str) -> Optional[str]

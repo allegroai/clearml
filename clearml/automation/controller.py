@@ -1928,7 +1928,7 @@ class PipelineController(object):
             self._task._set_configuration(
                 name=self._config_section, config_type='dictionary',
                 description="pipeline state: {}".format(hash_dict(pipeline_dag)),
-                config_text=json.dumps(pipeline_dag, indent=2))
+                config_text=json.dumps(pipeline_dag, indent=2), force=True)
 
     def _update_progress(self):
         # type: () -> ()

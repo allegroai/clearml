@@ -1467,14 +1467,19 @@ class Task(_Task):
                     # noinspection PyProtectedMember
                     task._set_model_config(config_dict=config_dict)
 
-            if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):
+            def get_dev_config(configuration_):
                 if multi_config_support:
                     self._set_configuration(
-                        name=name, description=description, config_type='dictionary', config_dict=configuration)
+                        name=name, description=description, config_type="dictionary", config_dict=configuration_
+                    )
                 else:
                     self._set_model_config(config_dict=configuration)
-                if isinstance(configuration, dict):
-                    configuration = ProxyDictPostWrite(self, _update_config_dict, **configuration)
+                if isinstance(configuration_, dict):
+                    configuration_ = ProxyDictPostWrite(self, _update_config_dict, **configuration_)
+                return configuration_
+
+            if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):
+                configuration = get_dev_config(configuration)
             else:
                 # noinspection PyBroadException
                 try:
@@ -1494,7 +1499,9 @@ class Task(_Task):
                             config_type='dictionary', config_dict=configuration)
                     return configuration
 
-                if isinstance(configuration, dict):
+                if not remote_configuration:
+                    configuration = get_dev_config(configuration)
+                elif isinstance(configuration, dict):
                     configuration.clear()
                     configuration.update(remote_configuration)
                     configuration = ProxyDictPreWrite(False, False, **configuration)

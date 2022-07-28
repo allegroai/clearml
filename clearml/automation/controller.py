@@ -3589,8 +3589,9 @@ class PipelineDecorator(PipelineController):
                         break
         if kwargs:
             leaves = cls._singleton._find_executed_node_leaves()
-            _node.parents = (_node.parents or []) + \
-                            [x for x in cls._evaluated_return_values.get(tid, []) if x in leaves]
+            _node.parents = (_node.parents or []) + [
+                x for x in cls._evaluated_return_values.get(tid, []) if x in leaves
+            ]
         for k, v in kwargs.items():
             if v is None or isinstance(v, (bool, int, float, str)):
                 _node.parameters["{}/{}".format(CreateFromFunction.kwargs_section, k)] = v

@@ -340,12 +340,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         tags = [self._development_tag] if not running_remotely() else []
         extra_properties = {'system_tags': tags} if Session.check_min_api_version('2.3') else {'tags': tags}
+        if not Session.check_min_api_version("2.20"):
+            extra_properties["input"] = {"view": {}}
         req = tasks.CreateRequest(
             name=task_name or make_message('Anonymous task (%(user)s@%(host)s %(time)s)'),
             type=tasks.TaskTypeEnum(task_type),
             comment=created_msg,
             project=project_id,
-            input={'view': {}},
             **extra_properties
         )
         res = self.send(req)

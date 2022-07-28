@@ -372,10 +372,8 @@ class StorageHelper(object):
             # if this is not a known scheme assume local file
             # url2pathname is specifically intended to operate on (urlparse result).path
             # and returns a cross-platform compatible result
-            url = parsed.path
-            if parsed.netloc:
-                url = os.path.join(parsed.netloc, url.lstrip(os.path.sep))
-            self._driver = _FileStorageDriver(Path(url))
+            new_url = normalize_local_path(url)
+            self._driver = _FileStorageDriver(new_url)
             # noinspection PyBroadException
             try:
                 self._container = self._driver.get_container("")
@@ -392,6 +390,7 @@ class StorageHelper(object):
         remaining_timeout = timeout
         for thread in cls._async_upload_threads:
             t = time()
+            # noinspection PyBroadException
             try:
                 thread.join(timeout=remaining_timeout)
             except Exception:
@@ -698,6 +697,14 @@ class StorageHelper(object):
         remote_path = self._canonize_url(remote_path)
         verbose = self._verbose if verbose is None else verbose
 
+        tmp_remote_path = remote_path
+        # noinspection PyBroadException
+        try:
+            tmp_remote_path = normalize_local_path(tmp_remote_path)
+            if tmp_remote_path.exists():
+                remote_path = "file://{}".format(str(tmp_remote_path))
+        except Exception:
+            pass
         # Check if driver type supports direct access:
         direct_access_path = self.get_driver_direct_access(remote_path)
         if direct_access_path and direct_access:
@@ -2629,6 +2636,25 @@ class _FileStorageDriver(_Driver):
 
     def test_upload(self, test_path, config, **kwargs):
         return True
+
+
+def normalize_local_path(local_path):
+    """
+    Get a normalized local path
+
+    :param local_path: Path of the local file/dir
+    :type local_path: str
+
+    :return: Normalized local path
+    :rtype: Path
+    """
+    local_path = os.path.normpath(local_path)
+    local_path = os.path.expanduser(local_path)
+    local_path = os.path.expandvars(local_path)
+    local_path = os.path.realpath(local_path)
+    local_path = os.path.abspath(local_path)
+    local_path = Path(local_path)
+    return local_path
 
 
 def get_file_mimetype(file_path):

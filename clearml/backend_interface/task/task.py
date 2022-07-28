@@ -2187,7 +2187,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param config_dict: model configuration parameters dictionary.
             If `config_dict` is not None, `config_text` must not be provided.
         """
-        # make sure we have wither dict or text
+        # make sure we have either dict or text
         mutually_exclusive(config_dict=config_dict, config_text=config_text, _check_none=True)
 
         if not Session.check_min_api_version('2.9'):

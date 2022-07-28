@@ -6,7 +6,6 @@ import pickle
 from six.moves.urllib.parse import quote
 from copy import deepcopy
 from datetime import datetime
-from multiprocessing import RLock, Event
 from multiprocessing.pool import ThreadPool
 from tempfile import mkdtemp, mkstemp
 from threading import Thread
@@ -25,6 +24,7 @@ from ..backend_interface.metrics.events import UploadEvent
 from ..debugging.log import LoggerRoot
 from ..storage.helper import remote_driver_schemes
 from ..storage.util import sha256sum, format_size, get_common_path
+from ..utilities.process.mp import SafeEvent, ForkSafeRLock
 from ..utilities.proxy_object import LazyEvalWrapper
 
 try:
@@ -304,12 +304,12 @@ class Artifacts(object):
         self._last_artifacts_upload = {}
         self._unregister_request = set()
         self._thread = None
-        self._flush_event = Event()
+        self._flush_event = SafeEvent()
         self._exit_flag = False
         self._summary = ''
         self._temp_folder = []
         self._task_artifact_list = []
-        self._task_edit_lock = RLock()
+        self._task_edit_lock = ForkSafeRLock()
         self._storage_prefix = None
 
     def register_artifact(self, name, artifact, metadata=None, uniqueness_columns=True):

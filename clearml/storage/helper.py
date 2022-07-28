@@ -40,7 +40,7 @@ from ..backend_config.bucket_config import S3BucketConfigurations, GSBucketConfi
 from ..config import config, deferred_config
 from ..debugging import get_logger
 from ..errors import UsageError
-from ..utilities.process.mp import ForkSafeRLock
+from ..utilities.process.mp import ForkSafeRLock, SafeEvent
 
 
 class StorageError(Exception):
@@ -2036,7 +2036,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
             self.get_logger().warning("failed saving after download: overwrite=False and file exists (%s)" % str(p))
             return
 
-        download_done = threading.Event()
+        download_done = SafeEvent()
         download_done.counter = 0
 
         def callback_func(current, total):

@@ -1,11 +1,12 @@
 import attr
-from threading import Thread, Event
+from threading import Thread
 
 from time import time
 
 from ....config import deferred_config
 from ....backend_interface.task.development.stop_signal import TaskStopSignal
 from ....backend_api.services import tasks
+from ....utilities.process.mp import SafeEvent
 
 
 class DevWorker(object):
@@ -22,7 +23,7 @@ class DevWorker(object):
     def __init__(self):
         self._dev_stop_signal = None
         self._thread = None
-        self._exit_event = Event()
+        self._exit_event = SafeEvent()
         self._task = None
         self._support_ping = False
 

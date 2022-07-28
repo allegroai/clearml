@@ -6,15 +6,15 @@ import time
 
 
 def get_current_thread_id():
-    return threading._get_ident() if six.PY2 else threading.get_ident()
+    return threading._get_ident() if six.PY2 else threading.get_ident()  # noqa
 
 
 # Nasty hack to raise exception for other threads
 def _lowlevel_async_raise(thread_obj, exception=None):
-    NULL = 0
+    NULL = 0  # noqa
     found = False
     target_tid = 0
-    for tid, tobj in threading._active.items():
+    for tid, tobj in threading._active.items():  # noqa
         if tobj is thread_obj:
             found = True
             target_tid = tid
@@ -29,10 +29,10 @@ def _lowlevel_async_raise(thread_obj, exception=None):
 
     if sys.version_info.major >= 3 and sys.version_info.minor >= 7:
         target_tid = ctypes.c_ulong(target_tid)
-        NULL = ctypes.c_ulong(NULL)
+        NULL = ctypes.c_ulong(NULL)  # noqa
     else:
         target_tid = ctypes.c_long(target_tid)
-        NULL = ctypes.c_long(NULL)
+        NULL = ctypes.c_long(NULL)  # noqa
 
     # noinspection PyBroadException
     try:

@@ -9,13 +9,14 @@ import attr
 import logging
 import json
 from pathlib2 import Path
-from threading import Thread, Event
+from threading import Thread
 
 from .util import get_command_output, remove_user_pass_from_url
 from ....backend_api import Session
 from ....config import deferred_config, VCS_WORK_DIR
 from ....debugging import get_logger
 from .detectors import GitEnvDetector, GitDetector, HgEnvDetector, HgDetector, Result as DetectionResult
+from ....utilities.process.mp import SafeEvent
 
 
 class ScriptInfoError(Exception):
@@ -260,8 +261,8 @@ class ScriptRequirements(object):
 
 class _JupyterObserver(object):
     _thread = None
-    _exit_event = Event()
-    _sync_event = Event()
+    _exit_event = SafeEvent()
+    _sync_event = SafeEvent()
     _sample_frequency = 30.
     _first_sample_frequency = 3.
     _jupyter_history_logger = None

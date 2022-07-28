@@ -308,15 +308,26 @@ class CacheManager(object):
                 atexit.register(self._lock_file_cleanup_callback)
 
             lock = self._folder_locks.get(local_path.as_posix())
-            # try to create a lock. If it exists, wait for the lock to be released
-            lock_path = local_path.parent / "{}{:03d}.{}{}".format(
-                CacheManager._lockfile_prefix,
-                0,
-                local_path.name,
-                CacheManager._lockfile_suffix,
-            )
-            lock = FileLock(filename=lock_path)
-            lock.acquire(timeout=300, check_interval=1.0)
+            i = 0
+            # try to create a lock if we do not already have one (if we do, we assume it is locked)
+            while not lock:
+                lock_path = local_path.parent / "{}{:03d}.{}{}".format(
+                    CacheManager._lockfile_prefix,
+                    i,
+                    local_path.name,
+                    CacheManager._lockfile_suffix,
+                )
+                lock = FileLock(filename=lock_path)
+
+                # try to lock folder (if we failed to create lock, try nex number)
+                try:
+                    lock.acquire(timeout=0)
+                    break
+                except LockException:
+                    # failed locking, maybe someone else already locked it.
+                    del lock
+                    lock = None
+                    i += 1
 
             # store lock
             self._folder_locks[local_path.as_posix()] = lock

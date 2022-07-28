@@ -2484,6 +2484,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     @classmethod
     def __get_master_id_task_id(cls):
         # type: () -> Optional[str]
+        if not PROC_MASTER_ID_ENV_VAR.get(''):
+            return None
         master_pid, _, master_task_id = PROC_MASTER_ID_ENV_VAR.get('').partition(':')
         # we could not find a task ID, revert to old stub behaviour
         if not master_task_id:
@@ -2493,6 +2495,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     @classmethod
     def __get_master_process_id(cls):
         # type: () -> Optional[str]
+        if not PROC_MASTER_ID_ENV_VAR.get(''):
+            return None
         master_task_id = PROC_MASTER_ID_ENV_VAR.get().split(':')
         # we could not find a task ID, revert to old stub behaviour
         if len(master_task_id) < 2 or not master_task_id[1]:

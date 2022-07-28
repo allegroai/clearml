@@ -1,10 +1,10 @@
 import logging
 import sys
-import threading
 from time import time
 
 from ..binding.frameworks import _patched_call  # noqa
 from ..config import running_remotely, config, DEBUG_SIMULATE_REMOTE_TASK
+from ..utilities.process.mp import ForkSafeRLock
 
 
 class StdStreamPatch(object):
@@ -176,8 +176,8 @@ class PrintPatchLogger(object):
     Used for capturing and logging stdin and stderr when running in development mode pseudo worker.
     """
     patched = False
-    lock = threading.Lock()
-    recursion_protect_lock = threading.RLock()
+    lock = ForkSafeRLock()
+    recursion_protect_lock = ForkSafeRLock()
     cr_flush_period = None
 
     def __init__(self, stream, logger=None, level=logging.INFO, load_config_defaults=True):

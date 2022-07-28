@@ -142,6 +142,10 @@ class ForkSafeRLock(_ForkSafeThreadSyncObject):
         # Do whatever cleanup.
         self.release()
 
+    def _is_owned(self):
+        self._create()
+        return self._sync._is_owned()  # noqa
+
 
 class ForkSemaphore(_ForkSafeThreadSyncObject):
     def __init__(self, value=1):

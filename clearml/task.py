@@ -42,6 +42,7 @@ from .backend_interface.util import (
     make_message,
     mutually_exclusive,
     get_queue_id,
+    get_num_enqueued_tasks,
     get_or_create_project,
 )
 from .binding.absl_bind import PatchAbsl
@@ -1259,6 +1260,30 @@ class Task(_Task):
             raise ValueError(res.response)
         resp = res.response
         return resp
+
+    @classmethod
+    def get_num_enqueued_tasks(cls, queue_name=None, queue_id=None):
+        # type: (Optional[str], Optional[str]) -> int
+        """
+        Get the number of tasks enqueued in a given queue.
+
+        :param queue_name: The name of the queue. If not specified, then ``queue_id`` must be specified
+        :param queue_id: The id of the queue. If not specified, then ``queue_name`` must be specified
+
+        :return: The number of tasks enqueued in the given queue
+        """
+        if not Session.check_min_api_server_version("2.20"):
+            raise ValueError("You version of clearml-server does not support the 'queues.get_num_entries' endpoint")
+        mutually_exclusive(queue_name=queue_name, queue_id=queue_id)
+        session = cls._get_default_session()
+        if not queue_id:
+            queue_id = get_queue_id(session, queue_name)
+            if not queue_id:
+                raise ValueError('Could not find queue named "{}"'.format(queue_name))
+        result = get_num_enqueued_tasks(session, queue_id)
+        if result is None:
+            raise ValueError("Could not query the number of enqueued tasks in queue with ID {}".format(queue_id))
+        return result
 
     @classmethod
     def dequeue(cls, task):

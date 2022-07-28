@@ -133,6 +133,14 @@ def get_queue_id(session, queue):
     return None
 
 
+def get_num_enqueued_tasks(session, queue_id):
+    # type: ('Session', str) -> Optional[int] # noqa: F821
+    res = session.send(queues.GetNumEntriesRequest(queue=queue_id))
+    if res and res.response and res.response.num is not None:
+        return res.response.num
+    return None
+
+
 # Hack for supporting windows
 def get_epoch_beginning_of_time(timezone_info=None):
     return datetime(1970, 1, 1).replace(tzinfo=timezone_info if timezone_info else utc_timezone)

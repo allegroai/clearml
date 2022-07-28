@@ -87,9 +87,13 @@ def cli():
                      help='Previously created dataset id. Default: previously created/accessed dataset')
     add.add_argument('--dataset-folder', type=str, default=None,
                      help='Dataset base folder to add the files to (default: Dataset root)')
-    add.add_argument('--files', type=str, nargs='*',
-                     help='Files / folders to add (support for wildcard selection). '
-                          'Example: ~/data/*.jpg ~/data/jsons')
+    add.add_argument("--files", type=str, nargs="*", help="Files / folders to add.")
+    add.add_argument(
+        "--wildcard",
+        type=str,
+        nargs="*",
+        help="Add specific set of files, denoted by these wildcards. Multiple wildcards can be passed",
+    )
     add.add_argument(
         "--links",
         type=str,
@@ -600,11 +604,19 @@ def ds_add(args):
     num_files = 0
     for file in args.files or []:
         num_files += ds.add_files(
-            path=file, recursive=not args.non_recursive, verbose=args.verbose, dataset_path=args.dataset_folder or None
+            path=file,
+            recursive=not args.non_recursive,
+            verbose=args.verbose,
+            dataset_path=args.dataset_folder or None,
+            wildcard=args.wildcard,
         )
     for link in args.links or []:
         num_files += ds.add_external_files(
-            link, dataset_path=args.dataset_folder or None, recursive=not args.non_recursive, verbose=args.verbose
+            link,
+            dataset_path=args.dataset_folder or None,
+            recursive=not args.non_recursive,
+            verbose=args.verbose,
+            wildcard=args.wildcard,
         )
     message = "{} file{} added".format(num_files, "s" if num_files != 1 else "")
     print(message)

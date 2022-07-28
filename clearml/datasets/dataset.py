@@ -119,9 +119,16 @@ class Dataset(object):
     _dataset_chunk_size_mb = deferred_config("storage.dataset_chunk_size_mb", 512, transform=int)
 
     def __init__(
-        self, _private, task=None, dataset_project=None, dataset_name=None, dataset_tags=None, dataset_version=None
+        self,
+        _private,
+        task=None,
+        dataset_project=None,
+        dataset_name=None,
+        dataset_tags=None,
+        dataset_version=None,
+        description=None,
     ):
-        # type: (int, Optional[Task], Optional[str], Optional[str], Optional[Sequence[str]], Optional[str]) -> ()
+        # type: (int, Optional[Task], Optional[str], Optional[str], Optional[Sequence[str]], Optional[str], Optional[str]) -> ()
         """
         Do not use directly! Use Dataset.create(...) or Dataset.get(...) instead.
         """
@@ -247,6 +254,8 @@ class Dataset(object):
         self._task.set_user_properties(version=self._dataset_version)
         # noinspection PyProtectedMember
         self._task._set_runtime_properties(runtime_props)
+        if description:
+            self.set_description(description)
         # store current dataset id
         self._id = task.id
         # store the folder where the dataset was downloaded to
@@ -1100,7 +1109,8 @@ class Dataset(object):
             parent_datasets=None,  # type: Optional[Sequence[Union[str, Dataset]]]
             use_current_task=False,  # type: bool
             dataset_version=None,  # type: Optional[str]
-            output_uri=None  # type: Optional[str]
+            output_uri=None,  # type: Optional[str]
+            description=None  # type: Optional[str]
     ):
         # type: (...) -> "Dataset"
         """
@@ -1125,6 +1135,8 @@ class Dataset(object):
             - Google Cloud Storage: ``gs://bucket-name/folder``
             - Azure Storage: ``azure://company.blob.core.windows.net/folder/``
             - Default file server: None
+
+        :param description: Description of the dataset
 
         :return: Newly created Dataset object
         """
@@ -1165,7 +1177,8 @@ class Dataset(object):
                        dataset_name=dataset_name,
                        dataset_tags=dataset_tags,
                        task=Task.current_task() if use_current_task else None,
-                       dataset_version=dataset_version)
+                       dataset_version=dataset_version,
+                       description=description)
         if output_uri and not Task._offline_mode:
             instance._task.output_uri = output_uri
         instance._using_current_task = use_current_task

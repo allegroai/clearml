@@ -83,7 +83,7 @@ from .utilities.proxy_object import (
 from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
-from .utilities.process.mp import BackgroundMonitor, leave_process
+from .utilities.process.mp import BackgroundMonitor, leave_process, fork_safe_objects_cleanup_process_lock
 from .utilities.matching import matches_any_wildcard
 from .utilities.parallel import FutureTaskCaller
 # noinspection PyProtectedMember
@@ -3605,6 +3605,10 @@ class Task(_Task):
         self._at_exit_called = True
         if not is_sub_process and BackgroundMonitor.is_subprocess_enabled():
             BackgroundMonitor.wait_for_sub_process(self)
+
+        # finally clean the proces locks
+        if not is_sub_process:
+            fork_safe_objects_cleanup_process_lock(tid=self.id, pid=os.getpid())
 
     @classmethod
     def __register_at_exit(cls, exit_callback, only_remove_signal_and_exception_hooks=False):

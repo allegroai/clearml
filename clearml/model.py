@@ -5,13 +5,14 @@ import zipfile
 from tempfile import mkdtemp, mkstemp
 
 import six
-from typing import List, Dict, Union, Optional, Mapping, TYPE_CHECKING, Sequence
+from typing import List, Dict, Union, Optional, Mapping, TYPE_CHECKING, Sequence, Any
 
 from .backend_api import Session
 from .backend_api.services import models, projects
 from pathlib2 import Path
 
 from .utilities.config import config_dict_to_text, text_to_config_dict
+from .utilities.proxy_object import cast_basic_type
 
 from .backend_interface.util import (
     validate_dict, get_single_result, mutually_exclusive, exact_match_regex,
@@ -462,6 +463,7 @@ class Model(BaseModel):
         super(Model, self).__init__()
         self._base_model_id = model_id
         self._base_model = None
+        self._reload_required = False
 
     def get_local_copy(self, extract_archive=True, raise_on_error=False):
         # type: (bool, bool) -> str
@@ -628,6 +630,108 @@ class Model(BaseModel):
             return False
 
         return True
+
+    def set_metadata(self, key, value, type):
+        # type: (str, str, str) -> bool
+        """
+        Set one metadata entry. All parameters must be strings or castable to strings
+
+        :param key: Key of the metadata entry
+        :param value: Value of the metadata entry
+        :param type: Type of the metadata entry
+
+        :return: True if the metadata was set and False otherwise
+        """
+        self._reload_required = True
+        result = _Model._get_default_session().send(models.AddOrUpdateMetadataRequest(
+            metadata=[{"key": str(key), "value": str(value), "type": str(type)}],
+            model=self._base_model_id,
+            replace_metadata=False
+        ))
+        return bool(result)
+
+    def get_metadata(self, key):
+        # type: (str) -> Optional[str]
+        """
+        Get one metadata entry value (as a string) based on its key. See `Model.get_metadata_casted`
+        if you wish to cast the value to its type (if possible)
+
+        :param key: Key of the metadata entry you want to get
+
+        :return: String representation of the value of the metadata entry or None if the entry was not found
+        """
+        self._reload_if_required()
+        return self.get_all_metadata().get(str(key), {}).get("value")
+
+    def get_metadata_casted(self, key):
+        # type: (str) -> Optional[str]
+        """
+        Get one metadata entry based on its key, casted to its type if possible
+
+        :param key: Key of the metadata entry you want to get
+
+        :return: The value of the metadata entry, casted to its type (if not possible,
+            the string representation will be returned) or None if the entry was not found
+        """
+        key = str(key)
+        metadata = self.get_all_metadata()
+        if key not in metadata:
+            return None
+        return cast_basic_type(metadata[key].get("value"), metadata[key].get("type"))
+
+    def get_all_metadata(self):
+        # type: () -> Dict[str, Dict[str, str]]
+        """
+        See `Model.get_all_metadata_casted` if you wish to cast the value to its type (if possible)
+
+        :return: Get all metadata as a dictionary of format Dict[key, Dict[value, type]]. The key, value and type
+            entries are all strings. Note that each entry might have an additional 'key' entry, repeating the key
+        """
+        self._reload_if_required()
+        return self._get_model_data().metadata or {}
+
+    def get_all_metadata_casted(self):
+        # type: () -> Dict[str, Dict[str, Any]]
+        """
+        :return: Get all metadata as a dictionary of format Dict[key, Dict[value, type]]. The key and type
+            entries are strings. The value is cast to its type if possible. Note that each entry might
+            have an additional 'key' entry, repeating the key
+        """
+        self._reload_if_required()
+        result = {}
+        metadata = self.get_all_metadata()
+        for key, metadata_entry in metadata.items():
+            result[key] = cast_basic_type(metadata_entry.get("value"), metadata_entry.get("type"))
+        return result
+
+    def set_all_metadata(self, metadata, replace=True):
+        # type: (Dict[str, Dict[str, str]], bool) -> bool
+        """
+        Set metadata based on the given parameters. Allows replacing all entries or updating the current entries.
+
+        :param metadata: A dictionary of format Dict[key, Dict[value, type]] representing the metadata you want to set
+        :param replace: If True, replace all metadata with the entries in the `metadata` parameter. If False,
+            keep the old metadata and update it with the entries in the `metadata` parameter (add or change it)
+
+        :return: True if the metadata was set and False otherwise
+        """
+        self._reload_required = True
+        metadata_array = [
+            {"key": str(k), "value": str(v_t.get("value")), "type": str(v_t.get("type"))} for k, v_t in metadata.items()
+        ]
+        result = _Model._get_default_session().send(models.AddOrUpdateMetadataRequest(
+            metadata=metadata_array,
+            model=self._base_model_id,
+            replace_metadata=replace
+        ))
+        return bool(result)
+
+    def _reload_if_required(self):
+        if not self._base_model:
+            self._get_base_model()
+        if self._reload_required:
+            self._base_model.reload()
+            self._reload_required = False
 
 
 class InputModel(Model):

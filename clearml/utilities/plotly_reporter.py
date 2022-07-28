@@ -531,8 +531,8 @@ def create_plotly_table(table_plot, title, series, layout_config=None):
             }
         }],
         "layout": {
-            "title": title,
-            "name": series,
+            "title.text": title,
+            "title": series,
         }
     }
     if layout_config:

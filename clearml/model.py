@@ -1069,11 +1069,15 @@ class InputModel(Model):
         # noinspection PyProtectedMember
         if running_remotely() and (task.is_main_task() or task._is_remote_main_task()):
             input_models = task.input_models_id
+            # noinspection PyBroadException
             try:
-                model_id = next(m_id for m_name, m_id in input_models if m_name == (name or 'Input Model'))
+                # TODO: (temp fix) At the moment, the UI changes the key of the model hparam
+                # when modifying its value... There is no way to tell which model was changed
+                # so just take the first one in case `name` is not in `input_models`
+                model_id = input_models.get(name, next(iter(input_models.values())))
                 self._base_model_id = model_id
                 self._base_model = InputModel(model_id=model_id)._get_base_model()
-            except StopIteration:
+            except Exception:
                 model_id = None
 
         if not model_id:

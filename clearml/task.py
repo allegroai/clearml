@@ -234,11 +234,10 @@ class Task(_Task):
         - The Task has run before (the same ``task_name`` and ``project_name``), and (a) it stored models and / or
           artifacts, or (b) its status is Published , or (c) it is Archived.
         - A new Task is forced by calling ``Task.init`` with ``reuse_last_task_id=False``.
-        - ``Task.init`` is called on a clearml-agent (i.e. the task is being executed remotely).
 
         Otherwise, the already initialized Task object for the same ``task_name`` and ``project_name`` is returned,
-        or, when being executed remotely, the current task is returned with any arguments supplied to ``Task.init``
-        being ignored.
+        or, when being executed remotely on a clearml-agent, the current task is returned with any the ``task_name``
+        and ``project_name`` arguments being ignored.
 
         .. note::
             To reference another Task, instead of initializing the same Task more than once, call

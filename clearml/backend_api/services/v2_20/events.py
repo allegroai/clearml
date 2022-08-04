@@ -1429,8 +1429,7 @@ class AddRequest(CompoundRequest):
             },
             "metrics_plot_event": {
                 "description": " An entire plot (not single datapoint) and it's layout. "
-                "Used for plotting ROC curves, confidence matrices, " 
-				"etc. when evaluating the net.",
+                "Used for plotting ROC curves, confidence matrices, etc. when evaluating the net.",
                 "properties": {
                     "iter": {"description": "Iteration", "type": "integer"},
                     "metric": {
@@ -1439,7 +1438,8 @@ class AddRequest(CompoundRequest):
                     },
                     "plot_str": {
                         "description": "An entire plot (not single datapoint) and it's layout. "
-						"Used for plotting ROC curves, confidence matrices, etc. when evaluating the net.",
+                                       "Used for plotting ROC curves, confidence matrices, etc. "
+                                       "when evaluating the net.",
                         "type": "string",
                     },
                     "skip_validation": {
@@ -1761,8 +1761,8 @@ class ClearTaskLogRequest(Request):
             "task": {"description": "Task ID", "type": "string"},
             "threshold_sec": {
                 "description": "The amount of seconds ago to retain the log records. "
-				"The older log records will be deleted. If not passed or 0 "
-                "then all the log records for the task will be deleted",
+                               "The older log records will be deleted. If not passed or 0 "
+                               "then all the log records for the task will be deleted",
                 "type": "integer",
             },
         },
@@ -1917,7 +1917,7 @@ class DebugImagesRequest(Request):
             },
             "refresh": {
                 "description": "If set then scroll will be moved to the latest iterations. "
-				"The default is False",
+                               "The default is False",
                 "type": "boolean",
             },
             "scroll_id": {
@@ -2423,7 +2423,7 @@ class GetDebugImageSampleResponse(Response):
                     },
                     "scroll_id": {
                         "description": "Scroll ID to pass to the next calls to get_debug_image_sample "
-						"or next_debug_image_sample",
+                                       "or next_debug_image_sample",
                         "type": ["string", "null"],
                     },
                 },
@@ -3489,19 +3489,21 @@ class GetTaskLogRequest(Request):
             },
             "from_timestamp": {
                 "description": "Epoch time in UTC ms to use as the navigation start. Optional. If not provided, "
-				"reference timestamp is determined by the 'navigate_earlier' parameter (if true, reference "
-				" timestamp is the last timestamp and if false, reference timestamp is the first timestamp)",
+                               "reference timestamp is determined by the 'navigate_earlier' parameter (if true, "
+                               "reference timestamp is the last timestamp and if false, reference timestamp "
+                               "is the first timestamp)",
                 "type": "number",
             },
             "navigate_earlier": {
                 "description": "If set then log events are retreived from the latest to the earliest ones "
-				"(in timestamp descending order, unless order='asc'). Otherwise from the earliest to the "
-				"latest ones (in timestamp ascending order, unless order='desc'). The default is True",
+                               "(in timestamp descending order, unless order='asc'). Otherwise from the earliest to "
+                               "the latest ones (in timestamp ascending order, unless order='desc'). "
+                               "The default is True",
                 "type": "boolean",
             },
             "order": {
-                "description": "If set, changes the order in which log events are returned based on the value of "
-				"'navigate_earlier'",
+                "description": "If set, changes the order in which log events are returned based on the value "
+                               "of 'navigate_earlier'",
                 "enum": ["asc", "desc"],
                 "type": "string",
             },
@@ -4639,7 +4641,7 @@ class PlotsRequest(Request):
             },
             "navigate_earlier": {
                 "description": "If set then events are retreived from latest iterations to earliest ones. "
-				"Otherwise from earliest iterations to the latest. The default is True",
+                               "Otherwise from earliest iterations to the latest. The default is True",
                 "type": "boolean",
             },
             "refresh": {
@@ -4975,7 +4977,7 @@ class ScalarMetricsIterRawRequest(Request):
             "count_total": {
                 "default": False,
                 "description": "Count the total number of data points. If false, total number of data points is not "
-				"counted and null is returned",
+                               "counted and null is returned",
                 "type": "boolean",
             },
             "key": {

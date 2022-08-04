@@ -47,7 +47,7 @@ class ApiServiceProxy(object):
         # noinspection PyBroadException
         try:
             return importlib.import_module(name, package=package)
-        except Exception as ex:
+        except Exception:
             return None
 
 

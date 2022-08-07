@@ -287,7 +287,7 @@ class Queue(NonStrictDataModel):
     :param entries: List of ordered queue entries
     :type entries: Sequence[Entry]
     :param metadata: Queue metadata
-    :type metadata: list
+    :type metadata: dict
     """
 
     _schema = {
@@ -324,7 +324,7 @@ class Queue(NonStrictDataModel):
             },
             "id": {"description": "Queue id", "type": ["string", "null"]},
             "metadata": {
-                "type": "array",
+                "type": ["object", "null"],
                 "items": {"$ref": "#/definitions/metadata_item"},
                 "description": "Queue metadata",
             },
@@ -491,13 +491,8 @@ class Queue(NonStrictDataModel):
         if value is None:
             self._property_metadata = None
             return
-        self.assert_isinstance(value, "metadata", (list, tuple))
-        if any(isinstance(v, dict) for v in value):
-            value = [
-                MetadataItem.from_dict(v) if isinstance(v, dict) else v for v in value
-            ]
-        else:
-            self.assert_isinstance(value, "metadata", MetadataItem, is_array=True)
+
+        self.assert_isinstance(value, "metadata", (dict,))
         self._property_metadata = value
 
 
@@ -584,13 +579,7 @@ class AddOrUpdateMetadataRequest(Request):
             self._property_metadata = None
             return
 
-        self.assert_isinstance(value, "metadata", (list, tuple))
-        if any(isinstance(v, dict) for v in value):
-            value = [
-                MetadataItem.from_dict(v) if isinstance(v, dict) else v for v in value
-            ]
-        else:
-            self.assert_isinstance(value, "metadata", MetadataItem, is_array=True)
+        self.assert_isinstance(value, "metadata", (dict,))
         self._property_metadata = value
 
     @schema_property("replace_metadata")

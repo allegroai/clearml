@@ -235,7 +235,8 @@ class Task(_Task):
           artifacts, or (b) its status is Published , or (c) it is Archived.
         - A new Task is forced by calling ``Task.init`` with ``reuse_last_task_id=False``.
 
-        Otherwise, the already initialized Task object for the same ``task_name`` and ``project_name`` is returned.
+        Otherwise, the already initialized Task object for the same ``task_name`` and ``project_name`` is returned,
+        or, when being executed remotely on a clearml-agent, the task returned is the existing task from the backend.
 
         .. note::
             To reference another Task, instead of initializing the same Task more than once, call

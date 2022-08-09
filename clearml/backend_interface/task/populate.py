@@ -497,7 +497,7 @@ if __name__ == '__main__':
     results = {function_name}(**kwargs)
     result_names = {function_return}
     if result_names:
-        if not isinstance(results, (tuple, list)) or (len(result_names) == 1 and len(results) != 1):
+        if not isinstance(results, (tuple, list)) or len(result_names) == 1:
             results = [results]
         for name, artifact in zip(result_names, results):
             task.upload_artifact(name=name, artifact_object=artifact)

@@ -3206,7 +3206,7 @@ class PipelineDecorator(PipelineController):
                             raise ValueError("Job was not created and is also not cached/executed")
                         return "{}.{}".format(_node.executed, return_name)
 
-                    _node.job.wait(pool_period=0.2)
+                    _node.job.wait(pool_period=1 if cls._debug_execute_step_process else 5)
                     if _node.job.is_failed() and not _node.continue_on_fail:
                         raise ValueError(
                             'Pipeline step "{}", Task ID={} failed'.format(_node.name, _node.job.task_id()))
@@ -3224,9 +3224,9 @@ class PipelineDecorator(PipelineController):
                     while True:
                         # wait until job is completed
                         if _node.job:
-                            _node.job.wait(pool_period=0.2)
+                            _node.job.wait(pool_period=1 if cls._debug_execute_step_process else 5)
                         else:
-                            sleep(0.2)
+                            sleep(2)
                             continue
                         if _node.job.is_failed() or _node.job.is_aborted():
                             if cls._singleton._should_relaunch_node(_node):
@@ -3485,7 +3485,7 @@ class PipelineDecorator(PipelineController):
                     for node in list(a_pipeline._nodes.values()):
                         if node.executed or not node.job or node.job.is_stopped():
                             continue
-                        node.job.wait(pool_period=15)
+                        node.job.wait(pool_period=1 if cls._debug_execute_step_process else 5)
                         waited = True
                 # store the pipeline result of we have any:
                 if return_value and pipeline_result is not None:

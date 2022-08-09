@@ -13,7 +13,7 @@ from multiprocessing import RLock
 from operator import itemgetter
 from tempfile import gettempdir
 from threading import Thread
-from typing import Optional, Any, Sequence, Callable, Mapping, Union, List, Set
+from typing import Optional, Any, Sequence, Callable, Mapping, Union, List, Set, Dict
 from uuid import uuid4
 
 from pathlib2 import Path
@@ -1835,6 +1835,40 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         configuration = self.data.configuration or {}
         return {k: v.value for k, v in configuration.items()}
+
+    def get_reported_single_values(self):
+        # type: () -> Dict[str, float]
+        """
+        Get all repoted single values as a dictionary, where the keys are the names of the values
+        and the values of the dictionary are the actual reported values.
+
+        :return: A dict containing the reported values
+        """
+        if not Session.check_min_api_version("2.20"):
+            raise ValueError(
+                "Current 'clearml-server' does not support getting reported single values. "
+                "Please upgrade to the lastest version"
+            )
+        res = self.send(events.GetTaskSingleValueMetricsRequest(tasks=[self.id]))
+        res = res.wait()
+        if not res.ok() or not res.response_data.get("tasks"):
+            return {}
+        result = {}
+        for value in res.response_data["tasks"][0].get("values", []):
+            result[value.get("variant")] = value.get("value")
+        return result
+
+    def get_reported_single_value(self, name):
+        # type: (str) -> Optional[float]
+        """
+        Get a single reported value, identified by its name. Note that this function calls
+        `Task.get_reported_single_values`.
+
+        :param name: The name of the reported value
+
+        :return: The actual value of the reported value, if found. Otherwise, returns None
+        """
+        return self.get_reported_single_values().get(name)
 
     def set_configuration_object(self, name, config_text=None, description=None, config_type=None, config_dict=None):
         # type: (str, Optional[str], Optional[str], Optional[str], Optional[Union[dict, list]]) -> None

@@ -91,7 +91,7 @@ class CacheManager(object):
             return cached_file
 
         @staticmethod
-        def upload_file(local_file, remote_url, wait_for_upload=True, retries=1):
+        def upload_file(local_file, remote_url, wait_for_upload=True, retries=3):
             # type: (str, str, bool, int) -> Optional[str]
             helper = StorageHelper.get(remote_url)
             result = helper.upload(

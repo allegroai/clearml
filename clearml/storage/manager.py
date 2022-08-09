@@ -54,7 +54,7 @@ class StorageManager(object):
 
     @classmethod
     def upload_file(
-        cls, local_file, remote_url, wait_for_upload=True, retries=1
+        cls, local_file, remote_url, wait_for_upload=True, retries=3
     ):  # type: (str, str, bool, int) -> str
         """
         Upload a local file to a remote location. remote url is the finale destination of the uploaded file.
@@ -70,7 +70,7 @@ class StorageManager(object):
         :param str local_file: Full path of a local file to be uploaded
         :param str remote_url: Full path or remote url to upload to (including file name)
         :param bool wait_for_upload: If False, return immediately and upload in the background. Default True.
-        :param int retries: Number of retries before failing to upload file, default 1.
+        :param int retries: Number of retries before failing to upload file, default 3.
         :return: Newly uploaded remote URL.
         """
         return CacheManager.get_cache_manager().upload_file(

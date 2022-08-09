@@ -604,7 +604,7 @@ class StorageHelper(object):
 
         return dest_path
 
-    def upload(self, src_path, dest_path=None, extra=None, async_enable=False, cb=None, retries=1):
+    def upload(self, src_path, dest_path=None, extra=None, async_enable=False, cb=None, retries=3):
         if not dest_path:
             dest_path = os.path.basename(src_path)
 

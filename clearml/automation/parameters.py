@@ -165,7 +165,7 @@ class UniformParameterRange(Parameter):
         """
         step_size = self.step_size or (self.max_value - self.min_value) / 100.
         steps = (self.max_value - self.min_value) / self.step_size
-        values = [v*step_size for v in range(0, int(steps))]
+        values = [self.min_value + v*step_size for v in range(0, int(steps))]
         if self.include_max and (not values or values[-1] < self.max_value):
             values.append(self.max_value)
         return [{self.name: v} for v in values]

@@ -2965,16 +2965,20 @@ class Dataset(object):
         dataset_filter.setdefault("order_by", ["-last_update"])
         # making sure we have the right project name here
         hidden_dataset_project, _ = cls._build_hidden_project_name(dataset_project, dataset_name)
-        # noinspection PyProtectedMember
-        datasets = Task._query_tasks(
-            project_name=[hidden_dataset_project] if hidden_dataset_project else None,
-            task_name=exact_match_regex(dataset_name) if dataset_name else None,
-            fetch_only_first_page=shallow_search,
-            only_fields=["id", "runtime.version"],
-            search_hidden=True,
-            _allow_extra_fields_=True,
-            **dataset_filter,
-        )
+        # noinspection PyBroadException
+        try:
+            # noinspection PyProtectedMember
+            datasets = Task._query_tasks(
+                project_name=[hidden_dataset_project] if hidden_dataset_project else None,
+                task_name=exact_match_regex(dataset_name) if dataset_name else None,
+                fetch_only_first_page=shallow_search,
+                only_fields=["id", "runtime.version"],
+                search_hidden=True,
+                _allow_extra_fields_=True,
+                **dataset_filter,
+            )
+        except Exception:
+            datasets = []
         if raise_on_multiple and len(datasets) > 1:
             raise ValueError(
                 "Multiple datasets found with dataset_project={}, dataset_name={}, dataset_version={}".format(

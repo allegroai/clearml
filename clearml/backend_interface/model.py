@@ -173,7 +173,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         if self.id is None:
             if upload_storage_uri:
                 self.upload_storage_uri = upload_storage_uri
-            self._create_empty_model(self.upload_storage_uri)
+            self._create_empty_model(self.upload_storage_uri, project_id=project_id)
         elif upload_storage_uri:
             self.upload_storage_uri = upload_storage_uri
 
@@ -481,11 +481,11 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         res = self.send(req)
         return res.response.id
 
-    def _create_empty_model(self, upload_storage_uri=None):
+    def _create_empty_model(self, upload_storage_uri=None, project_id=None):
         upload_storage_uri = upload_storage_uri or self.upload_storage_uri
         name = make_message('Anonymous model %(time)s')
         uri = '{}/uploading_file'.format(upload_storage_uri or 'file://')
-        req = models.CreateRequest(uri=uri, name=name, labels={})
+        req = models.CreateRequest(uri=uri, name=name, labels={}, project=project_id)
         res = self.send(req)
         if not res:
             return False

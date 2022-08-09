@@ -3228,7 +3228,9 @@ class PipelineDecorator(PipelineController):
                         else:
                             sleep(2)
                             continue
+
                         if _node.job.is_failed() or _node.job.is_aborted():
+                            # noinspection PyProtectedMember
                             if cls._singleton._should_relaunch_node(_node):
                                 cls._singleton._task.get_logger().report_text(
                                     "Relaunching step {} on instance termination".format(_node.name)
@@ -3460,7 +3462,8 @@ class PipelineDecorator(PipelineController):
                         pipeline_kwargs[k] = a_pipeline.get_parameters()[k]
 
                 # run the actual pipeline
-                if not start_controller_locally and not PipelineDecorator._debug_execute_step_process and pipeline_execution_queue:
+                if not start_controller_locally and \
+                        not PipelineDecorator._debug_execute_step_process and pipeline_execution_queue:
                     # rerun the pipeline on a remote machine
                     a_pipeline._task.execute_remotely(queue_name=pipeline_execution_queue)
                     # when we get here it means we are running remotely

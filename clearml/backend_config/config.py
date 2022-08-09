@@ -410,6 +410,7 @@ class Config(object):
             multipart=True,
             bucket=bucket,
             host=host,
+            extra_args=self.get("sdk.aws.s3.extra_args", None),
         )
 
     def set_overrides(self, *dicts):

@@ -344,7 +344,8 @@ class StorageHelper(object):
                 multipart=self._conf.multipart,
                 region=final_region,
                 use_credentials_chain=self._conf.use_credentials_chain,
-                token=token or self._conf.token
+                token=token or self._conf.token,
+                extra_args=self._conf.extra_args,
             )
 
             if not self._conf.use_credentials_chain:
@@ -1441,12 +1442,16 @@ class _Boto3Driver(_Driver):
         import boto3.s3.transfer
         stream = _Stream(iterator)
         try:
+            extra_args = {
+                'ContentType': get_file_mimetype(object_name),
+                **(container.config.extra_args or {})
+            }
             container.bucket.upload_fileobj(stream, object_name, Config=boto3.s3.transfer.TransferConfig(
                 use_threads=container.config.multipart,
                 max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
                 num_download_attempts=container.config.retries),
                 Callback=callback,
-                ExtraArgs={'ContentType': get_file_mimetype(object_name)}
+                ExtraArgs=extra_args,
             )
         except Exception as ex:
             self.get_logger().error('Failed uploading: %s' % ex)
@@ -1456,12 +1461,16 @@ class _Boto3Driver(_Driver):
     def upload_object(self, file_path, container, object_name, callback=None, extra=None, **kwargs):
         import boto3.s3.transfer
         try:
+            extra_args = {
+                'ContentType': get_file_mimetype(object_name or file_path),
+                **(container.config.extra_args or {})
+            }
             container.bucket.upload_file(file_path, object_name, Config=boto3.s3.transfer.TransferConfig(
                 use_threads=container.config.multipart,
                 max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
                 num_download_attempts=container.config.retries),
                 Callback=callback,
-                ExtraArgs={'ContentType': get_file_mimetype(object_name or file_path)}
+                ExtraArgs=extra_args,
             )
         except Exception as ex:
             self.get_logger().error('Failed uploading: %s' % ex)

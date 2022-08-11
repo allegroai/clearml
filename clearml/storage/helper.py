@@ -4,12 +4,12 @@ import errno
 import getpass
 import itertools
 import json
+import mimetypes
 import os
 import platform
 import shutil
 import sys
 import threading
-import mimetypes
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
@@ -32,6 +32,7 @@ from six import binary_type, StringIO
 from six.moves.queue import Queue, Empty
 from six.moves.urllib.parse import urlparse
 
+from clearml.utilities.requests_toolbelt import MultipartEncoder
 from .callbacks import UploadProgressReport, DownloadProgressReport
 from .util import quote_url
 from ..backend_api.session import Session
@@ -1164,15 +1165,24 @@ class _HttpDriver(_Driver):
             host, _, path = object_name.partition('/')
             url += host + '/'
 
-        stream_size = 0
+        m = MultipartEncoder(fields={
+            path: (path, iterator, get_file_mimetype(object_name))
+        })
+
+        headers = {
+            'Content-Type': m.content_type,
+            **(container.get_headers(url) or {}),
+        }
+
         if hasattr(iterator, 'tell') and hasattr(iterator, 'seek'):
             pos = iterator.tell()
             iterator.seek(0, 2)
             stream_size = iterator.tell() - pos
             iterator.seek(pos, 0)
             timeout = max(timeout, (stream_size / 1024) / float(self.min_kbps_speed))
+
         res = container.session.post(
-            url, files={path: iterator}, timeout=timeout, headers=container.get_headers(url)
+            url, data=m, timeout=timeout, headers=headers
         )
         if res.status_code != requests.codes.ok:
             raise ValueError('Failed uploading object %s (%d): %s' % (object_name, res.status_code, res.text))

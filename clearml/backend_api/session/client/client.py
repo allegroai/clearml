@@ -410,7 +410,9 @@ def make_action(service, request_cls):
 
     elif action in ["get_all", "get_all_ex"]:
         # noinspection PyProtectedMember
-        dest = service.response_mapping[request_cls]._get_data_props().popitem()[0]
+        for dest in service.response_mapping[request_cls]._get_data_props().keys():
+            if dest != "scroll_id":
+                break
 
         @wrap
         def get(self, *args, **kwargs):

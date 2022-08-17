@@ -52,9 +52,14 @@ def step_three(data):
     # make sure we have pandas for this step, we need it to use the data_frame
     import pandas as pd  # noqa
     from sklearn.linear_model import LogisticRegression
+    from clearml import Task
     X_train, X_test, y_train, y_test = data
     model = LogisticRegression(solver='liblinear', multi_class='auto')
     model.fit(X_train, y_train)
+    score = model.score(X_test,y_test)
+    # Get current step's Task
+    task = Task.current_task()
+    task.get_logger().report_single_value(name='accuracy',value=score)
     return model
 
 

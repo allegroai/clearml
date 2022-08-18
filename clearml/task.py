@@ -903,8 +903,8 @@ class Task(_Task):
             If specified, ``project_name`` and ``task_name`` are ignored.
         :param str project_name: The project name of the Task to get.
         :param str task_name: The name of the Task within ``project_name`` to get.
-        :param list tags: Filter based on the requested list of tags (strings) (Task must have all the listed tags)
-            To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
+        :param list tags: Filter based on the requested list of tags (strings) (Task must have at least one of the
+            listed tags). To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
         :param bool allow_archived: Only applicable if *not* using specific ``task_id``,
             If True (default) allow to return archived Tasks, if False filter out archived Tasks
         :param bool task_filter: Only applicable if *not* using specific ``task_id``,

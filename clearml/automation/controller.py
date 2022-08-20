@@ -1997,7 +1997,7 @@ class PipelineController(object):
                 node = self._nodes[j]
                 if not node.job:
                     continue
-                if node.job.is_stopped():
+                if node.job.is_stopped(aborted_nonresponsive_as_running=True):
                     node_failed = node.job.is_failed()
                     node.executed = node.job.task_id() if not node_failed else False
                     if j in launched_nodes:
@@ -2256,7 +2256,7 @@ class PipelineController(object):
                 self._task._edit(models=models)
 
         # update the state (so that we do not scan the node twice)
-        if node.job.is_stopped():
+        if node.job.is_stopped(aborted_nonresponsive_as_running=True):
             self._monitored_nodes[node.name]['completed'] = True
 
     def _get_target_project(self, return_project_id=False):
@@ -2546,7 +2546,10 @@ class PipelineController(object):
         """
         if not boto3 or not self._relaunch_on_instance_failure:
             return False
-        worker = node.job.worker().split(":")[-1]
+        worker = (node.job.worker() or "").split(":")[-1]
+        if not worker:
+            return False
+
         if (worker, node.name) in self._relaunch_check_cache:
             return self._relaunch_check_cache[(worker, node.name)]
         # get credentials from all autoscalers (shouldn't be too many)
@@ -2697,7 +2700,7 @@ class PipelineDecorator(PipelineController):
                 node = self._nodes[j]
                 if not node.job:
                     continue
-                if node.job.is_stopped():
+                if node.job.is_stopped(aborted_nonresponsive_as_running=True):
                     node_failed = node.job.is_failed()
                     if (node_failed or node.job.is_aborted()) and self._should_relaunch_node(node):
                         continue
@@ -2935,7 +2938,7 @@ class PipelineDecorator(PipelineController):
     def component(
             cls,
             _func=None, *,
-            return_values=('return_object', ),  # type: Union[str, List[str]]
+            return_values=('return_object', ),  # type: Union[str, Sequence[str]]
             name=None,  # type: Optional[str]
             cache=False,  # type: bool
             packages=None,  # type: Optional[Union[str, Sequence[str]]]
@@ -3206,7 +3209,8 @@ class PipelineDecorator(PipelineController):
                             raise ValueError("Job was not created and is also not cached/executed")
                         return "{}.{}".format(_node.executed, return_name)
 
-                    _node.job.wait(pool_period=1 if cls._debug_execute_step_process else 5)
+                    _node.job.wait(pool_period=1 if cls._debug_execute_step_process else 5,
+                                   aborted_nonresponsive_as_running=True)
                     if _node.job.is_failed() and not _node.continue_on_fail:
                         raise ValueError(
                             'Pipeline step "{}", Task ID={} failed'.format(_node.name, _node.job.task_id()))
@@ -3224,7 +3228,8 @@ class PipelineDecorator(PipelineController):
                     while True:
                         # wait until job is completed
                         if _node.job:
-                            _node.job.wait(pool_period=1 if cls._debug_execute_step_process else 5)
+                            _node.job.wait(pool_period=1 if cls._debug_execute_step_process else 5,
+                                           aborted_nonresponsive_as_running=True)
                         else:
                             sleep(2)
                             continue
@@ -3486,9 +3491,10 @@ class PipelineDecorator(PipelineController):
                 while waited:
                     waited = False
                     for node in list(a_pipeline._nodes.values()):
-                        if node.executed or not node.job or node.job.is_stopped():
+                        if node.executed or not node.job or node.job.is_stopped(aborted_nonresponsive_as_running=True):
                             continue
-                        node.job.wait(pool_period=1 if cls._debug_execute_step_process else 5)
+                        node.job.wait(pool_period=1 if cls._debug_execute_step_process else 5,
+                                      aborted_nonresponsive_as_running=True)
                         waited = True
                 # store the pipeline result of we have any:
                 if return_value and pipeline_result is not None:

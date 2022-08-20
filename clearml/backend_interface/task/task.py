@@ -2071,7 +2071,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return None
 
     def _set_runtime_properties(self, runtime_properties):
-        # type: (Mapping[str, str]) -> bool
+        # type: (Mapping[str, Union[str, int, float]]) -> bool
         if not Session.check_min_api_version('2.13') or not runtime_properties:
             return False
 

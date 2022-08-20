@@ -2594,6 +2594,50 @@ class Task(_Task):
         self.reload()
         return result
 
+    def register_abort_callback(
+            self,
+            callback_function,  # type: Optional[Callable]
+            callback_execution_timeout=30.  # type: float
+    ):  # type (...) -> None
+        """
+        Register a Task abort callback (single callback function support only).
+        Pass a function to be called from a background thread when the Task is **externally** being aborted.
+        Users must specify a timeout for the callback function execution (default 30 seconds)
+        if the callback execution function exceeds the timeout, the Task's process will be terminated
+
+        Call this register function from the main process only.
+
+        Note: Ctrl-C is Not considered external, only backend induced abort is covered here
+
+        :param callback_function: Callback function to be called via external thread (from the main process).
+            pass None to remove existing callback
+        :param callback_execution_timeout: Maximum callback execution time in seconds, after which the process
+            will be terminated even if the callback did not return
+        """
+        if self.__is_subprocess():
+            raise ValueError("Register abort callback must be called from the main process, this is a subprocess.")
+
+        if callback_function is None:
+            if self._dev_worker:
+                self._dev_worker.register_abort_callback(callback_function=None, execution_timeout=0, poll_freq=0)
+            return
+
+        if float(callback_execution_timeout) <= 0:
+            raise ValueError(
+                "function_timeout_sec must be positive timeout in seconds, got {}".format(callback_execution_timeout))
+
+        # if we are running remotely we might not have a DevWorker monitoring us, so let's create one
+        if not self._dev_worker:
+            self._dev_worker = DevWorker()
+            self._dev_worker.register(self, stop_signal_support=True)
+
+        poll_freq = 15.0
+        self._dev_worker.register_abort_callback(
+            callback_function=callback_function,
+            execution_timeout=callback_execution_timeout,
+            poll_freq=poll_freq
+        )
+
     @classmethod
     def import_task(cls, task_data, target_task=None, update=False):
         # type: (dict, Optional[Union[str, Task]], bool) -> Optional[Task]

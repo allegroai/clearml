@@ -163,22 +163,25 @@ class BaseJob(object):
         self._last_status_ts = time()
         return self._last_status
 
-    def wait(self, timeout=None, pool_period=30.):
-        # type: (Optional[float], float) -> bool
+    def wait(self, timeout=None, pool_period=30., aborted_nonresponsive_as_running=False):
+        # type: (Optional[float], float, bool) -> bool
         """
         Wait until the task is fully executed (i.e., aborted/completed/failed)
 
         :param timeout: maximum time (minutes) to wait for Task to finish
         :param pool_period: check task status every pool_period seconds
+        :param aborted_nonresponsive_as_running: (default: False) If True, ignore the stopped state if the backend
+            non-responsive watchdog sets this Task to stopped. This scenario could happen if
+            an instance running the job is killed without warning (e.g. spot instances)
         :return: True, if Task finished.
         """
         tic = time()
         while timeout is None or time() - tic < timeout * 60.:
-            if self.is_stopped():
+            if self.is_stopped(aborted_nonresponsive_as_running=aborted_nonresponsive_as_running):
                 return True
             sleep(pool_period)
 
-        return self.is_stopped()
+        return self.is_stopped(aborted_nonresponsive_as_running=aborted_nonresponsive_as_running)
 
     def get_console_output(self, number_of_reports=1):
         # type: (int) -> Sequence[str]
@@ -192,7 +195,7 @@ class BaseJob(object):
         return self.task.get_reported_console_output(number_of_reports=number_of_reports)
 
     def worker(self):
-        # type: () -> str
+        # type: () -> Optional[str]
         """
         Return the current worker id executing this Job. If job is pending, returns None
 
@@ -216,16 +219,35 @@ class BaseJob(object):
         """
         return self.status() == Task.TaskStatusEnum.in_progress
 
-    def is_stopped(self):
-        # type: () -> bool
+    def is_stopped(self, aborted_nonresponsive_as_running=False):
+        # type: (bool) -> bool
         """
         Return True, if job finished executing (for any reason)
 
+        :param aborted_nonresponsive_as_running: (default: False) If True, ignore the stopped state if the backend
+            non-responsive watchdog sets this Task to stopped. This scenario could happen if
+            an instance running the job is killed without warning (e.g. spot instances)
+
         :return: True the task is currently one of these states, stopped / completed / failed / published.
         """
-        return self.status() in (
-            Task.TaskStatusEnum.stopped, Task.TaskStatusEnum.completed,
-            Task.TaskStatusEnum.failed, Task.TaskStatusEnum.published)
+        task_status = self.status()
+        # check if we are Not in any of the non-running states
+        if task_status not in (Task.TaskStatusEnum.stopped, Task.TaskStatusEnum.completed,
+                               Task.TaskStatusEnum.failed, Task.TaskStatusEnum.published):
+            return False
+
+        # notice the status update also refresh the "status_message" field on the Task
+
+        # if we are stopped but the message says "non-responsive" it means for some reason the
+        # Task's instance was killed, we should ignore it if requested because we assume someone will bring it back
+        if aborted_nonresponsive_as_running and task_status == Task.TaskStatusEnum.stopped and \
+                str(self.task.data.status_message).lower() == "forced stop (non-responsive)":
+            # if we are here it means the state is "stopped" but we should ignore it
+            # because the non-responsive watchdog set it. We assume someone (autoscaler) will relaunch it.
+            return False
+        else:
+            # if we do not need to ignore the nonactive state, it means this Task stopped
+            return True
 
     def is_failed(self):
         # type: () -> bool

@@ -1637,16 +1637,18 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def get_status(self):
         # type: () -> str
         """
-        Return The task status without refreshing the entire Task object object (only the status property)
+        Return The task status without refreshing the entire Task object (only the status property)
 
         TaskStatusEnum: ["created", "in_progress", "stopped", "closed", "failed", "completed",
                          "queued", "published", "publishing", "unknown"]
 
         :return: str: Task status as string (TaskStatusEnum)
         """
-        status = self._get_status()[0]
+        status, status_message = self._get_status()
         if self._data:
             self._data.status = status
+            self._data.status_message = str(status_message)
+
         return str(status)
 
     def get_output_log_web_page(self):
@@ -2071,7 +2073,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return None
 
     def _set_runtime_properties(self, runtime_properties):
-        # type: (Mapping[str, str]) -> bool
+        # type: (Mapping[str, Union[str, int, float]]) -> bool
         if not Session.check_min_api_version('2.13') or not runtime_properties:
             return False
 

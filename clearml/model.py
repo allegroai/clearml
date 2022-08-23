@@ -40,6 +40,7 @@ class Framework(Options):
     tensorflowjs = 'TensorFlow_js'
     tensorflowlite = 'TensorFlow_Lite'
     pytorch = 'PyTorch'
+    torchscript = 'TorchScript'
     caffe = 'Caffe'
     caffe2 = 'Caffe2'
     onnx = 'ONNX'
@@ -55,6 +56,8 @@ class Framework(Options):
     parquet = 'Parquet'
     megengine = 'MegEngine'
     catboost = 'CatBoost'
+    tensorrt = 'TensorRT'
+    openvino = 'OpenVINO'
 
     __file_extensions_mapping = {
         '.pb': (tensorflow, tensorflowjs, onnx, ),
@@ -84,6 +87,7 @@ class Framework(Options):
         '.pkl': (scikitlearn, keras, xgboost, megengine),
         '.parquet': (parquet, ),
         '.cbm': (catboost, ),
+        '.plan': (tensorrt,),
     }
 
     __parent_mapping = {

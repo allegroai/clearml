@@ -243,19 +243,6 @@ class Dataset(object):
                             latest_version, self._task.id
                         )
                     )
-        runtime_props = {
-            "orig_dataset_name": self._task._get_runtime_properties().get("orig_dataset_name", self._task.name),  # noqa
-            "orig_dataset_id": self._task._get_runtime_properties().get("orig_dataset_id", self._task.id),  # noqa
-        }
-        if not self._dataset_version:
-            self._dataset_version = self.__default_dataset_version
-        runtime_props["version"] = self._dataset_version
-        # noinspection PyProtectedMember
-        self._task.set_user_properties(version=self._dataset_version)
-        # noinspection PyProtectedMember
-        self._task._set_runtime_properties(runtime_props)
-        if description:
-            self.set_description(description)
         # store current dataset id
         self._id = task.id
         # store the folder where the dataset was downloaded to
@@ -270,19 +257,11 @@ class Dataset(object):
         self._dependency_chunk_lookup = None  # type: Optional[Dict[str, int]]
         self._ds_total_size = None
         self._ds_total_size_compressed = None
-        (
-            self.__preview_tables_count,
-            self.__preview_image_count,
-            self.__preview_video_count,
-            self.__preview_audio_count,
-            self.__preview_html_count,
-        ) = (
-            0,
-            0,
-            0,
-            0,
-            0,
-        )
+        self.__preview_tables_count = 0
+        self.__preview_image_count = 0
+        self.__preview_video_count = 0
+        self.__preview_audio_count = 0
+        self.__preview_html_count = 0
 
     @property
     def id(self):
@@ -1179,11 +1158,34 @@ class Dataset(object):
                        task=Task.current_task() if use_current_task else None,
                        dataset_version=dataset_version,
                        description=description)
+        runtime_props = {
+            "orig_dataset_name": instance._task._get_runtime_properties().get(
+                "orig_dataset_name", instance._task.name
+            ),  # noqa
+            "orig_dataset_id": instance._task._get_runtime_properties().get(
+                "orig_dataset_id", instance._task.id
+            ),  # noqa
+        }
+        if not instance._dataset_version:
+            instance._dataset_version = cls.__default_dataset_version
+        runtime_props["version"] = instance._dataset_version
+        # noinspection PyProtectedMember
+        instance._task.set_user_properties(version=instance._dataset_version)
+        # noinspection PyProtectedMember
+        instance._task._set_runtime_properties(runtime_props)
+        if description:
+            instance.set_description(description)
+        # noinspection PyProtectedMember
         if output_uri and not Task._offline_mode:
+            # noinspection PyProtectedMember
             instance._task.output_uri = output_uri
+        # noinspection PyProtectedMember
         instance._using_current_task = use_current_task
+        # noinspection PyProtectedMember
         instance._dataset_file_entries = dataset_file_entries
+        # noinspection PyProtectedMember
         instance._dataset_link_entries = dataset_link_entries
+        # noinspection PyProtectedMember
         instance._dependency_graph = dependency_graph
         # noinspection PyProtectedMember
         instance._dependency_graph[instance._id] = [p._id for p in parent_datasets]
@@ -1196,12 +1198,12 @@ class Dataset(object):
             "ClearML results page: {}".format(instance._task.get_output_log_web_page())
         )
         if bool(Session.check_min_api_server_version(cls.__min_api_version)):
-            instance._task.get_logger().report_text(
+            instance._task.get_logger().report_text(  # noqa
                 "ClearML dataset page: {}".format(
                     "{}/datasets/simple/{}/experiments/{}".format(
-                        instance._task._get_app_server(),
-                        instance._task.project if instance._task.project is not None else "*",
-                        instance._task.id,
+                        instance._task._get_app_server(),  # noqa
+                        instance._task.project if instance._task.project is not None else "*",  # noqa
+                        instance._task.id,  # noqa
                     )
                 )
             )

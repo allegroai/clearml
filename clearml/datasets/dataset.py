@@ -373,7 +373,7 @@ class Dataset(object):
 
     def add_external_files(
         self,
-        source_url,  # type: str
+        source_url,  # type: Union[str, Sequence[str]]
         wildcard=None,  # type: Optional[Union[str, Sequence[str]]]
         dataset_path=None,  # type: Optional[str]
         recursive=True,  # type: bool
@@ -396,8 +396,8 @@ class Dataset(object):
         - Add the local file "/folder/local_file.jpg" to the dataset.
         add_external_files(source_url="file:///folder/local_file.jpg", dataset_path="/my_dataset/new_folder/")
 
-        :param source_url: Source url link to add to the dataset,
-            e.g. s3://bucket/folder/path, s3://bucket/folder/file.csv
+        :param source_url: Source url link (e.g. s3://bucket/folder/path) or list/tuple of links to add to
+            the dataset (e.g. [s3://bucket/folder/file.csv, http://web.com/file.txt])
         :param wildcard: add only specific set of files.
             Wildcard matching, can be a single string or a list of wildcards.
         :param dataset_path: The location in the dataset where the file will be downloaded into.
@@ -407,7 +407,18 @@ class Dataset(object):
         :param verbose: If True print to console files added/modified
         :return: number of file links added
         """
+        num_added = 0
         self._dirty = True
+        if not isinstance(source_url, str):
+            for source_url_ in source_url:
+                num_added += self.add_external_files(
+                        source_url_,
+                        wildcard=wildcard,
+                        dataset_path=dataset_path,
+                        recursive=recursive,
+                        verbose=verbose
+                )
+            return num_added
         if dataset_path:
             dataset_path = dataset_path.lstrip("/")
         # noinspection PyBroadException
@@ -419,11 +430,10 @@ class Dataset(object):
                     source_url = source_url + "/"
                 links = StorageManager.list(source_url, return_full_path=True)
         except Exception:
-            self._task.get_logger().warning(
-                "Could not list remote file(s) when adding {}".format(source_url)
+            self._task.get_logger().report_text(
+                "Could not list/find remote file(s) when adding {}".format(source_url)
             )
             return 0
-        num_added = 0
         num_modified = 0
         for link in links:
             relative_path = link[len(source_url):]

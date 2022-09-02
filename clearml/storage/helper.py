@@ -518,7 +518,7 @@ class StorageHelper(object):
         try:
             if isinstance(self._driver, _HttpDriver) and obj:
                 obj = self._driver._get_download_object(obj)  # noqa
-                size = obj.headers.get("Content-Length", 0)
+                size = int(obj.headers.get("Content-Length", 0))
             elif hasattr(obj, "size"):
                 size = obj.size
                 # Google storage has the option to reload the object to get the size

@@ -400,52 +400,128 @@ class StorageHelper(object):
             remaining_timeout -= (time() - t)
 
     @classmethod
+    def get_aws_storage_uri_from_config(cls, bucket_config):
+        return (
+            "s3://{}/{}".format(bucket_config.host, bucket_config.bucket)
+            if bucket_config.host
+            else "s3://{}".format(bucket_config.bucket)
+        )
+
+    @classmethod
+    def get_gcp_storage_uri_from_config(cls, bucket_config):
+        return (
+            "gs://{}/{}".format(bucket_config.bucket, bucket_config.subdir)
+            if bucket_config.subdir
+            else "gs://{}".format(bucket_config.bucket)
+        )
+
+    @classmethod
+    def get_azure_storage_uri_from_config(cls, bucket_config):
+        return "azure://{}.blob.core.windows.net/{}".format(bucket_config.account_name, bucket_config.container_name)
+
+    @classmethod
     def get_configuration(cls, bucket_config):
+        return cls.get_aws_configuration(bucket_config)
+
+    @classmethod
+    def get_aws_configuration(cls, bucket_config):
         return cls._s3_configurations.get_config_by_bucket(bucket_config.bucket, bucket_config.host)
 
     @classmethod
+    def get_gcp_configuration(cls, bucket_config):
+        return cls._gs_configurations.get_config_by_uri(
+            cls.get_gcp_storage_uri_from_config(bucket_config),
+            create_if_not_found=False
+        )
+
+    @classmethod
+    def get_azure_configuration(cls, bucket_config):
+        return cls._azure_configurations.get_config(bucket_config.account_name, bucket_config.container_name)
+
+    @classmethod
     def add_configuration(cls, bucket_config, log=None, _test_config=True):
+        return cls.add_aws_configuration(bucket_config, log=log, _test_config=_test_config)
+
+    @classmethod
+    def add_aws_configuration(cls, bucket_config, log=None, _test_config=True):
         # Try to use existing configuration if we have no key and secret
         use_existing = not bucket_config.is_valid()
-
         # Get existing config anyway (we'll either try to use it or alert we're replacing it
-        existing = cls.get_configuration(bucket_config)
-
+        existing = cls.get_aws_configuration(bucket_config)
         configs = cls._s3_configurations
+        uri = cls.get_aws_storage_uri_from_config(bucket_config)
 
         if not use_existing:
             # Test bucket config, fails if unsuccessful
             if _test_config:
-                _Boto3Driver._test_bucket_config(bucket_config, log)
+                _Boto3Driver._test_bucket_config(bucket_config, log)  # noqa
 
             if existing:
                 if log:
-                    log.warning('Overriding existing configuration for %s/%s'
-                                % (existing.host or 'AWS', existing.bucket))
+                    log.warning("Overriding existing configuration for '{}'".format(uri))
                 configs.remove_config(existing)
         else:
             # Try to use existing configuration
             good_config = False
             if existing:
                 if log:
-                    log.info('Using existing credentials for bucket %s/%s'
-                             % (bucket_config.host or 'AWS', bucket_config.bucket))
-                good_config = _Boto3Driver._test_bucket_config(existing, log, raise_on_error=False)
+                    log.info("Using existing credentials for '{}'".format(uri))
+                good_config = _Boto3Driver._test_bucket_config(existing, log, raise_on_error=False)  # noqa
 
             if not good_config:
                 # Try to use global key/secret
                 configs.update_config_with_defaults(bucket_config)
 
                 if log:
-                    log.info('Using global credentials for bucket %s/%s'
-                             % (bucket_config.host or 'AWS', bucket_config.bucket))
+                    log.info("Using global credentials for '{}'".format(uri))
                 if _test_config:
-                    _Boto3Driver._test_bucket_config(bucket_config, log)
-            else:
-                # do not add anything, existing config is OK
-                return
+                    _Boto3Driver._test_bucket_config(bucket_config, log)  # noqa
+                configs.add_config(bucket_config)
 
-        configs.add_config(bucket_config)
+    @classmethod
+    def add_gcp_configuration(cls, bucket_config, log=None):
+        use_existing = not bucket_config.is_valid()
+        existing = cls.get_gcp_configuration(bucket_config)
+        configs = cls._gs_configurations
+        uri = cls.get_gcp_storage_uri_from_config(bucket_config)
+
+        if not use_existing and existing:
+            if log:
+                log.warning("Overriding existing configuration for '{}'".format(uri))
+            configs.remove_config(existing)
+        else:
+            good_config = False
+            if existing:
+                if log:
+                    log.info("Using existing config for '{}'".format(uri))
+                good_config = _GoogleCloudStorageDriver.test_upload(None, bucket_config)
+            if not good_config:
+                configs.update_config_with_defaults(bucket_config)
+                if log:
+                    log.info("Using global credentials for '{}'".format(uri))
+                configs.add_config(bucket_config)
+
+    @classmethod
+    def add_azure_configuration(cls, bucket_config, log=None):
+        use_existing = not bucket_config.is_valid()
+        existing = cls.get_azure_configuration(bucket_config)
+        configs = cls._azure_configurations
+        uri = cls.get_azure_storage_uri_from_config(bucket_config)
+        if not use_existing and existing:
+            if log:
+                log.warning("Overriding existing configuration for '{}'".format(uri))
+            configs.remove_config(existing)
+        else:
+            good_config = False
+            if existing:
+                if log:
+                    log.info("Using existing config for '{}'".format(uri))
+                good_config = _AzureBlobServiceStorageDriver.test_upload(None, bucket_config)
+            if not good_config:
+                configs.update_config_with_defaults(bucket_config)
+                if log:
+                    log.info("Using global credentials for '{}'".format(uri))
+                configs.add_config(bucket_config)
 
     @classmethod
     def add_path_substitution(

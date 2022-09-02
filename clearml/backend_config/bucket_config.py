@@ -261,6 +261,9 @@ class GSBucketConfig(object):
             else:
                 setattr(self, item, kwargs[item])
 
+    def is_valid(self):
+        return self.bucket
+
 
 class GSBucketConfigurations(BaseBucketConfigurations):
     def __init__(
@@ -315,10 +318,12 @@ class GSBucketConfigurations(BaseBucketConfigurations):
             pool_maxsize=bucket_config.pool_maxsize or self._default_pool_maxsize
         )
 
-    def get_config_by_uri(self, uri):
+    def get_config_by_uri(self, uri, create_if_not_found=True):
         """
         Get the credentials for a Google Storage bucket from the config
         :param uri: URI of bucket, directory or file
+        :param create_if_not_found: If True and the config is not found in the current configurations, create a new one.
+            Else, don't create a new one and return None
         :return: GSBucketConfig: bucket config
         """
 
@@ -331,7 +336,8 @@ class GSBucketConfigurations(BaseBucketConfigurations):
         try:
             return next(res)
         except StopIteration:
-            pass
+            if not create_if_not_found:
+                return None
 
         parsed = furl.furl(uri)
 
@@ -355,11 +361,23 @@ class AzureContainerConfig(object):
     account_key = attrib(type=str)
     container_name = attrib(type=str, default=None)
 
+    def update(self, **kwargs):
+        for item in kwargs:
+            if not hasattr(self, item):
+                warnings.warn("Unexpected argument {} for update. Ignored".format(item))
+            else:
+                setattr(self, item, kwargs[item])
+
+    def is_valid(self):
+        return self.account_name and self.container_name
+
 
 class AzureContainerConfigurations(object):
-    def __init__(self, container_configs=None):
+    def __init__(self, container_configs=None, default_account=None, default_key=None):
         super(AzureContainerConfigurations, self).__init__()
         self._container_configs = container_configs or []
+        self._default_account = default_account
+        self._default_key = default_key
 
     @classmethod
     def from_config(cls, configuration):
@@ -373,12 +391,12 @@ class AzureContainerConfigurations(object):
             ))
 
         if configuration is None:
-            return cls(default_container_configs)
+            return cls(default_container_configs, default_account=default_account, default_key=default_key)
 
         containers = configuration.get("containers", list())
         container_configs = [AzureContainerConfig(**entry) for entry in containers] + default_container_configs
 
-        return cls(container_configs)
+        return cls(container_configs, default_account=default_account, default_key=default_key)
 
     def get_config_by_uri(self, uri):
         """
@@ -418,3 +436,12 @@ class AzureContainerConfigurations(object):
             ),
             None
         )
+
+    def update_config_with_defaults(self, bucket_config):
+        bucket_config.update(
+            account_name=bucket_config.account_name or self._default_account,
+            account_key=bucket_config.account_key or self._default_key
+        )
+
+    def add_config(self, bucket_config):
+        self._container_configs.append(bucket_config)

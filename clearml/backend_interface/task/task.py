@@ -1517,9 +1517,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param name: The name of the Task.
         :type name: str
         """
-        name = name or ''
-        self._set_task_property("name", str(name))
-        self._edit(name=self.data.name)
+        name = str(name) or ""
+        self._set_task_property("name", name)
+        self._edit(name=name)
+        self.data.name = name
 
     def set_parent(self, parent):
         # type: (Optional[Union[str, Task]]) -> ()

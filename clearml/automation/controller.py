@@ -3221,6 +3221,9 @@ class PipelineDecorator(PipelineController):
               - paramB: sectionB/paramB
               - paramC: sectionB/paramC
               - paramD: Args/paramD
+        :param start_controller_locally: If True, start the controller on the local machine. The steps will run
+            remotely if `PipelineDecorator.run_locally` or `PipelineDecorator.debug_pipeline` are not called.
+            Default: False
         """
         def decorator_wrap(func):
 
@@ -3331,7 +3334,8 @@ class PipelineDecorator(PipelineController):
                         pipeline_kwargs[k] = a_pipeline.get_parameters()[k]
 
                 # run the actual pipeline
-                if not PipelineDecorator._debug_execute_step_process and pipeline_execution_queue:
+                if not start_controller_locally and \
+                        not PipelineDecorator._debug_execute_step_process and pipeline_execution_queue:
                     # rerun the pipeline on a remote machine
                     a_pipeline._task.execute_remotely(queue_name=pipeline_execution_queue)
                     # when we get here it means we are running remotely

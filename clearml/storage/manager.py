@@ -9,6 +9,7 @@ from typing import List, Optional
 from zipfile import ZipFile
 from six.moves.urllib.parse import urlparse
 
+import requests
 from pathlib2 import Path
 
 from .cache import CacheManager
@@ -313,8 +314,10 @@ class StorageManager(object):
 
         :return: True is the remote_url stores a file and False otherwise
         """
-        if remote_url.startswith('file://'):
-            return os.path.isfile(remote_url[len('file://'):])
+        if remote_url.startswith("file://"):
+            return os.path.isfile(remote_url[len("file://"):])
+        if remote_url.startswith("http://") or remote_url.startswith("https://"):
+            return requests.head(remote_url).status_code == requests.codes.ok
         helper = StorageHelper.get(remote_url)
         obj = helper.get_object(remote_url)
         if not obj:

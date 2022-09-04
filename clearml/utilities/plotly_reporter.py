@@ -12,7 +12,7 @@ from attr import attrs, attrib
 
 
 def create_2d_histogram_plot(np_row_wise, labels, title=None, xtitle=None, ytitle=None, series=None, xlabels=None,
-                             comment=None, mode='group', layout_config=None):
+                             comment=None, mode='group', data_args=None, layout_config=None):
     """
     Create a 2D Plotly histogram chart from a 2D numpy array
     :param np_row_wise: 2D numpy data array
@@ -20,8 +20,10 @@ def create_2d_histogram_plot(np_row_wise, labels, title=None, xtitle=None, ytitl
     :param title: Chart title
     :param xtitle: X-Series title
     :param ytitle: Y-Series title
+    :param xlabels: The labels of the x axis.
     :param comment: comment underneath the title
     :param mode: multiple histograms mode. valid options are: stack / group / relative. Default is 'group'.
+    :param data_args: optional extra data configuration
     :param layout_config: optional extra layout configuration
     :return: Plotly chart dict.
     """
@@ -44,8 +46,9 @@ def create_2d_histogram_plot(np_row_wise, labels, title=None, xtitle=None, ytitl
     elif not labels and xlabels:
         labels = [series]
 
-    data = [_np_row_to_plotly_data_item(np_row=np_row_wise[i, :], label=labels[i] if labels else None, xlabels=xlabels)
-            for i in range(np_row_wise.shape[0])]
+    data = [_np_row_to_plotly_data_item(
+        np_row=np_row_wise[i, :], label=labels[i] if labels else None, xlabels=xlabels, data_args=data_args
+    ) for i in range(np_row_wise.shape[0])]
     return _plotly_hist_dict(title=series if use_series else title,
                              xtitle=xtitle, ytitle=ytitle, mode=mode, data=data, comment=comment,
                              layout_config=layout_config)
@@ -410,11 +413,13 @@ def _plotly_hist_dict(title, xtitle, ytitle, mode='group', data=None, comment=No
     return plotly_object
 
 
-def _np_row_to_plotly_data_item(np_row, label, xlabels=None):
+def _np_row_to_plotly_data_item(np_row, label, xlabels=None, data_args=None):
     """
     Convert a numpy data row into a Plotly chart data item
     :param np_row: numpy 1D data row
     :param label: Item label
+    :param xlabels: The labels of the x axis.
+    :param dict data_args: Plotly data arguments
     :return: A plotly data item dict.
     """
     bins = list(range(np_row.shape[0])) if xlabels is None else list(xlabels)
@@ -426,6 +431,8 @@ def _np_row_to_plotly_data_item(np_row, label, xlabels=None):
         # "text": mylabels,
         "type": "bar"
     }
+    if data_args:
+        this_trace_data.update(data_args)
     return this_trace_data
 
 

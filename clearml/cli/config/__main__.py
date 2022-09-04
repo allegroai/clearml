@@ -104,10 +104,10 @@ def main():
                                                                  credentials['secret_key'][0:4] + "***"))
     web_input = True
     if web_server:
-        host = input_url('WEB Host', web_server)
+        host = web_server
     elif api_server:
         web_input = False
-        host = input_url('API Host', api_server)
+        host = api_server
     else:
         print(host_description.format(CONFIG_FILE=args.file, HOST=def_host,))
         host = input_url('WEB Host', '')
@@ -121,9 +121,6 @@ def main():
     else:
         if web_input is True and not web_host:
             web_host = host
-        api_host = input_url('API Host', api_host)
-
-    files_host = input_url('File Store Host', files_host)
 
     print('\nClearML Hosts configuration:\nWeb App: {}\nAPI: {}\nFile Store: {}\n'.format(
         web_host, api_host, files_host))

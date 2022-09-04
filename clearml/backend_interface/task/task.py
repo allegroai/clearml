@@ -181,6 +181,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             raise ValueError("Task ID \"{}\" could not be found".format(self.id))
 
         self._project_name = (self.project, project_name)
+        self._project_object = None
 
         if running_remotely() or DevWorker.report_stdout:
             log_to_backend = False
@@ -546,6 +547,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                             setattr(stored_data, k, v)
                     if stored_dict.get('project_name'):
                         self._project_name = (None, stored_dict.get('project_name'))
+                    if stored_dict.get('project_object'):
+                        self._project_object = (None, stored_dict.get('project_object'))
                 except Exception:
                     stored_data = self._data
 
@@ -1481,6 +1484,20 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._project_name = (self.project, res.response.project.name)
         return self._project_name[1]
 
+    def get_project_object(self):
+        # type: () -> dict
+        if self.project is None:
+            return self._project_object[1] if self._project_object and len(self._project_object) > 1 else None
+
+        if self._project_object and self._project_object[1] is not None and self._project_object[0] == self.project:
+            return self._project_object[1]
+
+        res = self.send(projects.GetByIdRequest(project=self.project), raise_on_errors=False)
+        if not res or not res.response or not res.response.project:
+            return {}
+        self._project_object = (self.project, res.response.project)
+        return self._project_object[1]
+
     def get_tags(self):
         # type: () -> Sequence[str]
         return self._get_task_property("tags")
@@ -1517,9 +1534,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param name: The name of the Task.
         :type name: str
         """
-        name = name or ''
-        self._set_task_property("name", str(name))
-        self._edit(name=self.data.name)
+        name = str(name) or ""
+        self._set_task_property("name", name)
+        self._edit(name=name)
+        self.data.name = name
 
     def set_parent(self, parent):
         # type: (Optional[Union[str, Task]]) -> ()

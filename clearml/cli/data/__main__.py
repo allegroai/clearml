@@ -77,7 +77,19 @@ def cli():
     create.add_argument('--name', type=str, required=True, default=None, help='Dataset name')
     create.add_argument("--version", type=str, required=False, default=None, help="Dataset version")
     create.add_argument(
-        "--output-uri", type=str, required=False, default=None, help="Output URI for files in this dataset"
+        "--output-uri",
+        type=str,
+        required=False,
+        default=None,
+        help="Output URI for files in this dataset (deprecated, use '--storage' instead)",
+    )
+    create.add_argument(
+        "--storage",
+        type=str,
+        default=None,
+        help="Remote storage to use for the dataset files (default: files_server). "
+        "Examples: 's3://bucket/data', 'gs://bucket/data', 'azure://bucket/data', "
+        "'/mnt/shared/folder/data'",
     )
     create.add_argument('--tags', type=str, nargs='*', help='Dataset user Tags')
     create.set_defaults(func=ds_create)
@@ -144,7 +156,7 @@ def cli():
         type=str,
         required=False,
         default=None,
-        help="[Optional] Output URI for artifacts/debug samples. Useable when creating the dataset",
+        help="[Optional] Output URI for artifacts/debug samples. Useable when creating the dataset (deprecated, use '--storage' instead)",
     )
     sync.add_argument('--tags', type=str, nargs='*',
                       help='[Optional] Dataset user Tags')
@@ -626,12 +638,15 @@ def ds_add(args):
 def ds_create(args):
     print("Creating a new dataset:")
     print_args(args)
+    if args.output_uri:
+        print("Warning: '--output-uri' is deprecated, use '--storage' instead")
+    storage = args.storage or args.output_uri
     ds = Dataset.create(
         dataset_project=args.project,
         dataset_name=args.name,
         parent_datasets=args.parents,
         dataset_version=args.version,
-        output_uri=args.output_uri,
+        output_uri=storage,
     )
     if args.tags:
         ds.tags = ds.tags + args.tags

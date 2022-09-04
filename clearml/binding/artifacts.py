@@ -311,6 +311,8 @@ class Artifacts(object):
         self._task_artifact_list = []
         self._task_edit_lock = ForkSafeRLock()
         self._storage_prefix = None
+        self._task_name = None
+        self._project_name = None
 
     def register_artifact(self, name, artifact, metadata=None, uniqueness_columns=True):
         # type: (str, DataFrame, Optional[dict], Union[bool, Sequence[str]]) -> ()
@@ -999,7 +1001,9 @@ class Artifacts(object):
 
     def _get_storage_uri_prefix(self):
         # type: () -> str
-        if not self._storage_prefix:
+        if not self._storage_prefix or self._task_name != self._task.name or self._project_name != self._task.get_project_name():
             # noinspection PyProtectedMember
             self._storage_prefix = self._task._get_output_destination_suffix()
+            self._task_name = self._task.name
+            self._project_name = self._task.get_project_name()
         return self._storage_prefix

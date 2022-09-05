@@ -597,6 +597,8 @@ class Task(_Task):
                         task.output_uri = None
                     elif output_uri:
                         task.output_uri = output_uri
+                    elif task.get_project_object().default_output_destination:
+                        task.output_uri = task.get_project_object().default_output_destination
                     elif cls.__default_output_uri:
                         task.output_uri = cls.__default_output_uri
                     # store new task ID
@@ -612,6 +614,8 @@ class Task(_Task):
                         task_id=get_remote_task_id(),
                         log_to_backend=False,
                     )
+                    if task.get_project_object().default_output_destination and not task.output_uri:
+                        task.output_uri = task.get_project_object().default_output_destination
                     if cls.__default_output_uri and not task.output_uri:
                         task.output_uri = cls.__default_output_uri
                     # store new task ID

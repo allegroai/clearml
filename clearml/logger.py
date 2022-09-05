@@ -221,8 +221,8 @@ class Logger(object):
         :param yaxis: The y-axis title. (Optional)
         :param mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
         :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
-            See full details on the supported configuration: https://plotly.com/javascript/reference/bar/
-            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+            See full details on the supported configuration: https://plotly.com/javascript/reference/layout/
+            example: extra_layout={'showlegend': False, 'plot_bgcolor': 'yellow'}
         """
         self._touch_title_series(title, series)
         return self.report_histogram(title, series, values, iteration or 0, labels=labels, xlabels=xlabels,
@@ -239,6 +239,7 @@ class Logger(object):
             xaxis=None,  # type: Optional[str]
             yaxis=None,  # type: Optional[str]
             mode=None,  # type: Optional[str]
+            data_args=None,  # type: Optional[dict]
             extra_layout=None,  # type: Optional[dict]
     ):
         """
@@ -267,6 +268,9 @@ class Logger(object):
         :param xaxis: The x-axis title. (Optional)
         :param yaxis: The y-axis title. (Optional)
         :param mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
+        :param data_args: optional dictionary for data configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/bar/
+            example: data_args={'orientation': 'h', 'marker': {'color': 'blue'}}
         :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
             See full details on the supported configuration: https://plotly.com/javascript/reference/bar/
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
@@ -289,6 +293,7 @@ class Logger(object):
             xtitle=xaxis,
             ytitle=yaxis,
             mode=mode or 'group',
+            data_args=data_args,
             layout_config=extra_layout,
         )
 

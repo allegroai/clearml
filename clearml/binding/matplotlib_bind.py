@@ -417,42 +417,47 @@ class PatchedMatplotlib:
                         plotly_renderer = PatchedMatplotlib._matplotlylib.PlotlyRenderer()
                         PatchedMatplotlib._matplotlylib.Exporter(plotly_renderer, close_mpl=False).run(fig)
 
-                        x_ticks = list(plotly_renderer.current_mpl_ax.get_xticklabels())
-                        if x_ticks:
+                        def process_tick_text(ticks, axes, val_index):
+                            if not ticks:
+                                return
                             # noinspection PyBroadException
                             try:
                                 # check if all values can be cast to float
-                                _ = [float(t.get_text().replace('−', '-')) for t in x_ticks]
+                                _ = [float(t.get_text().replace("−", "-")) for t in ticks]
                             except Exception:
                                 # noinspection PyBroadException
                                 try:
-                                    _xaxis = next(x for x in ('xaxis', 'xaxis0', 'xaxis1')
-                                                  if x in plotly_renderer.plotly_fig['layout'])
-                                    plotly_renderer.plotly_fig['layout'][_xaxis].update({
-                                        'ticktext': [t.get_text() for t in x_ticks],
-                                        'tickvals': [t.get_position()[0] for t in x_ticks],
-                                    })
-                                    plotly_renderer.plotly_fig['layout'][_xaxis].pop('type', None)
+                                    def convert_latex_math_powers_to_html(text):
+                                        # noinspection PyBroadException
+                                        try:
+                                            if not text or not text.startswith("$\\mathdefault{") or not text.endswith("}}$"):
+                                                return text
+                                            numbers = text[len("$\\mathdefault{"): -len("}}$")].split("^{")
+                                            if len(numbers) != 2:
+                                                return text
+                                            base, exp_ = numbers[0], numbers[1]
+                                            return "{}<sup>{}</sup>".format(base, exp_)
+                                        except Exception:
+                                            return text
+
+                                    _axis = next(x for x in axes if x in plotly_renderer.plotly_fig["layout"])
+                                    plotly_renderer.plotly_fig["layout"][_axis].update(
+                                        {
+                                            "ticktext": [convert_latex_math_powers_to_html(t.get_text()) for t in ticks],
+                                            "tickvals": [t.get_position()[val_index] for t in ticks],
+                                        }
+                                    )
+                                    if plotly_renderer.plotly_fig["layout"][_axis].get("type") == "linear":
+                                        plotly_renderer.plotly_fig["layout"][_axis].pop("type", None)
                                 except Exception:
                                     pass
-                        y_ticks = list(plotly_renderer.current_mpl_ax.get_yticklabels())
-                        if y_ticks:
-                            # noinspection PyBroadException
-                            try:
-                                # check if all values can be cast to float
-                                _ = [float(t.get_text().replace('−', '-')) for t in y_ticks]
-                            except Exception:
-                                # noinspection PyBroadException
-                                try:
-                                    _yaxis = next(x for x in ('yaxis', 'yaxis0', 'yaxis1')
-                                                  if x in plotly_renderer.plotly_fig['layout'])
-                                    plotly_renderer.plotly_fig['layout']['_yaxis'].update({
-                                        'ticktext': [t.get_text() for t in y_ticks],
-                                        'tickvals': [t.get_position()[1] for t in y_ticks],
-                                    })
-                                    plotly_renderer.plotly_fig['layout'][_yaxis].pop('type', None)
-                                except Exception:
-                                    pass
+
+                        process_tick_text(
+                            list(plotly_renderer.current_mpl_ax.get_xticklabels()), ("xaxis", "xaxis0", "xaxis1"), 0
+                        )
+                        process_tick_text(
+                            list(plotly_renderer.current_mpl_ax.get_yticklabels()), ("yaxis", "yaxis0", "yaxis1"), 1
+                        )
 
                         # try to bring back legend
                         # noinspection PyBroadException

@@ -962,13 +962,16 @@ class DebugImagesResponseTaskMetrics(NonStrictDataModel):
         self._property_iterations = value
 
 
-class DebugImagesResponse(NonStrictDataModel):
+class DebugImagesResponse(Response):
     """
     :param scroll_id: Scroll ID for getting more results
     :type scroll_id: str
     :param metrics: Debug image events grouped by tasks and iterations
     :type metrics: Sequence[DebugImagesResponseTaskMetrics]
     """
+    _service = "events"
+    _action = "debug_images"
+    _version = "2.20"
 
     _schema = {
         "properties": {
@@ -1093,13 +1096,16 @@ class PlotsResponseTaskMetrics(NonStrictDataModel):
         self._property_iterations = value
 
 
-class PlotsResponse(NonStrictDataModel):
+class PlotsResponse(Response):
     """
     :param scroll_id: Scroll ID for getting more results
     :type scroll_id: str
     :param metrics: Plot events grouped by tasks and iterations
     :type metrics: Sequence[PlotsResponseTaskMetrics]
     """
+    _service = "events"
+    _action = "plots"
+    _version = "2.20"
 
     _schema = {
         "properties": {

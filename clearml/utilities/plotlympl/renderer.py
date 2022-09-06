@@ -160,12 +160,16 @@ class PlotlyRenderer(Renderer):
         yaxis = dict(
             anchor="x{0}".format(self.axis_ct or ''), zeroline=False, ticks="inside"
         )
+        zaxis = dict(
+            anchor="x{0}".format(self.axis_ct or ''), zeroline=False, ticks="inside"
+        )
         # update defaults with things set in mpl
-        mpl_xaxis, mpl_yaxis = mpltools.prep_xy_axis(
+        mpl_xaxis, mpl_yaxis, mpl_zaxis = mpltools.prep_xyz_axis(
             ax=ax, props=props, x_bounds=self.mpl_x_bounds, y_bounds=self.mpl_y_bounds
         )
         xaxis.update(mpl_xaxis)
         yaxis.update(mpl_yaxis)
+        zaxis.update(mpl_zaxis)
         bottom_spine = mpltools.get_spine_visible(ax, "bottom")
         top_spine = mpltools.get_spine_visible(ax, "top")
         left_spine = mpltools.get_spine_visible(ax, "left")
@@ -178,6 +182,8 @@ class PlotlyRenderer(Renderer):
         # put axes in our figure
         self.plotly_fig["layout"]["xaxis{0}".format(self.axis_ct or '')] = xaxis
         self.plotly_fig["layout"]["yaxis{0}".format(self.axis_ct or '')] = yaxis
+        if mpl_zaxis:
+            self.plotly_fig["layout"]["zaxis{0}".format(self.axis_ct or '')] = zaxis
 
         # let all subsequent dates be handled properly if required
 
@@ -398,13 +404,17 @@ class PlotlyRenderer(Renderer):
                     if isinstance(props["label"], six.string_types)
                     else props["label"]
                 ),
-                x=[xy_pair[0] for xy_pair in props["data"]],
-                y=[xy_pair[1] for xy_pair in props["data"]],
+                x=props["data"][0],
+                y=props["data"][1],
                 xaxis="x{0}".format(self.axis_ct),
                 yaxis="y{0}".format(self.axis_ct),
                 line=line,
                 marker=marker,
             )
+            if len(props["data"]) >= 3:
+                marked_line["z"] = props["data"][2]
+                marked_line["zaxis"] = "z{0}".format(self.axis_ct)
+                marked_line["type"] = "scatter3d"
             if self.x_is_mpl_date:
                 formatter = (
                     self.current_mpl_ax.get_xaxis()

@@ -458,6 +458,36 @@ class PatchedMatplotlib:
                         process_tick_text(
                             list(plotly_renderer.current_mpl_ax.get_yticklabels()), ("yaxis", "yaxis0", "yaxis1"), 1
                         )
+                        # noinspection PyBroadException
+                        try:
+                            # check if we have a 3d plot
+                            if (
+                                "zaxis" in plotly_renderer.plotly_fig.get("layout", {})
+                                or "zaxis0" in plotly_renderer.plotly_fig.get("layout", {})
+                                or "zaxis1" in plotly_renderer.plotly_fig.get("layout", {})
+                                or len(plotly_renderer.plotly_fig.get("data", [{}])[0].get("z", [])) > 0
+                            ):
+                                process_tick_text(
+                                    list(plotly_renderer.current_mpl_ax.get_zticklabels()),
+                                    ("zaxis", "zaxis0", "zaxis1"),
+                                    2,
+                                )
+
+                                # rotate the X axis -90 degrees such that it matches matplotlib
+                                plotly_renderer.plotly_fig.setdefault("layout", {}).setdefault("scene", {}).setdefault(
+                                    "camera", {}
+                                ).setdefault("eye", {}).setdefault("x", -1)
+
+                                # reverse the X and Y axes such that they match matplotlib
+                                plotly_renderer.plotly_fig.setdefault("layout", {}).setdefault("scene", {}).setdefault(
+                                    "xaxis", {}
+                                ).setdefault("autorange", "reversed")
+
+                                plotly_renderer.plotly_fig.setdefault("layout", {}).setdefault("scene", {}).setdefault(
+                                    "yaxis", {}
+                                ).setdefault("autorange", "reversed")
+                        except Exception:
+                            pass
 
                         # try to bring back legend
                         # noinspection PyBroadException

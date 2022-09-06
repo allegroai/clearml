@@ -133,8 +133,8 @@ class Exporter(object):
                 self.draw_line(ax, line)
             for text in ax.texts:
                 self.draw_text(ax, text)
-            for (text, ttp) in zip([ax.xaxis.label, ax.yaxis.label, ax.title],
-                                   ["xlabel", "ylabel", "title"]):
+            for (text, ttp) in zip([ax.xaxis.label, ax.yaxis.label, ax.zaxis.label, ax.title],
+                                   ["xlabel", "ylabel", "zlabel", "title"]):
                 if(hasattr(text, "get_text") and text.get_text()):
                     self.draw_text(ax, text, force_trans=ax.transAxes,
                                    text_type=ttp)

@@ -659,7 +659,7 @@ class PipelineController(object):
                  for k, v in function_input_artifacts.items()}
             )
 
-        job_code_section = None
+        job_code_section = name
         task_name = task_name or name or None
 
         if self._mock_execution:
@@ -687,7 +687,6 @@ class PipelineController(object):
                 name=name, config_type='json',
                 config_text=json.dumps(task_definition, indent=1)
             )
-            job_code_section = name
         else:
             # load task definition from configuration
             # noinspection PyProtectedMember
@@ -1221,6 +1220,12 @@ class PipelineController(object):
             for node in list(self._nodes.values()):
                 if node.executed is False:
                     node.executed = None
+        # Associate any nodes that represent second or subsequent calls to a component function with the function.
+        for node in list(self._nodes.values()):
+            if not node.base_task_id and not node.task_factory_func and node.job_code_section:
+                if node.job_code_section in self._nodes:
+                    func = self._nodes[node.job_code_section].task_factory_func
+                    if func: node.task_factory_func = func
         if not self._verify():
             raise ValueError("Failed verifying pipeline execution graph, "
                              "it has either inaccessible nodes, or contains cycles")
@@ -3079,11 +3084,12 @@ class PipelineDecorator(PipelineController):
                     _node.parents = []
                     # find a new name
                     counter = 1
-                    while _node.name in cls._singleton._nodes:
+                    while _node.name in cls._singleton._launched_step_names:
                         _node.name = '{}_{}'.format(_node_name, counter)
                         counter += 1
                     _node_name = _node.name
-                    cls._singleton._nodes[_node.name] = _node
+                    if _node.name not in cls._singleton._nodes:
+                        cls._singleton._nodes[_node.name] = _node
 
                 # get node and park is as launched
                 cls._singleton._launched_step_names.add(_node_name)

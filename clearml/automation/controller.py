@@ -2218,7 +2218,7 @@ class PipelineController(object):
             if target_models:
                 self._task.reload()
                 models = self._task.data.models
-                keys = [a.name for a in models.output]
+                keys = [a.name for a in target_models]
                 models.output = [a for a in models.output or [] if a.name not in keys] + target_models
                 # noinspection PyProtectedMember
                 self._task._edit(models=models)

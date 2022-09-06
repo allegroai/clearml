@@ -18,7 +18,19 @@ try:
 except ImportError:
     from collections import Sequence as CollectionsSequence
 
-from typing import Optional, Union, Mapping, Sequence, Any, Dict, Iterable, TYPE_CHECKING, Callable, Tuple, List
+from typing import (
+    Optional,
+    Union,
+    Mapping,
+    Sequence,
+    Any,
+    Dict,
+    Iterable,
+    TYPE_CHECKING,
+    Callable,
+    Tuple,
+    List,
+)
 
 import psutil
 import six
@@ -1861,6 +1873,7 @@ class Task(_Task):
             preview=None,  # type: Any
             wait_on_upload=False,  # type: bool
             extension_name=None,  # type: Optional[str]
+            serialization_function=None  # type: Optional[Callable[Any, Union[bytes, bytearray]]]
     ):
         # type: (...) -> bool
         """
@@ -1908,6 +1921,12 @@ class Task(_Task):
         - numpy.ndarray - ``.npz``, ``.csv.gz`` (default ``.npz``)
         - PIL.Image - whatever extensions PIL supports (default ``.png``)
 
+        :param Callable[Any, Union[bytes, bytearray]] serialization_function: A serialization function that takes one
+            parameter of any types which is the object to be serialized. The function should return a `bytes` or `bytearray`
+            object, which represents the serialized object. Note that the object will be immediately serialized using this function,
+            thus other serialization methods will not be used (e.g. `pandas.DataFrame.to_csv`), even if possible.
+            To deserialize this artifact when getting it using the `Artifact.get` method, use its `deserialization_function` argument
+
         :return: The status of the upload.
 
         - ``True`` - Upload succeeded.
@@ -1916,8 +1935,16 @@ class Task(_Task):
         :raise: If the artifact object type is not supported, raise a ``ValueError``.
         """
         return self._artifacts_manager.upload_artifact(
-            name=name, artifact_object=artifact_object, metadata=metadata, delete_after_upload=delete_after_upload,
-            auto_pickle=auto_pickle, preview=preview, wait_on_upload=wait_on_upload, extension_name=extension_name)
+            name=name,
+            artifact_object=artifact_object,
+            metadata=metadata,
+            delete_after_upload=delete_after_upload,
+            auto_pickle=auto_pickle,
+            preview=preview,
+            wait_on_upload=wait_on_upload,
+            extension_name=extension_name,
+            serialization_function=serialization_function,
+        )
 
     def get_models(self):
         # type: () -> Mapping[str, Sequence[Model]]

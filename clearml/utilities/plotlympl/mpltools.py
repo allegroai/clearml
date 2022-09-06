@@ -572,6 +572,7 @@ def prep_xy_axis(ax, props, x_bounds, y_bounds):
     yaxis.update(prep_ticks(ax, 1, "y", props))
     return xaxis, yaxis
 
+
 def prep_xyz_axis(ax, props, x_bounds, y_bounds):
     # there is no z_bounds as they can't (at least easily) be extracted from an `Axes3DSubplot` object
     xaxis, yaxis = prep_xy_axis(ax, props, x_bounds, y_bounds)

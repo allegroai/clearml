@@ -1503,6 +1503,7 @@ class _Boto3Driver(_Driver):
                 )
 
                 self.config = cfg
+                print('CONFIG STORAGE:', boto_kwargs)
                 bucket_name = self.name[len(cfg.host) + 1:] if cfg.host else self.name
                 self.bucket = self.resource.Bucket(bucket_name)
 

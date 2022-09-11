@@ -1480,6 +1480,7 @@ class _Boto3Driver(_Driver):
             with self._creation_lock:
                 boto_kwargs = {
                     "endpoint_url": endpoint,
+                    "region_name" : cfg.region,
                     "use_ssl": cfg.secure,
                     "verify": cfg.verify,
                     "config": botocore.client.Config(

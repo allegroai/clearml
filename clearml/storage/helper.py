@@ -338,6 +338,7 @@ class StorageHelper(object):
             final_region = region if region else self._conf.region
             if not final_region:
                 final_region = None
+                self._get_logger().error(f'final region is None')
 
             self._conf.update(
                 key=key or self._conf.key,
@@ -358,7 +359,7 @@ class StorageHelper(object):
             self._driver = _Boto3Driver()
             self._container = self._driver.get_container(
                 container_name=self._base_url, retries=retries, config=self._conf)
-            print('final_config:', self._conf)
+            print('final_config:', asdict(self._conf))
             print('final_region:', final_region)
 
         elif self._scheme == _GoogleCloudStorageDriver.scheme:

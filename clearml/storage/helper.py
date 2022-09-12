@@ -358,6 +358,8 @@ class StorageHelper(object):
             self._driver = _Boto3Driver()
             self._container = self._driver.get_container(
                 container_name=self._base_url, retries=retries, config=self._conf)
+            print('final_config:', self._conf)
+            print('final_region:', final_region)
 
         elif self._scheme == _GoogleCloudStorageDriver.scheme:
             self._conf = copy(self._gs_configurations.get_config_by_uri(url))

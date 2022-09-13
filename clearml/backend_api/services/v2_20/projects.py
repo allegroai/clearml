@@ -124,7 +124,10 @@ class Project(NonStrictDataModel):
             },
             "id": {"description": "Project id", "type": ["string", "null"]},
             "last_update": {
-                "description": "Last project update time. Reflects the last time the project metadata was changed or a task in this project has changed status",
+                "description": (
+                    "Last project update time. Reflects the last time the project metadata was changed or a task in"
+                    " this project has changed status"
+                ),
                 "format": "date-time",
                 "type": ["string", "null"],
             },
@@ -356,12 +359,7 @@ class StatsStatusCount(NonStrictDataModel):
                         "type": "integer",
                     },
                     "completed": {
-                        "description": "Number "
-                        "of "
-                        "'completed' "
-                        "tasks "
-                        "in "
-                        "project",
+                        "description": "Number of 'completed' tasks in project",
                         "type": "integer",
                     },
                     "created": {
@@ -581,21 +579,19 @@ class ProjectsGetAllResponseSingle(NonStrictDataModel):
     :type last_update: datetime.datetime
     :param tags: User-defined tags
     :type tags: Sequence[str]
-    :param system_tags: System tags. This field is reserved for system use, please
-        don't use it.
+    :param system_tags: System tags. This field is reserved for system use, please don't use it.
     :type system_tags: Sequence[str]
-    :param default_output_destination: The default output destination URL for new
-        tasks under this project
+    :param default_output_destination: The default output destination URL for new tasks under this project
     :type default_output_destination: str
     :param stats: Additional project stats
     :type stats: Stats
     :param sub_projects: The list of sub projects
     :type sub_projects: Sequence[dict]
-    :param own_tasks: The amount of tasks under this project (without children
-        projects). Returned if 'check_own_contents' flag is set in the request
+    :param own_tasks: The amount of tasks under this project (without children projects).
+        Returned if 'check_own_contents' flag is set in the request
     :type own_tasks: int
-    :param own_models: The amount of models under this project (without children
-        projects). Returned if 'check_own_contents' flag is set in the request
+    :param own_models: The amount of models under this project (without children projects).
+        Returned if 'check_own_contents' flag is set in the request
     :type own_models: int
     :param dataset_stats: Project dataset statistics
     :type dataset_stats: dict
@@ -643,13 +639,17 @@ class ProjectsGetAllResponseSingle(NonStrictDataModel):
             },
             "name": {"description": "Project name", "type": ["string", "null"]},
             "own_models": {
-                "description": "The amount of models under this project (without children projects). Returned if "
-                "'check_own_contents' flag is set in the request",
+                "description": (
+                    "The amount of models under this project (without children projects). Returned if "
+                    "'check_own_contents' flag is set in the request"
+                ),
                 "type": ["integer", "null"],
             },
             "own_tasks": {
-                "description": "The amount of tasks under this project (without children projects). Returned if "
-                "'check_own_contents' flag is set in the request",
+                "description": (
+                    "The amount of tasks under this project (without children projects). Returned if "
+                    "'check_own_contents' flag is set in the request"
+                ),
                 "type": ["integer", "null"],
             },
             "stats": {
@@ -963,23 +963,25 @@ class MetricVariantResult(NonStrictDataModel):
         "properties": {
             "metric": {"description": "Metric name", "type": ["string", "null"]},
             "metric_hash": {
-                "description": "Metric name hash. Used instead of the metric name when categorizing "
-                " last metrics events in task objects.",
+                "description": (
+                    "Metric name hash. Used instead of the metric name when categorizing "
+                    " last metrics events in task objects."
+                ),
                 "type": ["string", "null"],
             },
             "variant": {"description": "Variant name", "type": ["string", "null"]},
             "variant_hash": {
-                "description": "Variant name hash. Used instead of the variant name when categorizing "
-                "last metrics events in task objects.",
+                "description": (
+                    "Variant name hash. Used instead of the variant name when categorizing "
+                    "last metrics events in task objects."
+                ),
                 "type": ["string", "null"],
             },
         },
         "type": "object",
     }
 
-    def __init__(
-        self, metric=None, metric_hash=None, variant=None, variant_hash=None, **kwargs
-    ):
+    def __init__(self, metric=None, metric_hash=None, variant=None, variant_hash=None, **kwargs):
         super(MetricVariantResult, self).__init__(**kwargs)
         self.metric = metric
         self.metric_hash = metric_hash
@@ -1120,11 +1122,9 @@ class CreateRequest(Request):
     :type description: str
     :param tags: User-defined tags
     :type tags: Sequence[str]
-    :param system_tags: System tags. This field is reserved for system use, please
-        don't use it.
+    :param system_tags: System tags. This field is reserved for system use, please don't use it.
     :type system_tags: Sequence[str]
-    :param default_output_destination: The default output destination URL for new
-        tasks under this project
+    :param default_output_destination: The default output destination URL for new tasks under this project
     :type default_output_destination: str
     """
 
@@ -1158,15 +1158,7 @@ class CreateRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        name,
-        description=None,
-        tags=None,
-        system_tags=None,
-        default_output_destination=None,
-        **kwargs
-    ):
+    def __init__(self, name, description=None, tags=None, system_tags=None, default_output_destination=None, **kwargs):
         super(CreateRequest, self).__init__(**kwargs)
         self.name = name
         self.description = description
@@ -1286,12 +1278,10 @@ class DeleteRequest(Request):
 
     :param project: Project ID
     :type project: str
-    :param force: If not true, fails if project has tasks. If true, and project has
-        tasks, they will be unassigned
+    :param force: If not true, fails if project has tasks. If true, and project has tasks, they will be unassigned
     :type force: bool
-    :param delete_contents: If set to 'true' then the project tasks and models will
-        be deleted. Otherwise their project property will be unassigned. Default value
-        is 'false'
+    :param delete_contents: If set to 'true' then the project tasks and models will be deleted.
+        Otherwise their project property will be unassigned. Default value is 'false'
     :type delete_contents: bool
     """
 
@@ -1302,13 +1292,17 @@ class DeleteRequest(Request):
         "definitions": {},
         "properties": {
             "delete_contents": {
-                "description": "If set to 'true' then the project tasks, models and dataviews will be deleted. Otherwise their project property will be unassigned. Default value is 'false'",
+                "description": (
+                    "If set to 'true' then the project tasks, models and dataviews will be deleted. Otherwise their"
+                    " project property will be unassigned. Default value is 'false'"
+                ),
                 "type": "boolean",
             },
             "force": {
                 "default": False,
-                "description": "If not true, fails if project has tasks. If true, and project has tasks, they will be "
-                "unassigned",
+                "description": (
+                    "If not true, fails if project has tasks. If true, and project has tasks, they will be unassigned"
+                ),
                 "type": "boolean",
             },
             "project": {"description": "Project ID", "type": "string"},
@@ -1369,11 +1363,10 @@ class DeleteResponse(Response):
 
     :param deleted: Number of projects deleted (0 or 1)
     :type deleted: int
-    :param disassociated_tasks: Number of tasks disassociated from the deleted
-        project
+    :param disassociated_tasks: Number of tasks disassociated from the deleted project
     :type disassociated_tasks: int
-    :param urls: The urls of the files that were uploaded by the project tasks and
-        models. Returned if the 'delete_contents' was set to 'true'
+    :param urls: The urls of the files that were uploaded by the project tasks and models.
+        Returned if the 'delete_contents' was set to 'true'
     :type urls: Urls
     :param deleted_models: Number of models deleted
     :type deleted_models: int
@@ -1423,7 +1416,10 @@ class DeleteResponse(Response):
                 "type": ["integer", "null"],
             },
             "urls": {
-                "description": "The urls of the files that were uploaded by the project tasks and models. Returned if the 'delete_contents' was set to 'true'",
+                "description": (
+                    "The urls of the files that were uploaded by the project tasks and models. Returned if the"
+                    " 'delete_contents' was set to 'true'"
+                ),
                 "oneOf": [{"$ref": "#/definitions/urls"}, {"type": "null"}],
             },
         },
@@ -1431,13 +1427,7 @@ class DeleteResponse(Response):
     }
 
     def __init__(
-        self,
-        deleted=None,
-        disassociated_tasks=None,
-        urls=None,
-        deleted_models=None,
-        deleted_tasks=None,
-        **kwargs
+        self, deleted=None, disassociated_tasks=None, urls=None, deleted_models=None, deleted_tasks=None, **kwargs
     ):
         super(DeleteResponse, self).__init__(**kwargs)
         self.deleted = deleted
@@ -1528,54 +1518,44 @@ class GetAllRequest(Request):
 
     :param id: List of IDs to filter by
     :type id: Sequence[str]
-    :param name: Get only projects whose name matches this pattern (python regular
-        expression syntax)
+    :param name: Get only projects whose name matches this pattern (python regular expression syntax)
     :type name: str
     :param basename: Project base name
     :type basename: str
-    :param description: Get only projects whose description matches this pattern
-        (python regular expression syntax)
+    :param description: Get only projects whose description matches this pattern (python regular expression syntax)
     :type description: str
-    :param tags: User-defined tags list used to filter results. Prepend '-' to tag
-        name to indicate exclusion
+    :param tags: User-defined tags list used to filter results. Prepend '-' to tag name to indicate exclusion
     :type tags: Sequence[str]
-    :param system_tags: System tags list used to filter results. Prepend '-' to
-        system tag name to indicate exclusion
+    :param system_tags: System tags list used to filter results. Prepend '-' to system tag name to indicate exclusion
     :type system_tags: Sequence[str]
-    :param order_by: List of field names to order by. When search_text is used,
-        '@text_score' can be used as a field representing the text score of returned
-        documents. Use '-' prefix to specify descending order. Optional, recommended
-        when using page
+    :param order_by: List of field names to order by. When search_text is used, '@text_score' can be used as a field
+        representing the text score of returned documents. Use '-' prefix to specify descending order.
+        Optional, recommended when using page
     :type order_by: Sequence[str]
-    :param page: Page number, returns a specific page out of the resulting list of
-        projects
+    :param page: Page number, returns a specific page out of the resulting list of projects
     :type page: int
-    :param page_size: Page size, specifies the number of results returned in each
-        page (last page may contain fewer results)
+    :param page_size: Page size, specifies the number of results returned in each page
+        (last page may contain fewer results)
     :type page_size: int
     :param search_text: Free text search query
     :type search_text: str
-    :param only_fields: List of document's field names (nesting is supported using
-        '.', e.g. execution.model_labels). If provided, this list defines the query's
-        projection (only these fields will be returned for each result entry)
+    :param only_fields: List of document's field names (nesting is supported using '.', e.g. execution.model_labels).
+        If provided, this list defines the query's projection (only these fields will be returned for each result entry)
     :type only_fields: Sequence[str]
     :param _all_: Multi-field pattern condition (all fields match pattern)
     :type _all_: MultiFieldPatternData
     :param _any_: Multi-field pattern condition (any field matches pattern)
     :type _any_: MultiFieldPatternData
-    :param shallow_search: If set to 'true' then the search with the specified
-        criteria is performed among top level projects only (or if parents specified,
-        among the direct children of the these parents). Otherwise the search is
+    :param shallow_search: If set to 'true' then the search with the specified criteria is performed among top level
+        projects only (or if parents specified, among the direct children of the these parents). Otherwise the search is
         performed among all the company projects (or among all of the descendants of
         the specified parents).
     :type shallow_search: bool
-    :param search_hidden: If set to 'true' then hidden projects are included in the
-        search results
+    :param search_hidden: If set to 'true' then hidden projects are included in the search results
     :type search_hidden: bool
     :param scroll_id: Scroll ID returned from the previos calls to get_all_ex
     :type scroll_id: str
-    :param refresh_scroll: If set then all the data received with this scroll will
-        be requeried
+    :param refresh_scroll: If set then all the data received with this scroll will be required
     :type refresh_scroll: bool
     :param size: The number of projects to retrieve
     :type size: int
@@ -1621,7 +1601,9 @@ class GetAllRequest(Request):
                 "type": ["string", "null"],
             },
             "description": {
-                "description": "Get only projects whose description matches this pattern (python regular expression syntax)",
+                "description": (
+                    "Get only projects whose description matches this pattern (python regular expression syntax)"
+                ),
                 "type": ["string", "null"],
             },
             "id": {
@@ -1634,12 +1616,20 @@ class GetAllRequest(Request):
                 "type": ["string", "null"],
             },
             "only_fields": {
-                "description": "List of document's field names (nesting is supported using '.', e.g. execution.model_labels). If provided, this list defines the query's projection (only these fields will be returned for each result entry)",
+                "description": (
+                    "List of document's field names (nesting is supported using '.', e.g. execution.model_labels). If"
+                    " provided, this list defines the query's projection (only these fields will be returned for each"
+                    " result entry)"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
             "order_by": {
-                "description": "List of field names to order by. When search_text is used, '@text_score' can be used as a field representing the text score of returned documents. Use '-' prefix to specify descending order. Optional, recommended when using page",
+                "description": (
+                    "List of field names to order by. When search_text is used, '@text_score' can be used as a field"
+                    " representing the text score of returned documents. Use '-' prefix to specify descending order."
+                    " Optional, recommended when using page"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -1649,7 +1639,10 @@ class GetAllRequest(Request):
                 "type": ["integer", "null"],
             },
             "page_size": {
-                "description": "Page size, specifies the number of results returned in each page (last page may contain fewer results)",
+                "description": (
+                    "Page size, specifies the number of results returned in each page (last page may contain fewer"
+                    " results)"
+                ),
                 "minimum": 1,
                 "type": ["integer", "null"],
             },
@@ -1672,7 +1665,12 @@ class GetAllRequest(Request):
             },
             "shallow_search": {
                 "default": False,
-                "description": "If set to 'true' then the search with the specified criteria is performed among top level projects only (or if parents specified, among the direct children of the these parents). Otherwise the search is performed among all the company projects (or among all of the descendants of the specified parents).",
+                "description": (
+                    "If set to 'true' then the search with the specified criteria is performed among top level projects"
+                    " only (or if parents specified, among the direct children of the these parents). Otherwise the"
+                    " search is performed among all the company projects (or among all of the descendants of the"
+                    " specified parents)."
+                ),
                 "type": ["boolean", "null"],
             },
             "size": {
@@ -1681,12 +1679,16 @@ class GetAllRequest(Request):
                 "type": ["integer", "null"],
             },
             "system_tags": {
-                "description": "System tags list used to filter results. Prepend '-' to system tag name to indicate exclusion",
+                "description": (
+                    "System tags list used to filter results. Prepend '-' to system tag name to indicate exclusion"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
             "tags": {
-                "description": "User-defined tags list used to filter results. Prepend '-' to tag name to indicate exclusion",
+                "description": (
+                    "User-defined tags list used to filter results. Prepend '-' to tag name to indicate exclusion"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -1997,8 +1999,7 @@ class GetAllResponse(Response):
 
     :param projects: Projects list
     :type projects: Sequence[ProjectsGetAllResponseSingle]
-    :param scroll_id: Scroll ID that can be used with the next calls to get_all_ex
-        to retrieve more data
+    :param scroll_id: Scroll ID that can be used with the next calls to get_all_ex to retrieve more data
     :type scroll_id: str
     """
 
@@ -2056,13 +2057,17 @@ class GetAllResponse(Response):
                         "type": ["string", "null"],
                     },
                     "own_models": {
-                        "description": "The amount of models under this project (without children projects). "
-                        "Returned if 'check_own_contents' flag is set in the request",
+                        "description": (
+                            "The amount of models under this project (without children projects). "
+                            "Returned if 'check_own_contents' flag is set in the request"
+                        ),
                         "type": ["integer", "null"],
                     },
                     "own_tasks": {
-                        "description": "The amount of tasks under this project (without children projects). "
-                        "Returned if 'check_own_contents' flag is set in the request",
+                        "description": (
+                            "The amount of tasks under this project (without children projects). "
+                            "Returned if 'check_own_contents' flag is set in the request"
+                        ),
                         "type": ["integer", "null"],
                     },
                     "stats": {
@@ -2217,14 +2222,9 @@ class GetAllResponse(Response):
 
         self.assert_isinstance(value, "projects", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                ProjectsGetAllResponseSingle.from_dict(v) if isinstance(v, dict) else v
-                for v in value
-            ]
+            value = [ProjectsGetAllResponseSingle.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
-            self.assert_isinstance(
-                value, "projects", ProjectsGetAllResponseSingle, is_array=True
-            )
+            self.assert_isinstance(value, "projects", ProjectsGetAllResponseSingle, is_array=True)
         self._property_projects = value
 
     @schema_property("scroll_id")
@@ -2314,7 +2314,10 @@ class GetByIdResponse(Response):
                     },
                     "id": {"description": "Project id", "type": ["string", "null"]},
                     "last_update": {
-                        "description": "Last project update time. Reflects the last time the project metadata was changed or a task in this project has changed status",
+                        "description": (
+                            "Last project update time. Reflects the last time the project metadata was changed or a"
+                            " task in this project has changed status"
+                        ),
                         "format": "date-time",
                         "type": ["string", "null"],
                     },
@@ -2379,8 +2382,8 @@ class GetHyperParametersRequest(Request):
     :type page: int
     :param page_size: Page size
     :type page_size: int
-    :param include_subprojects: If set to 'true' and the project field is set then
-        the result includes hyper parameters from the subproject tasks
+    :param include_subprojects: If set to 'true' and the project field is set then the result includes
+        hyper parameters from the subproject tasks
     :type include_subprojects: bool
     """
 
@@ -2392,7 +2395,10 @@ class GetHyperParametersRequest(Request):
         "properties": {
             "include_subprojects": {
                 "default": True,
-                "description": "If set to 'true' and the project field is set then the result includes hyper parameters from the subproject tasks",
+                "description": (
+                    "If set to 'true' and the project field is set then the result includes hyper parameters from the"
+                    " subproject tasks"
+                ),
                 "type": "boolean",
             },
             "page": {"default": 0, "description": "Page number", "type": "integer"},
@@ -2407,9 +2413,7 @@ class GetHyperParametersRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self, project, page=0, page_size=500, include_subprojects=True, **kwargs
-    ):
+    def __init__(self, project, page=0, page_size=500, include_subprojects=True, **kwargs):
         super(GetHyperParametersRequest, self).__init__(**kwargs)
         self.project = project
         self.page = page
@@ -2571,11 +2575,11 @@ class GetHyperparamValuesRequest(Request):
     :type section: str
     :param name: Hyperparameter name
     :type name: str
-    :param allow_public: If set to 'true' then collect values from both company and
-        public tasks otherwise company tasks only. The default is 'true'
+    :param allow_public: If set to 'true' then collect values from both company and public tasks otherwise company
+        tasks only. The default is 'true'
     :type allow_public: bool
-    :param include_subprojects: If set to 'true' and the project field is set then
-        the result includes hyper parameters values from the subproject tasks
+    :param include_subprojects: If set to 'true' and the project field is set then the result includes
+        hyper parameters values from the subproject tasks
     :type include_subprojects: bool
     """
 
@@ -2586,12 +2590,18 @@ class GetHyperparamValuesRequest(Request):
         "definitions": {},
         "properties": {
             "allow_public": {
-                "description": "If set to 'true' then collect values from both company and public tasks otherwise company tasks only. The default is 'true'",
+                "description": (
+                    "If set to 'true' then collect values from both company and public tasks otherwise company tasks"
+                    " only. The default is 'true'"
+                ),
                 "type": "boolean",
             },
             "include_subprojects": {
                 "default": True,
-                "description": "If set to 'true' and the project field is set then the result includes hyper parameters values from the subproject tasks",
+                "description": (
+                    "If set to 'true' and the project field is set then the result includes hyper parameters values"
+                    " from the subproject tasks"
+                ),
                 "type": "boolean",
             },
             "name": {"description": "Hyperparameter name", "type": "string"},
@@ -2606,15 +2616,7 @@ class GetHyperparamValuesRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        section,
-        name,
-        projects=None,
-        allow_public=None,
-        include_subprojects=True,
-        **kwargs
-    ):
+    def __init__(self, section, name, projects=None, allow_public=None, include_subprojects=True, **kwargs):
         super(GetHyperparamValuesRequest, self).__init__(**kwargs)
         self.projects = projects
         self.section = section
@@ -2762,8 +2764,8 @@ class GetModelMetadataKeysRequest(Request):
 
     :param project: Project ID
     :type project: str
-    :param include_subprojects: If set to 'true' and the project field is set then
-        the result includes metadate keys from the subproject models
+    :param include_subprojects: If set to 'true' and the project field is set then the result includes
+        metadata keys from the subproject models
     :type include_subprojects: bool
     :param page: Page number
     :type page: int
@@ -2779,12 +2781,10 @@ class GetModelMetadataKeysRequest(Request):
         "properties": {
             "include_subprojects": {
                 "default": True,
-                "description": "If set to 'true' and "
-                "the project field is "
-                "set then the result "
-                "includes metadate keys "
-                "from the subproject "
-                "models",
+                "description": (
+                    "If set to 'true' and the project field is set then the result includes metadate keys "
+                    "from the subproject models"
+                ),
                 "type": "boolean",
             },
             "page": {"default": 0, "description": "Page number", "type": "integer"},
@@ -2799,9 +2799,7 @@ class GetModelMetadataKeysRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self, project, include_subprojects=True, page=0, page_size=500, **kwargs
-    ):
+    def __init__(self, project, include_subprojects=True, page=0, page_size=500, **kwargs):
         super(GetModelMetadataKeysRequest, self).__init__(**kwargs)
         self.project = project
         self.include_subprojects = include_subprojects
@@ -2961,11 +2959,11 @@ class GetModelMetadataValuesRequest(Request):
     :type projects: Sequence[str]
     :param key: Metadata key
     :type key: str
-    :param allow_public: If set to 'true' then collect values from both company and
-        public models otherwise company modeels only. The default is 'true'
+    :param allow_public: If set to 'true' then collect values from both company and public models otherwise company
+        models only. The default is 'true'
     :type allow_public: bool
-    :param include_subprojects: If set to 'true' and the project field is set then
-        the result includes metadata values from the subproject models
+    :param include_subprojects: If set to 'true' and the project field is set then the result includes metadata
+        values from the subproject models
     :type include_subprojects: bool
     """
 
@@ -2976,18 +2974,18 @@ class GetModelMetadataValuesRequest(Request):
         "definitions": {},
         "properties": {
             "allow_public": {
-                "description": "If set to 'true' then collect values from both company and "
-                "public models otherwise company modeels only. The default is 'true'",
+                "description": (
+                    "If set to 'true' then collect values from both company and public models otherwise company "
+                    "models only. The default is 'true'"
+                ),
                 "type": "boolean",
             },
             "include_subprojects": {
                 "default": True,
-                "description": "If set to 'true' and "
-                "the project field is "
-                "set then the result "
-                "includes metadata "
-                "values from the "
-                "subproject models",
+                "description": (
+                    "If set to 'true' and the project field is set then the result includes metadata values from the "
+                    "subproject models"
+                ),
                 "type": "boolean",
             },
             "key": {"description": "Metadata key", "type": "string"},
@@ -3001,9 +2999,7 @@ class GetModelMetadataValuesRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self, key, projects=None, allow_public=None, include_subprojects=True, **kwargs
-    ):
+    def __init__(self, key, projects=None, allow_public=None, include_subprojects=True, **kwargs):
         super(GetModelMetadataValuesRequest, self).__init__(**kwargs)
         self.projects = projects
         self.key = key
@@ -3135,11 +3131,11 @@ class GetModelTagsRequest(Request):
     """
     Get user and system tags used for the models under the specified projects
 
-    :param include_system: If set to 'true' then the list of the system tags is
-        also returned. The default value is 'false'
+    :param include_system: If set to 'true' then the list of the system tags is also returned.
+        The default value is 'false'
     :type include_system: bool
-    :param projects: The list of projects under which the tags are searched. If not
-        passed or empty then all the projects are searched
+    :param projects: The list of projects under which the tags are searched. If not passed or empty then all the
+        projects are searched
     :type projects: Sequence[str]
     :param filter: Filter on entities to collect tags from
     :type filter: dict
@@ -3155,12 +3151,18 @@ class GetModelTagsRequest(Request):
                 "description": "Filter on entities to collect tags from",
                 "properties": {
                     "system_tags": {
-                        "description": "The list of system tag values to filter by. Use 'null' value to specify empty system tags. Use '__Snot' value to specify that the following value should be excluded",
+                        "description": (
+                            "The list of system tag values to filter by. Use 'null' value to specify empty system tags."
+                            " Use '__Snot' value to specify that the following value should be excluded"
+                        ),
                         "items": {"type": "string"},
                         "type": "array",
                     },
                     "tags": {
-                        "description": "The list of tag values to filter by. Use 'null' value to specify empty tags. Use '__Snot' value to specify that the following value should be excluded",
+                        "description": (
+                            "The list of tag values to filter by. Use 'null' value to specify empty tags. Use '__Snot'"
+                            " value to specify that the following value should be excluded"
+                        ),
                         "items": {"type": "string"},
                         "type": "array",
                     },
@@ -3169,11 +3171,16 @@ class GetModelTagsRequest(Request):
             },
             "include_system": {
                 "default": False,
-                "description": "If set to 'true' then the list of the system tags is also returned. The default value is 'false'",
+                "description": (
+                    "If set to 'true' then the list of the system tags is also returned. The default value is 'false'"
+                ),
                 "type": ["boolean", "null"],
             },
             "projects": {
-                "description": "The list of projects under which the tags are searched. If not passed or empty then all the projects are searched",
+                "description": (
+                    "The list of projects under which the tags are searched. If not passed or empty then all the"
+                    " projects are searched"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -3235,8 +3242,8 @@ class GetModelTagsResponse(Response):
 
     :param tags: The list of unique tag values
     :type tags: Sequence[str]
-    :param system_tags: The list of unique system tag values. Returned only if
-        'include_system' is set to 'true' in the request
+    :param system_tags: The list of unique system tag values. Returned only if 'include_system' is set to 'true'
+        in the request
     :type system_tags: Sequence[str]
     """
 
@@ -3248,7 +3255,10 @@ class GetModelTagsResponse(Response):
         "definitions": {},
         "properties": {
             "system_tags": {
-                "description": "The list of unique system tag values. Returned only if 'include_system' is set to 'true' in the request",
+                "description": (
+                    "The list of unique system tag values. Returned only if 'include_system' is set to 'true' in the"
+                    " request"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -3301,11 +3311,11 @@ class GetProjectTagsRequest(Request):
     """
     Get user and system tags used for the specified projects and their children
 
-    :param include_system: If set to 'true' then the list of the system tags is
-        also returned. The default value is 'false'
+    :param include_system: If set to 'true' then the list of the system tags is also returned.
+        The default value is 'false'
     :type include_system: bool
-    :param projects: The list of projects under which the tags are searched. If not
-        passed or empty then all the projects are searched
+    :param projects: The list of projects under which the tags are searched. If not passed or empty then all the
+        projects are searched
     :type projects: Sequence[str]
     :param filter: Filter on entities to collect tags from
     :type filter: dict
@@ -3321,14 +3331,18 @@ class GetProjectTagsRequest(Request):
                 "description": "Filter on entities to collect tags from",
                 "properties": {
                     "system_tags": {
-                        "description": "The list of system tag values to filter by. Use 'null' value to specify empty "
-                        "system tags. Use '__$not' value to specify that the following value should be excluded",
+                        "description": (
+                            "The list of system tag values to filter by. Use 'null' value to specify empty "
+                            "system tags. Use '__$not' value to specify that the following value should be excluded"
+                        ),
                         "items": {"type": "string"},
                         "type": "array",
                     },
                     "tags": {
-                        "description": "The list of tag values to filter by. Use 'null' value to specify empty tags. "
-                        "Use '__$not' value to specify that the following value should be excluded",
+                        "description": (
+                            "The list of tag values to filter by. Use 'null' value to specify empty tags. "
+                            "Use '__$not' value to specify that the following value should be excluded"
+                        ),
                         "items": {"type": "string"},
                         "type": "array",
                     },
@@ -3337,11 +3351,16 @@ class GetProjectTagsRequest(Request):
             },
             "include_system": {
                 "default": False,
-                "description": "If set to 'true' then the list of the system tags is also returned. The default value is 'false'",
+                "description": (
+                    "If set to 'true' then the list of the system tags is also returned. The default value is 'false'"
+                ),
                 "type": ["boolean", "null"],
             },
             "projects": {
-                "description": "The list of projects under which the tags are searched. If not passed or empty then all the projects are searched",
+                "description": (
+                    "The list of projects under which the tags are searched. If not passed or empty then all the"
+                    " projects are searched"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -3403,8 +3422,8 @@ class GetProjectTagsResponse(Response):
 
     :param tags: The list of unique tag values
     :type tags: Sequence[str]
-    :param system_tags: The list of unique system tag values. Returned only if
-        'include_system' is set to 'true' in the request
+    :param system_tags: The list of unique system tag values. Returned only if 'include_system' is set to 'true'
+        in the request
     :type system_tags: Sequence[str]
     """
 
@@ -3416,7 +3435,10 @@ class GetProjectTagsResponse(Response):
         "definitions": {},
         "properties": {
             "system_tags": {
-                "description": "The list of unique system tag values. Returned only if 'include_system' is set to 'true' in the request",
+                "description": (
+                    "The list of unique system tag values. Returned only if 'include_system' is set to 'true' in the"
+                    " request"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -3469,14 +3491,14 @@ class GetTaskParentsRequest(Request):
     """
     Get unique parent tasks for the tasks in the specified projects
 
-    :param projects: The list of projects which task parents are retieved. If not
-        passed or empty then all the projects are searched
+    :param projects: The list of projects which task parents are retrieved. If not passed or empty then all the
+        projects are searched
     :type projects: Sequence[str]
-    :param tasks_state: Return parents for tasks in the specified state. If Null is
-        provided, parents for all task states will be returned.
+    :param tasks_state: Return parents for tasks in the specified state. If Null is provided, parents for all task
+        states will be returned.
     :type tasks_state: str
-    :param include_subprojects: If set to 'true' and the projects field is not
-        empty then the result includes tasks parents from the subproject tasks
+    :param include_subprojects: If set to 'true' and the projects field is not empty then the result includes tasks
+        parents from the subproject tasks
     :type include_subprojects: bool
     """
 
@@ -3488,20 +3510,26 @@ class GetTaskParentsRequest(Request):
         "properties": {
             "include_subprojects": {
                 "default": True,
-                "description": "If set to 'true' and the projects field is not empty then the result includes tasks "
-                "parents from the subproject tasks",
+                "description": (
+                    "If set to 'true' and the projects field is not empty then the result includes tasks "
+                    "parents from the subproject tasks"
+                ),
                 "type": ["boolean", "null"],
             },
             "projects": {
-                "description": "The list of projects which task parents are retieved. If not passed or empty then all the "
-                "projects are searched",
+                "description": (
+                    "The list of projects which task parents are retieved. If not passed or empty then all the "
+                    "projects are searched"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
             "tasks_state": {
                 "default": "active",
-                "description": "Return parents for tasks in the specified state. If Null is provided, parents for all "
-                "task states will be returned.",
+                "description": (
+                    "Return parents for tasks in the specified state. If Null is provided, parents for all "
+                    "task states will be returned."
+                ),
                 "enum": ["active", "archived"],
                 "type": ["string", "null"],
             },
@@ -3509,9 +3537,7 @@ class GetTaskParentsRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self, projects=None, tasks_state="active", include_subprojects=True, **kwargs
-    ):
+    def __init__(self, projects=None, tasks_state="active", include_subprojects=True, **kwargs):
         super(GetTaskParentsRequest, self).__init__(**kwargs)
         self.projects = projects
         self.tasks_state = tasks_state
@@ -3630,11 +3656,11 @@ class GetTaskTagsRequest(Request):
     """
     Get user and system tags used for the tasks under the specified projects
 
-    :param include_system: If set to 'true' then the list of the system tags is
-        also returned. The default value is 'false'
+    :param include_system: If set to 'true' then the list of the system tags is also returned.
+        The default value is 'false'
     :type include_system: bool
-    :param projects: The list of projects under which the tags are searched. If not
-        passed or empty then all the projects are searched
+    :param projects: The list of projects under which the tags are searched. If not passed or empty then all the
+        projects are searched
     :type projects: Sequence[str]
     :param filter: Filter on entities to collect tags from
     :type filter: dict
@@ -3650,12 +3676,18 @@ class GetTaskTagsRequest(Request):
                 "description": "Filter on entities to collect tags from",
                 "properties": {
                     "system_tags": {
-                        "description": "The list of system tag values to filter by. Use 'null' value to specify empty system tags. Use '__Snot' value to specify that the following value should be excluded",
+                        "description": (
+                            "The list of system tag values to filter by. Use 'null' value to specify empty system tags."
+                            " Use '__Snot' value to specify that the following value should be excluded"
+                        ),
                         "items": {"type": "string"},
                         "type": "array",
                     },
                     "tags": {
-                        "description": "The list of tag values to filter by. Use 'null' value to specify empty tags. Use '__Snot' value to specify that the following value should be excluded",
+                        "description": (
+                            "The list of tag values to filter by. Use 'null' value to specify empty tags. Use '__Snot'"
+                            " value to specify that the following value should be excluded"
+                        ),
                         "items": {"type": "string"},
                         "type": "array",
                     },
@@ -3664,11 +3696,16 @@ class GetTaskTagsRequest(Request):
             },
             "include_system": {
                 "default": False,
-                "description": "If set to 'true' then the list of the system tags is also returned. The default value is 'false'",
+                "description": (
+                    "If set to 'true' then the list of the system tags is also returned. The default value is 'false'"
+                ),
                 "type": ["boolean", "null"],
             },
             "projects": {
-                "description": "The list of projects under which the tags are searched. If not passed or empty then all the projects are searched",
+                "description": (
+                    "The list of projects under which the tags are searched. If not passed or empty then all the"
+                    " projects are searched"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -3730,8 +3767,8 @@ class GetTaskTagsResponse(Response):
 
     :param tags: The list of unique tag values
     :type tags: Sequence[str]
-    :param system_tags: The list of unique system tag values. Returned only if
-        'include_system' is set to 'true' in the request
+    :param system_tags: The list of unique system tag values. Returned only if 'include_system' is set to 'true'
+        in the request
     :type system_tags: Sequence[str]
     """
 
@@ -3743,7 +3780,10 @@ class GetTaskTagsResponse(Response):
         "definitions": {},
         "properties": {
             "system_tags": {
-                "description": "The list of unique system tag values. Returned only if 'include_system' is set to 'true' in the request",
+                "description": (
+                    "The list of unique system tag values. Returned only if 'include_system' is set to 'true' in the"
+                    " request"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -3795,13 +3835,13 @@ class GetTaskTagsResponse(Response):
 class GetUniqueMetricVariantsRequest(Request):
     """
     Get all metric/variant pairs reported for tasks in a specific project.
-            If no project is specified, metrics/variant paris reported for all tasks will be returned.
-            If the project does not exist, an empty list will be returned.
+    If no project is specified, metrics/variant paris reported for all tasks will be returned.
+    If the project does not exist, an empty list will be returned.
 
     :param project: Project ID
     :type project: str
-    :param include_subprojects: If set to 'true' and the project field is set then
-        the result includes metrics/variants from the subproject tasks
+    :param include_subprojects: If set to 'true' and the project field is set then the result includes metrics/variants
+        from the subproject tasks
     :type include_subprojects: bool
     """
 
@@ -3813,7 +3853,10 @@ class GetUniqueMetricVariantsRequest(Request):
         "properties": {
             "include_subprojects": {
                 "default": True,
-                "description": "If set to 'true' and the project field is set then the result includes metrics/variants from the subproject tasks",
+                "description": (
+                    "If set to 'true' and the project field is set then the result includes metrics/variants from the"
+                    " subproject tasks"
+                ),
                 "type": ["boolean", "null"],
             },
             "project": {"description": "Project ID", "type": ["string", "null"]},
@@ -3874,7 +3917,10 @@ class GetUniqueMetricVariantsResponse(Response):
                         "type": ["string", "null"],
                     },
                     "metric_hash": {
-                        "description": "Metric name hash. Used instead of the metric name when categorizing last metrics events in task objects.",
+                        "description": (
+                            "Metric name hash. Used instead of the metric name when categorizing last metrics events in"
+                            " task objects."
+                        ),
                         "type": ["string", "null"],
                     },
                     "variant": {
@@ -3882,7 +3928,10 @@ class GetUniqueMetricVariantsResponse(Response):
                         "type": ["string", "null"],
                     },
                     "variant_hash": {
-                        "description": "Variant name hash. Used instead of the variant name when categorizing last metrics events in task objects.",
+                        "description": (
+                            "Variant name hash. Used instead of the variant name when categorizing last metrics events"
+                            " in task objects."
+                        ),
                         "type": ["string", "null"],
                     },
                 },
@@ -3915,10 +3964,7 @@ class GetUniqueMetricVariantsResponse(Response):
 
         self.assert_isinstance(value, "metrics", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                MetricVariantResult.from_dict(v) if isinstance(v, dict) else v
-                for v in value
-            ]
+            value = [MetricVariantResult.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "metrics", MetricVariantResult, is_array=True)
         self._property_metrics = value
@@ -3940,7 +3986,9 @@ class MakePrivateRequest(Request):
         "definitions": {},
         "properties": {
             "ids": {
-                "description": "Ids of the projects to convert. Only the projects originated by the company can be converted",
+                "description": (
+                    "Ids of the projects to convert. Only the projects originated by the company can be converted"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -4175,7 +4223,9 @@ class MergeResponse(Response):
         "definitions": {},
         "properties": {
             "moved_entities": {
-                "description": "The number of tasks, models and dataviews moved from the merged project into the destination",
+                "description": (
+                    "The number of tasks, models and dataviews moved from the merged project into the destination"
+                ),
                 "type": ["integer", "null"],
             },
             "moved_projects": {
@@ -4335,11 +4385,9 @@ class UpdateRequest(Request):
     :type description: str
     :param tags: User-defined tags list
     :type tags: Sequence[str]
-    :param system_tags: System tags list. This field is reserved for system use,
-        please don't use it.
+    :param system_tags: System tags list. This field is reserved for system use, please don't use it.
     :type system_tags: Sequence[str]
-    :param default_output_destination: The default output destination URL for new
-        tasks under this project
+    :param default_output_destination: The default output destination URL for new tasks under this project
     :type default_output_destination: str
     """
 
@@ -4582,14 +4630,11 @@ class ValidateDeleteResponse(Response):
 
     :param tasks: The total number of tasks under the project and all its children
     :type tasks: int
-    :param non_archived_tasks: The total number of non-archived tasks under the
-        project and all its children
+    :param non_archived_tasks: The total number of non-archived tasks under the project and all its children
     :type non_archived_tasks: int
-    :param models: The total number of models under the project and all its
-        children
+    :param models: The total number of models under the project and all its children
     :type models: int
-    :param non_archived_models: The total number of non-archived models under the
-        project and all its children
+    :param non_archived_models: The total number of non-archived models under the project and all its children
     :type non_archived_models: int
     """
 
@@ -4620,14 +4665,7 @@ class ValidateDeleteResponse(Response):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        tasks=None,
-        non_archived_tasks=None,
-        models=None,
-        non_archived_models=None,
-        **kwargs
-    ):
+    def __init__(self, tasks=None, non_archived_tasks=None, models=None, non_archived_models=None, **kwargs):
         super(ValidateDeleteResponse, self).__init__(**kwargs)
         self.tasks = tasks
         self.non_archived_tasks = non_archived_tasks

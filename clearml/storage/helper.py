@@ -1255,8 +1255,8 @@ class _HttpDriver(_Driver):
 
         headers = {
             'Content-Type': m.content_type,
-            **(container.get_headers(url) or {}),
         }
+        headers.update(container.get_headers(url) or {})
 
         if hasattr(iterator, 'tell') and hasattr(iterator, 'seek'):
             pos = iterator.tell()
@@ -1537,9 +1537,9 @@ class _Boto3Driver(_Driver):
         stream = _Stream(iterator)
         try:
             extra_args = {
-                'ContentType': get_file_mimetype(object_name),
-                **(container.config.extra_args or {})
+                'ContentType': get_file_mimetype(object_name)
             }
+            extra_args.update(container.config.extra_args or {})
             container.bucket.upload_fileobj(stream, object_name, Config=boto3.s3.transfer.TransferConfig(
                 use_threads=container.config.multipart,
                 max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
@@ -1556,9 +1556,9 @@ class _Boto3Driver(_Driver):
         import boto3.s3.transfer
         try:
             extra_args = {
-                'ContentType': get_file_mimetype(object_name or file_path),
-                **(container.config.extra_args or {})
+                'ContentType': get_file_mimetype(object_name or file_path)
             }
+            extra_args.update(container.config.extra_args or {})
             container.bucket.upload_file(file_path, object_name, Config=boto3.s3.transfer.TransferConfig(
                 use_threads=container.config.multipart,
                 max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,

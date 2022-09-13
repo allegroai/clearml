@@ -141,7 +141,7 @@ class Artifact(object):
         self._object = self._not_set
 
     def get(self, force_download=False, deserialization_function=None):
-        # type: (bool, Optional[Callable[Union[bytes], Any]]) -> Any
+        # type: (bool, Optional[Callable[bytes, Any]]) -> Any
         """
         Return an object constructed from the artifact file
 
@@ -156,7 +156,7 @@ class Artifact(object):
         pointing to a local copy of the artifacts file (or directory) will be returned
 
         :param bool force_download: download file from remote even if exists in local cache
-        :param Callable[Union[bytes], Any] deserialization_function: A deserialization function that takes one parameter of type `bytes`,
+        :param Callable[bytes, Any] deserialization_function: A deserialization function that takes one parameter of type `bytes`,
             which represents the serialized object. This function should return the deserialized object.
             Useful when the artifact was uploaded using a custom serialization function when calling the
             `Task.upload_artifact` method with the `serialization_function` argument.
@@ -426,9 +426,9 @@ class Artifacts(object):
                 artifact_type_data.preview = preview or str(artifact_object.__repr__())[:self.max_preview_size_bytes]
             except Exception:
                 artifact_type_data.preview = ""
-            override_filename_ext_in_uri = ""
-            override_filename_in_uri = name
-            fd, local_filename = mkstemp(prefix=quote(name, safe="") + ".")
+            override_filename_ext_in_uri = extension_name or ""
+            override_filename_in_uri = name + override_filename_ext_in_uri
+            fd, local_filename = mkstemp(prefix=quote(name, safe="") + ".", suffix=override_filename_ext_in_uri)
             os.close(fd)
             # noinspection PyBroadException
             try:

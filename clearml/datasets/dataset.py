@@ -3013,7 +3013,7 @@ class Dataset(object):
                 only_fields=["id", "runtime.version"],
                 search_hidden=True,
                 _allow_extra_fields_=True,
-                **dataset_filter,
+                **dataset_filter
             )
         except Exception:
             datasets = []

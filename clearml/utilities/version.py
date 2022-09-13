@@ -19,7 +19,7 @@ class InvalidVersion(ValueError):
 
 
 @attrs
-class _Version:
+class _Version(object):
     epoch = attrib()
     release = attrib()
     dev = attrib()

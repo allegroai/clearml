@@ -1920,6 +1920,7 @@ class Task(_Task):
         - pandas.DataFrame - ``.csv.gz``, ``.parquet``, ``.feather``, ``.pickle`` (default ``.csv.gz``)
         - numpy.ndarray - ``.npz``, ``.csv.gz`` (default ``.npz``)
         - PIL.Image - whatever extensions PIL supports (default ``.png``)
+        - In case the ``serialization_function`` argument is set - any extension is supported
 
         :param Callable[Any, Union[bytes, bytearray]] serialization_function: A serialization function that takes one
             parameter of any types which is the object to be serialized. The function should return a `bytes` or `bytearray`

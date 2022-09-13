@@ -133,11 +133,12 @@ class Exporter(object):
                 self.draw_line(ax, line)
             for text in ax.texts:
                 self.draw_text(ax, text)
-            for (text, ttp) in zip([ax.xaxis.label, ax.yaxis.label, ax.zaxis.label, ax.title],
-                                   ["xlabel", "ylabel", "zlabel", "title"]):
-                if(hasattr(text, "get_text") and text.get_text()):
-                    self.draw_text(ax, text, force_trans=ax.transAxes,
-                                   text_type=ttp)
+            for (text, ttp) in zip(
+                [ax.xaxis.label, ax.yaxis.label, ax.title] + ([ax.zaxis.label] if hasattr(ax, "zaxis") else []),
+                ["xlabel", "ylabel", "title"] + (["zlabel"] if hasattr(ax, "zaxis") else []),
+            ):
+                if hasattr(text, "get_text") and text.get_text():
+                    self.draw_text(ax, text, force_trans=ax.transAxes, text_type=ttp)
             for artist in ax.artists:
                 # TODO: process other artists
                 if isinstance(artist, matplotlib.text.Text):
@@ -279,7 +280,7 @@ class Exporter(object):
         # protected for removing  _offset_position() and default to "screen"
         offset_order = offset_dict[getattr(collection, '_offset_position', 'screen')]
 
-        self.renderer.draw_path_collection(paths=processed_paths,
+        self.renderer.draw_path_collection(ax, paths=processed_paths,
                                            path_coordinates=path_coords,
                                            path_transforms=path_transforms,
                                            offsets=offsets,

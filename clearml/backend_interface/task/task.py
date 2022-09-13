@@ -2435,6 +2435,26 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return None
         return res.response.project.name
 
+    @classmethod
+    def _get_project_names(cls, project_ids):
+        # type: (Sequence[str]) -> Dict[str, str]
+        page = -1
+        page_size = 500
+        all_responses = []
+        res = None
+        while True:
+            page += 1
+            res = cls._send(
+                cls._get_default_session(),
+                projects.GetAllRequest(id=list(project_ids), page=page, page_size=page_size),
+                raise_on_errors=False,
+            )
+            if res and res.response and res.response.projects:
+                all_responses.extend(res.response.projects)
+            else:
+                break
+        return {p.id: p.name for p in all_responses}
+
     def _get_all_events(
         self, max_events=100, batch_size=500, order='asc', event_type=None, unique_selector=itemgetter("url")
     ):

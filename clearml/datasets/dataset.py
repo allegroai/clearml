@@ -4,6 +4,7 @@ import os
 import shutil
 import psutil
 import mimetypes
+import re
 from copy import deepcopy, copy
 from multiprocessing.pool import ThreadPool
 from concurrent.futures import ThreadPoolExecutor
@@ -1736,8 +1737,16 @@ class Dataset(object):
         return squashed_ds
 
     @classmethod
-    def list_datasets(cls, dataset_project=None, partial_name=None, tags=None, ids=None, only_completed=True):
-        # type: (Optional[str], Optional[str], Optional[Sequence[str]], Optional[Sequence[str]], bool) -> List[dict]
+    def list_datasets(
+        cls,
+        dataset_project=None,
+        partial_name=None,
+        tags=None,
+        ids=None,
+        only_completed=True,
+        recursive_project_search=True,
+    ):
+        # type: (Optional[str], Optional[str], Optional[Sequence[str]], Optional[Sequence[str]], bool, bool) -> List[dict]
         """
         Query list of dataset in the system
 
@@ -1746,30 +1755,47 @@ class Dataset(object):
         :param tags: Specify user tags
         :param ids: List specific dataset based on IDs list
         :param only_completed: If False return dataset that are still in progress (uploading/edited etc.)
+        :param recursive_project_search: If True and the `dataset_project` argument is set,
+            search inside subprojects as well.
+            If False, don't search inside subprojects (except for the special `.datasets` subproject)
         :return: List of dictionaries with dataset information
             Example: [{'name': name, 'project': project name, 'id': dataset_id, 'created': date_created},]
         """
+        if dataset_project:
+            if not recursive_project_search:
+                dataset_projects = [
+                    exact_match_regex(dataset_project),
+                    "^{}/\\.datasets/.*".format(re.escape(dataset_project)),
+                ]
+            else:
+                dataset_projects = [exact_match_regex(dataset_project), "^{}/.*".format(re.escape(dataset_project))]
+        else:
+            dataset_projects = None
         # noinspection PyProtectedMember
         datasets = Task._query_tasks(
-            task_ids=ids or None, project_name=dataset_project or None,
+            task_ids=ids or None,
+            project_name=dataset_projects,
             task_name=partial_name,
             system_tags=[cls.__tag],
             type=[str(Task.TaskTypes.data_processing)],
             tags=tags or None,
-            status=['stopped', 'published', 'completed', 'closed'] if only_completed else None,
-            only_fields=['created', 'id', 'name', 'project', 'tags'],
+            status=["stopped", "published", "completed", "closed"] if only_completed else None,
+            only_fields=["created", "id", "name", "project", "tags"],
             search_hidden=True,
-            _allow_extra_fields_=True
+            exact_match_regex_flag=False,
+            _allow_extra_fields_=True,
         )
         project_ids = {d.project for d in datasets}
         # noinspection PyProtectedMember
-        project_id_lookup = {d: Task._get_project_name(d) for d in project_ids}
+        project_id_lookup = Task._get_project_names(project_ids)
         return [
-            {'name': d.name,
-             'created': d.created,
-             'project': project_id_lookup[d.project],
-             'id': d.id,
-             'tags': d.tags}
+            {
+                "name": d.name,
+                "created": d.created,
+                "project": cls._remove_hidden_part_from_dataset_project(project_id_lookup[d.project]),
+                "id": d.id,
+                "tags": d.tags,
+            }
             for d in datasets
         ]
 

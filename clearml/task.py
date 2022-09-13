@@ -3938,7 +3938,15 @@ class Task(_Task):
         return [cls(private=cls.__create_protection, task_id=task.id, log_to_backend=False) for task in queried_tasks]
 
     @classmethod
-    def _query_tasks(cls, task_ids=None, project_name=None, task_name=None, fetch_only_first_page=False, **kwargs):
+    def _query_tasks(
+        cls,
+        task_ids=None,
+        project_name=None,
+        task_name=None,
+        fetch_only_first_page=False,
+        exact_match_regex_flag=True,
+        **kwargs
+    ):
         res = None
         if not task_ids:
             task_ids = None
@@ -3960,13 +3968,12 @@ class Task(_Task):
                 res = cls._send(
                     cls._get_default_session(),
                     projects.GetAllRequest(
-                        name=exact_match_regex(name),
+                        name=exact_match_regex(name) if exact_match_regex_flag else name,
                         **aux_kwargs
                     )
                 )
-                project = get_single_result(entity='project', query=name, results=res.response.projects)
-                if project:
-                    project_ids.append(project.id)
+                if res.response and res.response.projects:
+                    project_ids.extend([project.id for project in res.response.projects])
 
         session = cls._get_default_session()
         system_tags = 'system_tags' if hasattr(tasks.Task, 'system_tags') else 'tags'

@@ -25,8 +25,7 @@ from .defs import (
     ENV_DISABLE_VAULT_SUPPORT,
     ENV_ENABLE_ENV_CONFIG_SECTION,
     ENV_ENABLE_FILES_CONFIG_SECTION,
-    ENV_API_DEFAULT_REQ_METHOD,
-    ENV_API_EXTRA_RETRY_CODES,
+    ENV_API_EXTRA_RETRY_CODES, ENV_API_DEFAULT_REQ_METHOD,
 )
 from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
@@ -141,6 +140,15 @@ class Session(TokenManager):
         self._verbose = verbose if verbose is not None else ENV_VERBOSE.get()
         self._logger = logger
         self.__auth_token = None
+
+        if not ENV_API_DEFAULT_REQ_METHOD.get(default=None) and self.config.get("api.http.default_method", None):
+            def_method = str(self.config.get("api.http.default_method", None)).strip()
+            if def_method.upper() not in ("GET", "POST", "PUT"):
+                raise ValueError(
+                    "api.http.default_method variable must be 'get' or 'post' (any case is allowed)."
+                )
+            Request.def_method = def_method
+            Request._method = Request.def_method
 
         if ENV_AUTH_TOKEN.get():
             self.__access_key = self.__secret_key = None
@@ -313,7 +321,7 @@ class Session(TokenManager):
         service,
         action,
         version=None,
-        method="get",
+        method=Request.def_method,
         headers=None,
         auth=None,
         data=None,
@@ -402,7 +410,7 @@ class Session(TokenManager):
         service,
         action,
         version=None,
-        method="get",
+        method=Request.def_method,
         headers=None,
         data=None,
         json=None,
@@ -445,7 +453,7 @@ class Session(TokenManager):
         headers=None,
         data=None,
         json=None,
-        method="get",
+        method=Request.def_method,
     ):
         """
         Send a raw batch API request. Batch requests always use application/json-lines content type.
@@ -734,7 +742,7 @@ class Session(TokenManager):
         try:
             data = {"expiration_sec": exp} if exp else {}
             res = self._send_request(
-                method=ENV_API_DEFAULT_REQ_METHOD.get(default="get"),
+                method=Request.def_method,
                 service="auth",
                 action="login",
                 auth=auth,

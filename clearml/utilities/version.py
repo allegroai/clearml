@@ -268,6 +268,13 @@ class Version(_BaseVersion):
         return letter, int(number)
 
     @classmethod
+    def is_valid_version_string(cls, version_string):
+        if not version_string:
+            return False
+        match = cls._regex.search(version_string)
+        return bool(match)
+
+    @classmethod
     def _parse_local_version(cls, local):
         """
         Takes a string like abc.1.twelve and turns it into ("abc", 1, "twelve").

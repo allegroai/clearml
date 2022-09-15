@@ -142,6 +142,10 @@ class Dataset(object):
         self._dataset_version = None
         if dataset_version:
             self._dataset_version = str(dataset_version).strip()
+            if not Version.is_valid_version_string(self._dataset_version):
+                LoggerRoot.get_base_logger().warning(
+                    "Setting non-semantic dataset version '{}'".format(self._dataset_version)
+                )
         if task:
             self._task_pinger = None
             self._created_task = False
@@ -308,6 +312,22 @@ class Dataset(object):
         if bool(Session.check_min_api_server_version(Dataset.__min_api_version)):
             return self._task.get_project_name().partition("/.datasets/")[-1]
         return self._task.name
+
+    @property
+    def version(self):
+        # type: () -> Optional[str]
+        return self._dataset_version
+
+    @version.setter
+    def version(self, version):
+        # type: (str) -> ()
+        version = str(version).strip()
+        self._dataset_version = version
+        if not Version.is_valid_version_string(version):
+            LoggerRoot.get_base_logger().warning("Setting non-semantic dataset version '{}'".format(version))
+        # noinspection PyProtectedMember
+        self._task._set_runtime_properties({"version": version})
+        self._task.set_user_properties(version=version)
 
     @property
     def tags(self):
@@ -1510,7 +1530,10 @@ class Dataset(object):
     ):
         # type: (...) -> "Dataset"
         """
-        Get a specific Dataset. If multiple datasets are found, the dataset with the highest version is returned
+        Get a specific Dataset. If multiple datasets are found, the dataset with the
+        highest semantic version is returned. If no semantic version if found, the most recently
+        updated dataset is returned. This functions raises an Exception in case no dataset
+        can be found and the ``auto_create=True`` flag is not set
 
         :param dataset_id: Requested dataset ID
         :param dataset_project: Requested dataset project name
@@ -1518,7 +1541,7 @@ class Dataset(object):
         :param dataset_tags: Requested dataset tags (list of tag strings)
         :param only_completed: Return only if the requested dataset is completed or published
         :param only_published: Return only if the requested dataset is published
-        :param auto_create: Create new dataset if it does not exist yet
+        :param auto_create: Create a new dataset if it does not exist yet
         :param writable_copy: Get a newly created mutable dataset with the current one as its parent,
             so new files can added to the instance.
         :param dataset_version: Requested version of the Dataset
@@ -1533,9 +1556,16 @@ class Dataset(object):
         """
         if not any([dataset_id, dataset_project, dataset_name, dataset_tags]):
             raise ValueError("Dataset selection criteria not met. Didn't provide id/name/project/tags correctly.")
+        if not alias:
+            LoggerRoot.get_base_logger().info(
+                "Dataset.get() did not specify alias. Dataset information won’t be automatically logged in ClearML Server.")
 
         mutually_exclusive(dataset_id=dataset_id, dataset_project=dataset_project, _require_at_least_one=False)
         mutually_exclusive(dataset_id=dataset_id, dataset_name=dataset_name, _require_at_least_one=False)
+
+        invalid_kwargs = [kwarg for kwarg in kwargs.keys() if not kwarg.startswith("_")]
+        if invalid_kwargs:
+            raise ValueError("Invalid 'Dataset.get' arguments: {}".format(invalid_kwargs))
 
         current_task = Task.current_task()
 
@@ -3025,14 +3055,33 @@ class Dataset(object):
             )
         result_dataset = None
         for dataset in datasets:
-            current_version = dataset.runtime.get("version")
-            if not current_version:
-                continue
-            if dataset_version is None and (
-                not result_dataset or Version(result_dataset.runtime["version"]) < Version(current_version)
-            ):
-                result_dataset = dataset
-            elif dataset_version == current_version:
+            candidate_dataset_version = dataset.runtime.get("version")
+            if not dataset_version:
+                if not result_dataset:
+                    result_dataset = dataset
+                else:
+                    # noinspection PyBroadException
+                    try:
+
+                        if (
+                            candidate_dataset_version
+                            and Version.is_valid_version_string(candidate_dataset_version)
+                            and (
+                                (
+                                    not result_dataset.runtime.get("version")
+                                    or not Version.is_valid_version_string(result_dataset.runtime.get("version"))
+                                )
+                                or (
+                                    result_dataset.runtime.get("version")
+                                    and Version(result_dataset.runtime.get("version"))
+                                    < Version(candidate_dataset_version)
+                                )
+                            )
+                        ):
+                            result_dataset = dataset
+                    except Exception:
+                        pass
+            elif dataset_version == candidate_dataset_version:
                 if result_dataset and raise_on_multiple:
                     raise ValueError(
                         "Multiple datasets found with dataset_project={}, dataset_name={}, dataset_version={}".format(

@@ -44,6 +44,13 @@ def _patched_call(original_fn, patched_fn):
     return _inner_patch
 
 
+def _patched_call_no_recursion_guard(original_fn, patched_fn):
+    def _inner_patch(*args, **kwargs):
+        return patched_fn(original_fn, *args, **kwargs)
+
+    return _inner_patch
+
+
 class _Empty(object):
     def __init__(self):
         self.trains_in_model = None
@@ -159,7 +166,7 @@ class WeightsFileHandler(object):
         If the callback was already added, return the existing handle.
 
         :param handle: A callback handle returned from :meth:WeightsFileHandler.add_post_callback
-        :return True if callback removed, False otherwise
+        :return: True if callback removed, False otherwise
         """
         return cls._remove_callback(handle, cls._model_post_callbacks)
 

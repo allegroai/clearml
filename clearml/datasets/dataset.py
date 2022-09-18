@@ -5,6 +5,7 @@ import shutil
 import psutil
 import mimetypes
 import re
+import logging
 from copy import deepcopy, copy
 from multiprocessing.pool import ThreadPool
 from concurrent.futures import ThreadPoolExecutor
@@ -35,24 +36,33 @@ except ImportError:
     _Path = None
 
 try:
-    import pandas as pd
-except ImportError:
-    pd = None
-
-try:
-    import pyarrow
-except ImportError:
-    pyarrow = None
-
-try:
-    import fastparquet
-except ImportError:
-    fastparquet = None
-
-try:
     import numpy as np
 except ImportError:
     np = None
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
+except Exception as e:
+    logging.warning("ClearML Dataset failed importing pandas: {}".format(e))
+    pd = None
+
+try:
+    import pyarrow # noqa
+except ImportError:
+    pyarrow = None
+except Exception as e:
+    logging.warning("ClearML Dataset failed importing pyarrow: {}".format(e))
+    pyarrow = None
+
+try:
+    import fastparquet # noqa
+except ImportError:
+    fastparquet = None
+except Exception as e:
+    logging.warning("ClearML Dataset failed importing fastparquet: {}".format(e))
+    fastparquet = None
 
 
 @attrs

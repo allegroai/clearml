@@ -801,7 +801,7 @@ class StorageHelper(object):
             if verbose:
                 self._log.info('Start downloading from %s' % remote_path)
             if not overwrite_existing and Path(local_path).is_file():
-                self._log.warning(
+                self._log.debug(
                     'File {} already exists, no need to download, thread id = {}'.format(
                         local_path,
                         threading.current_thread().ident,

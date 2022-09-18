@@ -2206,7 +2206,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         # make sure we have str as values:
         for key in requirements.keys():
-            if requirements[key] and not isinstance(requirements[key], str):
+            # fix python2 support (str/unicode)
+            if requirements[key] and not isinstance(requirements[key], six.string_types):
                 requirements[key] = '\n'.join(requirements[key])
 
         # protection, Old API might not support it

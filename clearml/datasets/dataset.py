@@ -1558,7 +1558,8 @@ class Dataset(object):
             raise ValueError("Dataset selection criteria not met. Didn't provide id/name/project/tags correctly.")
         if not alias:
             LoggerRoot.get_base_logger().info(
-                "Dataset.get() did not specify alias. Dataset information won’t be automatically logged in ClearML Server.")
+                "Dataset.get() did not specify alias. Dataset information "
+                "will not be automatically logged in ClearML Server.")
 
         mutually_exclusive(dataset_id=dataset_id, dataset_project=dataset_project, _require_at_least_one=False)
         mutually_exclusive(dataset_id=dataset_id, dataset_name=dataset_name, _require_at_least_one=False)

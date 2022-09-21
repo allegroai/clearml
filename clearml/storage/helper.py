@@ -338,6 +338,7 @@ class StorageHelper(object):
             final_region = region if region else self._conf.region
             if not final_region:
                 final_region = None
+                self._get_logger().error(f'final region is None')
 
             self._conf.update(
                 key=key or self._conf.key,
@@ -358,6 +359,8 @@ class StorageHelper(object):
             self._driver = _Boto3Driver()
             self._container = self._driver.get_container(
                 container_name=self._base_url, retries=retries, config=self._conf)
+            print('final_config:', asdict(self._conf))
+            print('final_region:', final_region)
 
         elif self._scheme == _GoogleCloudStorageDriver.scheme:
             self._conf = copy(self._gs_configurations.get_config_by_uri(url))
@@ -1488,6 +1491,7 @@ class _Boto3Driver(_Driver):
             with self._creation_lock:
                 boto_kwargs = {
                     "endpoint_url": endpoint,
+                    "region_name" : cfg.region,
                     "use_ssl": cfg.secure,
                     "verify": cfg.verify,
                     "config": botocore.client.Config(
@@ -1510,6 +1514,7 @@ class _Boto3Driver(_Driver):
                 )
 
                 self.config = cfg
+                print('CONFIG STORAGE:', boto_kwargs)
                 bucket_name = self.name[len(cfg.host) + 1:] if cfg.host else self.name
                 self.bucket = self.resource.Bucket(bucket_name)
 

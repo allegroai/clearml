@@ -1,1 +1,1 @@
-__version__ = '1.7.1rc0'
+__version__ = '1.7.1.binsho'

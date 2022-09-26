@@ -166,6 +166,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._files_server = None
         self._initial_iteration_offset = 0
         self._reload_skip_flag = False
+        self._calling_filename = None
 
         if not task_id:
             # generate a new task

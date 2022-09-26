@@ -174,7 +174,7 @@ class PipelineController(object):
 
                     def example_retry_on_failure_callback(pipeline, node, retries):
                         print(node.name, ' failed')
-                        # do something with the pipeline controller
+                        # allow up to 5 retries (total of 6 runs)
                         return retries < 5
         """
         self._nodes = {}
@@ -431,7 +431,7 @@ class PipelineController(object):
 
                     def example_retry_on_failure_callback(pipeline, node, retries):
                         print(node.name, ' failed')
-                        # do something with the pipeline controller
+                        # allow up to 5 retries (total of 6 runs)
                         return retries < 5
 
         :return: True if successful
@@ -684,7 +684,7 @@ class PipelineController(object):
 
                     def example_retry_on_failure_callback(pipeline, node, retries):
                         print(node.name, ' failed')
-                        # do something with the pipeline controller
+                        # allow up to 5 retries (total of 6 runs)
                         return retries < 5
 
         :return: True if successful
@@ -2640,7 +2640,7 @@ class PipelineDecorator(PipelineController):
 
                     def example_retry_on_failure_callback(pipeline, node, retries):
                         print(node.name, ' failed')
-                        # do something with the pipeline controller
+                        # allow up to 5 retries (total of 6 runs)
                         return retries < 5
 
         """
@@ -3050,7 +3050,7 @@ class PipelineDecorator(PipelineController):
 
                     def example_retry_on_failure_callback(pipeline, node, retries):
                         print(node.name, ' failed')
-                        # do something with the pipeline controller
+                        # allow up to 5 retries (total of 6 runs)
                         return retries < 5
 
         :return: function wrapper
@@ -3351,7 +3351,7 @@ class PipelineDecorator(PipelineController):
 
                     def example_retry_on_failure_callback(pipeline, node, retries):
                         print(node.name, ' failed')
-                        # do something with the pipeline controller
+                        # allow up to 5 retries (total of 6 runs)
                         return retries < 5
 
         """

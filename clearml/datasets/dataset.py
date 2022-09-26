@@ -839,8 +839,8 @@ class Dataset(object):
     def get_local_copy(self, use_soft_links=None, part=None, num_parts=None, raise_on_error=True, max_workers=None):
         # type: (bool, Optional[int], Optional[int], bool, Optional[int]) -> str
         """
-        return a base folder with a read-only (immutable) local copy of the entire dataset
-            download and copy / soft-link, files from all the parent dataset versions
+        Return a base folder with a read-only (immutable) local copy of the entire dataset
+        download and copy / soft-link, files from all the parent dataset versions. The dataset needs to be finalized
 
         :param use_soft_links: If True use soft links, default False on windows True on Posix systems
         :param part: Optional, if provided only download the selected part (index) of the Dataset.
@@ -863,6 +863,8 @@ class Dataset(object):
         assert self._id
         if not self._task:
             self._task = Task.get_task(task_id=self._id)
+        if not self.is_final():
+            raise ValueError("Cannot get a local copy of a dataset that was not finalized/closed")
         if not max_workers:
             max_workers = psutil.cpu_count()
 
@@ -1566,7 +1568,8 @@ class Dataset(object):
         """
         if not any([dataset_id, dataset_project, dataset_name, dataset_tags]):
             raise ValueError("Dataset selection criteria not met. Didn't provide id/name/project/tags correctly.")
-        if not alias:
+        current_task = Task.current_task()
+        if not alias and current_task:
             LoggerRoot.get_base_logger().info(
                 "Dataset.get() did not specify alias. Dataset information "
                 "will not be automatically logged in ClearML Server.")
@@ -1577,8 +1580,6 @@ class Dataset(object):
         invalid_kwargs = [kwarg for kwarg in kwargs.keys() if not kwarg.startswith("_")]
         if invalid_kwargs:
             raise ValueError("Invalid 'Dataset.get' arguments: {}".format(invalid_kwargs))
-
-        current_task = Task.current_task()
 
         def get_instance(dataset_id_):
             task = Task.get_task(task_id=dataset_id_)

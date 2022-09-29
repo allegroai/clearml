@@ -635,7 +635,11 @@ class Artifacts(object):
                 artifact_type = 'custom'
                 artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
                 local_filename = artifact_object
-        elif isinstance(artifact_object, (list, tuple)) and all(isinstance(p, pathlib_types) for p in artifact_object):
+        elif (
+            artifact_object
+            and isinstance(artifact_object, (list, tuple))
+            and all(isinstance(p, pathlib_types) for p in artifact_object)
+        ):
             # find common path if exists
             list_files = [Path(p) for p in artifact_object]
             override_filename_ext_in_uri = '.zip'

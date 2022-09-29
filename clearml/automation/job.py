@@ -18,6 +18,7 @@ from ..backend_interface.util import get_or_create_project, exact_match_regex
 from ..storage.util import hash_dict
 from ..task import Task
 from ..backend_api.services import tasks as tasks_service
+from ..utilities.proxy_object import verify_basic_type, get_basic_type
 
 
 logger = getLogger('clearml.automation.job')
@@ -573,7 +574,11 @@ class ClearmlJob(BaseJob):
             self.task.set_tags(list(set(self.task.get_tags()) | set(tags)))
 
         if task_params:
-            self.task.set_parameters(task_params)
+            param_types = {}
+            for key, value in task_params.items():
+                if verify_basic_type(value):
+                    param_types[key] = get_basic_type(value)
+            self.task.set_parameters(task_params, __parameters_types=param_types)
 
         # store back Task configuration object into backend
         if task_configurations:

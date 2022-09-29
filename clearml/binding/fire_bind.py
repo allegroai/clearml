@@ -201,7 +201,7 @@ class PatchFire:
         parse = fire.core._MakeParseFn(fn, metadata)  # noqa
         (parsed_args, parsed_kwargs), _, _, _ = parse(args_)
         PatchFire._args.update({k: v for k, v in zip(fn_spec.args, parsed_args)})
-        PatchFire._args.update(parsed_args)
+        PatchFire._args.update(parsed_kwargs)
         PatchFire._update_task_args()
         return original_fn(component, args_, component_trace, treatment, target, *args, **kwargs)
 

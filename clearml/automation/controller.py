@@ -2965,7 +2965,7 @@ class PipelineDecorator(PipelineController):
             monitor_metrics=None,  # type: Optional[List[Union[Tuple[str, str], Tuple[(str, str), (str, str)]]]]
             monitor_artifacts=None,  # type: Optional[List[Union[str, Tuple[str, str]]]]
             monitor_models=None,  # type: Optional[List[Union[str, Tuple[str, str]]]]
-            retry_on_failure=None,  # type: Optional[Union[int, Callable[[PipelineController, PipelineController.Node, int], bool]]]   # noqa
+            retry_on_failure=None  # type: Optional[Union[int, Callable[[PipelineController, PipelineController.Node, int], bool]]]   # noqa
     ):
         # type: (...) -> Callable
         """
@@ -3290,7 +3290,7 @@ class PipelineDecorator(PipelineController):
             add_run_number=True,  # type: bool
             args_map=None,  # type: dict[str, List[str]]
             start_controller_locally=False,  # type: bool
-            retry_on_failure=None,  # type: Optional[Union[int, Callable[[PipelineController, PipelineController.Node, int], bool]]]   # noqa
+            retry_on_failure=None  # type: Optional[Union[int, Callable[[PipelineController, PipelineController.Node, int], bool]]]   # noqa
     ):
         # type: (...) -> Callable
         """
@@ -3435,7 +3435,7 @@ class PipelineDecorator(PipelineController):
                     target_project=target_project,
                     abort_on_failure=abort_on_failure,
                     add_run_number=add_run_number,
-                    retry_on_failure=retry_on_failure,
+                    retry_on_failure=retry_on_failure
                 )
 
                 a_pipeline._args_map = args_map or {}

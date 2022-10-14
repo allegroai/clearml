@@ -336,8 +336,8 @@ class Logger(object):
         :param csv: path to local csv file
         :param url: A URL to the location of csv file.
         :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
-            See full details on the supported configuration: https://plotly.com/javascript/reference/table/
-            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+            See full details on the supported configuration: https://plotly.com/javascript/reference/layout/
+            example: extra_layout={'height': 600}
         """
         mutually_exclusive(
             UsageError, _check_none=True,

@@ -811,7 +811,9 @@ class StorageHelper(object):
                 return local_path
             if remote_path.startswith("file://"):
                 Path(local_path).parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(direct_access_path, local_path)
+                # use remote_path, because direct_access_path might be None, because of access_rules
+                # len("file://") == 7
+                shutil.copyfile(remote_path[7:], local_path)
                 return local_path
             # we download into temp_local_path so that if we accidentally stop in the middle,
             # we won't think we have the entire file

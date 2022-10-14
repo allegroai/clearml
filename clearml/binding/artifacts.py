@@ -439,6 +439,8 @@ class Artifacts(object):
                 os.unlink(local_filename)
                 raise
             artifact_type_data.content_type = mimetypes.guess_type(local_filename)[0]
+        elif extension_name == ".pkl":
+            store_as_pickle = True
         elif np and isinstance(artifact_object, np.ndarray):
             artifact_type = 'numpy'
             artifact_type_data.preview = preview or str(artifact_object.__repr__())

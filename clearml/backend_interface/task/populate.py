@@ -471,10 +471,12 @@ class CreateAndPopulate(object):
 
 
 class CreateFromFunction(object):
-    kwargs_section = 'kwargs'
-    input_artifact_section = 'kwargs_artifacts'
+    kwargs_section = "kwargs"
+    return_section = "return"
+    input_artifact_section = "kwargs_artifacts"
     task_template = """from clearml import Task, TaskTypes
 from clearml.automation.controller import PipelineDecorator
+from clearml.utilities.proxy_object import get_basic_type
 
 
 {function_source}
@@ -488,23 +490,36 @@ if __name__ == '__main__':
     task.connect(kwargs, name='{kwargs_section}')
     function_input_artifacts = {function_input_artifacts}
     params = task.get_parameters() or dict()
+    return_section = '{return_section}'
     for k, v in params.items():
         if not v or not k.startswith('{input_artifact_section}/'):
             continue
         k = k.replace('{input_artifact_section}/', '', 1)
         task_id, artifact_name = v.split('.', 1)
-        kwargs[k] = Task.get_task(task_id=task_id).artifacts[artifact_name].get()
+        parent_task = Task.get_task(task_id=task_id)
+        if artifact_name in parent_task.artifacts:
+            kwargs[k] = parent_task.artifacts[artifact_name].get()
+        else:
+            kwargs[k] = parent_task.get_parameters(cast=True)[return_section + '/' + artifact_name]
     results = {function_name}(**kwargs)
     result_names = {function_return}
     if result_names:
         if not isinstance(results, (tuple, list)) or len(result_names) == 1:
             results = [results]
+        parameters = dict()
+        parameters_types = dict()
         for name, artifact in zip(result_names, results):
-            task.upload_artifact(
-                name=name,
-                artifact_object=artifact,
-                extension_name='.pkl' if isinstance(artifact, dict) else None
-            )
+            if isinstance(artifact, (float, int, bool, str)):
+                parameters[return_section + '/' + name] = artifact
+                parameters_types[return_section + '/' + name] = get_basic_type(artifact)
+            else:
+                task.upload_artifact(
+                    name=name,
+                    artifact_object=artifact,
+                    extension_name='.pkl' if isinstance(artifact, dict) else None
+                )
+        if parameters:
+            task._set_parameters(parameters, __parameters_types=parameters_types, __update=True)
 """
 
     @classmethod
@@ -663,7 +678,9 @@ if __name__ == '__main__':
             function_kwargs=function_kwargs,
             function_input_artifacts=function_input_artifacts,
             function_name=function_name,
-            function_return=function_return)
+            function_return=function_return,
+            return_section=cls.return_section,
+        )
 
         temp_dir = repo if repo and os.path.isdir(repo) else None
         with tempfile.NamedTemporaryFile('w', suffix='.py', dir=temp_dir) as temp_file:

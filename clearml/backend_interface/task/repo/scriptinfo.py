@@ -315,7 +315,8 @@ class _JupyterObserver(object):
             _script_exporter = ScriptExporter()
         except Exception as ex:
             cls._get_logger().warning('Could not read Jupyter Notebook: {}'.format(ex))
-            return
+            _script_exporter = None
+
         # load pigar
         # noinspection PyBroadException
         try:
@@ -410,79 +411,84 @@ class _JupyterObserver(object):
                         except Exception:
                             continue
 
-                # get notebook python script
-                if script_code is None and local_jupyter_filename:
-                    script_code, _ = _script_exporter.from_filename(local_jupyter_filename)
-                    if cls._store_notebook_artifact:
-                        # also upload the jupyter notebook as artifact
-                        task.upload_artifact(
-                            name='notebook',
-                            artifact_object=Path(local_jupyter_filename),
-                            preview='See `notebook preview` artifact',
-                            metadata={'UPDATE': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')},
-                            wait_on_upload=True,
-                        )
-                        # noinspection PyBroadException
-                        try:
-                            from nbconvert.exporters import HTMLExporter  # noqa
-                            html, _ = HTMLExporter().from_filename(filename=local_jupyter_filename)
-                            local_html = Path(gettempdir()) / 'notebook_{}.html'.format(task.id)
-                            with open(local_html.as_posix(), 'wt', encoding="utf-8") as f:
-                                f.write(html)
+                if _script_exporter is None:
+                    current_script_hash = 'error_notebook_not_found.py'
+                    requirements_txt = ''
+                    conda_requirements = ''
+                else:
+                    # get notebook python script
+                    if script_code is None and local_jupyter_filename:
+                        script_code, _ = _script_exporter.from_filename(local_jupyter_filename)
+                        if cls._store_notebook_artifact:
+                            # also upload the jupyter notebook as artifact
                             task.upload_artifact(
-                                name='notebook preview', artifact_object=local_html,
-                                preview='Click `FILE PATH` link',
+                                name='notebook',
+                                artifact_object=Path(local_jupyter_filename),
+                                preview='See `notebook preview` artifact',
                                 metadata={'UPDATE': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')},
-                                delete_after_upload=True,
                                 wait_on_upload=True,
                             )
-                        except Exception:
-                            pass
-
-                current_script_hash = hash(script_code + (current_cell or ''))
-                if prev_script_hash and prev_script_hash == current_script_hash:
-                    continue
-
-                # remove ipython direct access from the script code
-                # we will not be able to run them anyhow
-                if replace_ipython_pattern:
-                    script_code = replace_ipython_pattern.sub(r'\n# \g<1>get_ipython()', script_code)
-                if replace_ipython_display_pattern:
-                    script_code = replace_ipython_display_pattern.sub(r'\n\g<1>print(', script_code)
-
-                requirements_txt = ''
-                conda_requirements = ''
-                # parse jupyter python script and prepare pip requirements (pigar)
-                # if backend supports requirements
-                if file_import_modules and Session.check_min_api_version('2.2'):
-                    if fmodules is None:
-                        fmodules, _ = file_import_modules(
-                            notebook.parts[-1] if notebook else 'notebook', script_code)
-                        if current_cell:
-                            cell_fmodules, _ = file_import_modules(
-                                notebook.parts[-1] if notebook else 'notebook', current_cell)
                             # noinspection PyBroadException
                             try:
-                                fmodules |= cell_fmodules
+                                from nbconvert.exporters import HTMLExporter  # noqa
+                                html, _ = HTMLExporter().from_filename(filename=local_jupyter_filename)
+                                local_html = Path(gettempdir()) / 'notebook_{}.html'.format(task.id)
+                                with open(local_html.as_posix(), 'wt', encoding="utf-8") as f:
+                                    f.write(html)
+                                task.upload_artifact(
+                                    name='notebook preview', artifact_object=local_html,
+                                    preview='Click `FILE PATH` link',
+                                    metadata={'UPDATE': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')},
+                                    delete_after_upload=True,
+                                    wait_on_upload=True,
+                                )
                             except Exception:
                                 pass
-                    # add current cell to the script
-                    if current_cell:
-                        script_code += '\n' + current_cell
-                    fmodules = ScriptRequirements.add_trains_used_packages(fmodules)
-                    # noinspection PyUnboundLocalVariable
-                    installed_pkgs = get_installed_pkgs_detail()
-                    # make sure we are in installed packages
-                    if our_module and (our_module[0] not in installed_pkgs):
-                        installed_pkgs[our_module[0]] = our_module
 
-                    # noinspection PyUnboundLocalVariable
-                    reqs = ReqsModules()
-                    for name in fmodules:
-                        if name in installed_pkgs:
-                            pkg_name, version = installed_pkgs[name]
-                            reqs.add(pkg_name, version, fmodules[name])
-                    requirements_txt, conda_requirements = ScriptRequirements.create_requirements_txt(reqs)
+                    current_script_hash = hash(script_code + (current_cell or ''))
+                    if prev_script_hash and prev_script_hash == current_script_hash:
+                        continue
+
+                    # remove ipython direct access from the script code
+                    # we will not be able to run them anyhow
+                    if replace_ipython_pattern:
+                        script_code = replace_ipython_pattern.sub(r'\n# \g<1>get_ipython()', script_code)
+                    if replace_ipython_display_pattern:
+                        script_code = replace_ipython_display_pattern.sub(r'\n\g<1>print(', script_code)
+
+                    requirements_txt = ''
+                    conda_requirements = ''
+                    # parse jupyter python script and prepare pip requirements (pigar)
+                    # if backend supports requirements
+                    if file_import_modules and Session.check_min_api_version('2.2'):
+                        if fmodules is None:
+                            fmodules, _ = file_import_modules(
+                                notebook.parts[-1] if notebook else 'notebook', script_code)
+                            if current_cell:
+                                cell_fmodules, _ = file_import_modules(
+                                    notebook.parts[-1] if notebook else 'notebook', current_cell)
+                                # noinspection PyBroadException
+                                try:
+                                    fmodules |= cell_fmodules
+                                except Exception:
+                                    pass
+                        # add current cell to the script
+                        if current_cell:
+                            script_code += '\n' + current_cell
+                        fmodules = ScriptRequirements.add_trains_used_packages(fmodules)
+                        # noinspection PyUnboundLocalVariable
+                        installed_pkgs = get_installed_pkgs_detail()
+                        # make sure we are in installed packages
+                        if our_module and (our_module[0] not in installed_pkgs):
+                            installed_pkgs[our_module[0]] = our_module
+
+                        # noinspection PyUnboundLocalVariable
+                        reqs = ReqsModules()
+                        for name in fmodules:
+                            if name in installed_pkgs:
+                                pkg_name, version = installed_pkgs[name]
+                                reqs.add(pkg_name, version, fmodules[name])
+                        requirements_txt, conda_requirements = ScriptRequirements.create_requirements_txt(reqs)
 
                 # update script
                 prev_script_hash = current_script_hash
@@ -552,96 +558,108 @@ class ScriptInfo(object):
                 or len(sys.argv) < 3 or not sys.argv[2].endswith('.json'):
             return None
 
-        server_info = None
-
         # we can safely assume that we can import the notebook package here
         # noinspection PyBroadException
         try:
+            jupyter_servers = []
             # noinspection PyBroadException
             try:
                 # noinspection PyPackageRequirements
                 from notebook.notebookapp import list_running_servers  # <= Notebook v6
+                # noinspection PyBroadException
+                try:
+                    jupyter_servers += list(list_running_servers())
+                except Exception:
+                    server_info = cls.__legacy_jupyter_notebook_server_json_parsing()
+                    if server_info:
+                        jupyter_servers += [server_info]
+
             except Exception:
+                pass
+
+            # noinspection PyBroadException
+            try:
                 # noinspection PyPackageRequirements
                 from jupyter_server.serverapp import list_running_servers
+                # noinspection PyBroadException
+                try:
+                    jupyter_servers += list(list_running_servers())
+                except Exception:
+                    server_info = cls.__legacy_jupyter_notebook_server_json_parsing()
+                    if server_info:
+                        jupyter_servers += [server_info]
+            except Exception:
+                pass
 
             import requests
             current_kernel = sys.argv[2].split(os.path.sep)[-1].replace('kernel-', '').replace('.json', '')
 
-            # noinspection PyBroadException
-            try:
-                server_info = next(list_running_servers())
-            except Exception:
-                # on some jupyter notebook versions this function can crash on parsing the json file,
-                # we will parse it manually here
-                # noinspection PyPackageRequirements
-                import ipykernel
-                from glob import glob
-                import json
-                for f in glob(os.path.join(os.path.dirname(ipykernel.get_connection_file()), '??server-*.json')):
-                    # noinspection PyBroadException
-                    try:
-                        with open(f, 'r') as json_data:
-                            server_info = json.load(json_data)
-                    except Exception:
-                        server_info = None
-                    if server_info:
+            notebook_path = None
+            notebook_name = None
+
+            for server_index, server_info in enumerate(jupyter_servers):
+
+                cookies = None
+                password = None
+                if server_info and server_info.get('password'):
+                    # we need to get the password
+                    from ....config import config
+                    password = config.get('development.jupyter_server_password', '')
+                    if not password:
+                        cls._get_logger().warning(
+                            'Password protected Jupyter Notebook server was found! '
+                            'Add `sdk.development.jupyter_server_password=<jupyter_password>` to ~/clearml.conf')
+                        return os.path.join(os.getcwd(), 'error_notebook_not_found.py')
+
+                    r = requests.get(url=server_info['url'] + 'login')
+                    cookies = {'_xsrf': r.cookies.get('_xsrf', '')}
+                    r = requests.post(server_info['url'] + 'login?next', cookies=cookies,
+                                      data={'_xsrf': cookies['_xsrf'], 'password': password})
+                    cookies.update(r.cookies)
+
+                auth_token = server_info.get('token') or os.getenv('JUPYTERHUB_API_TOKEN') or ''
+                try:
+                    r = requests.get(
+                        url=server_info['url'] + 'api/sessions', cookies=cookies,
+                        headers={'Authorization': 'token {}'.format(auth_token), })
+                except requests.exceptions.SSLError:
+                    # disable SSL check warning
+                    from urllib3.exceptions import InsecureRequestWarning
+                    # noinspection PyUnresolvedReferences
+                    requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
+                    # fire request
+                    r = requests.get(
+                        url=server_info['url'] + 'api/sessions', cookies=cookies,
+                        headers={'Authorization': 'token {}'.format(auth_token), }, verify=False)
+                    # enable SSL check warning
+                    import warnings
+                    warnings.simplefilter('default', InsecureRequestWarning)
+
+                # send request to the jupyter server
+                try:
+                    r.raise_for_status()
+                except Exception as ex:
+                    # raise on last one only
+                    if server_index == len(jupyter_servers)-1:
+                        cls._get_logger().warning('Failed accessing the jupyter server{}: {}'.format(
+                            ' [password={}]'.format(password) if server_info.get('password') else '', ex))
+                        return os.path.join(os.getcwd(), 'error_notebook_not_found.py')
+
+                notebooks = r.json()
+                cur_notebook = None
+                for n in notebooks:
+                    if n['kernel']['id'] == current_kernel:
+                        cur_notebook = n
                         break
 
-            cookies = None
-            password = None
-            if server_info and server_info.get('password'):
-                # we need to get the password
-                from ....config import config
-                password = config.get('development.jupyter_server_password', '')
-                if not password:
-                    cls._get_logger().warning(
-                        'Password protected Jupyter Notebook server was found! '
-                        'Add `sdk.development.jupyter_server_password=<jupyter_password>` to ~/clearml.conf')
-                    return os.path.join(os.getcwd(), 'error_notebook_not_found.py')
+                # notebook not found
+                if not cur_notebook:
+                    continue
 
-                r = requests.get(url=server_info['url'] + 'login')
-                cookies = {'_xsrf': r.cookies.get('_xsrf', '')}
-                r = requests.post(server_info['url'] + 'login?next', cookies=cookies,
-                                  data={'_xsrf': cookies['_xsrf'], 'password': password})
-                cookies.update(r.cookies)
-
-            auth_token = server_info.get('token') or os.getenv('JUPYTERHUB_API_TOKEN') or ''
-            try:
-                r = requests.get(
-                    url=server_info['url'] + 'api/sessions', cookies=cookies,
-                    headers={'Authorization': 'token {}'.format(auth_token), })
-            except requests.exceptions.SSLError:
-                # disable SSL check warning
-                from urllib3.exceptions import InsecureRequestWarning
-                # noinspection PyUnresolvedReferences
-                requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
-                # fire request
-                r = requests.get(
-                    url=server_info['url'] + 'api/sessions', cookies=cookies,
-                    headers={'Authorization': 'token {}'.format(auth_token), }, verify=False)
-                # enable SSL check warning
-                import warnings
-                warnings.simplefilter('default', InsecureRequestWarning)
-
-            # send request to the jupyter server
-            try:
-                r.raise_for_status()
-            except Exception as ex:
-                cls._get_logger().warning('Failed accessing the jupyter server{}: {}'.format(
-                    ' [password={}]'.format(password) if server_info.get('password') else '', ex))
-                return os.path.join(os.getcwd(), 'error_notebook_not_found.py')
-
-            notebooks = r.json()
-
-            cur_notebook = None
-            for n in notebooks:
-                if n['kernel']['id'] == current_kernel:
-                    cur_notebook = n
+                notebook_path = cur_notebook['notebook'].get('path', '')
+                notebook_name = cur_notebook['notebook'].get('name', '')
+                if notebook_path:
                     break
-
-            notebook_path = cur_notebook['notebook'].get('path', '')
-            notebook_name = cur_notebook['notebook'].get('name', '')
 
             is_google_colab = False
             # check if this is google.colab, then there is no local file
@@ -660,7 +678,7 @@ class ScriptInfo(object):
                 if not script_entry_point.lower().endswith('.py'):
                     script_entry_point += '.py'
                 local_ipynb_file = None
-            else:
+            elif notebook_path is not None:
                 # always slash, because this is from uri (so never backslash not even on windows)
                 entry_point_filename = notebook_path.split('/')[-1]
 
@@ -693,6 +711,10 @@ class ScriptInfo(object):
                 entry_point = entry_point.with_suffix('.py')
 
                 script_entry_point = entry_point.as_posix()
+            else:
+                # we could not find and access any jupyter server
+                cls._get_logger().warning('Failed accessing the jupyter server(s): {}'.format(jupyter_servers))
+                return None  # 'error_notebook_not_found.py'
 
             # install the post store hook,
             # notice that if we do not have a local file we serialize/write every time the entire notebook
@@ -890,6 +912,29 @@ class ScriptInfo(object):
 
         return (ScriptInfoResult(script=script_info, warning_messages=messages, auxiliary_git_diff=auxiliary_git_diff),
                 script_requirements)
+
+    @staticmethod
+    def __legacy_jupyter_notebook_server_json_parsing(self):
+        # noinspection PyBroadException
+        try:
+            # on some jupyter notebook versions this function can crash on parsing the json file,
+            # we will parse it manually here
+            # noinspection PyPackageRequirements
+            import ipykernel
+            from glob import glob
+            import json
+            for f in glob(os.path.join(os.path.dirname(ipykernel.get_connection_file()), '??server-*.json')):
+                # noinspection PyBroadException
+                try:
+                    with open(f, 'r') as json_data:
+                        server_info = json.load(json_data)
+                except Exception:
+                    continue
+                if server_info:
+                    return server_info
+        except Exception:
+            pass
+        return None
 
     @classmethod
     def get(cls, filepaths=None, check_uncommitted=True, create_requirements=True, log=None,

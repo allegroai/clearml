@@ -703,6 +703,12 @@ class ScriptInfo(object):
                     except Exception as ex:
                         cls._get_logger().warning('Failed accessing jupyter notebook {}: {}'.format(notebook_path, ex))
 
+                # if we failed to get something we can access, print an error
+                if not entry_point.exists():
+                    cls._get_logger().warning(
+                        'Jupyter Notebook auto-logging failed, could not access: {}'.format(entry_point))
+                    return 'error_notebook_not_found.py'
+
                 # get local ipynb for observer
                 local_ipynb_file = entry_point.as_posix()
 
@@ -828,10 +834,16 @@ class ScriptInfo(object):
         messages = []
         auxiliary_git_diff = None
 
-        if not plugin:
+        # print logs
+        if jupyter_filepath:
+            if log:
+                log.info("Storing jupyter notebook directly as code")
+        elif not plugin:
             if log:
                 log.info("No repository found, storing script code instead")
-        else:
+
+        # if we found a vcs plugin use it
+        if plugin:
             try:
                 repo_info = plugin.get_info(
                     str(script_dir), include_diff=check_uncommitted, diff_from_remote=uncommitted_from_remote)
@@ -855,8 +867,13 @@ class ScriptInfo(object):
             entry_point = cls._get_entry_point(repo_root, script_path)
 
         if check_uncommitted:
-            diff = cls._get_script_code(script_path.as_posix()) \
-                if not plugin or not repo_info.commit else repo_info.diff
+            # if we have a jupyter notebook, always store the entire notebook (instead of the git diff)
+            if jupyter_filepath:
+                diff = cls._get_script_code(script_path.as_posix())
+            else:
+                diff = cls._get_script_code(script_path.as_posix()) \
+                    if not plugin or not repo_info.commit else repo_info.diff
+
             # make sure diff is not too big:
             if len(diff) > cls.max_diff_size_bytes:
                 messages.append(
@@ -869,6 +886,7 @@ class ScriptInfo(object):
 
         else:
             diff = ''
+
         # if this is not jupyter, get the requirements.txt
         requirements = ''
         conda_requirements = ''

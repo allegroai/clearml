@@ -1926,11 +1926,11 @@ class Task(_Task):
         :param str extension_name: File extension which indicates the format the artifact should be stored as.
             The following are supported, depending on the artifact type
             (default value applies when extension_name is None):
+        - Any - ``.pkl`` if passed supersedes any other serialization type, and always pickles the object
         - dict - ``.json``, ``.yaml`` (default ``.json``)
         - pandas.DataFrame - ``.csv.gz``, ``.parquet``, ``.feather``, ``.pickle`` (default ``.csv.gz``)
         - numpy.ndarray - ``.npz``, ``.csv.gz`` (default ``.npz``)
         - PIL.Image - whatever extensions PIL supports (default ``.png``)
-        - Any object - ``.pkl`` (if this extension is passed, the object will be pickled)
         - In case the ``serialization_function`` argument is set - any extension is supported
 
         :param Callable[Any, Union[bytes, bytearray]] serialization_function: A serialization function that takes one

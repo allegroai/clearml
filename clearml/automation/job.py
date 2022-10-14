@@ -164,6 +164,16 @@ class BaseJob(object):
         self._last_status_ts = time()
         return self._last_status
 
+    def status_message(self):
+        # type: () -> str
+        """
+        Gets the status message of the task. Note that the message is updated only after `BaseJob.status()`
+        is called
+
+        :return: The status message of the corresponding task as a string
+        """
+        return str(self.task.data.status_message)
+
     def wait(self, timeout=None, pool_period=30., aborted_nonresponsive_as_running=False):
         # type: (Optional[float], float, bool) -> bool
         """

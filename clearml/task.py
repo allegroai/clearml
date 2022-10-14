@@ -377,7 +377,7 @@ class Task(_Task):
 
             .. code-block:: py
 
-               auto_connect_arg_parser={'do_not_include_me': False, }
+               auto_connect_arg_parser={"do_not_include_me": False, }
 
             .. code-block:: py
 
@@ -1633,8 +1633,8 @@ class Task(_Task):
             .. code-block:: javascript
 
                {
-                    'background': 0,
-                    'person': 1
+                    "background": 0,
+                    "person": 1
                }
 
         :return: The label enumeration dictionary (JSON).
@@ -2053,8 +2053,8 @@ class Task(_Task):
             .. code-block:: javascript
 
                {
-                    'background': 0,
-                    'person': 1
+                    "background": 0,
+                    "person": 1
                }
         """
         super(Task, self).set_model_label_enumeration(enumeration=enumeration)
@@ -2103,11 +2103,11 @@ class Task(_Task):
         .. code-block:: javascript
 
            {
-            'title': {
-                'series': {
-                    'last': 0.5,
-                    'min': 0.1,
-                    'max': 0.9
+            "title": {
+                "series": {
+                    "last": 0.5,
+                    "min": 0.1,
+                    "max": 0.9
                     }
                 }
             }

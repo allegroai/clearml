@@ -323,15 +323,15 @@ class ParameterSet(Parameter):
 
             .. code-block:: javascript
 
-               [ {'opt1': 10, 'arg2': 20, 'arg2': 30},
-                 {'opt2': 11, 'arg2': 22, 'arg2': 33}, ]
+               [ {"opt1": 10, "arg2": 20, "arg2": 30},
+                 {"opt2": 11, "arg2": 22, "arg2": 33} ]
 
             Two complex combination each one sampled from a different range:
 
             .. code-block:: javascript
 
-               [ {'opt1': UniformParameterRange('arg1',0,1) , 'arg2': 20},
-                 {'opt2': UniformParameterRange('arg1',11,12), 'arg2': 22},]
+               [ {"opt1": UniformParameterRange('arg1',0,1) , "arg2": 20},
+                 {"opt2": UniformParameterRange('arg1',11,12), "arg2": 22},]
         """
         super(ParameterSet, self).__init__(name=None)
         self.values = parameter_combinations

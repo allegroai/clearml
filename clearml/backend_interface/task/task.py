@@ -1703,9 +1703,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         .. code-block:: py
 
-          {'title': {'series': {
-                      'x': [0, 1 ,2],
-                      'y': [10, 11 ,12],
+          {"title": {"series": {
+                      "x": [0, 1 ,2],
+                      "y": [10, 11 ,12]
           }}}
 
         :param int max_samples: Maximum samples per series to return. Default is 0 returning all scalars.
@@ -1750,17 +1750,17 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         .. code-block:: py
 
           [{
-            'timestamp': 1636921296370,
-            'type': 'plot',
-            'task': '0ce5e89bbe484f428e43e767f1e2bb11',
-            'iter': 0,
-            'metric': 'Manual Reporting',
-            'variant': 'Just a plot',
-            'plot_str': '{"data": [{"type": "scatter", "mode": "markers", "name": null,
-                                    "x": [0.2620246750155817], "y": [0.2620246750155817]}]}',
-            '@timestamp': '2021-11-14T20:21:42.387Z',
-            'worker': 'machine-ml',
-            'plot_len': 6135,
+            "timestamp": 1636921296370,
+            "type": "plot",
+            "task": "0ce5e89bbe484f428e43e767f1e2bb11",
+            "iter": 0,
+            "metric": "Manual Reporting",
+            "variant": "Just a plot",
+            "plot_str": "{'data': [{'type': 'scatter', 'mode': 'markers', 'name': null,
+                                    'x': [0.2620246750155817], 'y': [0.2620246750155817]}]}",
+            "@timestamp": "2021-11-14T20:21:42.387Z",
+            "worker": "machine-ml",
+            "plot_len": 6135,
           },]
         :param int max_iterations: Maximum number of historic plots (iterations from end) to return.
         :return: list: List of dicts, each one represents a single plot

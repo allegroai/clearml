@@ -638,8 +638,8 @@ class Artifacts(object):
                 artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
                 local_filename = artifact_object
         elif (
-            artifact_object
-            and isinstance(artifact_object, (list, tuple))
+            isinstance(artifact_object, (list, tuple))
+            and artifact_object
             and all(isinstance(p, pathlib_types) for p in artifact_object)
         ):
             # find common path if exists

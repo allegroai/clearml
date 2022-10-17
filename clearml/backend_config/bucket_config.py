@@ -22,6 +22,7 @@ def _url_stripper(bucket):
 @attrs
 class S3BucketConfig(object):
     bucket = attrib(type=str, converter=_url_stripper, default="")
+    subdir = attrib(type=str, converter=_url_stripper, default="")
     host = attrib(type=str, converter=_none_to_empty_string, default="")
     key = attrib(type=str, converter=_none_to_empty_string, default="")
     secret = attrib(type=str, converter=_none_to_empty_string, default="")
@@ -445,3 +446,6 @@ class AzureContainerConfigurations(object):
 
     def add_config(self, bucket_config):
         self._container_configs.append(bucket_config)
+
+    def remove_config(self, bucket_config):
+        self._container_configs.remove(bucket_config)

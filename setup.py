@@ -6,10 +6,11 @@ https://github.com/allegroai/clearml
 import os.path
 # Always prefer setuptools over distutils
 from setuptools import setup, find_packages
+import codecs
 
 
 def read_text(filepath):
-    with open(filepath, "r", encoding="utf-8") as f:
+    with codecs.open(filepath, "r", encoding="utf-8") as f:
         return f.read()
 
 

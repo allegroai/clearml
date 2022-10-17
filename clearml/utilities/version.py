@@ -19,7 +19,7 @@ class InvalidVersion(ValueError):
 
 
 @attrs
-class _Version:
+class _Version(object):
     epoch = attrib()
     release = attrib()
     dev = attrib()
@@ -266,6 +266,13 @@ class Version(_BaseVersion):
             letter = "post"
 
         return letter, int(number)
+
+    @classmethod
+    def is_valid_version_string(cls, version_string):
+        if not version_string:
+            return False
+        match = cls._regex.search(version_string)
+        return bool(match)
 
     @classmethod
     def _parse_local_version(cls, local):

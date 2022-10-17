@@ -16,7 +16,7 @@ import six
 from PIL import Image
 from pathlib2 import Path
 from six.moves.urllib.parse import urlparse
-from typing import Dict, Union, Optional, Any, Sequence
+from typing import Dict, Union, Optional, Any, Sequence, Callable
 
 from ..backend_api import Session
 from ..backend_api.services import tasks
@@ -140,8 +140,8 @@ class Artifact(object):
         self._content_type = artifact_api_object.type_data.content_type if artifact_api_object.type_data else None
         self._object = self._not_set
 
-    def get(self, force_download=False):
-        # type: (bool) -> Any
+    def get(self, force_download=False, deserialization_function=None):
+        # type: (bool, Optional[Callable[bytes, Any]]) -> Any
         """
         Return an object constructed from the artifact file
 
@@ -156,7 +156,12 @@ class Artifact(object):
         pointing to a local copy of the artifacts file (or directory) will be returned
 
         :param bool force_download: download file from remote even if exists in local cache
-        :return: One of the following objects Numpy.array, pandas.DataFrame, PIL.Image, dict (json), or pathlib2.Path.
+        :param Callable[bytes, Any] deserialization_function: A deserialization function that takes one parameter of type `bytes`,
+            which represents the serialized object. This function should return the deserialized object.
+            Useful when the artifact was uploaded using a custom serialization function when calling the
+            `Task.upload_artifact` method with the `serialization_function` argument.
+        :return: Usually, one of the following objects: Numpy.array, pandas.DataFrame, PIL.Image, dict (json), or pathlib2.Path.
+            An object with an arbitrary type may also be returned if it was serialized (using pickle or a custom serialization function).
         """
         if self._object is not self._not_set:
             return self._object
@@ -165,7 +170,10 @@ class Artifact(object):
 
         # noinspection PyBroadException
         try:
-            if self.type == "numpy" and np:
+            if deserialization_function:
+                with open(local_file, "rb") as f:
+                    self._object = deserialization_function(f.read())
+            elif self.type == "numpy" and np:
                 if self._content_type == "text/csv":
                     self._object = np.genfromtxt(local_file, delimiter=",")
                 else:
@@ -339,12 +347,24 @@ class Artifacts(object):
         self._unregister_request.add(name)
         self.flush()
 
-    def upload_artifact(self, name, artifact_object=None, metadata=None, preview=None,
-                        delete_after_upload=False, auto_pickle=True, wait_on_upload=False, extension_name=None):
-        # type: (str, Optional[object], Optional[dict], Optional[str], bool, bool, bool, Optional[str]) -> bool
-        if not Session.check_min_api_version('2.3'):
-            LoggerRoot.get_base_logger().warning('Artifacts not supported by your ClearML-server version, '
-                                                 'please upgrade to the latest server version')
+    def upload_artifact(
+        self,
+        name,  # type: str
+        artifact_object=None,  # type: Optional[object]
+        metadata=None,  # type: Optional[dict]
+        preview=None,  # type: Optional[str]
+        delete_after_upload=False,  # type: bool
+        auto_pickle=True,  # type: bool
+        wait_on_upload=False,  # type: bool
+        extension_name=None,  # type: Optional[str]
+        serialization_function=None,  # type: Optional[Callable[Any, Union[bytes, bytearray]]]
+    ):
+        # type: (...) -> bool
+        if not Session.check_min_api_version("2.3"):
+            LoggerRoot.get_base_logger().warning(
+                "Artifacts not supported by your ClearML-server version,"
+                " please upgrade to the latest server version"
+            )
             return False
 
         if name in self._artifacts_container:
@@ -399,7 +419,29 @@ class Artifacts(object):
             )
             return default_extension
 
-        if np and isinstance(artifact_object, np.ndarray):
+        if serialization_function:
+            artifact_type = "custom"
+            # noinspection PyBroadException
+            try:
+                artifact_type_data.preview = preview or str(artifact_object.__repr__())[:self.max_preview_size_bytes]
+            except Exception:
+                artifact_type_data.preview = ""
+            override_filename_ext_in_uri = extension_name or ""
+            override_filename_in_uri = name + override_filename_ext_in_uri
+            fd, local_filename = mkstemp(prefix=quote(name, safe="") + ".", suffix=override_filename_ext_in_uri)
+            os.close(fd)
+            # noinspection PyBroadException
+            try:
+                with open(local_filename, "wb") as f:
+                    f.write(serialization_function(artifact_object))
+            except Exception:
+                # cleanup and raise exception
+                os.unlink(local_filename)
+                raise
+            artifact_type_data.content_type = mimetypes.guess_type(local_filename)[0]
+        elif extension_name == ".pkl":
+            store_as_pickle = True
+        elif np and isinstance(artifact_object, np.ndarray):
             artifact_type = 'numpy'
             artifact_type_data.preview = preview or str(artifact_object.__repr__())
             override_filename_ext_in_uri = get_extension(
@@ -595,7 +637,11 @@ class Artifacts(object):
                 artifact_type = 'custom'
                 artifact_type_data.content_type = mimetypes.guess_type(artifact_object)[0]
                 local_filename = artifact_object
-        elif isinstance(artifact_object, (list, tuple)) and all(isinstance(p, pathlib_types) for p in artifact_object):
+        elif (
+            artifact_object
+            and isinstance(artifact_object, (list, tuple))
+            and all(isinstance(p, pathlib_types) for p in artifact_object)
+        ):
             # find common path if exists
             list_files = [Path(p) for p in artifact_object]
             override_filename_ext_in_uri = '.zip'

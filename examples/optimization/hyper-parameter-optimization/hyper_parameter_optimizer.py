@@ -114,8 +114,8 @@ if args['run_as_service']:
     # if executed locally, the local process will be terminated, and a remote copy will be executed instead
     task.execute_remotely(queue_name='services', exit_process=True)
 
-# report every 12 seconds, this is way too often, but we are testing here J
-an_optimizer.set_report_period(2.2)
+# report every 12 seconds, this is way too often, but we are testing here 
+an_optimizer.set_report_period(0.2)
 # start the optimization process, callback function to be called every time an experiment is completed
 # this function returns immediately
 an_optimizer.start(job_complete_callback=job_complete_callback)

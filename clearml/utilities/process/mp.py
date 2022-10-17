@@ -349,7 +349,7 @@ class SafeQueue(object):
             if BackgroundMonitor.get_at_exit_state():
                 self._q_put(obj)
                 return
-            self.__thread_pool.get().apply_async(self._q_put, args=(obj, ))
+            self.__thread_pool.get().apply_async(self._q_put, args=(obj, False))
         except:  # noqa
             pid = os.getpid()
             p = None
@@ -360,13 +360,16 @@ class SafeQueue(object):
         pid = pid or os.getpid()
         return len([p for p in self._q_size if p == pid])
 
-    def _q_put(self, obj):
+    def _q_put(self, obj, allow_raise=True):
+        # noinspection PyBroadException
         try:
             self._q.put(obj)
         except BaseException:
             # make sure we zero the _q_size of the process dies (i.e. queue put fails)
             self._q_size.clear()
-            raise
+            if allow_raise:
+                raise
+            return
         pid = os.getpid()
         # GIL will make sure it is atomic
         # pop the First "counter" that is ours (i.e. pid == os.getpid())

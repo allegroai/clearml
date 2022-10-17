@@ -449,7 +449,7 @@ def prep_ticks(ax, index, ax_type, props):
     positional arguments:
     ax - the mpl axes instance
     index - the index of the axis in `props`
-    ax_type - 'x' or 'y' (for now)
+    ax_type - 'x' or 'y' or 'z'
     props - an mplexporter poperties dictionary
 
     """
@@ -458,6 +458,8 @@ def prep_ticks(ax, index, ax_type, props):
         axis = ax.get_xaxis()
     elif ax_type == "y":
         axis = ax.get_yaxis()
+    elif ax_type == "z":
+        axis = ax.get_zaxis()
     else:
         return dict()  # whoops!
 
@@ -491,6 +493,9 @@ def prep_ticks(ax, index, ax_type, props):
         elif ax_type == "y" and "ylim" in props:
             axis_dict["range"] = [props["ylim"][0], props["ylim"][1]]
             axis_dict["custom_range"] = True
+        elif ax_type == "z" and "zlim" in props:
+            axis_dict["range"] = [props["zlim"][0], props["zlim"][1]]
+            axis_dict["custom_range"] = True
     elif scale == "log":
         try:
             axis_dict["tick0"] = props["axes"][index]["tickvalues"][0]
@@ -513,6 +518,12 @@ def prep_ticks(ax, index, ax_type, props):
                 axis_dict["range"] = [
                     math.log10(props["ylim"][0]),
                     math.log10(props["ylim"][1]),
+                ]
+                axis_dict["custom_range"] = True
+            elif ax_type == "z" and "zlim" in props:
+                axis_dict["range"] = [
+                    math.log10(props["zlim"][0]),
+                    math.log10(props["zlim"][1]),
                 ]
                 axis_dict["custom_range"] = True
         else:
@@ -560,6 +571,24 @@ def prep_xy_axis(ax, props, x_bounds, y_bounds):
     )
     yaxis.update(prep_ticks(ax, 1, "y", props))
     return xaxis, yaxis
+
+
+def prep_xyz_axis(ax, props, x_bounds, y_bounds):
+    # there is no z_bounds as they can't (at least easily) be extracted from an `Axes3DSubplot` object
+    xaxis, yaxis = prep_xy_axis(ax, props, x_bounds, y_bounds)
+    # noinspection PyBroadException
+    try:
+        zaxis = dict(
+            type=props["axes"][2]["scale"],
+            range=list(props.get("zlim", [])),
+            showgrid=props["axes"][2].get("grid", {}).get("gridOn", False),
+            side=props["axes"][2].get("position"),
+            tickfont=dict(size=props["axes"][2].get("fontsize", {})),
+        )
+        zaxis.update(prep_ticks(ax, 2, "z", props))
+    except Exception:
+        zaxis = {}
+    return xaxis, yaxis, zaxis
 
 
 def mpl_dates_to_datestrings(dates, mpl_formatter):

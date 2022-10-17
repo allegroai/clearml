@@ -6,10 +6,22 @@ except ImportError:
     fire = None
 
 import inspect
-from types import SimpleNamespace
 from .frameworks import _patched_call  # noqa
 from ..config import get_remote_task_id, running_remotely
 from ..utilities.dicts import cast_str_to_bool
+
+
+class SimpleNamespace(object):
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)
+
+    def __repr__(self):
+        keys = sorted(self.__dict__)
+        items = ("{}={!r}".format(k, self.__dict__[k]) for k in keys)
+        return "{}({})".format(type(self).__name__, ", ".join(items))
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
 
 
 class PatchFire:
@@ -67,22 +79,22 @@ class PatchFire:
         else:
             args[cls._section_name + cls._args_sep + cls.__current_command] = True
             parameters_types[cls._section_name + cls._args_sep + cls.__current_command] = cls._command_type
-            args = {
-                **args,
-                **{
+            args.update(
+                {
                     cls._section_name + cls._args_sep + cls.__current_command + cls._args_sep + k: v
                     for k, v in cls._args.items()
                     if k in (PatchFire.__command_args.get(cls.__current_command) or [])
-                },
-                **{
+                }
+            )
+            args.update(
+                {
                     cls._section_name + cls._args_sep + k: v
                     for k, v in cls._args.items()
                     if k not in (PatchFire.__command_args.get(cls.__current_command) or [])
-                },
-            }
-            parameters_types = {
-                **parameters_types,
-                **{
+                }
+            )
+            parameters_types.update(
+                {
                     cls._section_name
                     + cls._args_sep
                     + cls.__current_command
@@ -90,13 +102,15 @@ class PatchFire:
                     + k: cls._command_arg_type_template % cls.__current_command
                     for k in cls._args.keys()
                     if k in (PatchFire.__command_args.get(cls.__current_command) or [])
-                },
-                **{
+                }
+            )
+            parameters_types.update(
+                {
                     cls._section_name + cls._args_sep + k: cls._shared_arg_type
                     for k in cls._args.keys()
                     if k not in (PatchFire.__command_args.get(cls.__current_command) or [])
-                },
-            }
+                }
+            )
         for command in cls.__commands:
             if command == cls.__current_command:
                 continue
@@ -114,8 +128,8 @@ class PatchFire:
                 + k: cls._command_arg_type_template % command
                 for k in (cls.__command_args.get(command) or [])
             }
-            args = {**args, **unused_command_args}
-            parameters_types = {**parameters_types, **unused_paramenters_types}
+            args.update(unused_command_args)
+            parameters_types.update(unused_paramenters_types)
 
         # noinspection PyProtectedMember
         cls._current_task._set_parameters(
@@ -186,7 +200,8 @@ class PatchFire:
         fn_spec = fire.inspectutils.GetFullArgSpec(component)
         parse = fire.core._MakeParseFn(fn, metadata)  # noqa
         (parsed_args, parsed_kwargs), _, _, _ = parse(args_)
-        PatchFire._args = {**PatchFire._args, **{k: v for k, v in zip(fn_spec.args, parsed_args)}, **parsed_kwargs}
+        PatchFire._args.update({k: v for k, v in zip(fn_spec.args, parsed_args)})
+        PatchFire._args.update(parsed_kwargs)
         PatchFire._update_task_args()
         return original_fn(component, args_, component_trace, treatment, target, *args, **kwargs)
 

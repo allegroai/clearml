@@ -527,8 +527,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 return a_name
             return '{}.{}'.format(a_name[:max(2, max_length-len(uuid)-1)], uuid)
 
+        # workaround for subprojects & Google object storage
+        project_name_safe = self.get_project_name().replace("/", "___")
         return '/'.join(quote(x, safe="'[]{}()$^,.; -_+-=/") for x in
-                        (limit_folder_name(self.get_project_name(), str(self.project), 256, False),
+                        (limit_folder_name(project_name_safe, str(self.project), 256, False),
                          limit_folder_name(self.name, str(self.data.id), 128, True),
                          extra_path) if x)
 

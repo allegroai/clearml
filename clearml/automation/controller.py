@@ -1233,7 +1233,8 @@ class PipelineController(object):
             if not node.base_task_id and not node.task_factory_func and node.job_code_section:
                 if node.job_code_section in self._nodes:
                     func = self._nodes[node.job_code_section].task_factory_func
-                    if func: node.task_factory_func = func
+                    if func:
+                        node.task_factory_func = func
         if not self._verify():
             raise ValueError("Failed verifying pipeline execution graph, "
                              "it has either inaccessible nodes, or contains cycles")

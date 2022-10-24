@@ -166,6 +166,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._files_server = None
         self._initial_iteration_offset = 0
         self._reload_skip_flag = False
+        self._calling_filename = None
 
         if not task_id:
             # generate a new task
@@ -1702,9 +1703,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         .. code-block:: py
 
-          {'title': {'series': {
-                      'x': [0, 1 ,2],
-                      'y': [10, 11 ,12],
+          {"title": {"series": {
+                      "x": [0, 1 ,2],
+                      "y": [10, 11 ,12]
           }}}
 
         :param int max_samples: Maximum samples per series to return. Default is 0 returning all scalars.
@@ -1749,17 +1750,17 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         .. code-block:: py
 
           [{
-            'timestamp': 1636921296370,
-            'type': 'plot',
-            'task': '0ce5e89bbe484f428e43e767f1e2bb11',
-            'iter': 0,
-            'metric': 'Manual Reporting',
-            'variant': 'Just a plot',
-            'plot_str': '{"data": [{"type": "scatter", "mode": "markers", "name": null,
-                                    "x": [0.2620246750155817], "y": [0.2620246750155817]}]}',
-            '@timestamp': '2021-11-14T20:21:42.387Z',
-            'worker': 'machine-ml',
-            'plot_len': 6135,
+            "timestamp": 1636921296370,
+            "type": "plot",
+            "task": "0ce5e89bbe484f428e43e767f1e2bb11",
+            "iter": 0,
+            "metric": "Manual Reporting",
+            "variant": "Just a plot",
+            "plot_str": "{'data': [{'type': 'scatter', 'mode': 'markers', 'name': null,
+                                    'x': [0.2620246750155817], 'y': [0.2620246750155817]}]}",
+            "@timestamp": "2021-11-14T20:21:42.387Z",
+            "worker": "machine-ml",
+            "plot_len": 6135,
           },]
         :param int max_iterations: Maximum number of historic plots (iterations from end) to return.
         :return: list: List of dicts, each one represents a single plot
@@ -2206,7 +2207,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         # make sure we have str as values:
         for key in requirements.keys():
-            if requirements[key] and not isinstance(requirements[key], str):
+            # fix python2 support (str/unicode)
+            if requirements[key] and not isinstance(requirements[key], six.string_types):
                 requirements[key] = '\n'.join(requirements[key])
 
         # protection, Old API might not support it
@@ -2434,6 +2436,26 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not res or not res.response or not res.response.project:
             return None
         return res.response.project.name
+
+    @classmethod
+    def _get_project_names(cls, project_ids):
+        # type: (Sequence[str]) -> Dict[str, str]
+        page = -1
+        page_size = 500
+        all_responses = []
+        res = None
+        while True:
+            page += 1
+            res = cls._send(
+                cls._get_default_session(),
+                projects.GetAllRequest(id=list(project_ids), page=page, page_size=page_size),
+                raise_on_errors=False,
+            )
+            if res and res.response and res.response.projects:
+                all_responses.extend(res.response.projects)
+            else:
+                break
+        return {p.id: p.name for p in all_responses}
 
     def _get_all_events(
         self, max_events=100, batch_size=500, order='asc', event_type=None, unique_selector=itemgetter("url")

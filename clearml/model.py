@@ -806,8 +806,8 @@ class InputModel(Model):
             .. code-block:: javascript
 
                {
-                    'background': 0,
-                    'person': 1
+                    "background": 0,
+                    "person": 1
                }
         :param str name: The name of the newly imported model. (Optional)
         :param str project: The project name to add the model into. (Optional)
@@ -998,8 +998,8 @@ class InputModel(Model):
             .. code-block:: javascript
 
                {
-                    'background': 0,
-                    'person': 1
+                    "background": 0,
+                    "person": 1
                }
 
         :return: An empty model object.
@@ -1187,8 +1187,8 @@ class OutputModel(BaseModel):
         .. code-block:: javascript
 
            {
-                'background': 0,
-                'person': 1
+                "background": 0,
+                "person": 1
            }
 
         :return: The label enumeration.
@@ -1208,8 +1208,8 @@ class OutputModel(BaseModel):
             .. code-block:: javascript
 
                {
-                    'background': 0,
-                    'person': 1
+                    "background": 0,
+                    "person": 1
                }
 
         """
@@ -1254,8 +1254,8 @@ class OutputModel(BaseModel):
             .. code-block:: javascript
 
                {
-                    'background': 0,
-                    'person': 1
+                    "background": 0,
+                    "person": 1
                }
 
         :param str name: The name for the newly created model. (Optional)
@@ -1681,8 +1681,8 @@ class OutputModel(BaseModel):
             .. code-block:: javascript
 
                {
-                    'background': 0,
-                    'person': 1
+                    "background": 0,
+                    "person": 1
                }
 
         :return:

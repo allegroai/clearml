@@ -29,7 +29,7 @@ def report_debug_images(logger, iteration=0):
     logger.report_image("image", "image color red", iteration=iteration, image=m)
 
     # report PIL Image object
-    image_open = Image.open(os.path.join("data_samples", "picasso.jpg"))
+    image_open = Image.open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data_samples", "picasso.jpg"))
     logger.report_image("image", "image PIL", iteration=iteration, image=image_open)
 
     # Image can be uploaded via 'report_media' too.
@@ -37,7 +37,7 @@ def report_debug_images(logger, iteration=0):
         "image",
         "image with report media",
         iteration=iteration,
-        local_path=os.path.join("data_samples", "picasso.jpg"),
+        local_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "data_samples", "picasso.jpg"),
         file_extension="jpg",
     )
 

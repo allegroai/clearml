@@ -207,17 +207,26 @@ class Model(NonStrictDataModel):
             },
             "design": {
                 "additionalProperties": True,
-                "description": "Json object representing the model design. Should be identical to the network design of the task which created the model",
+                "description": (
+                    "Json object representing the model design. Should be identical to the network design of the task"
+                    " which created the model"
+                ),
                 "type": ["object", "null"],
             },
             "framework": {
-                "description": "Framework on which the model is based. Should be identical to the framework of the task which created the model",
+                "description": (
+                    "Framework on which the model is based. Should be identical to the framework of the task which"
+                    " created the model"
+                ),
                 "type": ["string", "null"],
             },
             "id": {"description": "Model id", "type": ["string", "null"]},
             "labels": {
                 "additionalProperties": {"type": "integer"},
-                "description": "Json object representing the ids of the labels in the model. The keys are the layers' names and the values are the ids.",
+                "description": (
+                    "Json object representing the ids of the labels in the model. The keys are the layers' names and"
+                    " the values are the ids."
+                ),
                 "type": ["object", "null"],
             },
             "last_update": {
@@ -270,8 +279,7 @@ class Model(NonStrictDataModel):
                 "type": ["object", "null"],
             },
             "uri": {
-                "description": "URI for the model, pointing to the destination storage."
-                "destination storage.",
+                "description": "URI for the model, pointing to the destination storage.",
                 "type": ["string", "null"],
             },
             "user": {"description": "Associated user id", "type": ["string", "null"]},
@@ -620,7 +628,7 @@ class AddOrUpdateMetadataRequest(Request):
                         "type": ["string", "null"],
                     },
                     "type": {
-                        "description": "The " "type " "of " "the " "metadata " "item",
+                        "description": "The type of the metadata item",
                         "type": ["string", "null"],
                     },
                     "value": {
@@ -640,8 +648,10 @@ class AddOrUpdateMetadataRequest(Request):
             "model": {"description": "ID of the model", "type": "string"},
             "replace_metadata": {
                 "default": False,
-                "description": "If set then the all the metadata items will be replaced with the "
-                "provided ones. Otherwise only the provided metadata items will be updated or added",
+                "description": (
+                    "If set then the all the metadata items will be replaced with the "
+                    "provided ones. Otherwise only the provided metadata items will be updated or added"
+                ),
                 "type": "boolean",
             },
         },
@@ -680,9 +690,7 @@ class AddOrUpdateMetadataRequest(Request):
 
         self.assert_isinstance(value, "metadata", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                MetadataItem.from_dict(v) if isinstance(v, dict) else v for v in value
-            ]
+            value = [MetadataItem.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "metadata", MetadataItem, is_array=True)
         self._property_metadata = value
@@ -929,18 +937,40 @@ class CreateRequest(Request):
     _action = "create"
     _version = "2.20"
     _schema = {
-        "definitions": {},
+        "definitions": {
+            "metadata_item": {
+                "properties": {
+                    "key": {
+                        "description": "The key uniquely identifying the metadata item inside the given entity",
+                        "type": "string",
+                    },
+                    "type": {
+                        "description": "The type of the metadata item",
+                        "type": "string",
+                    },
+                    "value": {
+                        "description": "The value stored in the metadata item",
+                        "type": "string",
+                    },
+                },
+                "type": "object",
+            }
+        },
         "properties": {
             "comment": {"description": "Model comment", "type": "string"},
             "design": {
                 "additionalProperties": True,
-                "description": "Json[d] object representing the model design. Should be identical "
-                "to the network design of the task which created the model",
+                "description": (
+                    "Json[d] object representing the model design. Should be identical "
+                    "to the network design of the task which created the model"
+                ),
                 "type": "object",
             },
             "framework": {
-                "description": "Framework on which the model is based. Case insensitive. Should "
-                "be identical to the framework of the task which created the model.",
+                "description": (
+                    "Framework on which the model is based. Case insensitive."
+                    "Should be identical to the framework of the task which created the model."
+                ),
                 "type": "string",
             },
             "labels": {
@@ -979,6 +1009,11 @@ class CreateRequest(Request):
             },
             "task": {"description": "Associated task ID", "type": "string"},
             "uri": {"description": "URI for the model", "type": "string"},
+            "metadata": {
+                "type": "array",
+                "items": {"$ref": "#/definitions/metadata_item"},
+                "description": "Model metadata",
+            },
         },
         "required": ["uri", "name"],
         "type": "object",
@@ -999,6 +1034,7 @@ class CreateRequest(Request):
         project=None,
         parent=None,
         task=None,
+        metadata=None,
         **kwargs
     ):
         super(CreateRequest, self).__init__(**kwargs)
@@ -1015,6 +1051,7 @@ class CreateRequest(Request):
         self.project = project
         self.parent = parent
         self.task = task
+        self.metadata = metadata
 
     @schema_property("uri")
     def uri(self):
@@ -1189,6 +1226,18 @@ class CreateRequest(Request):
         self.assert_isinstance(value, "task", six.string_types)
         self._property_task = value
 
+    @schema_property("metadata")
+    def metadata(self):
+        return self._property_metadata
+
+    @metadata.setter
+    def metadata(self, value):
+        if value is None:
+            self._property_metadata = None
+            return
+        self.assert_isinstance(value, "metadata", (dict,))
+        self._property_metadata = value
+
 
 class CreateResponse(Response):
     """
@@ -1266,7 +1315,10 @@ class DeleteRequest(Request):
         "definitions": {},
         "properties": {
             "force": {
-                "description": "Force. Required if there are tasks that use the model as an execution model, or if the model's creating task is published.",
+                "description": (
+                    "Force. Required if there are tasks that use the model as an execution model, or if the model's"
+                    " creating task is published."
+                ),
                 "type": "boolean",
             },
             "model": {"description": "Model ID", "type": "string"},
@@ -1386,7 +1438,10 @@ class DeleteManyRequest(Request):
         "definitions": {},
         "properties": {
             "force": {
-                "description": "Force. Required if there are tasks that use the model as an execution model, or if the model's creating task is published.",
+                "description": (
+                    "Force. Required if there are tasks that use the model as an execution model, or if the model's"
+                    " creating task is published."
+                ),
                 "type": "boolean",
             },
             "ids": {
@@ -1708,11 +1763,17 @@ class EditRequest(Request):
             "comment": {"description": "Model comment", "type": "string"},
             "design": {
                 "additionalProperties": True,
-                "description": "Json[d] object representing the model design. Should be identical to the network design of the task which created the model",
+                "description": (
+                    "Json[d] object representing the model design. Should be identical to the network design of the"
+                    " task which created the model"
+                ),
                 "type": "object",
             },
             "framework": {
-                "description": "Framework on which the model is based. Case insensitive. Should be identical to the framework of the task which created the model.",
+                "description": (
+                    "Framework on which the model is based. Case insensitive. Should be identical to the framework of"
+                    " the task which created the model."
+                ),
                 "type": "string",
             },
             "iteration": {
@@ -1995,9 +2056,7 @@ class EditRequest(Request):
             return
         self.assert_isinstance(value, "metadata", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                MetadataItem.from_dict(v) if isinstance(v, dict) else v for v in value
-            ]
+            value = [MetadataItem.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "metadata", MetadataItem, is_array=True)
         self._property_metadata = value
@@ -2118,10 +2177,10 @@ class GetAllRequest(Request):
     :type _all_: MultiFieldPatternData
     :param _any_: Multi-field pattern condition (any field matches pattern)
     :type _any_: MultiFieldPatternData
-    :param scroll_id: Scroll ID returned from the previos calls to get_all
+    :param scroll_id: Scroll ID returned from the previous calls to get_all
     :type scroll_id: str
     :param refresh_scroll: If set then all the data received with this scroll will
-        be requeried
+        be required
     :type refresh_scroll: bool
     :param size: The number of models to retrieve
     :type size: int
@@ -2183,12 +2242,19 @@ class GetAllRequest(Request):
                 "type": ["string", "null"],
             },
             "only_fields": {
-                "description": "List of model field names (if applicable, nesting is supported using '.'). If provided, this list defines the query's projection (only these fields will be returned for each result entry)",
+                "description": (
+                    "List of model field names (if applicable, nesting is supported using '.'). If provided, this list"
+                    " defines the query's projection (only these fields will be returned for each result entry)"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
             "order_by": {
-                "description": "List of field names to order by. When search_text is used, '@text_score' can be used as a field representing the text score of returned documents. Use '-' prefix to specify descending order. Optional, recommended when using page",
+                "description": (
+                    "List of field names to order by. When search_text is used, '@text_score' can be used as a field"
+                    " representing the text score of returned documents. Use '-' prefix to specify descending order."
+                    " Optional, recommended when using page"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -2198,7 +2264,10 @@ class GetAllRequest(Request):
                 "type": ["integer", "null"],
             },
             "page_size": {
-                "description": "Page size, specifies the number of results returned in each page (last page may contain fewer results)",
+                "description": (
+                    "Page size, specifies the number of results returned in each page (last page may contain fewer"
+                    " results)"
+                ),
                 "minimum": 1,
                 "type": ["integer", "null"],
             },
@@ -2208,18 +2277,18 @@ class GetAllRequest(Request):
                 "type": ["array", "null"],
             },
             "ready": {
-                "description": "Indication whether to retrieve only models that are marked ready If not supplied returns both ready and not-ready projects.",
+                "description": (
+                    "Indication whether to retrieve only models that are marked ready If not supplied returns both"
+                    " ready and not-ready projects."
+                ),
                 "type": ["boolean", "null"],
             },
             "refresh_scroll": {
-                "description": "If set then all the data "
-                "received with this scroll "
-                "will be requeried",
+                "description": "If set then all the data received with this scroll will be required",
                 "type": ["boolean", "null"],
             },
             "scroll_id": {
-                "description": "Scroll ID returned from the "
-                "previos calls to get_all",
+                "description": "Scroll ID returned from the previous calls to get_all",
                 "type": ["string", "null"],
             },
             "search_text": {
@@ -2232,12 +2301,16 @@ class GetAllRequest(Request):
                 "type": ["integer", "null"],
             },
             "system_tags": {
-                "description": "System tags list used to filter results. Prepend '-' to system tag name to indicate exclusion",
+                "description": (
+                    "System tags list used to filter results. Prepend '-' to system tag name to indicate exclusion"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
             "tags": {
-                "description": "User-defined tags list used to filter results. Prepend '-' to tag name to indicate exclusion",
+                "description": (
+                    "User-defined tags list used to filter results. Prepend '-' to tag name to indicate exclusion"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -2663,17 +2736,26 @@ class GetAllResponse(Response):
                     },
                     "design": {
                         "additionalProperties": True,
-                        "description": "Json object representing the model design. Should be identical to the network design of the task which created the model",
+                        "description": (
+                            "Json object representing the model design. Should be identical to the network design of"
+                            " the task which created the model"
+                        ),
                         "type": ["object", "null"],
                     },
                     "framework": {
-                        "description": "Framework on which the model is based. Should be identical to the framework of the task which created the model",
+                        "description": (
+                            "Framework on which the model is based. Should be identical to the framework of the task"
+                            " which created the model"
+                        ),
                         "type": ["string", "null"],
                     },
                     "id": {"description": "Model id", "type": ["string", "null"]},
                     "labels": {
                         "additionalProperties": {"type": "integer"},
-                        "description": "Json object representing the ids of the labels in the model. The keys are the layers' names and the values are the ids.",
+                        "description": (
+                            "Json object representing the ids of the labels in the model. The keys are the layers'"
+                            " names and the values are the ids."
+                        ),
                         "type": ["object", "null"],
                     },
                     "last_update": {
@@ -2874,17 +2956,26 @@ class GetByIdResponse(Response):
                     },
                     "design": {
                         "additionalProperties": True,
-                        "description": "Json object representing the model design. Should be identical to the network design of the task which created the model",
+                        "description": (
+                            "Json object representing the model design. Should be identical to the network design of"
+                            " the task which created the model"
+                        ),
                         "type": ["object", "null"],
                     },
                     "framework": {
-                        "description": "Framework on which the model is based. Should be identical to the framework of the task which created the model",
+                        "description": (
+                            "Framework on which the model is based. Should be identical to the framework of the task"
+                            " which created the model"
+                        ),
                         "type": ["string", "null"],
                     },
                     "id": {"description": "Model id", "type": ["string", "null"]},
                     "labels": {
                         "additionalProperties": {"type": "integer"},
-                        "description": "Json object representing the ids of the labels in the model. The keys are the layers' names and the values are the ids.",
+                        "description": (
+                            "Json object representing the ids of the labels in the model. The keys are the layers'"
+                            " names and the values are the ids."
+                        ),
                         "type": ["object", "null"],
                     },
                     "last_update": {
@@ -2911,7 +3002,7 @@ class GetByIdResponse(Response):
                         "type": ["boolean", "null"],
                     },
                     "stats": {
-                        "description": "Model " "statistics",
+                        "description": "Model statistics",
                         "properties": {
                             "labels_count": {
                                 "description": "Number of the model labels",
@@ -3063,17 +3154,26 @@ class GetByTaskIdResponse(Response):
                     },
                     "design": {
                         "additionalProperties": True,
-                        "description": "Json object representing the model design. Should be identical to the network design of the task which created the model",
+                        "description": (
+                            "Json object representing the model design. Should be identical to the network design of"
+                            " the task which created the model"
+                        ),
                         "type": ["object", "null"],
                     },
                     "framework": {
-                        "description": "Framework on which the model is based. Should be identical to the framework of the task which created the model",
+                        "description": (
+                            "Framework on which the model is based. Should be identical to the framework of the task"
+                            " which created the model"
+                        ),
                         "type": ["string", "null"],
                     },
                     "id": {"description": "Model id", "type": ["string", "null"]},
                     "labels": {
                         "additionalProperties": {"type": "integer"},
-                        "description": "Json object representing the ids of the labels in the model. The keys are the layers' names and the values are the ids.",
+                        "description": (
+                            "Json object representing the ids of the labels in the model. The keys are the layers'"
+                            " names and the values are the ids."
+                        ),
                         "type": ["object", "null"],
                     },
                     "last_update": {
@@ -3100,7 +3200,7 @@ class GetByTaskIdResponse(Response):
                         "type": ["boolean", "null"],
                     },
                     "stats": {
-                        "description": "Model " "statistics",
+                        "description": "Model statistics",
                         "properties": {
                             "labels_count": {
                                 "description": "Number of the model labels",
@@ -3185,7 +3285,9 @@ class MakePrivateRequest(Request):
         "definitions": {},
         "properties": {
             "ids": {
-                "description": "Ids of the models to convert. Only the models originated by the company can be converted",
+                "description": (
+                    "Ids of the models to convert. Only the models originated by the company can be converted"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             }
@@ -3358,7 +3460,10 @@ class GetFrameworksRequest(Request):
         "definitions": {},
         "properties": {
             "projects": {
-                "description": "The list of projects which models will be analyzed. If not passed or empty then all the company and public models will be analyzed",
+                "description": (
+                    "The list of projects which models will be analyzed. If not passed or empty then all the company"
+                    " and public models will be analyzed"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             }
@@ -3457,11 +3562,14 @@ class MoveRequest(Request):
                 "type": "array",
             },
             "project": {
-                "description": "Target project ID. If notprovided, `project_name` must beprovided.",
+                "description": "Target project ID. If not provided, `project_name` must be provided.",
                 "type": "string",
             },
             "project_name": {
-                "description": "Target project name. Ifprovided and a project withthis name does not exist, anew project will be created.If not provided, `project`must be provided.",
+                "description": (
+                    "Target project name. If provided and a project with this name does not exist, anew project will be"
+                    " created.If not provided, `project`must be provided."
+                ),
                 "type": "string",
             },
         },
@@ -3551,7 +3659,10 @@ class PublishManyRequest(Request):
         "definitions": {},
         "properties": {
             "force_publish_task": {
-                "description": "Publish the associated tasks (if exist) even if they are not in the 'stopped' state. Optional, the default value is False.",
+                "description": (
+                    "Publish the associated tasks (if exist) even if they are not in the 'stopped' state. Optional, the"
+                    " default value is False."
+                ),
                 "type": "boolean",
             },
             "ids": {
@@ -3560,7 +3671,10 @@ class PublishManyRequest(Request):
                 "type": "array",
             },
             "publish_tasks": {
-                "description": "Indicates that the associated tasks (if exist) should be published. Optional, the default value is True.",
+                "description": (
+                    "Indicates that the associated tasks (if exist) should be published. Optional, the default value is"
+                    " True."
+                ),
                 "type": "boolean",
             },
         },
@@ -3668,8 +3782,10 @@ class PublishManyResponse(Response):
                             "type": "string",
                         },
                         "published_task": {
-                            "description": "Result of publishing of the model's associated task (if exists). "
-                            "Returned only if the task was published successfully as part of the model publishing.",
+                            "description": (
+                                "Result of publishing of the model's associated task (if exists). "
+                                "Returned only if the task was published successfully as part of the model publishing."
+                            ),
                             "properties": {
                                 "data": {
                                     "description": "Data returned from the task publishing operation.",
@@ -3761,12 +3877,18 @@ class SetReadyRequest(Request):
         "definitions": {},
         "properties": {
             "force_publish_task": {
-                "description": "Publish the associated task (if exists) even if it is not in the 'stopped' state. Optional, the default value is False.",
+                "description": (
+                    "Publish the associated task (if exists) even if it is not in the 'stopped' state. Optional, the"
+                    " default value is False."
+                ),
                 "type": "boolean",
             },
             "model": {"description": "Model id", "type": "string"},
             "publish_task": {
-                "description": "Indicates that the associated task (if exists) should be published. Optional, the default value is True.",
+                "description": (
+                    "Indicates that the associated task (if exists) should be published. Optional, the default value is"
+                    " True."
+                ),
                 "type": "boolean",
             },
         },
@@ -3840,7 +3962,10 @@ class SetReadyResponse(Response):
         "definitions": {},
         "properties": {
             "published_task": {
-                "description": "Result of publishing of the model's associated task (if exists). Returned only if the task was published successfully as part of the model publishing.",
+                "description": (
+                    "Result of publishing of the model's associated task (if exists). Returned only if the task was"
+                    " published successfully as part of the model publishing."
+                ),
                 "properties": {
                     "data": {
                         "description": "Data returned from the task publishing operation.",
@@ -4417,7 +4542,10 @@ class UpdateForTaskRequest(Request):
                 "type": "string",
             },
             "override_model_id": {
-                "description": "Override model ID. If provided, this model is updated in the task. Exactly one of override_model_id or uri is required.",
+                "description": (
+                    "Override model ID. If provided, this model is updated in the task. Exactly one of"
+                    " override_model_id or uri is required."
+                ),
                 "type": "string",
             },
             "system_tags": {

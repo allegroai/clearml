@@ -1,7 +1,7 @@
 import base64
 import os
 from os.path import expandvars, expanduser
-from pathlib import Path
+from pathlib2 import Path
 from typing import List, TYPE_CHECKING
 
 from ..utilities.pyhocon import HOCONConverter, ConfigTree

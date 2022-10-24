@@ -8,13 +8,14 @@ from .datamodel import DataModel
 from .defs import ENV_API_DEFAULT_REQ_METHOD
 
 
-if ENV_API_DEFAULT_REQ_METHOD.exists() and ENV_API_DEFAULT_REQ_METHOD.get().upper() not in ("GET", "POST"):
+if ENV_API_DEFAULT_REQ_METHOD.exists() and ENV_API_DEFAULT_REQ_METHOD.get().upper() not in ("GET", "POST", "PUT"):
     raise ValueError(
         "CLEARML_API_DEFAULT_REQ_METHOD environment variable must be 'get' or 'post' (any case is allowed)."
     )
 
 
 class Request(ApiModel):
+    def_method = ENV_API_DEFAULT_REQ_METHOD.get(default="get")
     _method = ENV_API_DEFAULT_REQ_METHOD.get(default="get")
 
     def __init__(self, **kwargs):

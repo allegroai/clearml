@@ -106,7 +106,10 @@ class CredentialKey(NonStrictDataModel):
 
     _schema = {
         "properties": {
-            "access_key": {"description": "", "type": ["string", "null"]},
+            "access_key": {
+                "description": "Credentials access key",
+                "type": ["string", "null"]
+            },
             "label": {
                 "description": "Optional credentials label",
                 "type": ["string", "null"],
@@ -121,9 +124,7 @@ class CredentialKey(NonStrictDataModel):
         "type": "object",
     }
 
-    def __init__(
-        self, access_key=None, label=None, last_used=None, last_used_from=None, **kwargs
-    ):
+    def __init__(self, access_key=None, label=None, last_used=None, last_used_from=None, **kwargs):
         super(CredentialKey, self).__init__(**kwargs)
         self.access_key = access_key
         self.label = label
@@ -247,15 +248,15 @@ class CreateCredentialsResponse(Response):
             "credentials": {
                 "properties": {
                     "access_key": {
-                        "description": "Credentials " "access " "key",
+                        "description": "Credentials access key",
                         "type": ["string", "null"],
                     },
                     "label": {
-                        "description": "Optional " "credentials " "label",
+                        "description": "Optional credentials label",
                         "type": ["string", "null"],
                     },
                     "secret_key": {
-                        "description": "Credentials " "secret " "key",
+                        "description": "Credentials secret key",
                         "type": ["string", "null"],
                     },
                 },
@@ -548,9 +549,12 @@ class GetCredentialsResponse(Response):
         "definitions": {
             "credential_key": {
                 "properties": {
-                    "access_key": {"description": "", "type": ["string", "null"]},
+                    "access_key": {
+                        "description": "Credentials access key",
+                        "type": ["string", "null"]
+                    },
                     "label": {
-                        "description": "Optional " "credentials " "label",
+                        "description": "Optional credentials label",
                         "type": ["string", "null"],
                     },
                     "last_used": {
@@ -595,9 +599,7 @@ class GetCredentialsResponse(Response):
 
         self.assert_isinstance(value, "credentials", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                CredentialKey.from_dict(v) if isinstance(v, dict) else v for v in value
-            ]
+            value = [CredentialKey.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "credentials", CredentialKey, is_array=True)
         self._property_credentials = value
@@ -634,8 +636,9 @@ class LoginRequest(Request):
         "definitions": {},
         "properties": {
             "expiration_sec": {
-                "description": "Requested token expiration time in seconds. Not guaranteed, "
-                               "might be overridden by the service",
+                "description": (
+                    "Requested token expiration time in seconds. Not guaranteed, might be overridden by the service"
+                ),
                 "type": ["integer", "null"],
             }
         },
@@ -676,9 +679,7 @@ class LoginResponse(Response):
 
     _schema = {
         "definitions": {},
-        "properties": {
-            "token": {"description": "Token string", "type": ["string", "null"]}
-        },
+        "properties": {"token": {"description": "Token string", "type": ["string", "null"]}},
         "type": "object",
     }
 
@@ -714,9 +715,7 @@ class RevokeCredentialsRequest(Request):
     _version = "2.20"
     _schema = {
         "definitions": {},
-        "properties": {
-            "access_key": {"description": "Credentials key", "type": ["string", "null"]}
-        },
+        "properties": {"access_key": {"description": "Credentials key", "type": ["string", "null"]}},
         "required": ["key_id"],
         "type": "object",
     }

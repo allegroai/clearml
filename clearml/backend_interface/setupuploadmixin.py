@@ -1,5 +1,6 @@
 from abc import abstractproperty
 from typing import Optional
+import warnings
 
 from ..backend_config.bucket_config import S3BucketConfig, AzureContainerConfig, GSBucketConfig
 from ..storage.helper import StorageHelper
@@ -38,6 +39,11 @@ class SetupUploadMixin(object):
         :param verify: Whether or not to verify SSL certificates.
             Only required when using a Non-AWS S3 solution that only supports HTTPS with self-signed certificate.
         """
+        warnings.warn(
+            "Warning: 'Task.setup_upload' is deprecated. "
+            "Use 'setup_aws_upload', 'setup_gcp_upload' or 'setup_azure_upload' instead",
+            DeprecationWarning
+        )
         self.setup_aws_upload(
             bucket_name,
             host=host,
@@ -50,17 +56,30 @@ class SetupUploadMixin(object):
         )
 
     def setup_aws_upload(
-        self, bucket, host=None, key=None, secret=None, region=None, multipart=True, secure=True, verify=True
+        self,
+        bucket,  # str
+        subdir=None,  # Optional[str]
+        host=None,  # Optional[str]
+        key=None,  # Optional[str]
+        secret=None,  # Optional[str]
+        token=None,  # Optional[str]
+        region=None,  # Optional[str]
+        multipart=True,  # bool
+        secure=True,  # bool
+        verify=True,  # bool
     ):
+        # type: (...) -> None
         """
         Setup S3 upload options.
 
         :param bucket: AWS bucket name
+        :param subdir: Subdirectory in the AWS bucket
         :param host: Hostname. Only required in case a Non-AWS S3 solution such as a local Minio server is used)
         :param key: AWS access key. If not provided, we'll attempt to obtain the key from the
             configuration file (bucket-specific, than global)
         :param secret: AWS secret key. If not provided, we'll attempt to obtain the secret from the
             configuration file (bucket-specific, than global)
+        :param token: AWS 2FA token
         :param region: Bucket region. Required if the bucket doesn't reside in the default region (us-east-1)
         :param multipart: Server supports multipart. Only required when using a Non-AWS S3 solution that doesn't support
             multipart.
@@ -70,9 +89,11 @@ class SetupUploadMixin(object):
         """
         self._bucket_config = S3BucketConfig(  # noqa
             bucket=bucket,
+            subdir=subdir,
             host=host,
             key=key,
             secret=secret,
+            token=token,
             region=region,
             multipart=multipart,
             secure=secure,

@@ -29,12 +29,18 @@ class GetTagsRequest(Request):
                 "description": "Filter on entities to collect tags from",
                 "properties": {
                     "system_tags": {
-                        "description": "The list of system tag values to filter by. Use 'null' value to specify empty system tags. Use '__Snot' value to specify that the following value should be excluded",
+                        "description": (
+                            "The list of system tag values to filter by. Use 'null' value to specify empty system tags."
+                            " Use '__Snot' value to specify that the following value should be excluded"
+                        ),
                         "items": {"type": "string"},
                         "type": "array",
                     },
                     "tags": {
-                        "description": "The list of tag values to filter by. Use 'null' value to specify empty tags. Use '__Snot' value to specify that the following value should be excluded",
+                        "description": (
+                            "The list of tag values to filter by. Use 'null' value to specify empty tags. Use '__Snot'"
+                            " value to specify that the following value should be excluded"
+                        ),
                         "items": {"type": "string"},
                         "type": "array",
                     },
@@ -43,7 +49,9 @@ class GetTagsRequest(Request):
             },
             "include_system": {
                 "default": False,
-                "description": "If set to 'true' then the list of the system tags is also returned. The default value is 'false'",
+                "description": (
+                    "If set to 'true' then the list of the system tags is also returned. The default value is 'false'"
+                ),
                 "type": ["boolean", "null"],
             },
         },
@@ -101,7 +109,10 @@ class GetTagsResponse(Response):
         "definitions": {},
         "properties": {
             "system_tags": {
-                "description": "The list of unique system tag values. Returned only if 'include_system' is set to 'true' in the request",
+                "description": (
+                    "The list of unique system tag values. Returned only if 'include_system' is set to 'true' in the"
+                    " request"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },

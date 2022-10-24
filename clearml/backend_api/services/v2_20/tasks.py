@@ -138,16 +138,13 @@ class Script(NonStrictDataModel):
     :type repository: str
     :param tag: Repository tag
     :type tag: str
-    :param branch: Repository branch id If not provided and tag not provided,
-        default repository branch is used.
+    :param branch: Repository branch id If not provided and tag not provided, default repository branch is used.
     :type branch: str
-    :param version_num: Version (changeset) number. Optional (default is head
-        version) Unused if tag is provided.
+    :param version_num: Version (changeset) number. Optional (default is head version) Unused if tag is provided.
     :type version_num: str
     :param entry_point: Path to execute within the repository
     :type entry_point: str
-    :param working_dir: Path to the folder from which to run the script Default -
-        root folder of repository
+    :param working_dir: Path to the folder from which to run the script Default - root folder of repository
     :type working_dir: str
     :param requirements: A JSON object containing requirements strings by key
     :type requirements: dict
@@ -163,7 +160,9 @@ class Script(NonStrictDataModel):
                 "type": ["string", "null"],
             },
             "branch": {
-                "description": "Repository branch id If not provided and tag not provided, default repository branch is used.",
+                "description": (
+                    "Repository branch id If not provided and tag not provided, default repository branch is used."
+                ),
                 "type": ["string", "null"],
             },
             "diff": {
@@ -184,7 +183,9 @@ class Script(NonStrictDataModel):
             },
             "tag": {"description": "Repository tag", "type": ["string", "null"]},
             "version_num": {
-                "description": "Version (changeset) number. Optional (default is head version) Unused if tag is provided.",
+                "description": (
+                    "Version (changeset) number. Optional (default is head version) Unused if tag is provided."
+                ),
                 "type": ["string", "null"],
             },
             "working_dir": {
@@ -533,7 +534,7 @@ class Artifact(NonStrictDataModel):
                 "type": "integer",
             },
             "display_data": {
-                "description": "User-defined list of " "key/value pairs, sorted",
+                "description": "User-defined list of key/value pairs, sorted",
                 "items": {"items": {"type": "string"}, "type": "array"},
                 "type": "array",
             },
@@ -541,16 +542,16 @@ class Artifact(NonStrictDataModel):
             "key": {"description": "Entry key", "type": "string"},
             "mode": {
                 "$ref": "#/definitions/artifact_mode_enum",
-                "description": "System defined input/output " "indication",
+                "description": "System defined input/output indication",
             },
             "timestamp": {
-                "description": "Epoch time when artifact was " "created",
+                "description": "Epoch time when artifact was created",
                 "type": "integer",
             },
             "type": {"description": "System defined type", "type": "string"},
             "type_data": {
                 "$ref": "#/definitions/artifact_type_data",
-                "description": "Additional fields defined by the " "system",
+                "description": "Additional fields defined by the system",
             },
             "uri": {"description": "Raw data location", "type": "string"},
         },
@@ -726,7 +727,7 @@ class ArtifactId(NonStrictDataModel):
             "key": {"description": "Entry key", "type": "string"},
             "mode": {
                 "$ref": "#/definitions/artifact_mode_enum",
-                "description": "System defined input/output " "indication",
+                "description": "System defined input/output indication",
             },
         },
         "required": ["key"],
@@ -811,9 +812,7 @@ class TaskModels(NonStrictDataModel):
 
         self.assert_isinstance(value, "input", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                TaskModelItem.from_dict(v) if isinstance(v, dict) else v for v in value
-            ]
+            value = [TaskModelItem.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "input", TaskModelItem, is_array=True)
         self._property_input = value
@@ -830,9 +829,7 @@ class TaskModels(NonStrictDataModel):
 
         self.assert_isinstance(value, "output", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                TaskModelItem.from_dict(v) if isinstance(v, dict) else v for v in value
-            ]
+            value = [TaskModelItem.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "output", TaskModelItem, is_array=True)
         self._property_output = value
@@ -875,7 +872,11 @@ class Execution(NonStrictDataModel):
             },
             "model_labels": {
                 "additionalProperties": {"type": "integer"},
-                "description": "Json object representing the ids of the labels in the model.\n                The keys are the layers' names and the values are the IDs.\n                Not applicable for Register (Import) tasks.\n                Mandatory for Training tasks",
+                "description": (
+                    "Json object representing the ids of the labels in the model.\n                The keys are the"
+                    " layers' names and the values are the IDs.\n                Not applicable for Register (Import)"
+                    " tasks.\n                Mandatory for Training tasks"
+                ),
                 "type": ["object", "null"],
             },
             "parameters": {
@@ -892,14 +893,7 @@ class Execution(NonStrictDataModel):
     }
 
     def __init__(
-        self,
-        queue=None,
-        parameters=None,
-        model_desc=None,
-        model_labels=None,
-        framework=None,
-        artifacts=None,
-        **kwargs
+        self, queue=None, parameters=None, model_desc=None, model_labels=None, framework=None, artifacts=None, **kwargs
     ):
         super(Execution, self).__init__(**kwargs)
         self.queue = queue
@@ -1050,15 +1044,7 @@ class LastMetricsEvent(NonStrictDataModel):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        metric=None,
-        variant=None,
-        value=None,
-        min_value=None,
-        max_value=None,
-        **kwargs
-    ):
+    def __init__(self, metric=None, variant=None, value=None, min_value=None, max_value=None, **kwargs):
         super(LastMetricsEvent, self).__init__(**kwargs)
         self.metric = metric
         self.variant = variant
@@ -1186,9 +1172,7 @@ class ParamsItem(NonStrictDataModel):
         "type": "object",
     }
 
-    def __init__(
-        self, section=None, name=None, value=None, type=None, description=None, **kwargs
-    ):
+    def __init__(self, section=None, name=None, value=None, type=None, description=None, **kwargs):
         super(ParamsItem, self).__init__(**kwargs)
         self.section = section
         self.name = name
@@ -1368,7 +1352,10 @@ class ParamKey(NonStrictDataModel):
     _schema = {
         "properties": {
             "name": {
-                "description": "Name of the parameter. If the name is ommitted then the corresponding operation is performed on the whole section",
+                "description": (
+                    "Name of the parameter. If the name is ommitted then the corresponding operation is performed on"
+                    " the whole section"
+                ),
                 "type": ["string", "null"],
             },
             "section": {
@@ -1427,9 +1414,7 @@ class SectionParams(dict, NonStrictDataModel):
     def __init__(self, *args, **kwargs):
         self.assert_isinstance(args, "section_params", dict, is_array=True)
         kwargs.update(args)
-        self.assert_isinstance(
-            kwargs.values(), "params", (ParamsItem, dict), is_array=True
-        )
+        self.assert_isinstance(kwargs.values(), "params", (ParamsItem, dict), is_array=True)
         for k, v in kwargs.items():
             if isinstance(v, dict):
                 kwargs[k] = ParamsItem(**v)
@@ -2092,9 +2077,7 @@ class Task(NonStrictDataModel):
             self._property_last_worker_report = None
             return
 
-        self.assert_isinstance(
-            value, "last_worker_report", six.string_types + (datetime,)
-        )
+        self.assert_isinstance(value, "last_worker_report", six.string_types + (datetime,))
         if not isinstance(value, datetime):
             value = parse_datetime(value)
         self._property_last_worker_report = value
@@ -2168,16 +2151,9 @@ class Task(NonStrictDataModel):
             return
 
         self.assert_isinstance(value, "hyperparams", dict)
-        self.assert_isinstance(
-            value.keys(), "hyperparams_keys", six.string_types, is_array=True
-        )
-        self.assert_isinstance(
-            value.values(), "hyperparams_values", (SectionParams, dict), is_array=True
-        )
-        value = dict(
-            (k, SectionParams(**v) if isinstance(v, dict) else v)
-            for k, v in value.items()
-        )
+        self.assert_isinstance(value.keys(), "hyperparams_keys", six.string_types, is_array=True)
+        self.assert_isinstance(value.values(), "hyperparams_values", (SectionParams, dict), is_array=True)
+        value = dict((k, SectionParams(**v) if isinstance(v, dict) else v) for k, v in value.items())
 
         self._property_hyperparams = value
 
@@ -2192,9 +2168,7 @@ class Task(NonStrictDataModel):
             return
 
         self.assert_isinstance(value, "configuration", dict)
-        self.assert_isinstance(
-            value.keys(), "configuration_keys", six.string_types, is_array=True
-        )
+        self.assert_isinstance(value.keys(), "configuration_keys", six.string_types, is_array=True)
         self.assert_isinstance(
             value.values(),
             "configuration_values",
@@ -2202,10 +2176,7 @@ class Task(NonStrictDataModel):
             is_array=True,
         )
 
-        value = dict(
-            (k, ConfigurationItem(**v) if isinstance(v, dict) else v)
-            for k, v in value.items()
-        )
+        value = dict((k, ConfigurationItem(**v) if isinstance(v, dict) else v) for k, v in value.items())
 
         self._property_configuration = value
 
@@ -2379,7 +2350,10 @@ class AddOrUpdateArtifactsRequest(Request):
                 "type": "array",
             },
             "force": {
-                "description": "If set to True then both new and running task artifacts can be edited. Otherwise only the new task ones. Default is False",
+                "description": (
+                    "If set to True then both new and running task artifacts can be edited. Otherwise only the new task"
+                    " ones. Default is False"
+                ),
                 "type": "boolean",
             },
             "task": {"description": "Task ID", "type": "string"},
@@ -2501,9 +2475,7 @@ class AddOrUpdateModelRequest(Request):
     _action = "add_or_update_model"
     _version = "2.20"
     _schema = {
-        "definitions": {
-            "model_type_enum": {"enum": ["input", "output"], "type": "string"}
-        },
+        "definitions": {"model_type_enum": {"enum": ["input", "output"], "type": "string"}},
         "properties": {
             "iteration": {
                 "description": "Iteration (used to update task statistics)",
@@ -2649,7 +2621,7 @@ class AddOrUpdateModelResponse(Response):
 class ArchiveRequest(Request):
     """
     Archive tasks.
-            If a task is queued it will first be dequeued and then archived.
+    If a task is queued it will first be dequeued and then archived.
 
 
     :param tasks: List of task ids
@@ -2920,10 +2892,14 @@ class ArchiveManyResponse(Response):
             "succeeded": {
                 "items": {
                     "properties": {
+                        "archived": {
+                            "description": "Indicates whether the task was archived",
+                            "type": "boolean",
+                        },
                         "id": {
                             "description": "ID of the succeeded entity",
                             "type": "string",
-                        }
+                        },
                     },
                     "type": "object",
                 },
@@ -3110,7 +3086,9 @@ class CloneRequest(Request):
                         "type": ["array", "null"],
                     },
                     "framework": {
-                        "description": "Framework related to the task. Case insensitive. Mandatory for Training tasks. ",
+                        "description": (
+                            "Framework related to the task. Case insensitive. Mandatory for Training tasks. "
+                        ),
                         "type": ["string", "null"],
                     },
                     "model_desc": {
@@ -3120,7 +3098,11 @@ class CloneRequest(Request):
                     },
                     "model_labels": {
                         "additionalProperties": {"type": "integer"},
-                        "description": "Json object representing the ids of the labels in the model.\n                The keys are the layers' names and the values are the IDs.\n                Not applicable for Register (Import) tasks.\n                Mandatory for Training tasks",
+                        "description": (
+                            "Json object representing the ids of the labels in the model.\n                The keys are"
+                            " the layers' names and the values are the IDs.\n                Not applicable for"
+                            " Register (Import) tasks.\n                Mandatory for Training tasks"
+                        ),
                         "type": ["object", "null"],
                     },
                     "parameters": {
@@ -3180,10 +3162,16 @@ class CloneRequest(Request):
         "properties": {
             "execution_overrides": {
                 "$ref": "#/definitions/execution",
-                "description": "The execution params for the cloned task. The params not specified are taken from the original task",
+                "description": (
+                    "The execution params for the cloned task. The params not specified are taken from the original"
+                    " task"
+                ),
             },
             "new_project_name": {
-                "description": "Clone task to a new project by this name (only if `new_task_project` is not provided). If a project by this name already exists, task will be cloned to existing project.",
+                "description": (
+                    "Clone task to a new project by this name (only if `new_task_project` is not provided). If a"
+                    " project by this name already exists, task will be cloned to existing project."
+                ),
                 "type": "string",
             },
             "new_task_comment": {
@@ -3197,7 +3185,10 @@ class CloneRequest(Request):
             },
             "new_task_container": {
                 "additionalProperties": {"type": ["string", "null"]},
-                "description": "The docker container properties for the new task. If not provided then taken from the original task",
+                "description": (
+                    "The docker container properties for the new task. If not provided then taken from the original"
+                    " task"
+                ),
                 "type": "object",
             },
             "new_task_hyperparams": {
@@ -3206,7 +3197,9 @@ class CloneRequest(Request):
                 "type": "object",
             },
             "new_task_input_models": {
-                "description": "The list of input models for the cloned task. If not specifed then copied from the original task",
+                "description": (
+                    "The list of input models for the cloned task. If not specifed then copied from the original task"
+                ),
                 "items": {"$ref": "#/definitions/task_model_item"},
                 "type": "array",
             },
@@ -3228,13 +3221,18 @@ class CloneRequest(Request):
                 "type": "array",
             },
             "new_task_tags": {
-                "description": "The user-defined tags of the cloned task. If not provided then taken from the original task",
+                "description": (
+                    "The user-defined tags of the cloned task. If not provided then taken from the original task"
+                ),
                 "items": {"type": "string"},
                 "type": "array",
             },
             "task": {"description": "ID of the task", "type": "string"},
             "validate_references": {
-                "description": "If set to 'false' then the task fields that are copied from the original task are not validated. The default is false.",
+                "description": (
+                    "If set to 'false' then the task fields that are copied from the original task are not validated."
+                    " The default is false."
+                ),
                 "type": "boolean",
             },
         },
@@ -3342,9 +3340,7 @@ class CloneRequest(Request):
 
         self.assert_isinstance(value, "new_task_system_tags", (list, tuple))
 
-        self.assert_isinstance(
-            value, "new_task_system_tags", six.string_types, is_array=True
-        )
+        self.assert_isinstance(value, "new_task_system_tags", six.string_types, is_array=True)
         self._property_new_task_system_tags = value
 
     @schema_property("new_task_parent")
@@ -3452,13 +3448,9 @@ class CloneRequest(Request):
 
         self.assert_isinstance(value, "new_task_input_models", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                TaskModelItem.from_dict(v) if isinstance(v, dict) else v for v in value
-            ]
+            value = [TaskModelItem.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
-            self.assert_isinstance(
-                value, "new_task_input_models", TaskModelItem, is_array=True
-            )
+            self.assert_isinstance(value, "new_task_input_models", TaskModelItem, is_array=True)
         self._property_new_task_input_models = value
 
     @schema_property("new_task_container")
@@ -3583,9 +3575,7 @@ class CloseRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self, task, force=False, status_reason=None, status_message=None, **kwargs
-    ):
+    def __init__(self, task, force=False, status_reason=None, status_message=None, **kwargs):
         super(CloseRequest, self).__init__(**kwargs)
         self.force = force
         self.task = task
@@ -3758,15 +3748,7 @@ class CompletedRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        task,
-        force=False,
-        status_reason=None,
-        status_message=None,
-        publish=False,
-        **kwargs
-    ):
+    def __init__(self, task, force=False, status_reason=None, status_message=None, publish=False, **kwargs):
         super(CompletedRequest, self).__init__(**kwargs)
         self.force = force
         self.task = task
@@ -4058,7 +4040,9 @@ class CreateRequest(Request):
                         "type": ["array", "null"],
                     },
                     "framework": {
-                        "description": "Framework related to the task. Case insensitive. Mandatory for Training tasks. ",
+                        "description": (
+                            "Framework related to the task. Case insensitive. Mandatory for Training tasks. "
+                        ),
                         "type": ["string", "null"],
                     },
                     "model_desc": {
@@ -4068,7 +4052,11 @@ class CreateRequest(Request):
                     },
                     "model_labels": {
                         "additionalProperties": {"type": "integer"},
-                        "description": "Json object representing the ids of the labels in the model.\n                The keys are the layers' names and the values are the IDs.\n                Not applicable for Register (Import) tasks.\n                Mandatory for Training tasks",
+                        "description": (
+                            "Json object representing the ids of the labels in the model.\n                The keys are"
+                            " the layers' names and the values are the IDs.\n                Not applicable for"
+                            " Register (Import) tasks.\n                Mandatory for Training tasks"
+                        ),
                         "type": ["object", "null"],
                     },
                     "parameters": {
@@ -4116,7 +4104,10 @@ class CreateRequest(Request):
                         "type": ["string", "null"],
                     },
                     "branch": {
-                        "description": "Repository branch id If not provided and tag not provided, default repository branch is used.",
+                        "description": (
+                            "Repository branch id If not provided and tag not provided, default repository branch is"
+                            " used."
+                        ),
                         "type": ["string", "null"],
                     },
                     "diff": {
@@ -4140,11 +4131,15 @@ class CreateRequest(Request):
                         "type": ["string", "null"],
                     },
                     "version_num": {
-                        "description": "Version (changeset) number. Optional (default is head version) Unused if tag is provided.",
+                        "description": (
+                            "Version (changeset) number. Optional (default is head version) Unused if tag is provided."
+                        ),
                         "type": ["string", "null"],
                     },
                     "working_dir": {
-                        "description": "Path to the folder from which to run the script Default - root folder of repository",
+                        "description": (
+                            "Path to the folder from which to run the script Default - root folder of repository"
+                        ),
                         "type": ["string", "null"],
                     },
                 },
@@ -4457,16 +4452,9 @@ class CreateRequest(Request):
             return
 
         self.assert_isinstance(value, "hyperparams", dict)
-        self.assert_isinstance(
-            value.keys(), "hyperparams_keys", six.string_types, is_array=True
-        )
-        self.assert_isinstance(
-            value.values(), "hyperparams_values", (SectionParams, dict), is_array=True
-        )
-        value = dict(
-            (k, SectionParams(**v) if isinstance(v, dict) else v)
-            for k, v in value.items()
-        )
+        self.assert_isinstance(value.keys(), "hyperparams_keys", six.string_types, is_array=True)
+        self.assert_isinstance(value.values(), "hyperparams_values", (SectionParams, dict), is_array=True)
+        value = dict((k, SectionParams(**v) if isinstance(v, dict) else v) for k, v in value.items())
 
         self._property_hyperparams = value
 
@@ -4481,9 +4469,7 @@ class CreateRequest(Request):
             return
 
         self.assert_isinstance(value, "configuration", dict)
-        self.assert_isinstance(
-            value.keys(), "configuration_keys", six.string_types, is_array=True
-        )
+        self.assert_isinstance(value.keys(), "configuration_keys", six.string_types, is_array=True)
         self.assert_isinstance(
             value.values(),
             "configuration_values",
@@ -4491,10 +4477,7 @@ class CreateRequest(Request):
             is_array=True,
         )
 
-        value = dict(
-            (k, ConfigurationItem(**v) if isinstance(v, dict) else v)
-            for k, v in value.items()
-        )
+        value = dict((k, ConfigurationItem(**v) if isinstance(v, dict) else v) for k, v in value.items())
 
         self._property_configuration = value
 
@@ -4541,9 +4524,7 @@ class CreateResponse(Response):
 
     _schema = {
         "definitions": {},
-        "properties": {
-            "id": {"description": "ID of the task", "type": ["string", "null"]}
-        },
+        "properties": {"id": {"description": "ID of the task", "type": ["string", "null"]}},
         "type": "object",
     }
 
@@ -4568,8 +4549,8 @@ class CreateResponse(Response):
 class DeleteRequest(Request):
     """
     Delete a task along with any information stored for it (statistics, frame updates etc.)
-            Unless Force flag is provided, operation will fail if task has objects associated with it - i.e. children tasks and projects.
-            Models that refer to the deleted task will be updated with a task ID indicating a deleted task.
+    Unless Force flag is provided, operation will fail if task has objects associated with it - i.e. children tasks
+    and projects. Models that refer to the deleted task will be updated with a task ID indicating a deleted task.
 
 
     :param move_to_trash: Move task to trash instead of deleting it. For internal
@@ -4602,11 +4583,17 @@ class DeleteRequest(Request):
             },
             "move_to_trash": {
                 "default": False,
-                "description": "Move task to trash instead of deleting it. For internal use only, tasks in the trash are not visible from the API and cannot be restored!",
+                "description": (
+                    "Move task to trash instead of deleting it. For internal use only, tasks in the trash are not"
+                    " visible from the API and cannot be restored!"
+                ),
                 "type": ["boolean", "null"],
             },
             "return_file_urls": {
-                "description": "If set to 'true' then return the urls of the files that were uploaded by this task. Default value is 'false'",
+                "description": (
+                    "If set to 'true' then return the urls of the files that were uploaded by this task. Default value"
+                    " is 'false'"
+                ),
                 "type": "boolean",
             },
             "status_message": {
@@ -4781,22 +4768,17 @@ class DeleteResponse(Response):
                 "type": ["integer", "null"],
             },
             "urls": {
-                "description": "The urls of the files that were uploaded by this task. Returned if the 'return_file_urls' was set to 'true'",
+                "description": (
+                    "The urls of the files that were uploaded by this task. Returned if the 'return_file_urls' was set"
+                    " to 'true'"
+                ),
                 "oneOf": [{"$ref": "#/definitions/task_urls"}, {"type": "null"}],
             },
         },
         "type": "object",
     }
 
-    def __init__(
-        self,
-        deleted=None,
-        updated_children=None,
-        updated_models=None,
-        events=None,
-        urls=None,
-        **kwargs
-    ):
+    def __init__(self, deleted=None, updated_children=None, updated_models=None, events=None, urls=None, **kwargs):
         super(DeleteResponse, self).__init__(**kwargs)
         self.deleted = deleted
         self.updated_children = updated_children
@@ -4918,7 +4900,10 @@ class DeleteArtifactsRequest(Request):
                 "type": "array",
             },
             "force": {
-                "description": "If set to True then both new and running task artifacts can be deleted. Otherwise only the new task ones. Default is False",
+                "description": (
+                    "If set to True then both new and running task artifacts can be deleted. Otherwise only the new"
+                    " task ones. Default is False"
+                ),
                 "type": "boolean",
             },
             "task": {"description": "Task ID", "type": "string"},
@@ -4958,9 +4943,7 @@ class DeleteArtifactsRequest(Request):
 
         self.assert_isinstance(value, "artifacts", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                ArtifactId.from_dict(v) if isinstance(v, dict) else v for v in value
-            ]
+            value = [ArtifactId.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "artifacts", ArtifactId, is_array=True)
         self._property_artifacts = value
@@ -5028,7 +5011,7 @@ class DeleteConfigurationRequest(Request):
 
     :param task: Task ID
     :type task: str
-    :param configuration: List of configuration itemss to delete
+    :param configuration: List of configuration items to delete
     :type configuration: Sequence[str]
     :param force: If set to True then both new and running task configuration can
         be deleted. Otherwise only the new task ones. Default is False
@@ -5042,12 +5025,15 @@ class DeleteConfigurationRequest(Request):
         "definitions": {},
         "properties": {
             "configuration": {
-                "description": "List of configuration itemss to delete",
+                "description": "List of configuration items to delete",
                 "items": {"type": "string"},
                 "type": "array",
             },
             "force": {
-                "description": "If set to True then both new and running task configuration can be deleted. Otherwise only the new task ones. Default is False",
+                "description": (
+                    "If set to True then both new and running task configuration can be deleted. Otherwise only the new"
+                    " task ones. Default is False"
+                ),
                 "type": "boolean",
             },
             "task": {"description": "Task ID", "type": "string"},
@@ -5086,9 +5072,7 @@ class DeleteConfigurationRequest(Request):
             return
 
         self.assert_isinstance(value, "configuration", dict)
-        self.assert_isinstance(
-            value.keys(), "configuration_keys", six.string_types, is_array=True
-        )
+        self.assert_isinstance(value.keys(), "configuration_keys", six.string_types, is_array=True)
         self.assert_isinstance(
             value.values(),
             "configuration_values",
@@ -5096,10 +5080,7 @@ class DeleteConfigurationRequest(Request):
             is_array=True,
         )
 
-        value = dict(
-            (k, ConfigurationItem(**v) if isinstance(v, dict) else v)
-            for k, v in value.items()
-        )
+        value = dict((k, ConfigurationItem(**v) if isinstance(v, dict) else v) for k, v in value.items())
 
         self._property_configuration = value
 
@@ -5182,7 +5163,10 @@ class DeleteHyperParamsRequest(Request):
             "param_key": {
                 "properties": {
                     "name": {
-                        "description": "Name of the parameter. If the name is ommitted then the corresponding operation is performed on the whole section",
+                        "description": (
+                            "Name of the parameter. If the name is ommitted then the corresponding operation is"
+                            " performed on the whole section"
+                        ),
                         "type": ["string", "null"],
                     },
                     "section": {
@@ -5195,11 +5179,17 @@ class DeleteHyperParamsRequest(Request):
         },
         "properties": {
             "force": {
-                "description": "If set to True then both new and running task hyper params can be deleted. Otherwise only the new task ones. Default is False",
+                "description": (
+                    "If set to True then both new and running task hyper params can be deleted. Otherwise only the new"
+                    " task ones. Default is False"
+                ),
                 "type": "boolean",
             },
             "hyperparams": {
-                "description": "List of hyper parameters to delete. In case a parameter with an empty name is passed all the section will be deleted",
+                "description": (
+                    "List of hyper parameters to delete. In case a parameter with an empty name is passed all the"
+                    " section will be deleted"
+                ),
                 "items": {"$ref": "#/definitions/param_key"},
                 "type": "array",
             },
@@ -5327,7 +5317,10 @@ class DeleteManyRequest(Request):
         "definitions": {},
         "properties": {
             "delete_output_models": {
-                "description": "If set to 'true' then delete output models of the tasks that are not referenced by other tasks. Default value is 'true'",
+                "description": (
+                    "If set to 'true' then delete output models of the tasks that are not referenced by other tasks."
+                    " Default value is 'true'"
+                ),
                 "type": "boolean",
             },
             "force": {
@@ -5342,11 +5335,17 @@ class DeleteManyRequest(Request):
             },
             "move_to_trash": {
                 "default": False,
-                "description": "Move task to trash instead of deleting it. For internal use only, tasks in the trash are not visible from the API and cannot be restored!",
+                "description": (
+                    "Move task to trash instead of deleting it. For internal use only, tasks in the trash are not"
+                    " visible from the API and cannot be restored!"
+                ),
                 "type": "boolean",
             },
             "return_file_urls": {
-                "description": "If set to 'true' then return the urls of the files that were uploaded by the tasks. Default value is 'false'",
+                "description": (
+                    "If set to 'true' then return the urls of the files that were uploaded by the tasks. Default value"
+                    " is 'false'"
+                ),
                 "type": "boolean",
             },
         },
@@ -5355,13 +5354,7 @@ class DeleteManyRequest(Request):
     }
 
     def __init__(
-        self,
-        ids,
-        move_to_trash=False,
-        force=False,
-        return_file_urls=None,
-        delete_output_models=None,
-        **kwargs
+        self, ids, move_to_trash=False, force=False, return_file_urls=None, delete_output_models=None, **kwargs
     ):
         super(DeleteManyRequest, self).__init__(**kwargs)
         self.ids = ids
@@ -5525,7 +5518,10 @@ class DeleteManyResponse(Response):
                         },
                         "urls": {
                             "oneOf": [{"$ref": "#/definitions/task_urls"}, {"type": "null"}],
-                            "description": "The urls of the files that were uploaded by the tasks. Returned if the 'return_file_urls' was set to 'true'",
+                            "description": (
+                                "The urls of the files that were uploaded by the tasks. Returned if the"
+                                " 'return_file_urls' was set to 'true'"
+                            ),
                         },
                     },
                     "type": "object",
@@ -5586,9 +5582,7 @@ class DeleteModelsRequest(Request):
     _action = "delete_models"
     _version = "2.20"
     _schema = {
-        "definitions": {
-            "model_type_enum": {"enum": ["input", "output"], "type": "string"}
-        },
+        "definitions": {"model_type_enum": {"enum": ["input", "output"], "type": "string"}},
         "properties": {
             "models": {
                 "description": "The list of models to delete",
@@ -5695,7 +5689,7 @@ class DeleteModelsResponse(Response):
 class DequeueRequest(Request):
     """
     Remove a task from its queue.
-            Fails if task status is not queued.
+    Fails if task status is not queued.
 
     :param task: Task ID
     :type task: str
@@ -6189,7 +6183,9 @@ class EditRequest(Request):
                         "type": ["array", "null"],
                     },
                     "framework": {
-                        "description": "Framework related to the task. Case insensitive. Mandatory for Training tasks. ",
+                        "description": (
+                            "Framework related to the task. Case insensitive. Mandatory for Training tasks. "
+                        ),
                         "type": ["string", "null"],
                     },
                     "model_desc": {
@@ -6199,7 +6195,11 @@ class EditRequest(Request):
                     },
                     "model_labels": {
                         "additionalProperties": {"type": "integer"},
-                        "description": "Json object representing the ids of the labels in the model.\n                The keys are the layers' names and the values are the IDs.\n                Not applicable for Register (Import) tasks.\n                Mandatory for Training tasks",
+                        "description": (
+                            "Json object representing the ids of the labels in the model.\n                The keys are"
+                            " the layers' names and the values are the IDs.\n                Not applicable for"
+                            " Register (Import) tasks.\n                Mandatory for Training tasks"
+                        ),
                         "type": ["object", "null"],
                     },
                     "parameters": {
@@ -6247,7 +6247,10 @@ class EditRequest(Request):
                         "type": ["string", "null"],
                     },
                     "branch": {
-                        "description": "Repository branch id If not provided and tag not provided, default repository branch is used.",
+                        "description": (
+                            "Repository branch id If not provided and tag not provided, default repository branch is"
+                            " used."
+                        ),
                         "type": ["string", "null"],
                     },
                     "diff": {
@@ -6271,11 +6274,15 @@ class EditRequest(Request):
                         "type": ["string", "null"],
                     },
                     "version_num": {
-                        "description": "Version (changeset) number. Optional (default is head version) Unused if tag is provided.",
+                        "description": (
+                            "Version (changeset) number. Optional (default is head version) Unused if tag is provided."
+                        ),
                         "type": ["string", "null"],
                     },
                     "working_dir": {
-                        "description": "Path to the folder from which to run the script Default - root folder of repository",
+                        "description": (
+                            "Path to the folder from which to run the script Default - root folder of repository"
+                        ),
                         "type": ["string", "null"],
                     },
                 },
@@ -6606,16 +6613,9 @@ class EditRequest(Request):
             return
 
         self.assert_isinstance(value, "hyperparams", dict)
-        self.assert_isinstance(
-            value.keys(), "hyperparams_keys", six.string_types, is_array=True
-        )
-        self.assert_isinstance(
-            value.values(), "hyperparams_values", (SectionParams, dict), is_array=True
-        )
-        value = dict(
-            (k, SectionParams(**v) if isinstance(v, dict) else v)
-            for k, v in value.items()
-        )
+        self.assert_isinstance(value.keys(), "hyperparams_keys", six.string_types, is_array=True)
+        self.assert_isinstance(value.values(), "hyperparams_values", (SectionParams, dict), is_array=True)
+        value = dict((k, SectionParams(**v) if isinstance(v, dict) else v) for k, v in value.items())
 
         self._property_hyperparams = value
 
@@ -6630,9 +6630,7 @@ class EditRequest(Request):
             return
 
         self.assert_isinstance(value, "configuration", dict)
-        self.assert_isinstance(
-            value.keys(), "configuration_keys", six.string_types, is_array=True
-        )
+        self.assert_isinstance(value.keys(), "configuration_keys", six.string_types, is_array=True)
         self.assert_isinstance(
             value.values(),
             "configuration_values",
@@ -6640,10 +6638,7 @@ class EditRequest(Request):
             is_array=True,
         )
 
-        value = dict(
-            (k, ConfigurationItem(**v) if isinstance(v, dict) else v)
-            for k, v in value.items()
-        )
+        value = dict((k, ConfigurationItem(**v) if isinstance(v, dict) else v) for k, v in value.items())
 
         self._property_configuration = value
 
@@ -6816,16 +6811,24 @@ class EditConfigurationRequest(Request):
         },
         "properties": {
             "configuration": {
-                "description": "Task configuration items. The new ones will be added and the already existing ones will be updated",
+                "description": (
+                    "Task configuration items. The new ones will be added and the already existing ones will be updated"
+                ),
                 "items": {"$ref": "#/definitions/configuration_item"},
                 "type": "array",
             },
             "force": {
-                "description": "If set to True then both new and running task configuration can be edited. Otherwise only the new task ones. Default is False",
+                "description": (
+                    "If set to True then both new and running task configuration can be edited. Otherwise only the new"
+                    " task ones. Default is False"
+                ),
                 "type": "boolean",
             },
             "replace_configuration": {
-                "description": "If set then the all the configuration items will be replaced with the provided ones. Otherwise only the provided configuration items will be updated or added",
+                "description": (
+                    "If set then the all the configuration items will be replaced with the provided ones. Otherwise"
+                    " only the provided configuration items will be updated or added"
+                ),
                 "type": "boolean",
             },
             "task": {"description": "Task ID", "type": "string"},
@@ -6834,9 +6837,7 @@ class EditConfigurationRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self, task, configuration, replace_configuration=None, force=None, **kwargs
-    ):
+    def __init__(self, task, configuration, replace_configuration=None, force=None, **kwargs):
         super(EditConfigurationRequest, self).__init__(**kwargs)
         self.task = task
         self.configuration = configuration
@@ -6866,9 +6867,7 @@ class EditConfigurationRequest(Request):
             self._property_configuration = None
             return
 
-        self.assert_isinstance(
-            value, "configuration", (dict, ConfigurationItem), is_array=True
-        )
+        self.assert_isinstance(value, "configuration", (dict, ConfigurationItem), is_array=True)
         value = [(ConfigurationItem(**v) if isinstance(v, dict) else v) for v in value]
 
         self._property_configuration = value
@@ -7000,17 +6999,27 @@ class EditHyperParamsRequest(Request):
         },
         "properties": {
             "force": {
-                "description": "If set to True then both new and running task hyper params can be edited. Otherwise only the new task ones. Default is False",
+                "description": (
+                    "If set to True then both new and running task hyper params can be edited. Otherwise only the new"
+                    " task ones. Default is False"
+                ),
                 "type": "boolean",
             },
             "hyperparams": {
-                "description": "Task hyper parameters. The new ones will be added and the already existing ones will be updated",
+                "description": (
+                    "Task hyper parameters. The new ones will be added and the already existing ones will be updated"
+                ),
                 "items": {"$ref": "#/definitions/params_item"},
                 "type": "array",
             },
             "replace_hyperparams": {
                 "$ref": "#/definitions/replace_hyperparams_enum",
-                "description": "Can be set to one of the following:\n                     'all' - all the hyper parameters will be replaced with the provided ones\n                     'section' - the sections that present in the new parameters will be replaced with the provided parameters\n                     'none' (the default value) - only the specific parameters will be updated or added",
+                "description": (
+                    "Can be set to one of the following:\n                     'all' - all the hyper parameters will be"
+                    " replaced with the provided ones\n                     'section' - the sections that present in"
+                    " the new parameters will be replaced with the provided parameters\n                     'none'"
+                    " (the default value) - only the specific parameters will be updated or added"
+                ),
             },
             "task": {"description": "Task ID", "type": "string"},
         },
@@ -7018,9 +7027,7 @@ class EditHyperParamsRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self, task, hyperparams, replace_hyperparams=None, force=None, **kwargs
-    ):
+    def __init__(self, task, hyperparams, replace_hyperparams=None, force=None, **kwargs):
         super(EditHyperParamsRequest, self).__init__(**kwargs)
         self.task = task
         self.hyperparams = hyperparams
@@ -7135,12 +7142,9 @@ class EnqueueRequest(Request):
     Adds a task into a queue.
 
     Fails if task state is not 'created'.
-
     Fails if the following parameters in the task were not filled:
-
-    * execution.script.repository
-
-    * execution.script.entrypoint
+        * execution.script.repository
+        * execution.script.entrypoint
 
 
     :param queue: Queue id. If not provided and no queue name is passed then task
@@ -7168,7 +7172,10 @@ class EnqueueRequest(Request):
                 "type": ["string", "null"],
             },
             "queue_name": {
-                "description": "The name of the queue. If the queue does not exist then it is auto-created. Cannot be used together with the queue id",
+                "description": (
+                    "The name of the queue. If the queue does not exist then it is auto-created. Cannot be used"
+                    " together with the queue id"
+                ),
                 "type": "string",
             },
             "status_message": {
@@ -7185,15 +7192,7 @@ class EnqueueRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        task,
-        queue=None,
-        status_reason=None,
-        status_message=None,
-        queue_name=None,
-        **kwargs
-    ):
+    def __init__(self, task, queue=None, status_reason=None, status_message=None, queue_name=None, **kwargs):
         super(EnqueueRequest, self).__init__(**kwargs)
         self.queue = queue
         self.task = task
@@ -7387,11 +7386,16 @@ class EnqueueManyRequest(Request):
                 "type": "array",
             },
             "queue": {
-                "description": "Queue id. If not provided and no queue name is passed then tasks are added to the default queue.",
+                "description": (
+                    "Queue id. If not provided and no queue name is passed then tasks are added to the default queue."
+                ),
                 "type": "string",
             },
             "queue_name": {
-                "description": "The name of the queue. If the queue does not exist then it is auto-created. Cannot be used together with the queue id",
+                "description": (
+                    "The name of the queue. If the queue does not exist then it is auto-created. Cannot be used"
+                    " together with the queue id"
+                ),
                 "type": "string",
             },
             "status_message": {
@@ -7404,7 +7408,7 @@ class EnqueueManyRequest(Request):
             },
             "validate_tasks": {
                 "default": False,
-                "description": "If set then tasks are " "validated before enqueue",
+                "description": "If set then tasks are validated before enqueue",
                 "type": "boolean",
             },
         },
@@ -7413,14 +7417,7 @@ class EnqueueManyRequest(Request):
     }
 
     def __init__(
-        self,
-        ids,
-        status_reason=None,
-        status_message=None,
-        queue=None,
-        validate_tasks=False,
-        queue_name=None,
-        **kwargs
+        self, ids, status_reason=None, status_message=None, queue=None, validate_tasks=False, queue_name=None, **kwargs
     ):
         super(EnqueueManyRequest, self).__init__(**kwargs)
         self.ids = ids
@@ -7660,9 +7657,7 @@ class FailedRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self, task, force=False, status_reason=None, status_message=None, **kwargs
-    ):
+    def __init__(self, task, force=False, status_reason=None, status_message=None, **kwargs):
         super(FailedRequest, self).__init__(**kwargs)
         self.force = force
         self.task = task
@@ -7911,12 +7906,20 @@ class GetAllRequest(Request):
                 "type": ["string", "null"],
             },
             "only_fields": {
-                "description": "List of task field names (nesting is supported using '.', e.g. execution.model_labels). If provided, this list defines the query's projection (only these fields will be returned for each result entry)",
+                "description": (
+                    "List of task field names (nesting is supported using '.', e.g. execution.model_labels). If"
+                    " provided, this list defines the query's projection (only these fields will be returned for each"
+                    " result entry)"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
             "order_by": {
-                "description": "List of field names to order by. When search_text is used, '@text_score' can be used as a field representing the text score of returned documents. Use '-' prefix to specify descending order. Optional, recommended when using page",
+                "description": (
+                    "List of field names to order by. When search_text is used, '@text_score' can be used as a field"
+                    " representing the text score of returned documents. Use '-' prefix to specify descending order."
+                    " Optional, recommended when using page"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -7926,7 +7929,10 @@ class GetAllRequest(Request):
                 "type": ["integer", "null"],
             },
             "page_size": {
-                "description": "Page size, specifies the number of results returned in each page (last page may contain fewer results)",
+                "description": (
+                    "Page size, specifies the number of results returned in each page (last page may contain fewer"
+                    " results)"
+                ),
                 "minimum": 1,
                 "type": ["integer", "null"],
             },
@@ -7964,7 +7970,10 @@ class GetAllRequest(Request):
                 "type": ["array", "null"],
             },
             "status_changed": {
-                "description": "List of status changed constraint strings (utcformat, epoch) with an optional prefix modifier (>, >=, <, <=)",
+                "description": (
+                    "List of status changed constraint strings (utcformat, epoch) with an optional prefix modifier (>,"
+                    " >=, <, <=)"
+                ),
                 "items": {"pattern": "^(>=|>|<=|<)?.*$", "type": "string"},
                 "type": ["array", "null"],
             },
@@ -7979,7 +7988,11 @@ class GetAllRequest(Request):
                 "type": ["array", "null"],
             },
             "type": {
-                "description": "List of task types. One or more of: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc' or 'custom' (case insensitive)",
+                "description": (
+                    "List of task types. One or more of: 'training', 'testing', 'inference', 'data_processing',"
+                    " 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc' or 'custom' (case"
+                    " insensitive)"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -8200,10 +8213,7 @@ class GetAllRequest(Request):
 
         self.assert_isinstance(value, "status", (list, tuple))
         if any(isinstance(v, six.string_types) for v in value):
-            value = [
-                TaskStatusEnum(v) if isinstance(v, six.string_types) else v
-                for v in value
-            ]
+            value = [TaskStatusEnum(v) if isinstance(v, six.string_types) else v for v in value]
         else:
             self.assert_isinstance(value, "status", TaskStatusEnum, is_array=True)
         self._property_status = value
@@ -8454,7 +8464,9 @@ class GetAllResponse(Response):
                         "type": ["array", "null"],
                     },
                     "framework": {
-                        "description": "Framework related to the task. Case insensitive. Mandatory for Training tasks. ",
+                        "description": (
+                            "Framework related to the task. Case insensitive. Mandatory for Training tasks. "
+                        ),
                         "type": ["string", "null"],
                     },
                     "model_desc": {
@@ -8464,7 +8476,11 @@ class GetAllResponse(Response):
                     },
                     "model_labels": {
                         "additionalProperties": {"type": "integer"},
-                        "description": "Json object representing the ids of the labels in the model.\n                The keys are the layers' names and the values are the IDs.\n                Not applicable for Register (Import) tasks.\n                Mandatory for Training tasks",
+                        "description": (
+                            "Json object representing the ids of the labels in the model.\n                The keys are"
+                            " the layers' names and the values are the IDs.\n                Not applicable for"
+                            " Register (Import) tasks.\n                Mandatory for Training tasks"
+                        ),
                         "type": ["object", "null"],
                     },
                     "parameters": {
@@ -8559,7 +8575,10 @@ class GetAllResponse(Response):
                         "type": ["string", "null"],
                     },
                     "branch": {
-                        "description": "Repository branch id If not provided and tag not provided, default repository branch is used.",
+                        "description": (
+                            "Repository branch id If not provided and tag not provided, default repository branch is"
+                            " used."
+                        ),
                         "type": ["string", "null"],
                     },
                     "diff": {
@@ -8583,11 +8602,15 @@ class GetAllResponse(Response):
                         "type": ["string", "null"],
                     },
                     "version_num": {
-                        "description": "Version (changeset) number. Optional (default is head version) Unused if tag is provided.",
+                        "description": (
+                            "Version (changeset) number. Optional (default is head version) Unused if tag is provided."
+                        ),
                         "type": ["string", "null"],
                     },
                     "working_dir": {
-                        "description": "Path to the folder from which to run the script Default - root folder of repository",
+                        "description": (
+                            "Path to the folder from which to run the script Default - root folder of repository"
+                        ),
                         "type": ["string", "null"],
                     },
                 },
@@ -8618,9 +8641,7 @@ class GetAllResponse(Response):
                         "type": ["string", "null"],
                     },
                     "configuration": {
-                        "additionalProperties": {
-                            "$ref": "#/definitions/configuration_item"
-                        },
+                        "additionalProperties": {"$ref": "#/definitions/configuration_item"},
                         "description": "Task configuration params",
                         "type": ["object", "null"],
                     },
@@ -8642,9 +8663,7 @@ class GetAllResponse(Response):
                         ],
                     },
                     "hyperparams": {
-                        "additionalProperties": {
-                            "$ref": "#/definitions/section_params"
-                        },
+                        "additionalProperties": {"$ref": "#/definitions/section_params"},
                         "description": "Task hyper params per section",
                         "type": ["object", "null"],
                     },
@@ -8659,14 +8678,14 @@ class GetAllResponse(Response):
                         "type": ["integer", "null"],
                     },
                     "last_metrics": {
-                        "additionalProperties": {
-                            "$ref": "#/definitions/last_metrics_variants"
-                        },
+                        "additionalProperties": {"$ref": "#/definitions/last_metrics_variants"},
                         "description": "Last metric variants (hash to events), one for each metric hash",
                         "type": ["object", "null"],
                     },
                     "last_update": {
-                        "description": "Last time this task was created, edited, changed or events for this task were reported",
+                        "description": (
+                            "Last time this task was created, edited, changed or events for this task were reported"
+                        ),
                         "format": "date-time",
                         "type": ["string", "null"],
                     },
@@ -8703,6 +8722,11 @@ class GetAllResponse(Response):
                         "description": "Last status change time",
                         "format": "date-time",
                         "type": ["string", "null"],
+                    },
+                    "runtime": {
+                        "additionalProperties": True,
+                        "description": "Task runtime mapping",
+                        "type": ["object", "null"],
                     },
                     "script": {
                         "description": "Script info",
@@ -9003,7 +9027,9 @@ class GetByIdResponse(Response):
                         "type": ["array", "null"],
                     },
                     "framework": {
-                        "description": "Framework related to the task. Case insensitive. Mandatory for Training tasks. ",
+                        "description": (
+                            "Framework related to the task. Case insensitive. Mandatory for Training tasks. "
+                        ),
                         "type": ["string", "null"],
                     },
                     "model_desc": {
@@ -9013,7 +9039,11 @@ class GetByIdResponse(Response):
                     },
                     "model_labels": {
                         "additionalProperties": {"type": "integer"},
-                        "description": "Json object representing the ids of the labels in the model.\n                The keys are the layers' names and the values are the IDs.\n                Not applicable for Register (Import) tasks.\n                Mandatory for Training tasks",
+                        "description": (
+                            "Json object representing the ids of the labels in the model.\n                The keys are"
+                            " the layers' names and the values are the IDs.\n                Not applicable for"
+                            " Register (Import) tasks.\n                Mandatory for Training tasks"
+                        ),
                         "type": ["object", "null"],
                     },
                     "parameters": {
@@ -9111,7 +9141,10 @@ class GetByIdResponse(Response):
                         "type": ["string", "null"],
                     },
                     "branch": {
-                        "description": "Repository branch id If not provided and tag not provided, default repository branch is used.",
+                        "description": (
+                            "Repository branch id If not provided and tag not provided, default repository branch is"
+                            " used."
+                        ),
                         "type": ["string", "null"],
                     },
                     "diff": {
@@ -9135,11 +9168,15 @@ class GetByIdResponse(Response):
                         "type": ["string", "null"],
                     },
                     "version_num": {
-                        "description": "Version (changeset) number. Optional (default is head version) Unused if tag is provided.",
+                        "description": (
+                            "Version (changeset) number. Optional (default is head version) Unused if tag is provided."
+                        ),
                         "type": ["string", "null"],
                     },
                     "working_dir": {
-                        "description": "Path to the folder from which to run the script Default - root folder of repository",
+                        "description": (
+                            "Path to the folder from which to run the script Default - root folder of repository"
+                        ),
                         "type": ["string", "null"],
                     },
                 },
@@ -9170,9 +9207,7 @@ class GetByIdResponse(Response):
                         "type": ["string", "null"],
                     },
                     "configuration": {
-                        "additionalProperties": {
-                            "$ref": "#/definitions/configuration_item"
-                        },
+                        "additionalProperties": {"$ref": "#/definitions/configuration_item"},
                         "description": "Task configuration params",
                         "type": ["object", "null"],
                     },
@@ -9194,9 +9229,7 @@ class GetByIdResponse(Response):
                         ],
                     },
                     "hyperparams": {
-                        "additionalProperties": {
-                            "$ref": "#/definitions/section_params"
-                        },
+                        "additionalProperties": {"$ref": "#/definitions/section_params"},
                         "description": "Task hyper params per section",
                         "type": ["object", "null"],
                     },
@@ -9211,14 +9244,14 @@ class GetByIdResponse(Response):
                         "type": ["integer", "null"],
                     },
                     "last_metrics": {
-                        "additionalProperties": {
-                            "$ref": "#/definitions/last_metrics_variants"
-                        },
+                        "additionalProperties": {"$ref": "#/definitions/last_metrics_variants"},
                         "description": "Last metric variants (hash to events), one for each metric hash",
                         "type": ["object", "null"],
                     },
                     "last_update": {
-                        "description": "Last time this task was created, edited, changed or events for this task were reported",
+                        "description": (
+                            "Last time this task was created, edited, changed or events for this task were reported"
+                        ),
                         "format": "date-time",
                         "type": ["string", "null"],
                     },
@@ -9255,6 +9288,11 @@ class GetByIdResponse(Response):
                         "description": "Last status change time",
                         "format": "date-time",
                         "type": ["string", "null"],
+                    },
+                    "runtime": {
+                        "additionalProperties": True,
+                        "description": "Task runtime mapping",
+                        "type": ["object", "null"],
                     },
                     "script": {
                         "description": "Script info",
@@ -9415,7 +9453,9 @@ class GetConfigurationNamesRequest(Request):
         "properties": {
             "skip_empty": {
                 "default": True,
-                "description": "If set to 'true' then the names for configurations with missing values are not returned",
+                "description": (
+                    "If set to 'true' then the names for configurations with missing values are not returned"
+                ),
                 "type": "boolean",
             },
             "tasks": {
@@ -9517,8 +9557,8 @@ class GetConfigurationsRequest(Request):
 
     :param tasks: Task IDs
     :type tasks: Sequence[str]
-    :param names: Names of the configuration items to retreive. If not passed or
-        empty then all the configurations will be retreived.
+    :param names: Names of the configuration items to retrieve. If not passed or
+        empty then all the configurations will be retrieved.
     :type names: Sequence[str]
     """
 
@@ -9529,7 +9569,10 @@ class GetConfigurationsRequest(Request):
         "definitions": {},
         "properties": {
             "names": {
-                "description": "Names of the configuration items to retreive. If not passed or empty then all the configurations will be retreived.",
+                "description": (
+                    "Names of the configuration items to retrieve. If not passed or empty then all the configurations"
+                    " will be retrieved."
+                ),
                 "items": {"type": "string"},
                 "type": "array",
             },
@@ -9795,7 +9838,10 @@ class GetTypesRequest(Request):
         "definitions": {},
         "properties": {
             "projects": {
-                "description": "The list of projects which tasks will be analyzed. If not passed or empty then all the company and public tasks will be analyzed",
+                "description": (
+                    "The list of projects which tasks will be analyzed. If not passed or empty then all the company and"
+                    " public tasks will be analyzed"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             }
@@ -10071,7 +10117,10 @@ class MoveRequest(Request):
                 "type": "string",
             },
             "project_name": {
-                "description": "Target project name. If provided and a project with this name does not exist, a new project will be created. If not provided, `project` must be provided.",
+                "description": (
+                    "Target project name. If provided and a project with this name does not exist, a new project will"
+                    " be created. If not provided, `project` must be provided."
+                ),
                 "type": "string",
             },
         },
@@ -10218,7 +10267,10 @@ class PublishRequest(Request):
                 "type": ["boolean", "null"],
             },
             "publish_model": {
-                "description": "Indicates that the task output model (if exists) should be published. Optional, the default value is True.",
+                "description": (
+                    "Indicates that the task output model (if exists) should be published. Optional, the default value"
+                    " is True."
+                ),
                 "type": ["boolean", "null"],
             },
             "status_message": {
@@ -10235,15 +10287,7 @@ class PublishRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        task,
-        force=False,
-        publish_model=None,
-        status_reason=None,
-        status_message=None,
-        **kwargs
-    ):
+    def __init__(self, task, force=False, publish_model=None, status_reason=None, status_message=None, **kwargs):
         super(PublishRequest, self).__init__(**kwargs)
         self.force = force
         self.publish_model = publish_model
@@ -10416,7 +10460,10 @@ class PublishManyRequest(Request):
                 "type": "array",
             },
             "publish_model": {
-                "description": "Indicates that the task output model (if exists) should be published. Optional, the default value is True.",
+                "description": (
+                    "Indicates that the task output model (if exists) should be published. Optional, the default value"
+                    " is True."
+                ),
                 "type": "boolean",
             },
             "status_message": {
@@ -10432,15 +10479,7 @@ class PublishManyRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        ids,
-        status_reason=None,
-        status_message=None,
-        force=False,
-        publish_model=None,
-        **kwargs
-    ):
+    def __init__(self, ids, status_reason=None, status_message=None, force=False, publish_model=None, **kwargs):
         super(PublishManyRequest, self).__init__(**kwargs)
         self.ids = ids
         self.status_reason = status_reason
@@ -10658,7 +10697,10 @@ class ResetRequest(Request):
                 "type": ["boolean", "null"],
             },
             "return_file_urls": {
-                "description": "If set to 'true' then return the urls of the files that were uploaded by this task. Default value is 'false'",
+                "description": (
+                    "If set to 'true' then return the urls of the files that were uploaded by this task. Default value"
+                    " is 'false'"
+                ),
                 "type": "boolean",
             },
             "status_message": {
@@ -10841,23 +10883,17 @@ class ResetResponse(Response):
                 "type": ["integer", "null"],
             },
             "urls": {
-                "description": "The urls of the files that were uploaded by this task. Returned if the 'return_file_urls' was set to True",
+                "description": (
+                    "The urls of the files that were uploaded by this task. Returned if the 'return_file_urls' was set"
+                    " to True"
+                ),
                 "oneOf": [{"$ref": "#/definitions/task_urls"}, {"type": "null"}],
             },
         },
         "type": "object",
     }
 
-    def __init__(
-        self,
-        updated=None,
-        fields=None,
-        dequeued=None,
-        events=None,
-        deleted_models=None,
-        urls=None,
-        **kwargs
-    ):
+    def __init__(self, updated=None, fields=None, dequeued=None, events=None, deleted_models=None, urls=None, **kwargs):
         super(ResetResponse, self).__init__(**kwargs)
         self.updated = updated
         self.fields = fields
@@ -10981,7 +11017,10 @@ class ResetManyRequest(Request):
                 "type": "boolean",
             },
             "delete_output_models": {
-                "description": "If set to 'true' then delete output models of the tasks that are not referenced by other tasks. Default value is 'true'",
+                "description": (
+                    "If set to 'true' then delete output models of the tasks that are not referenced by other tasks."
+                    " Default value is 'true'"
+                ),
                 "type": "boolean",
             },
             "force": {
@@ -10995,7 +11034,10 @@ class ResetManyRequest(Request):
                 "type": "array",
             },
             "return_file_urls": {
-                "description": "If set to 'true' then return the urls of the files that were uploaded by the tasks. Default value is 'false'",
+                "description": (
+                    "If set to 'true' then return the urls of the files that were uploaded by the tasks. Default value"
+                    " is 'false'"
+                ),
                 "type": "boolean",
             },
         },
@@ -11003,15 +11045,7 @@ class ResetManyRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        ids,
-        force=False,
-        clear_all=False,
-        return_file_urls=None,
-        delete_output_models=None,
-        **kwargs
-    ):
+    def __init__(self, ids, force=False, clear_all=False, return_file_urls=None, delete_output_models=None, **kwargs):
         super(ResetManyRequest, self).__init__(**kwargs)
         self.ids = ids
         self.force = force
@@ -11176,7 +11210,10 @@ class ResetManyResponse(Response):
                         },
                         "urls": {
                             "oneOf": [{"$ref": "#/definitions/task_urls"}, {"type": "null"}],
-                            "description": "The urls of the files that were uploaded by the tasks. Returned if the 'return_file_urls' was set to 'true'",
+                            "description": (
+                                "The urls of the files that were uploaded by the tasks. Returned if the"
+                                " 'return_file_urls' was set to 'true'"
+                            ),
                         },
                     },
                     "type": "object",
@@ -11385,9 +11422,7 @@ class StartedRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self, task, force=False, status_reason=None, status_message=None, **kwargs
-    ):
+    def __init__(self, task, force=False, status_reason=None, status_message=None, **kwargs):
         super(StartedRequest, self).__init__(**kwargs)
         self.force = force
         self.task = task
@@ -11574,9 +11609,7 @@ class StopRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self, task, force=False, status_reason=None, status_message=None, **kwargs
-    ):
+    def __init__(self, task, force=False, status_reason=None, status_message=None, **kwargs):
         super(StopRequest, self).__init__(**kwargs)
         self.force = force
         self.task = task
@@ -11744,9 +11777,7 @@ class StopManyRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self, ids, status_reason=None, status_message=None, force=False, **kwargs
-    ):
+    def __init__(self, ids, status_reason=None, status_message=None, force=False, **kwargs):
         super(StopManyRequest, self).__init__(**kwargs)
         self.ids = ids
         self.status_reason = status_reason
@@ -11953,9 +11984,7 @@ class StoppedRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self, task, force=False, status_reason=None, status_message=None, **kwargs
-    ):
+    def __init__(self, task, force=False, status_reason=None, status_message=None, **kwargs):
         super(StoppedRequest, self).__init__(**kwargs)
         self.force = force
         self.task = task
@@ -12525,8 +12554,7 @@ class UpdateResponse(Response):
 class UpdateBatchRequest(BatchRequest):
     """
     Updates a batch of tasks.
-            Headers
-            Content type should be 'application/json-lines'.
+    Headers Content type should be 'application/json-lines'.
 
     """
 
@@ -12710,7 +12738,9 @@ class ValidateRequest(Request):
                         "type": ["array", "null"],
                     },
                     "framework": {
-                        "description": "Framework related to the task. Case insensitive. Mandatory for Training tasks. ",
+                        "description": (
+                            "Framework related to the task. Case insensitive. Mandatory for Training tasks. "
+                        ),
                         "type": ["string", "null"],
                     },
                     "model_desc": {
@@ -12720,7 +12750,11 @@ class ValidateRequest(Request):
                     },
                     "model_labels": {
                         "additionalProperties": {"type": "integer"},
-                        "description": "Json object representing the ids of the labels in the model.\n                The keys are the layers' names and the values are the IDs.\n                Not applicable for Register (Import) tasks.\n                Mandatory for Training tasks",
+                        "description": (
+                            "Json object representing the ids of the labels in the model.\n                The keys are"
+                            " the layers' names and the values are the IDs.\n                Not applicable for"
+                            " Register (Import) tasks.\n                Mandatory for Training tasks"
+                        ),
                         "type": ["object", "null"],
                     },
                     "parameters": {
@@ -12768,7 +12802,10 @@ class ValidateRequest(Request):
                         "type": ["string", "null"],
                     },
                     "branch": {
-                        "description": "Repository branch id If not provided and tag not provided, default repository branch is used.",
+                        "description": (
+                            "Repository branch id If not provided and tag not provided, default repository branch is"
+                            " used."
+                        ),
                         "type": ["string", "null"],
                     },
                     "diff": {
@@ -12792,11 +12829,15 @@ class ValidateRequest(Request):
                         "type": ["string", "null"],
                     },
                     "version_num": {
-                        "description": "Version (changeset) number. Optional (default is head version) Unused if tag is provided.",
+                        "description": (
+                            "Version (changeset) number. Optional (default is head version) Unused if tag is provided."
+                        ),
                         "type": ["string", "null"],
                     },
                     "working_dir": {
-                        "description": "Path to the folder from which to run the script Default - root folder of repository",
+                        "description": (
+                            "Path to the folder from which to run the script Default - root folder of repository"
+                        ),
                         "type": ["string", "null"],
                     },
                 },
@@ -13084,16 +13125,9 @@ class ValidateRequest(Request):
             return
 
         self.assert_isinstance(value, "hyperparams", dict)
-        self.assert_isinstance(
-            value.keys(), "hyperparams_keys", six.string_types, is_array=True
-        )
-        self.assert_isinstance(
-            value.values(), "hyperparams_values", (SectionParams, dict), is_array=True
-        )
-        value = dict(
-            (k, SectionParams(**v) if isinstance(v, dict) else v)
-            for k, v in value.items()
-        )
+        self.assert_isinstance(value.keys(), "hyperparams_keys", six.string_types, is_array=True)
+        self.assert_isinstance(value.values(), "hyperparams_values", (SectionParams, dict), is_array=True)
+        value = dict((k, SectionParams(**v) if isinstance(v, dict) else v) for k, v in value.items())
 
         self._property_hyperparams = value
 
@@ -13108,9 +13142,7 @@ class ValidateRequest(Request):
             return
 
         self.assert_isinstance(value, "configuration", dict)
-        self.assert_isinstance(
-            value.keys(), "configuration_keys", six.string_types, is_array=True
-        )
+        self.assert_isinstance(value.keys(), "configuration_keys", six.string_types, is_array=True)
         self.assert_isinstance(
             value.values(),
             "configuration_values",
@@ -13118,10 +13150,7 @@ class ValidateRequest(Request):
             is_array=True,
         )
 
-        value = dict(
-            (k, ConfigurationItem(**v) if isinstance(v, dict) else v)
-            for k, v in value.items()
-        )
+        value = dict((k, ConfigurationItem(**v) if isinstance(v, dict) else v) for k, v in value.items())
 
         self._property_configuration = value
 

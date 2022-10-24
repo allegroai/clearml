@@ -4,6 +4,8 @@ import os
 import shutil
 import psutil
 import mimetypes
+import re
+import logging
 from copy import deepcopy, copy
 from multiprocessing.pool import ThreadPool
 from concurrent.futures import ThreadPoolExecutor
@@ -34,24 +36,33 @@ except ImportError:
     _Path = None
 
 try:
-    import pandas as pd
-except ImportError:
-    pd = None
-
-try:
-    import pyarrow
-except ImportError:
-    pyarrow = None
-
-try:
-    import fastparquet
-except ImportError:
-    fastparquet = None
-
-try:
     import numpy as np
 except ImportError:
     np = None
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
+except Exception as e:
+    logging.warning("ClearML Dataset failed importing pandas: {}".format(e))
+    pd = None
+
+try:
+    import pyarrow # noqa
+except ImportError:
+    pyarrow = None
+except Exception as e:
+    logging.warning("ClearML Dataset failed importing pyarrow: {}".format(e))
+    pyarrow = None
+
+try:
+    import fastparquet # noqa
+except ImportError:
+    fastparquet = None
+except Exception as e:
+    logging.warning("ClearML Dataset failed importing fastparquet: {}".format(e))
+    fastparquet = None
 
 
 @attrs
@@ -141,6 +152,10 @@ class Dataset(object):
         self._dataset_version = None
         if dataset_version:
             self._dataset_version = str(dataset_version).strip()
+            if not Version.is_valid_version_string(self._dataset_version):
+                LoggerRoot.get_base_logger().warning(
+                    "Setting non-semantic dataset version '{}'".format(self._dataset_version)
+                )
         if task:
             self._task_pinger = None
             self._created_task = False
@@ -307,6 +322,22 @@ class Dataset(object):
         if bool(Session.check_min_api_server_version(Dataset.__min_api_version)):
             return self._task.get_project_name().partition("/.datasets/")[-1]
         return self._task.name
+
+    @property
+    def version(self):
+        # type: () -> Optional[str]
+        return self._dataset_version
+
+    @version.setter
+    def version(self, version):
+        # type: (str) -> ()
+        version = str(version).strip()
+        self._dataset_version = version
+        if not Version.is_valid_version_string(version):
+            LoggerRoot.get_base_logger().warning("Setting non-semantic dataset version '{}'".format(version))
+        # noinspection PyProtectedMember
+        self._task._set_runtime_properties({"version": version})
+        self._task.set_user_properties(version=version)
 
     @property
     def tags(self):
@@ -808,8 +839,8 @@ class Dataset(object):
     def get_local_copy(self, use_soft_links=None, part=None, num_parts=None, raise_on_error=True, max_workers=None):
         # type: (bool, Optional[int], Optional[int], bool, Optional[int]) -> str
         """
-        return a base folder with a read-only (immutable) local copy of the entire dataset
-            download and copy / soft-link, files from all the parent dataset versions
+        Return a base folder with a read-only (immutable) local copy of the entire dataset
+        download and copy / soft-link, files from all the parent dataset versions. The dataset needs to be finalized
 
         :param use_soft_links: If True use soft links, default False on windows True on Posix systems
         :param part: Optional, if provided only download the selected part (index) of the Dataset.
@@ -832,6 +863,8 @@ class Dataset(object):
         assert self._id
         if not self._task:
             self._task = Task.get_task(task_id=self._id)
+        if not self.is_final():
+            raise ValueError("Cannot get a local copy of a dataset that was not finalized/closed")
         if not max_workers:
             max_workers = psutil.cpu_count()
 
@@ -1509,7 +1542,10 @@ class Dataset(object):
     ):
         # type: (...) -> "Dataset"
         """
-        Get a specific Dataset. If multiple datasets are found, the dataset with the highest version is returned
+        Get a specific Dataset. If multiple datasets are found, the dataset with the
+        highest semantic version is returned. If no semantic version if found, the most recently
+        updated dataset is returned. This functions raises an Exception in case no dataset
+        can be found and the ``auto_create=True`` flag is not set
 
         :param dataset_id: Requested dataset ID
         :param dataset_project: Requested dataset project name
@@ -1517,7 +1553,7 @@ class Dataset(object):
         :param dataset_tags: Requested dataset tags (list of tag strings)
         :param only_completed: Return only if the requested dataset is completed or published
         :param only_published: Return only if the requested dataset is published
-        :param auto_create: Create new dataset if it does not exist yet
+        :param auto_create: Create a new dataset if it does not exist yet
         :param writable_copy: Get a newly created mutable dataset with the current one as its parent,
             so new files can added to the instance.
         :param dataset_version: Requested version of the Dataset
@@ -1532,11 +1568,18 @@ class Dataset(object):
         """
         if not any([dataset_id, dataset_project, dataset_name, dataset_tags]):
             raise ValueError("Dataset selection criteria not met. Didn't provide id/name/project/tags correctly.")
+        current_task = Task.current_task()
+        if not alias and current_task:
+            LoggerRoot.get_base_logger().info(
+                "Dataset.get() did not specify alias. Dataset information "
+                "will not be automatically logged in ClearML Server.")
 
         mutually_exclusive(dataset_id=dataset_id, dataset_project=dataset_project, _require_at_least_one=False)
         mutually_exclusive(dataset_id=dataset_id, dataset_name=dataset_name, _require_at_least_one=False)
 
-        current_task = Task.current_task()
+        invalid_kwargs = [kwarg for kwarg in kwargs.keys() if not kwarg.startswith("_")]
+        if invalid_kwargs:
+            raise ValueError("Invalid 'Dataset.get' arguments: {}".format(invalid_kwargs))
 
         def get_instance(dataset_id_):
             task = Task.get_task(task_id=dataset_id_)
@@ -1736,8 +1779,16 @@ class Dataset(object):
         return squashed_ds
 
     @classmethod
-    def list_datasets(cls, dataset_project=None, partial_name=None, tags=None, ids=None, only_completed=True):
-        # type: (Optional[str], Optional[str], Optional[Sequence[str]], Optional[Sequence[str]], bool) -> List[dict]
+    def list_datasets(
+        cls,
+        dataset_project=None,
+        partial_name=None,
+        tags=None,
+        ids=None,
+        only_completed=True,
+        recursive_project_search=True,
+    ):
+        # type: (Optional[str], Optional[str], Optional[Sequence[str]], Optional[Sequence[str]], bool, bool) -> List[dict]
         """
         Query list of dataset in the system
 
@@ -1746,30 +1797,47 @@ class Dataset(object):
         :param tags: Specify user tags
         :param ids: List specific dataset based on IDs list
         :param only_completed: If False return dataset that are still in progress (uploading/edited etc.)
+        :param recursive_project_search: If True and the `dataset_project` argument is set,
+            search inside subprojects as well.
+            If False, don't search inside subprojects (except for the special `.datasets` subproject)
         :return: List of dictionaries with dataset information
             Example: [{'name': name, 'project': project name, 'id': dataset_id, 'created': date_created},]
         """
+        if dataset_project:
+            if not recursive_project_search:
+                dataset_projects = [
+                    exact_match_regex(dataset_project),
+                    "^{}/\\.datasets/.*".format(re.escape(dataset_project)),
+                ]
+            else:
+                dataset_projects = [exact_match_regex(dataset_project), "^{}/.*".format(re.escape(dataset_project))]
+        else:
+            dataset_projects = None
         # noinspection PyProtectedMember
         datasets = Task._query_tasks(
-            task_ids=ids or None, project_name=dataset_project or None,
+            task_ids=ids or None,
+            project_name=dataset_projects,
             task_name=partial_name,
             system_tags=[cls.__tag],
             type=[str(Task.TaskTypes.data_processing)],
             tags=tags or None,
-            status=['stopped', 'published', 'completed', 'closed'] if only_completed else None,
-            only_fields=['created', 'id', 'name', 'project', 'tags'],
+            status=["stopped", "published", "completed", "closed"] if only_completed else None,
+            only_fields=["created", "id", "name", "project", "tags"],
             search_hidden=True,
-            _allow_extra_fields_=True
+            exact_match_regex_flag=False,
+            _allow_extra_fields_=True,
         )
         project_ids = {d.project for d in datasets}
         # noinspection PyProtectedMember
-        project_id_lookup = {d: Task._get_project_name(d) for d in project_ids}
+        project_id_lookup = Task._get_project_names(project_ids)
         return [
-            {'name': d.name,
-             'created': d.created,
-             'project': project_id_lookup[d.project],
-             'id': d.id,
-             'tags': d.tags}
+            {
+                "name": d.name,
+                "created": d.created,
+                "project": cls._remove_hidden_part_from_dataset_project(project_id_lookup[d.project]),
+                "id": d.id,
+                "tags": d.tags,
+            }
             for d in datasets
         ]
 
@@ -2987,7 +3055,7 @@ class Dataset(object):
                 only_fields=["id", "runtime.version"],
                 search_hidden=True,
                 _allow_extra_fields_=True,
-                **dataset_filter,
+                **dataset_filter
             )
         except Exception:
             datasets = []
@@ -2999,14 +3067,33 @@ class Dataset(object):
             )
         result_dataset = None
         for dataset in datasets:
-            current_version = dataset.runtime.get("version")
-            if not current_version:
-                continue
-            if dataset_version is None and (
-                not result_dataset or Version(result_dataset.runtime["version"]) < Version(current_version)
-            ):
-                result_dataset = dataset
-            elif dataset_version == current_version:
+            candidate_dataset_version = dataset.runtime.get("version")
+            if not dataset_version:
+                if not result_dataset:
+                    result_dataset = dataset
+                else:
+                    # noinspection PyBroadException
+                    try:
+
+                        if (
+                            candidate_dataset_version
+                            and Version.is_valid_version_string(candidate_dataset_version)
+                            and (
+                                (
+                                    not result_dataset.runtime.get("version")
+                                    or not Version.is_valid_version_string(result_dataset.runtime.get("version"))
+                                )
+                                or (
+                                    result_dataset.runtime.get("version")
+                                    and Version(result_dataset.runtime.get("version"))
+                                    < Version(candidate_dataset_version)
+                                )
+                            )
+                        ):
+                            result_dataset = dataset
+                    except Exception:
+                        pass
+            elif dataset_version == candidate_dataset_version:
                 if result_dataset and raise_on_multiple:
                     raise ValueError(
                         "Multiple datasets found with dataset_project={}, dataset_name={}, dataset_version={}".format(

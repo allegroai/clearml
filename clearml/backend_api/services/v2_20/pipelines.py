@@ -109,7 +109,7 @@ class StartPipelineResponse(Response):
 
     :param pipeline: ID of the new pipeline task
     :type pipeline: str
-    :param enqueued: True if the task was successfuly enqueued
+    :param enqueued: True if the task was successfully enqueued
     :type enqueued: bool
     """
 
@@ -121,7 +121,7 @@ class StartPipelineResponse(Response):
         "definitions": {},
         "properties": {
             "enqueued": {
-                "description": "True if the task was successfuly enqueued",
+                "description": "True if the task was successfully enqueued",
                 "type": ["boolean", "null"],
             },
             "pipeline": {

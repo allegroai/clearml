@@ -76,16 +76,7 @@ class MetricsScalarEvent(NonStrictDataModel):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        task,
-        timestamp=None,
-        iter=None,
-        metric=None,
-        variant=None,
-        value=None,
-        **kwargs
-    ):
+    def __init__(self, task, timestamp=None, iter=None, metric=None, variant=None, value=None, **kwargs):
         super(MetricsScalarEvent, self).__init__(**kwargs)
         self.timestamp = timestamp
         self.task = task
@@ -228,16 +219,7 @@ class MetricsVectorEvent(NonStrictDataModel):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        task,
-        timestamp=None,
-        iter=None,
-        metric=None,
-        variant=None,
-        values=None,
-        **kwargs
-    ):
+    def __init__(self, task, timestamp=None, iter=None, metric=None, variant=None, values=None, **kwargs):
         super(MetricsVectorEvent, self).__init__(**kwargs)
         self.timestamp = timestamp
         self.task = task
@@ -329,9 +311,7 @@ class MetricsVectorEvent(NonStrictDataModel):
 
         self.assert_isinstance(value, "values", (list, tuple))
 
-        self.assert_isinstance(
-            value, "values", six.integer_types + (float,), is_array=True
-        )
+        self.assert_isinstance(value, "values", six.integer_types + (float,), is_array=True)
         self._property_values = value
 
 
@@ -380,17 +360,7 @@ class MetricsImageEvent(NonStrictDataModel):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        task,
-        timestamp=None,
-        iter=None,
-        metric=None,
-        variant=None,
-        key=None,
-        url=None,
-        **kwargs
-    ):
+    def __init__(self, task, timestamp=None, iter=None, metric=None, variant=None, key=None, url=None, **kwargs):
         super(MetricsImageEvent, self).__init__(**kwargs)
         self.timestamp = timestamp
         self.task = task
@@ -501,7 +471,7 @@ class MetricsImageEvent(NonStrictDataModel):
 class MetricsPlotEvent(NonStrictDataModel):
     """
      An entire plot (not single datapoint) and it's layout.
-                Used for plotting ROC curves, confidence matrices, etc. when evaluating the net.
+     Used for plotting ROC curves, confidence matrices, etc. when evaluating the net.
 
     :param timestamp: Epoch milliseconds UTC, will be set by the server if not set.
     :type timestamp: float
@@ -522,8 +492,10 @@ class MetricsPlotEvent(NonStrictDataModel):
     """
 
     _schema = {
-        "description": " An entire plot (not single datapoint) and it's layout. "
-        " Used for plotting ROC curves, confidence matrices, etc. when evaluating the net.",
+        "description": (
+            " An entire plot (not single datapoint) and it's layout. "
+            " Used for plotting ROC curves, confidence matrices, etc. when evaluating the net."
+        ),
         "properties": {
             "iter": {"description": "Iteration", "type": "integer"},
             "metric": {
@@ -531,8 +503,10 @@ class MetricsPlotEvent(NonStrictDataModel):
                 "type": "string",
             },
             "plot_str": {
-                "description": "An entire plot (not single datapoint) and it's layout."
-                " Used for plotting ROC curves, confidence matrices, etc. when evaluating the net.",
+                "description": (
+                    "An entire plot (not single datapoint) and it's layout."
+                    " Used for plotting ROC curves, confidence matrices, etc. when evaluating the net."
+                ),
                 "type": "string",
             },
             "skip_validation": {
@@ -555,15 +529,7 @@ class MetricsPlotEvent(NonStrictDataModel):
     }
 
     def __init__(
-        self,
-        task,
-        timestamp=None,
-        iter=None,
-        metric=None,
-        variant=None,
-        plot_str=None,
-        skip_validation=None,
-        **kwargs
+        self, task, timestamp=None, iter=None, metric=None, variant=None, plot_str=None, skip_validation=None, **kwargs
     ):
         super(MetricsPlotEvent, self).__init__(**kwargs)
         self.timestamp = timestamp
@@ -809,9 +775,7 @@ class TaskLogEvent(NonStrictDataModel):
         "type": "object",
     }
 
-    def __init__(
-        self, task, timestamp=None, level=None, worker=None, msg=None, **kwargs
-    ):
+    def __init__(self, task, timestamp=None, level=None, worker=None, msg=None, **kwargs):
         super(TaskLogEvent, self).__init__(**kwargs)
         self.timestamp = timestamp
         self.task = task
@@ -909,13 +873,13 @@ class DebugImagesResponseTaskMetrics(NonStrictDataModel):
                     "properties": {
                         "events": {
                             "items": {
-                                "description": "Debug " "image " "event",
+                                "description": "Debug image event",
                                 "type": "object",
                             },
                             "type": "array",
                         },
                         "iter": {
-                            "description": "Iteration " "number",
+                            "description": "Iteration number",
                             "type": "integer",
                         },
                     },
@@ -962,23 +926,26 @@ class DebugImagesResponseTaskMetrics(NonStrictDataModel):
         self._property_iterations = value
 
 
-class DebugImagesResponse(NonStrictDataModel):
+class DebugImagesResponse(Response):
     """
     :param scroll_id: Scroll ID for getting more results
     :type scroll_id: str
     :param metrics: Debug image events grouped by tasks and iterations
     :type metrics: Sequence[DebugImagesResponseTaskMetrics]
     """
+    _service = "events"
+    _action = "debug_images"
+    _version = "2.20"
 
     _schema = {
         "properties": {
             "metrics": {
-                "description": "Debug image events grouped by " "tasks and iterations",
+                "description": "Debug image events grouped by tasks and iterations",
                 "items": {"$ref": "#/definitions/debug_images_response_task_metrics"},
                 "type": ["array", "null"],
             },
             "scroll_id": {
-                "description": "Scroll ID for getting more " "results",
+                "description": "Scroll ID for getting more results",
                 "type": ["string", "null"],
             },
         },
@@ -1015,16 +982,9 @@ class DebugImagesResponse(NonStrictDataModel):
 
         self.assert_isinstance(value, "metrics", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                DebugImagesResponseTaskMetrics.from_dict(v)
-                if isinstance(v, dict)
-                else v
-                for v in value
-            ]
+            value = [DebugImagesResponseTaskMetrics.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
-            self.assert_isinstance(
-                value, "metrics", DebugImagesResponseTaskMetrics, is_array=True
-            )
+            self.assert_isinstance(value, "metrics", DebugImagesResponseTaskMetrics, is_array=True)
         self._property_metrics = value
 
 
@@ -1042,11 +1002,11 @@ class PlotsResponseTaskMetrics(NonStrictDataModel):
                 "items": {
                     "properties": {
                         "events": {
-                            "items": {"description": "Plot " "event", "type": "object"},
+                            "items": {"description": "Plot event", "type": "object"},
                             "type": "array",
                         },
                         "iter": {
-                            "description": "Iteration " "number",
+                            "description": "Iteration number",
                             "type": "integer",
                         },
                     },
@@ -1093,23 +1053,26 @@ class PlotsResponseTaskMetrics(NonStrictDataModel):
         self._property_iterations = value
 
 
-class PlotsResponse(NonStrictDataModel):
+class PlotsResponse(Response):
     """
     :param scroll_id: Scroll ID for getting more results
     :type scroll_id: str
     :param metrics: Plot events grouped by tasks and iterations
     :type metrics: Sequence[PlotsResponseTaskMetrics]
     """
+    _service = "events"
+    _action = "plots"
+    _version = "2.20"
 
     _schema = {
         "properties": {
             "metrics": {
-                "description": "Plot events grouped by tasks and " "iterations",
+                "description": "Plot events grouped by tasks and iterations",
                 "items": {"$ref": "#/definitions/plots_response_task_metrics"},
                 "type": ["array", "null"],
             },
             "scroll_id": {
-                "description": "Scroll ID for getting more " "results",
+                "description": "Scroll ID for getting more results",
                 "type": ["string", "null"],
             },
         },
@@ -1146,14 +1109,9 @@ class PlotsResponse(NonStrictDataModel):
 
         self.assert_isinstance(value, "metrics", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                PlotsResponseTaskMetrics.from_dict(v) if isinstance(v, dict) else v
-                for v in value
-            ]
+            value = [PlotsResponseTaskMetrics.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
-            self.assert_isinstance(
-                value, "metrics", PlotsResponseTaskMetrics, is_array=True
-            )
+            self.assert_isinstance(value, "metrics", PlotsResponseTaskMetrics, is_array=True)
         self._property_metrics = value
 
 
@@ -1174,31 +1132,24 @@ class DebugImageSampleResponse(NonStrictDataModel):
         "properties": {
             "event": {"description": "Debug image event", "type": ["object", "null"]},
             "max_iteration": {
-                "description": "maximal valid iteration for " "the variant",
+                "description": "maximal valid iteration for the variant",
                 "type": ["integer", "null"],
             },
             "min_iteration": {
-                "description": "minimal valid iteration for " "the variant",
+                "description": "minimal valid iteration for the variant",
                 "type": ["integer", "null"],
             },
             "scroll_id": {
-                "description": "Scroll ID to pass to the next "
-                "calls to get_debug_image_sample "
-                "or next_debug_image_sample",
+                "description": (
+                    "Scroll ID to pass to the next calls to get_debug_image_sample or next_debug_image_sample"
+                ),
                 "type": ["string", "null"],
             },
         },
         "type": "object",
     }
 
-    def __init__(
-        self,
-        scroll_id=None,
-        event=None,
-        min_iteration=None,
-        max_iteration=None,
-        **kwargs
-    ):
+    def __init__(self, scroll_id=None, event=None, min_iteration=None, max_iteration=None, **kwargs):
         super(DebugImageSampleResponse, self).__init__(**kwargs)
         self.scroll_id = scroll_id
         self.event = event
@@ -1279,31 +1230,22 @@ class PlotSampleResponse(NonStrictDataModel):
         "properties": {
             "event": {"description": "Plot event", "type": ["object", "null"]},
             "max_iteration": {
-                "description": "maximal valid iteration for " "the variant",
+                "description": "maximal valid iteration for the variant",
                 "type": ["integer", "null"],
             },
             "min_iteration": {
-                "description": "minimal valid iteration for " "the variant",
+                "description": "minimal valid iteration for the variant",
                 "type": ["integer", "null"],
             },
             "scroll_id": {
-                "description": "Scroll ID to pass to the next "
-                "calls to get_plot_sample or "
-                "next_plot_sample",
+                "description": "Scroll ID to pass to the next calls to get_plot_sample or next_plot_sample",
                 "type": ["string", "null"],
             },
         },
         "type": "object",
     }
 
-    def __init__(
-        self,
-        scroll_id=None,
-        event=None,
-        min_iteration=None,
-        max_iteration=None,
-        **kwargs
-    ):
+    def __init__(self, scroll_id=None, event=None, min_iteration=None, max_iteration=None, **kwargs):
         super(PlotSampleResponse, self).__init__(**kwargs)
         self.scroll_id = scroll_id
         self.event = event
@@ -1428,8 +1370,10 @@ class AddRequest(CompoundRequest):
                 "type": "object",
             },
             "metrics_plot_event": {
-                "description": " An entire plot (not single datapoint) and it's layout. "
-                "Used for plotting ROC curves, confidence matrices, etc. when evaluating the net.",
+                "description": (
+                    " An entire plot (not single datapoint) and it's layout. "
+                    "Used for plotting ROC curves, confidence matrices, etc. when evaluating the net."
+                ),
                 "properties": {
                     "iter": {"description": "Iteration", "type": "integer"},
                     "metric": {
@@ -1437,9 +1381,11 @@ class AddRequest(CompoundRequest):
                         "type": "string",
                     },
                     "plot_str": {
-                        "description": "An entire plot (not single datapoint) and it's layout. "
-                                       "Used for plotting ROC curves, confidence matrices, etc. "
-                                       "when evaluating the net.",
+                        "description": (
+                            "An entire plot (not single datapoint) and it's layout. "
+                            "Used for plotting ROC curves, confidence matrices, etc. "
+                            "when evaluating the net."
+                        ),
                         "type": "string",
                     },
                     "skip_validation": {
@@ -1760,9 +1706,11 @@ class ClearTaskLogRequest(Request):
             },
             "task": {"description": "Task ID", "type": "string"},
             "threshold_sec": {
-                "description": "The amount of seconds ago to retain the log records. "
-                               "The older log records will be deleted. If not passed or 0 "
-                               "then all the log records for the task will be deleted",
+                "description": (
+                    "The amount of seconds ago to retain the log records. "
+                    "The older log records will be deleted. If not passed or 0 "
+                    "then all the log records for the task will be deleted"
+                ),
                 "type": "integer",
             },
         },
@@ -1887,8 +1835,8 @@ class DebugImagesRequest(Request):
         "definitions": {
             "task_metric_variants": {
                 "properties": {
-                    "metric": {"description": "Metric " "name", "type": "string"},
-                    "task": {"description": "Task " "ID", "type": "string"},
+                    "metric": {"description": "Metric name", "type": "string"},
+                    "task": {"description": "Task ID", "type": "string"},
                     "variants": {
                         "description": "Metric variant names",
                         "items": {"type": "string"},
@@ -1910,14 +1858,15 @@ class DebugImagesRequest(Request):
                 "type": "array",
             },
             "navigate_earlier": {
-                "description": "If set then events are retreived from latest "
-                "iterations to earliest ones. Otherwise from "
-                "earliest iterations to the latest. The default is True",
+                "description": (
+                    "If set then events are retreived from latest "
+                    "iterations to earliest ones. Otherwise from "
+                    "earliest iterations to the latest. The default is True"
+                ),
                 "type": "boolean",
             },
             "refresh": {
-                "description": "If set then scroll will be moved to the latest iterations. "
-                               "The default is False",
+                "description": "If set then scroll will be moved to the latest iterations. The default is False",
                 "type": "boolean",
             },
             "scroll_id": {
@@ -1929,15 +1878,7 @@ class DebugImagesRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        metrics,
-        iters=None,
-        navigate_earlier=None,
-        refresh=None,
-        scroll_id=None,
-        **kwargs
-    ):
+    def __init__(self, metrics, iters=None, navigate_earlier=None, refresh=None, scroll_id=None, **kwargs):
         super(DebugImagesRequest, self).__init__(**kwargs)
         self.metrics = metrics
         self.iters = iters
@@ -1957,10 +1898,7 @@ class DebugImagesRequest(Request):
 
         self.assert_isinstance(value, "metrics", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                TaskMetricVariants.from_dict(v) if isinstance(v, dict) else v
-                for v in value
-            ]
+            value = [TaskMetricVariants.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "metrics", TaskMetricVariants, is_array=True)
         self._property_metrics = value
@@ -2154,13 +2092,7 @@ class DownloadTaskLogRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        task,
-        line_type=None,
-        line_format="{asctime} {worker} {level} {msg}",
-        **kwargs
-    ):
+    def __init__(self, task, line_type=None, line_format="{asctime} {worker} {level} {msg}", **kwargs):
         super(DownloadTaskLogRequest, self).__init__(**kwargs)
         self.task = task
         self.line_type = line_type
@@ -2251,26 +2183,30 @@ class GetDebugImageSampleRequest(Request):
         "definitions": {},
         "properties": {
             "iteration": {
-                "description": "The iteration to bring debug image from. If not specified "
-                "then the latest reported image is retrieved",
+                "description": (
+                    "The iteration to bring debug image from. If not specified "
+                    "then the latest reported image is retrieved"
+                ),
                 "type": "integer",
             },
             "metric": {"description": "Metric name", "type": "string"},
             "navigate_current_metric": {
                 "default": True,
-                "description": "If set then subsequent navigation with "
-                "next_debug_image_sample is done on the debug images for "
-                "the passed metric only. Otherwise for all the metrics",
+                "description": (
+                    "If set then subsequent navigation with "
+                    "next_debug_image_sample is done on the debug images for "
+                    "the passed metric only. Otherwise for all the metrics"
+                ),
                 "type": "boolean",
             },
             "refresh": {
-                "description": "If set then scroll state will be "
-                "refreshed to reflect the latest changes in the debug images",
+                "description": (
+                    "If set then scroll state will be refreshed to reflect the latest changes in the debug images"
+                ),
                 "type": "boolean",
             },
             "scroll_id": {
-                "description": "Scroll ID from the previous call "
-                "to get_debug_image_sample or empty",
+                "description": "Scroll ID from the previous call to get_debug_image_sample or empty",
                 "type": "string",
             },
             "task": {"description": "Task ID", "type": "string"},
@@ -2410,7 +2346,7 @@ class GetDebugImageSampleResponse(Response):
             "debug_image_sample_response": {
                 "properties": {
                     "event": {
-                        "description": "Debug " "image " "event",
+                        "description": "Debug image event",
                         "type": ["object", "null"],
                     },
                     "max_iteration": {
@@ -2422,8 +2358,9 @@ class GetDebugImageSampleResponse(Response):
                         "type": ["integer", "null"],
                     },
                     "scroll_id": {
-                        "description": "Scroll ID to pass to the next calls to get_debug_image_sample "
-                                       "or next_debug_image_sample",
+                        "description": (
+                            "Scroll ID to pass to the next calls to get_debug_image_sample or next_debug_image_sample"
+                        ),
                         "type": ["string", "null"],
                     },
                 },
@@ -2674,20 +2611,22 @@ class GetPlotSampleRequest(Request):
         "definitions": {},
         "properties": {
             "iteration": {
-                "description": "The iteration to bring plot from. If not specified then the "
-                "latest reported plot is retrieved",
+                "description": (
+                    "The iteration to bring plot from. If not specified then the latest reported plot is retrieved"
+                ),
                 "type": "integer",
             },
             "metric": {"description": "Metric name", "type": "string"},
             "navigate_current_metric": {
                 "default": True,
-                "description": "If set then subsequent navigation with next_plot_sample is done on the "
-                "plots for the passed metric only. Otherwise for all the metrics",
+                "description": (
+                    "If set then subsequent navigation with next_plot_sample is done on the "
+                    "plots for the passed metric only. Otherwise for all the metrics"
+                ),
                 "type": "boolean",
             },
             "refresh": {
-                "description": "If set then scroll state will be refreshed to reflect the latest "
-                "changes in the plots",
+                "description": "If set then scroll state will be refreshed to reflect the latest changes in the plots",
                 "type": "boolean",
             },
             "scroll_id": {
@@ -2843,8 +2782,7 @@ class GetPlotSampleResponse(Response):
                         "type": ["integer", "null"],
                     },
                     "scroll_id": {
-                        "description": "Scroll ID to pass to the next calls to get_plot_sample "
-                        "or next_plot_sample",
+                        "description": "Scroll ID to pass to the next calls to get_plot_sample or next_plot_sample",
                         "type": ["string", "null"],
                     },
                 },
@@ -2971,9 +2909,7 @@ class GetScalarMetricDataResponse(Response):
         "type": "object",
     }
 
-    def __init__(
-        self, events=None, returned=None, total=None, scroll_id=None, **kwargs
-    ):
+    def __init__(self, events=None, returned=None, total=None, scroll_id=None, **kwargs):
         super(GetScalarMetricDataResponse, self).__init__(**kwargs)
         self.events = events
         self.returned = returned
@@ -3089,9 +3025,7 @@ class GetScalarMetricsAndVariantsResponse(Response):
 
     _schema = {
         "definitions": {},
-        "properties": {
-            "metrics": {"additionalProperties": True, "type": ["object", "null"]}
-        },
+        "properties": {"metrics": {"additionalProperties": True, "type": ["object", "null"]}},
         "type": "object",
     }
 
@@ -3158,15 +3092,7 @@ class GetTaskEventsRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        task,
-        order=None,
-        scroll_id=None,
-        batch_size=None,
-        event_type=None,
-        **kwargs
-    ):
+    def __init__(self, task, order=None, scroll_id=None, batch_size=None, event_type=None, **kwargs):
         super(GetTaskEventsRequest, self).__init__(**kwargs)
         self.task = task
         self.order = order
@@ -3284,9 +3210,7 @@ class GetTaskEventsResponse(Response):
         "type": "object",
     }
 
-    def __init__(
-        self, events=None, returned=None, total=None, scroll_id=None, **kwargs
-    ):
+    def __init__(self, events=None, returned=None, total=None, scroll_id=None, **kwargs):
         super(GetTaskEventsResponse, self).__init__(**kwargs)
         self.events = events
         self.returned = returned
@@ -3488,22 +3412,28 @@ class GetTaskLogRequest(Request):
                 "type": "integer",
             },
             "from_timestamp": {
-                "description": "Epoch time in UTC ms to use as the navigation start. Optional. If not provided, "
-                               "reference timestamp is determined by the 'navigate_earlier' parameter (if true, "
-                               "reference timestamp is the last timestamp and if false, reference timestamp "
-                               "is the first timestamp)",
+                "description": (
+                    "Epoch time in UTC ms to use as the navigation start. Optional. If not provided, "
+                    "reference timestamp is determined by the 'navigate_earlier' parameter (if true, "
+                    "reference timestamp is the last timestamp and if false, reference timestamp "
+                    "is the first timestamp)"
+                ),
                 "type": "number",
             },
             "navigate_earlier": {
-                "description": "If set then log events are retreived from the latest to the earliest ones "
-                               "(in timestamp descending order, unless order='asc'). Otherwise from the earliest to "
-                               "the latest ones (in timestamp ascending order, unless order='desc'). "
-                               "The default is True",
+                "description": (
+                    "If set then log events are retreived from the latest to the earliest ones "
+                    "(in timestamp descending order, unless order='asc'). Otherwise from the earliest to "
+                    "the latest ones (in timestamp ascending order, unless order='desc'). "
+                    "The default is True"
+                ),
                 "type": "boolean",
             },
             "order": {
-                "description": "If set, changes the order in which log events are returned based on the value "
-                               "of 'navigate_earlier'",
+                "description": (
+                    "If set, changes the order in which log events are returned based on the value "
+                    "of 'navigate_earlier'"
+                ),
                 "enum": ["asc", "desc"],
                 "type": "string",
             },
@@ -3513,15 +3443,7 @@ class GetTaskLogRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        task,
-        batch_size=None,
-        navigate_earlier=None,
-        from_timestamp=None,
-        order=None,
-        **kwargs
-    ):
+    def __init__(self, task, batch_size=None, navigate_earlier=None, from_timestamp=None, order=None, **kwargs):
         super(GetTaskLogRequest, self).__init__(**kwargs)
         self.task = task
         self.batch_size = batch_size
@@ -3863,9 +3785,7 @@ class GetTaskPlotsRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self, task, iters=None, scroll_id=None, metrics=None, no_scroll=False, **kwargs
-    ):
+    def __init__(self, task, iters=None, scroll_id=None, metrics=None, no_scroll=False, **kwargs):
         super(GetTaskPlotsRequest, self).__init__(**kwargs)
         self.task = task
         self.iters = iters
@@ -3926,9 +3846,7 @@ class GetTaskPlotsRequest(Request):
 
         self.assert_isinstance(value, "metrics", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                MetricVariants.from_dict(v) if isinstance(v, dict) else v for v in value
-            ]
+            value = [MetricVariants.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "metrics", MetricVariants, is_array=True)
         self._property_metrics = value
@@ -4264,7 +4182,11 @@ class MultiTaskScalarMetricsIterHistogramRequest(Request):
         "properties": {
             "key": {
                 "$ref": "#/definitions/scalar_key_enum",
-                "description": "\n                        Histogram x axis to use:\n                        iter - iteration number\n                        iso_time - event time as ISO formatted string\n                        timestamp - event timestamp as milliseconds since epoch\n                        ",
+                "description": (
+                    "\n                        Histogram x axis to use:\n                        iter - iteration"
+                    " number\n                        iso_time - event time as ISO formatted string\n                  "
+                    "      timestamp - event timestamp as milliseconds since epoch\n                        "
+                ),
             },
             "samples": {
                 "description": "The amount of histogram points to return. Optional, the default value is 6000",
@@ -4370,9 +4292,11 @@ class NextDebugImageSampleRequest(Request):
         "definitions": {},
         "properties": {
             "navigate_earlier": {
-                "description": "If set then get the either previous variant event from the current "
-                "iteration or (if does not exist) the last variant event from the previous iteration. "
-                "Otherwise next variant event from the current iteration or first variant event from the next iteration",
+                "description": (
+                    "If set then get the either previous variant event from the current iteration or (if does not"
+                    " exist) the last variant event from the previous iteration. Otherwise next variant event from the"
+                    " current iteration or first variant event from the next iteration"
+                ),
                 "type": "boolean",
             },
             "scroll_id": {
@@ -4459,7 +4383,9 @@ class NextDebugImageSampleResponse(Response):
                         "type": ["integer", "null"],
                     },
                     "scroll_id": {
-                        "description": "Scroll ID to pass to the next calls to get_debug_image_sample or next_debug_image_sample",
+                        "description": (
+                            "Scroll ID to pass to the next calls to get_debug_image_sample or next_debug_image_sample"
+                        ),
                         "type": ["string", "null"],
                     },
                 },
@@ -4491,10 +4417,12 @@ class NextPlotSampleRequest(Request):
         "definitions": {},
         "properties": {
             "navigate_earlier": {
-                "description": "If set then get the either previous variant event from the current "
-                "iteration or (if does not exist) the last variant event from the previous iteration. "
-                "Otherwise next variant event from the current iteration or first variant event from the "
-                "next iteration",
+                "description": (
+                    "If set then get the either previous variant event from the current "
+                    "iteration or (if does not exist) the last variant event from the previous iteration. "
+                    "Otherwise next variant event from the current iteration or first variant event from the "
+                    "next iteration"
+                ),
                 "type": "boolean",
             },
             "scroll_id": {
@@ -4640,8 +4568,10 @@ class PlotsRequest(Request):
                 "type": "array",
             },
             "navigate_earlier": {
-                "description": "If set then events are retreived from latest iterations to earliest ones. "
-                               "Otherwise from earliest iterations to the latest. The default is True",
+                "description": (
+                    "If set then events are retreived from latest iterations to earliest ones. "
+                    "Otherwise from earliest iterations to the latest. The default is True"
+                ),
                 "type": "boolean",
             },
             "refresh": {
@@ -4657,15 +4587,7 @@ class PlotsRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        metrics,
-        iters=None,
-        navigate_earlier=None,
-        refresh=None,
-        scroll_id=None,
-        **kwargs
-    ):
+    def __init__(self, metrics, iters=None, navigate_earlier=None, refresh=None, scroll_id=None, **kwargs):
         super(PlotsRequest, self).__init__(**kwargs)
         self.metrics = metrics
         self.iters = iters
@@ -4685,10 +4607,7 @@ class PlotsRequest(Request):
 
         self.assert_isinstance(value, "metrics", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                TaskMetricVariants.from_dict(v) if isinstance(v, dict) else v
-                for v in value
-            ]
+            value = [TaskMetricVariants.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "metrics", TaskMetricVariants, is_array=True)
         self._property_metrics = value
@@ -4758,8 +4677,7 @@ class ScalarMetricsIterHistogramRequest(Request):
         points). Optional, the default value is 6000.
     :type samples: int
     :param key: Histogram x axis to use: iter - iteration number iso_time - event
-        time as ISO formatted string timestamp - event timestamp as milliseconds since
-        epoch
+        time as ISO formatted string timestamp - event timestamp as milliseconds since epoch
     :type key: ScalarKeyEnum
     :param metrics: List of metrics and variants
     :type metrics: Sequence[MetricVariants]
@@ -4774,7 +4692,7 @@ class ScalarMetricsIterHistogramRequest(Request):
                 "metric": {"description": "The metric name", "type": "string"},
                 "type": "object",
                 "variants": {
-                    "description": "The names of the metric " "variants",
+                    "description": "The names of the metric variants",
                     "items": {"type": "string"},
                     "type": "array",
                 },
@@ -4787,16 +4705,12 @@ class ScalarMetricsIterHistogramRequest(Request):
         "properties": {
             "key": {
                 "$ref": "#/definitions/scalar_key_enum",
-                "description": "\n"
-                "                    Histogram x axis "
-                "to use:\n"
-                "                    iter - iteration "
-                "number\n"
-                "                    iso_time - event "
-                "time as ISO formatted string\n"
-                "                    timestamp - event "
-                "timestamp as milliseconds since "
-                "epoch\n",
+                "description": (
+                    "Histogram x axis to use:"
+                    "iter - iteration number"
+                    "iso_time - event time as ISO formatted string"
+                    "timestamp - event timestamp as milliseconds since epoch"
+                ),
             },
             "metrics": {
                 "description": "List of metrics and variants",
@@ -4804,7 +4718,10 @@ class ScalarMetricsIterHistogramRequest(Request):
                 "type": "array",
             },
             "samples": {
-                "description": "The amount of histogram points to return (0 to return all the points). Optional, the default value is 6000.",
+                "description": (
+                    "The amount of histogram points to return (0 to return all the points). Optional, the default value"
+                    " is 6000."
+                ),
                 "type": "integer",
             },
             "task": {"description": "Task ID", "type": "string"},
@@ -4878,9 +4795,7 @@ class ScalarMetricsIterHistogramRequest(Request):
 
         self.assert_isinstance(value, "metrics", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                MetricVariants.from_dict(v) if isinstance(v, dict) else v for v in value
-            ]
+            value = [MetricVariants.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "metrics", MetricVariants, is_array=True)
         self._property_metrics = value
@@ -4900,9 +4815,7 @@ class ScalarMetricsIterHistogramResponse(Response):
 
     _schema = {
         "definitions": {},
-        "properties": {
-            "images": {"items": {"type": "object"}, "type": ["array", "null"]}
-        },
+        "properties": {"images": {"items": {"type": "object"}, "type": ["array", "null"]}},
         "type": "object",
     }
 
@@ -4957,7 +4870,7 @@ class ScalarMetricsIterRawRequest(Request):
                 "metric": {"description": "The metric name", "type": "string"},
                 "type": "object",
                 "variants": {
-                    "description": "The names of the metric " "variants",
+                    "description": "The names of the metric variants",
                     "items": {"type": "string"},
                     "type": "array",
                 },
@@ -4970,25 +4883,27 @@ class ScalarMetricsIterRawRequest(Request):
         "properties": {
             "batch_size": {
                 "default": 10000,
-                "description": "The number of data points to return for this call. Optional, the default value is 10000. "
-                " Maximum batch size is 200000",
+                "description": (
+                    "The number of data points to return for this call. Optional, the default value is 10000. "
+                    " Maximum batch size is 200000"
+                ),
                 "type": "integer",
             },
             "count_total": {
                 "default": False,
-                "description": "Count the total number of data points. If false, total number of data points is not "
-                               "counted and null is returned",
+                "description": (
+                    "Count the total number of data points. If false, total number of data points is not "
+                    "counted and null is returned"
+                ),
                 "type": "boolean",
             },
             "key": {
                 "$ref": "#/definitions/scalar_key_enum",
-                "description": "Array of x axis to return. Supported "
-                "values:\n"
-                "                    iter - iteration "
-                "number\n"
-                "                    timestamp - event "
-                "timestamp as milliseconds since "
-                "epoch\n",
+                "description": (
+                    "Array of x axis to return. Supported values:"
+                    "iter - iteration number"
+                    "timestamp - event timestamp as milliseconds since epoch"
+                ),
             },
             "metric": {
                 "$ref": "#/definitions/metric_variants",
@@ -5004,16 +4919,7 @@ class ScalarMetricsIterRawRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        task,
-        metric,
-        key=None,
-        batch_size=10000,
-        count_total=False,
-        scroll_id=None,
-        **kwargs
-    ):
+    def __init__(self, task, metric, key=None, batch_size=10000, count_total=False, scroll_id=None, **kwargs):
         super(ScalarMetricsIterRawRequest, self).__init__(**kwargs)
         self.task = task
         self.metric = metric
@@ -5135,8 +5041,10 @@ class ScalarMetricsIterRawResponse(Response):
         "definitions": {},
         "properties": {
             "returned": {
-                "description": "Number of data points returned in this call. If 0 results were "
-                "returned, no more results are avilable",
+                "description": (
+                    "Number of data points returned in this call. If 0 results were "
+                    "returned, no more results are avilable"
+                ),
                 "type": ["integer", "null"],
             },
             "scroll_id": {
@@ -5156,9 +5064,7 @@ class ScalarMetricsIterRawResponse(Response):
         "type": "object",
     }
 
-    def __init__(
-        self, variants=None, total=None, returned=None, scroll_id=None, **kwargs
-    ):
+    def __init__(self, variants=None, total=None, returned=None, scroll_id=None, **kwargs):
         super(ScalarMetricsIterRawResponse, self).__init__(**kwargs)
         self.variants = variants
         self.total = total
@@ -5308,9 +5214,7 @@ class VectorMetricsIterHistogramResponse(Response):
 
     _schema = {
         "definitions": {},
-        "properties": {
-            "images": {"items": {"type": "object"}, "type": ["array", "null"]}
-        },
+        "properties": {"images": {"items": {"type": "object"}, "type": ["array", "null"]}},
         "type": "object",
     }
 

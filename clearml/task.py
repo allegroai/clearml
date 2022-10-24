@@ -18,7 +18,20 @@ try:
 except ImportError:
     from collections import Sequence as CollectionsSequence
 
-from typing import Optional, Union, Mapping, Sequence, Any, Dict, Iterable, TYPE_CHECKING, Callable, Tuple, List
+from typing import (
+    Optional,
+    Union,
+    Mapping,
+    Sequence,
+    Any,
+    Dict,
+    Iterable,
+    TYPE_CHECKING,
+    Callable,
+    Tuple,
+    List,
+    TypeVar,
+)
 
 import psutil
 import six
@@ -93,6 +106,9 @@ if TYPE_CHECKING:
     import pandas
     import numpy
     from PIL import Image
+
+# Forward declaration to help linters
+TaskInstance = TypeVar("TaskInstance", bound="Task")
 
 
 class Task(_Task):
@@ -195,12 +211,13 @@ class Task(_Task):
 
     @classmethod
     def current_task(cls):
-        # type: () -> Task
+        # type: () -> TaskInstance
         """
         Get the current running Task (experiment). This is the main execution Task (task context) returned as a Task
         object.
 
         :return: The current running Task (experiment).
+        :rtype: Task
         """
         # check if we have no main Task, but the main process created one.
         if not cls.__main_task and cls.__get_master_id_task_id():
@@ -225,7 +242,7 @@ class Task(_Task):
             auto_connect_streams=True,  # type: Union[bool, Mapping[str, bool]]
             deferred_init=False,  # type: bool
     ):
-        # type: (...) -> Task
+        # type: (...) -> TaskInstance
         """
         Creates a new Task (experiment) if:
 
@@ -360,7 +377,7 @@ class Task(_Task):
 
             .. code-block:: py
 
-               auto_connect_arg_parser={'do_not_include_me': False, }
+               auto_connect_arg_parser={"do_not_include_me": False, }
 
             .. code-block:: py
 
@@ -450,6 +467,7 @@ class Task(_Task):
                 and Task init is called synchronously (default)
 
         :return: The main execution Task (Task context)
+        :rtype: Task
         """
 
         def verify_defaults_match():
@@ -793,7 +811,7 @@ class Task(_Task):
             base_task_id=None,  # type: Optional[str]
             add_task_init_call=True,  # type: bool
     ):
-        # type: (...) -> Task
+        # type: (...) -> TaskInstance
         """
         Manually create and populate a new Task (experiment) in the system.
         If the code does not already contain a call to ``Task.init``, pass add_task_init_call=True,
@@ -835,6 +853,7 @@ class Task(_Task):
         :param add_task_init_call: If True, a 'Task.init()' call is added to the script entry point in remote execution.
 
         :return: The newly created Task (experiment)
+        :rtype: Task
         """
         if not project_name and not base_task_id:
             if not cls.__main_task:
@@ -869,7 +888,7 @@ class Task(_Task):
             allow_archived=True,  # type: bool
             task_filter=None  # type: Optional[dict]
     ):
-        # type: (...) -> "Task"
+        # type: (...) -> TaskInstance
         """
         Get a Task by Id, or project name / task name combination.
 
@@ -915,6 +934,7 @@ class Task(_Task):
             Pass additional query filters, on top of project/name. See details in Task.get_tasks.
 
         :return: The Task specified by ID, or project name / experiment name combination.
+        :rtype: Task
         """
         return cls.__get_task(
             task_id=task_id, project_name=project_name, task_name=task_name, tags=tags,
@@ -930,7 +950,7 @@ class Task(_Task):
             tags=None,  # type: Optional[Sequence[str]]
             task_filter=None  # type: Optional[Dict]
     ):
-        # type: (...) -> List["Task"]
+        # type: (...) -> List[TaskInstance]
         """
         Get a list of Tasks objects matching the queries/filters
 
@@ -984,6 +1004,7 @@ class Task(_Task):
                 {'order_by'=['-last_update'], '_all_'=dict(fields=['script.repository'], pattern='github.com/user'))
 
         :return: The Tasks specified by the parameter combinations (see the parameters).
+        :rtype: List[Task]
         """
         return cls.__get_tasks(task_ids=task_ids, project_name=project_name, tags=tags,
                                task_name=task_name, **(task_filter or {}))
@@ -1160,7 +1181,7 @@ class Task(_Task):
             parent=None,  # type: Optional[str]
             project=None,  # type: Optional[str]
     ):
-        # type: (...) -> Task
+        # type: (...) -> TaskInstance
         """
         Create a duplicate (a clone) of a Task (experiment). The status of the cloned Task is ``Draft``
         and modifiable.
@@ -1180,6 +1201,7 @@ class Task(_Task):
             If ``None``, the new task inherits the original Task's project. (Optional)
 
         :return: The new cloned Task (experiment).
+        :rtype: Task
         """
         assert isinstance(source_task, (six.string_types, Task))
         if not Session.check_min_api_version('2.4'):
@@ -1611,8 +1633,8 @@ class Task(_Task):
             .. code-block:: javascript
 
                {
-                    'background': 0,
-                    'person': 1
+                    "background": 0,
+                    "person": 1
                }
 
         :return: The label enumeration dictionary (JSON).
@@ -1861,6 +1883,7 @@ class Task(_Task):
             preview=None,  # type: Any
             wait_on_upload=False,  # type: bool
             extension_name=None,  # type: Optional[str]
+            serialization_function=None  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
     ):
         # type: (...) -> bool
         """
@@ -1903,10 +1926,18 @@ class Task(_Task):
         :param str extension_name: File extension which indicates the format the artifact should be stored as.
             The following are supported, depending on the artifact type
             (default value applies when extension_name is None):
+        - Any - ``.pkl`` if passed supersedes any other serialization type, and always pickles the object
         - dict - ``.json``, ``.yaml`` (default ``.json``)
         - pandas.DataFrame - ``.csv.gz``, ``.parquet``, ``.feather``, ``.pickle`` (default ``.csv.gz``)
         - numpy.ndarray - ``.npz``, ``.csv.gz`` (default ``.npz``)
         - PIL.Image - whatever extensions PIL supports (default ``.png``)
+        - In case the ``serialization_function`` argument is set - any extension is supported
+
+        :param Callable[Any, Union[bytes, bytearray]] serialization_function: A serialization function that takes one
+            parameter of any types which is the object to be serialized. The function should return a `bytes` or `bytearray`
+            object, which represents the serialized object. Note that the object will be immediately serialized using this function,
+            thus other serialization methods will not be used (e.g. `pandas.DataFrame.to_csv`), even if possible.
+            To deserialize this artifact when getting it using the `Artifact.get` method, use its `deserialization_function` argument
 
         :return: The status of the upload.
 
@@ -1916,8 +1947,16 @@ class Task(_Task):
         :raise: If the artifact object type is not supported, raise a ``ValueError``.
         """
         return self._artifacts_manager.upload_artifact(
-            name=name, artifact_object=artifact_object, metadata=metadata, delete_after_upload=delete_after_upload,
-            auto_pickle=auto_pickle, preview=preview, wait_on_upload=wait_on_upload, extension_name=extension_name)
+            name=name,
+            artifact_object=artifact_object,
+            metadata=metadata,
+            delete_after_upload=delete_after_upload,
+            auto_pickle=auto_pickle,
+            preview=preview,
+            wait_on_upload=wait_on_upload,
+            extension_name=extension_name,
+            serialization_function=serialization_function,
+        )
 
     def get_models(self):
         # type: () -> Mapping[str, Sequence[Model]]
@@ -2014,8 +2053,8 @@ class Task(_Task):
             .. code-block:: javascript
 
                {
-                    'background': 0,
-                    'person': 1
+                    "background": 0,
+                    "person": 1
                }
         """
         super(Task, self).set_model_label_enumeration(enumeration=enumeration)
@@ -2064,11 +2103,11 @@ class Task(_Task):
         .. code-block:: javascript
 
            {
-            'title': {
-                'series': {
-                    'last': 0.5,
-                    'min': 0.1,
-                    'max': 0.9
+            "title": {
+                "series": {
+                    "last": 0.5,
+                    "min": 0.1,
+                    "max": 0.9
                     }
                 }
             }
@@ -2888,7 +2927,7 @@ class Task(_Task):
 
     @classmethod
     def _create(cls, project_name=None, task_name=None, task_type=TaskTypes.training):
-        # type: (Optional[str], Optional[str], Task.TaskTypes) -> Task
+        # type: (Optional[str], Optional[str], Task.TaskTypes) -> TaskInstance
         """
         Create a new unpopulated Task (experiment).
 
@@ -2900,6 +2939,7 @@ class Task(_Task):
         :param TaskTypes task_type: The task type.
 
         :return: The newly created task created.
+        :rtype: Task
         """
         if not project_name:
             if not cls.__main_task:
@@ -3826,7 +3866,7 @@ class Task(_Task):
             tags=None,  # type: Optional[Sequence[str]]
             task_filter=None  # type: Optional[dict]
     ):
-        # type: (...) -> Task
+        # type: (...) -> TaskInstance
 
         if task_id:
             return cls(private=cls.__create_protection, task_id=task_id, log_to_backend=False)
@@ -3876,7 +3916,8 @@ class Task(_Task):
                 include_archived=include_archived, task_filter=task_filter).items() if v},
             results=res_tasks, raise_on_error=False)
         if not task:
-            return None
+            # should never happen
+            return None  # noqa
 
         return cls(
             private=cls.__create_protection,
@@ -3911,7 +3952,15 @@ class Task(_Task):
         return [cls(private=cls.__create_protection, task_id=task.id, log_to_backend=False) for task in queried_tasks]
 
     @classmethod
-    def _query_tasks(cls, task_ids=None, project_name=None, task_name=None, fetch_only_first_page=False, **kwargs):
+    def _query_tasks(
+        cls,
+        task_ids=None,
+        project_name=None,
+        task_name=None,
+        fetch_only_first_page=False,
+        exact_match_regex_flag=True,
+        **kwargs
+    ):
         res = None
         if not task_ids:
             task_ids = None
@@ -3933,13 +3982,12 @@ class Task(_Task):
                 res = cls._send(
                     cls._get_default_session(),
                     projects.GetAllRequest(
-                        name=exact_match_regex(name),
+                        name=exact_match_regex(name) if exact_match_regex_flag else name,
                         **aux_kwargs
                     )
                 )
-                project = get_single_result(entity='project', query=name, results=res.response.projects)
-                if project:
-                    project_ids.append(project.id)
+                if res.response and res.response.projects:
+                    project_ids.extend([project.id for project in res.response.projects])
 
         session = cls._get_default_session()
         system_tags = 'system_tags' if hasattr(tasks.Task, 'system_tags') else 'tags'

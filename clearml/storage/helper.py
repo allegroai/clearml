@@ -401,11 +401,14 @@ class StorageHelper(object):
 
     @classmethod
     def get_aws_storage_uri_from_config(cls, bucket_config):
-        return (
+        uri = (
             "s3://{}/{}".format(bucket_config.host, bucket_config.bucket)
             if bucket_config.host
             else "s3://{}".format(bucket_config.bucket)
         )
+        if bucket_config.subdir:
+            uri += "/" + bucket_config.subdir
+        return uri
 
     @classmethod
     def get_gcp_storage_uri_from_config(cls, bucket_config):
@@ -455,11 +458,11 @@ class StorageHelper(object):
             # Test bucket config, fails if unsuccessful
             if _test_config:
                 _Boto3Driver._test_bucket_config(bucket_config, log)  # noqa
-
             if existing:
                 if log:
                     log.warning("Overriding existing configuration for '{}'".format(uri))
                 configs.remove_config(existing)
+            configs.add_config(bucket_config)
         else:
             # Try to use existing configuration
             good_config = False
@@ -485,10 +488,12 @@ class StorageHelper(object):
         configs = cls._gs_configurations
         uri = cls.get_gcp_storage_uri_from_config(bucket_config)
 
-        if not use_existing and existing:
-            if log:
-                log.warning("Overriding existing configuration for '{}'".format(uri))
-            configs.remove_config(existing)
+        if not use_existing:
+            if existing:
+                if log:
+                    log.warning("Overriding existing configuration for '{}'".format(uri))
+                configs.remove_config(existing)
+            configs.add_config(bucket_config)
         else:
             good_config = False
             if existing:
@@ -507,10 +512,13 @@ class StorageHelper(object):
         existing = cls.get_azure_configuration(bucket_config)
         configs = cls._azure_configurations
         uri = cls.get_azure_storage_uri_from_config(bucket_config)
-        if not use_existing and existing:
-            if log:
-                log.warning("Overriding existing configuration for '{}'".format(uri))
-            configs.remove_config(existing)
+
+        if not use_existing:
+            if existing:
+                if log:
+                    log.warning("Overriding existing configuration for '{}'".format(uri))
+                configs.remove_config(existing)
+            configs.add_config(bucket_config)
         else:
             good_config = False
             if existing:
@@ -793,7 +801,7 @@ class StorageHelper(object):
             if verbose:
                 self._log.info('Start downloading from %s' % remote_path)
             if not overwrite_existing and Path(local_path).is_file():
-                self._log.warning(
+                self._log.debug(
                     'File {} already exists, no need to download, thread id = {}'.format(
                         local_path,
                         threading.current_thread().ident,
@@ -803,7 +811,9 @@ class StorageHelper(object):
                 return local_path
             if remote_path.startswith("file://"):
                 Path(local_path).parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(direct_access_path, local_path)
+                # use remote_path, because direct_access_path might be None, because of access_rules
+                # len("file://") == 7
+                shutil.copyfile(remote_path[7:], local_path)
                 return local_path
             # we download into temp_local_path so that if we accidentally stop in the middle,
             # we won't think we have the entire file
@@ -1247,8 +1257,8 @@ class _HttpDriver(_Driver):
 
         headers = {
             'Content-Type': m.content_type,
-            **(container.get_headers(url) or {}),
         }
+        headers.update(container.get_headers(url) or {})
 
         if hasattr(iterator, 'tell') and hasattr(iterator, 'seek'):
             pos = iterator.tell()
@@ -1529,9 +1539,9 @@ class _Boto3Driver(_Driver):
         stream = _Stream(iterator)
         try:
             extra_args = {
-                'ContentType': get_file_mimetype(object_name),
-                **(container.config.extra_args or {})
+                'ContentType': get_file_mimetype(object_name)
             }
+            extra_args.update(container.config.extra_args or {})
             container.bucket.upload_fileobj(stream, object_name, Config=boto3.s3.transfer.TransferConfig(
                 use_threads=container.config.multipart,
                 max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
@@ -1548,9 +1558,9 @@ class _Boto3Driver(_Driver):
         import boto3.s3.transfer
         try:
             extra_args = {
-                'ContentType': get_file_mimetype(object_name or file_path),
-                **(container.config.extra_args or {})
+                'ContentType': get_file_mimetype(object_name or file_path)
             }
+            extra_args.update(container.config.extra_args or {})
             container.bucket.upload_file(file_path, object_name, Config=boto3.s3.transfer.TransferConfig(
                 use_threads=container.config.multipart,
                 max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
@@ -1642,6 +1652,8 @@ class _Boto3Driver(_Driver):
             fullname = furl(conf.bucket).add(path=test_path).add(path='%s-upload_test' % cls.__module__)
             bucket_name = str(fullname.path.segments[0])
             filename = str(furl(path=fullname.path.segments[1:]))
+            if conf.subdir:
+                filename = "{}/{}".format(conf.subdir, filename)
 
             data = {
                 'user': getpass.getuser(),
@@ -1651,7 +1663,7 @@ class _Boto3Driver(_Driver):
 
             boto_session = boto3.Session(conf.key, conf.secret, aws_session_token=conf.token)
             endpoint = (('https://' if conf.secure else 'http://') + conf.host) if conf.host else None
-            boto_resource = boto_session.resource('s3', region_name=conf.region, endpoint_url=endpoint)
+            boto_resource = boto_session.resource('s3', region_name=conf.region or None, endpoint_url=endpoint)
             bucket = boto_resource.Bucket(bucket_name)
             bucket.put_object(Key=filename, Body=six.b(json.dumps(data)))
 

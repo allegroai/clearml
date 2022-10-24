@@ -270,11 +270,20 @@ def cli():
                         help='Verbose report all file changes (instead of summary)')
     squash.set_defaults(func=ds_squash)
 
-    search = subparsers.add_parser('search', help='Search datasets in the system (sorted by creation time)')
-    search.add_argument('--ids', type=str, nargs='*', help='Specify list of dataset IDs')
-    search.add_argument('--project', type=str, help='Specify datasets project name')
-    search.add_argument('--name', type=str, help='Specify datasets partial name matching')
-    search.add_argument('--tags', type=str, nargs='*', help='Specify list of dataset user tags')
+    search = subparsers.add_parser("search", help="Search datasets in the system (sorted by creation time)")
+    search.add_argument("--ids", type=str, nargs="*", help="Specify list of dataset IDs")
+    search.add_argument("--project", type=str, help="Specify datasets project name")
+    search.add_argument("--name", type=str, help="Specify datasets partial name matching")
+    search.add_argument("--tags", type=str, nargs="*", help="Specify list of dataset user tags")
+    search.add_argument(
+        "--not-only-completed",
+        action="store_true",
+        default=False,
+        help="If set, return datasets that are still in progress as well",
+    )
+    search.add_argument(
+        "--non-recursive-project-search", action="store_true", default=False, help="Don't search inside subprojects"
+    )
     search.set_defaults(func=ds_search)
 
     verify = subparsers.add_parser('verify', help='Verify local dataset content')
@@ -446,17 +455,28 @@ def ds_list(args):
         dataset_name=args.name or None,
         dataset_version=args.version,
     )
-    print('Listing dataset content')
-    formatting = '{:64} | {:10,} | {:64}'
-    print(formatting.replace(',', '').format('file name', 'size', 'hash'))
-    print('-' * len(formatting.replace(',', '').format('-', '-', '-')))
     filters = args.filter if args.filter else [None]
     file_entries = ds.file_entries_dict
     link_entries = ds.link_entries_dict
-    num_files = 0
-    total_size = 0
+    file_name_max_len, size_max_len, hash_max_len = 64, 10, 64
+    files_cache = []
     for mask in filters:
         files = ds.list_files(dataset_path=mask, dataset_id=ds.id if args.modified else None)
+        files_cache.append(files)
+        for f in files:
+            e = link_entries.get(f)
+            if file_entries.get(f):
+                e = file_entries[f]
+            file_name_max_len = max(file_name_max_len, len(e.relative_path))
+            size_max_len = max(size_max_len, len(str(e.size)))
+            hash_max_len = max(hash_max_len, len(str(e.hash)))
+    print('Listing dataset content')
+    formatting = "{:" + str(file_name_max_len) + "} | {:" + str(size_max_len) + ",} | {:" + str(hash_max_len) + "}"
+    print(formatting.replace(",", "").format("file name", "size", "hash"))
+    print("-" * len(formatting.replace(",", "").format("-", "-", "-")))
+    num_files = 0
+    total_size = 0
+    for files in files_cache:
         num_files += len(files)
         for f in files:
             e = link_entries.get(f)
@@ -480,15 +500,41 @@ def ds_search(args):
     print('Search datasets')
     print_args(args)
     datasets = Dataset.list_datasets(
-        dataset_project=args.project or None, partial_name=args.name or None,
-        tags=args.tags or None, ids=args.ids or None
+        dataset_project=args.project or None,
+        partial_name=args.name or None,
+        tags=args.tags or None,
+        ids=args.ids or None,
+        only_completed=not args.not_only_completed,
+        recursive_project_search=not args.non_recursive_project_search,
     )
-    formatting = '{:16} | {:32} | {:19} | {:19} | {:32}'
-    print(formatting.format('project', 'name', 'tags', 'created', 'id'))
-    print('-' * len(formatting.format('-', '-', '-', '-', '-')))
+    projects_col_len, name_col_len, tags_col_len, created_col_len, id_col_len = 16, 32, 19, 19, 32
     for d in datasets:
-        print(formatting.format(
-            d['project'], d['name'], str(d['tags'] or [])[1:-1], str(d['created']).split('.')[0], d['id']))
+        projects_col_len = max(projects_col_len, len(d["project"]))
+        name_col_len = max(name_col_len, len(d["name"]))
+        tags_col_len = max(tags_col_len, len(str(d["tags"] or [])[1:-1]))
+        created_col_len = max(created_col_len, len(str(d["created"]).split(".")[0]))
+        id_col_len = max(id_col_len, len(d["id"]))
+    formatting = (
+        "{:"
+        + str(projects_col_len)
+        + "} | {:"
+        + str(name_col_len)
+        + "} | {:"
+        + str(tags_col_len)
+        + "} | {:"
+        + str(created_col_len)
+        + "} | {:"
+        + str(id_col_len)
+        + "}"
+    )
+    print(formatting.format("project", "name", "tags", "created", "id"))
+    print("-" * len(formatting.format("-", "-", "-", "-", "-")))
+    for d in datasets:
+        print(
+            formatting.format(
+                d["project"], d["name"], str(d["tags"] or [])[1:-1], str(d["created"]).split(".")[0], d["id"]
+            )
+        )
     return 0
 
 

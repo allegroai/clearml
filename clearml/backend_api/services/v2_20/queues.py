@@ -20,36 +20,45 @@ class QueueMetrics(NonStrictDataModel):
     """
     :param queue: ID of the queue
     :type queue: str
-    :param dates: List of timestamps (in seconds from epoch) in the acceding order.
-        The timestamps are separated by the requested interval. Timestamps where no
-        queue status change was recorded are omitted.
+    :param dates: List of timestamps (in seconds from epoch) in the acceding order. The timestamps are separated by the
+    requested interval. Timestamps where no queue status change was recorded are omitted.
     :type dates: Sequence[int]
-    :param avg_waiting_times: List of average waiting times for tasks in the queue.
-        The points correspond to the timestamps in the dates list. If more than one
-        value exists for the given interval then the maximum value is taken.
+    :param avg_waiting_times: List of average waiting times for tasks in the queue. The points correspond to the
+        timestamps in the dates list. If more than one value exists for the given interval then the maximum
+        value is taken.
     :type avg_waiting_times: Sequence[float]
-    :param queue_lengths: List of tasks counts in the queue. The points correspond
-        to the timestamps in the dates list. If more than one value exists for the
-        given interval then the count that corresponds to the maximum average value is
-        taken.
+    :param queue_lengths: List of tasks counts in the queue. The points correspond to the timestamps in the dates list.
+        If more than one value exists for the given interval then the count that corresponds to the maximum average
+        value is taken.
     :type queue_lengths: Sequence[int]
     """
 
     _schema = {
         "properties": {
             "avg_waiting_times": {
-                "description": "List of average waiting times for tasks in the queue. The points correspond to the timestamps in the dates list. If more than one value exists for the given interval then the maximum value is taken.",
+                "description": (
+                    "List of average waiting times for tasks in the queue. The points correspond to the timestamps in"
+                    " the dates list. If more than one value exists for the given interval then the maximum value is"
+                    " taken."
+                ),
                 "items": {"type": "number"},
                 "type": ["array", "null"],
             },
             "dates": {
-                "description": "List of timestamps (in seconds from epoch) in the acceding order. The timestamps are separated by the requested interval. Timestamps where no queue status change was recorded are omitted.",
+                "description": (
+                    "List of timestamps (in seconds from epoch) in the acceding order. The timestamps are separated by"
+                    " the requested interval. Timestamps where no queue status change was recorded are omitted."
+                ),
                 "items": {"type": "integer"},
                 "type": ["array", "null"],
             },
             "queue": {"description": "ID of the queue", "type": ["string", "null"]},
             "queue_lengths": {
-                "description": "List of tasks counts in the queue. The points correspond to the timestamps in the dates list. If more than one value exists for the given interval then the count that corresponds to the maximum average value is taken.",
+                "description": (
+                    "List of tasks counts in the queue. The points correspond to the timestamps in the dates list. If"
+                    " more than one value exists for the given interval then the count that corresponds to the maximum"
+                    " average value is taken."
+                ),
                 "items": {"type": "integer"},
                 "type": ["array", "null"],
             },
@@ -57,14 +66,7 @@ class QueueMetrics(NonStrictDataModel):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        queue=None,
-        dates=None,
-        avg_waiting_times=None,
-        queue_lengths=None,
-        **kwargs
-    ):
+    def __init__(self, queue=None, dates=None, avg_waiting_times=None, queue_lengths=None, **kwargs):
         super(QueueMetrics, self).__init__(**kwargs)
         self.queue = queue
         self.dates = dates
@@ -95,9 +97,7 @@ class QueueMetrics(NonStrictDataModel):
             return
 
         self.assert_isinstance(value, "dates", (list, tuple))
-        value = [
-            int(v) if isinstance(v, float) and v.is_integer() else v for v in value
-        ]
+        value = [int(v) if isinstance(v, float) and v.is_integer() else v for v in value]
 
         self.assert_isinstance(value, "dates", six.integer_types, is_array=True)
         self._property_dates = value
@@ -114,9 +114,7 @@ class QueueMetrics(NonStrictDataModel):
 
         self.assert_isinstance(value, "avg_waiting_times", (list, tuple))
 
-        self.assert_isinstance(
-            value, "avg_waiting_times", six.integer_types + (float,), is_array=True
-        )
+        self.assert_isinstance(value, "avg_waiting_times", six.integer_types + (float,), is_array=True)
         self._property_avg_waiting_times = value
 
     @schema_property("queue_lengths")
@@ -130,9 +128,7 @@ class QueueMetrics(NonStrictDataModel):
             return
 
         self.assert_isinstance(value, "queue_lengths", (list, tuple))
-        value = [
-            int(v) if isinstance(v, float) and v.is_integer() else v for v in value
-        ]
+        value = [int(v) if isinstance(v, float) and v.is_integer() else v for v in value]
 
         self.assert_isinstance(value, "queue_lengths", six.integer_types, is_array=True)
         self._property_queue_lengths = value
@@ -194,8 +190,7 @@ class Entry(NonStrictDataModel):
 
 class MetadataItem(NonStrictDataModel):
     """
-    :param key: The key uniquely identifying the metadata item inside the given
-        entity
+    :param key: The key uniquely identifying the metadata item inside the given entity
     :type key: str
     :param type: The type of the metadata item
     :type type: str
@@ -281,8 +276,7 @@ class Queue(NonStrictDataModel):
     :type created: datetime.datetime
     :param tags: User-defined tags
     :type tags: Sequence[str]
-    :param system_tags: System tags. This field is reserved for system use, please
-        don't use it.
+    :param system_tags: System tags. This field is reserved for system use, please don't use it.
     :type system_tags: Sequence[str]
     :param entries: List of ordered queue entries
     :type entries: Sequence[Entry]
@@ -504,9 +498,8 @@ class AddOrUpdateMetadataRequest(Request):
     :type queue: str
     :param metadata: Metadata items to add or update
     :type metadata: Sequence[MetadataItem]
-    :param replace_metadata: If set then the all the metadata items will be
-        replaced with the provided ones. Otherwise only the provided metadata items
-        will be updated or added
+    :param replace_metadata: If set then the all the metadata items will be replaced with the provided ones.
+        Otherwise only the provided metadata items will be updated or added
     :type replace_metadata: bool
     """
 
@@ -542,7 +535,10 @@ class AddOrUpdateMetadataRequest(Request):
             "queue": {"description": "ID of the queue", "type": "string"},
             "replace_metadata": {
                 "default": False,
-                "description": "If set then the all the metadata items will be replaced with the provided ones. Otherwise only the provided metadata items will be updated or added",
+                "description": (
+                    "If set then the all the metadata items will be replaced with the provided ones. Otherwise only the"
+                    " provided metadata items will be updated or added"
+                ),
                 "type": "boolean",
             },
         },
@@ -747,8 +743,7 @@ class CreateRequest(Request):
     :type name: str
     :param tags: User-defined tags list
     :type tags: Sequence[str]
-    :param system_tags: System tags list. This field is reserved for system use,
-        please don't use it.
+    :param system_tags: System tags list. This field is reserved for system use, please don't use it.
     :type system_tags: Sequence[str]
     """
 
@@ -841,9 +836,7 @@ class CreateResponse(Response):
 
     _schema = {
         "definitions": {},
-        "properties": {
-            "id": {"description": "New queue ID", "type": ["string", "null"]}
-        },
+        "properties": {"id": {"description": "New queue ID", "type": ["string", "null"]}},
         "type": "object",
     }
 
@@ -1077,38 +1070,31 @@ class GetAllRequest(Request):
     """
     Get all queues
 
-    :param name: Get only queues whose name matches this pattern (python regular
-        expression syntax)
+    :param name: Get only queues whose name matches this pattern (python regular expression syntax)
     :type name: str
     :param id: List of Queue IDs used to filter results
     :type id: Sequence[str]
-    :param tags: User-defined tags list used to filter results. Prepend '-' to tag
-        name to indicate exclusion
+    :param tags: User-defined tags list used to filter results. Prepend '-' to tag name to indicate exclusion
     :type tags: Sequence[str]
-    :param system_tags: System tags list used to filter results. Prepend '-' to
-        system tag name to indicate exclusion
+    :param system_tags: System tags list used to filter results. Prepend '-' to system tag name to indicate exclusion
     :type system_tags: Sequence[str]
-    :param page: Page number, returns a specific page out of the result list of
-        results.
+    :param page: Page number, returns a specific page out of the result list of results.
     :type page: int
-    :param page_size: Page size, specifies the number of results returned in each
-        page (last page may contain fewer results)
+    :param page_size: Page size, specifies the number of results returned in each page
+        (last page may contain fewer results)
     :type page_size: int
-    :param order_by: List of field names to order by. When search_text is used,
-        '@text_score' can be used as a field representing the text score of returned
-        documents. Use '-' prefix to specify descending order. Optional, recommended
-        when using page
+    :param order_by: List of field names to order by. When search_text is used, '@text_score' can be used as a field
+        representing the text score of returned documents. Use '-' prefix to specify descending order.
+        Optional, recommended when using page
     :type order_by: Sequence[str]
     :param search_text: Free text search query
     :type search_text: str
-    :param only_fields: List of document field names (nesting is supported using
-        '.', e.g. execution.model_labels). If provided, this list defines the query's
-        projection (only these fields will be returned for each result entry)
+    :param only_fields: List of document field names (nesting is supported using '.', e.g. execution.model_labels).
+        If provided, this list defines the query's projection (only these fields will be returned for each result entry)
     :type only_fields: Sequence[str]
-    :param scroll_id: Scroll ID returned from the previos calls to get_all
+    :param scroll_id: Scroll ID returned from the previous calls to get_all
     :type scroll_id: str
-    :param refresh_scroll: If set then all the data received with this scroll will
-        be requeried
+    :param refresh_scroll: If set then all the data received with this scroll will be required
     :type refresh_scroll: bool
     :param size: The number of queues to retrieve
     :type size: int
@@ -1136,12 +1122,20 @@ class GetAllRequest(Request):
                 "type": ["string", "null"],
             },
             "only_fields": {
-                "description": "List of document field names (nesting is supported using '.', e.g. execution.model_labels). If provided, this list defines the query's projection (only these fields will be returned for each result entry)",
+                "description": (
+                    "List of document field names (nesting is supported using '.', e.g. execution.model_labels). If"
+                    " provided, this list defines the query's projection (only these fields will be returned for each"
+                    " result entry)"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
             "order_by": {
-                "description": "List of field names to order by. When search_text is used, '@text_score' can be used as a field representing the text score of returned documents. Use '-' prefix to specify descending order. Optional, recommended when using page",
+                "description": (
+                    "List of field names to order by. When search_text is used, '@text_score' can be used as a field"
+                    " representing the text score of returned documents. Use '-' prefix to specify descending order."
+                    " Optional, recommended when using page"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -1151,16 +1145,19 @@ class GetAllRequest(Request):
                 "type": ["integer", "null"],
             },
             "page_size": {
-                "description": "Page size, specifies the number of results returned in each page (last page may contain fewer results)",
+                "description": (
+                    "Page size, specifies the number of results returned in each page (last page may contain fewer"
+                    " results)"
+                ),
                 "minimum": 1,
                 "type": ["integer", "null"],
             },
             "refresh_scroll": {
-                "description": "If set then all the data received with this scroll will be requeried",
+                "description": "If set then all the data received with this scroll will be required",
                 "type": ["boolean", "null"],
             },
             "scroll_id": {
-                "description": "Scroll ID returned from the previos calls to get_all",
+                "description": "Scroll ID returned from the previous calls to get_all",
                 "type": ["string", "null"],
             },
             "search_text": {
@@ -1173,12 +1170,16 @@ class GetAllRequest(Request):
                 "type": ["integer", "null"],
             },
             "system_tags": {
-                "description": "System tags list used to filter results. Prepend '-' to system tag name to indicate exclusion",
+                "description": (
+                    "System tags list used to filter results. Prepend '-' to system tag name to indicate exclusion"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
             "tags": {
-                "description": "User-defined tags list used to filter results. Prepend '-' to tag name to indicate exclusion",
+                "description": (
+                    "User-defined tags list used to filter results. Prepend '-' to tag name to indicate exclusion"
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -1412,8 +1413,7 @@ class GetAllResponse(Response):
 
     :param queues: Queues list
     :type queues: Sequence[Queue]
-    :param scroll_id: Scroll ID that can be used with the next calls to get_all to
-        retrieve more data
+    :param scroll_id: Scroll ID that can be used with the next calls to get_all to retrieve more data
     :type scroll_id: str
     """
 
@@ -1937,9 +1937,7 @@ class GetNumEntriesResponse(Response):
 
     _schema = {
         "definitions": {},
-        "properties": {
-            "num": {"description": "Number of entries", "type": ["integer", "null"]}
-        },
+        "properties": {"num": {"description": "Number of entries", "type": ["integer", "null"]}},
         "type": "object",
     }
 
@@ -1965,18 +1963,16 @@ class GetNumEntriesResponse(Response):
 
 class GetQueueMetricsRequest(Request):
     """
-    Returns metrics of the company queues. The metrics are avaraged in the specified interval.
+    Returns metrics of the company queues. The metrics are averaged in the specified interval.
 
     :param from_date: Starting time (in seconds from epoch) for collecting metrics
     :type from_date: float
     :param to_date: Ending time (in seconds from epoch) for collecting metrics
     :type to_date: float
-    :param interval: Time interval in seconds for a single metrics point. The
-        minimal value is 1
+    :param interval: Time interval in seconds for a single metrics point. The minimal value is 1
     :type interval: int
-    :param queue_ids: List of queue ids to collect metrics for. If not provided or
-        empty then all then average metrics across all the company queues will be
-        returned.
+    :param queue_ids: List of queue ids to collect metrics for. If not provided or empty then all then average metrics
+        across all the company queues will be returned.
     :type queue_ids: Sequence[str]
     :param refresh: If set then the new queue metrics is taken
     :type refresh: bool
@@ -1997,7 +1993,10 @@ class GetQueueMetricsRequest(Request):
                 "type": "integer",
             },
             "queue_ids": {
-                "description": "List of queue ids to collect metrics for. If not provided or empty then all then average metrics across all the company queues will be returned.",
+                "description": (
+                    "List of queue ids to collect metrics for. If not provided or empty then all then average metrics"
+                    " across all the company queues will be returned."
+                ),
                 "items": {"type": "string"},
                 "type": "array",
             },
@@ -2015,9 +2014,7 @@ class GetQueueMetricsRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self, from_date, to_date, interval, queue_ids=None, refresh=False, **kwargs
-    ):
+    def __init__(self, from_date, to_date, interval, queue_ids=None, refresh=False, **kwargs):
         super(GetQueueMetricsRequest, self).__init__(**kwargs)
         self.from_date = from_date
         self.to_date = to_date
@@ -2099,9 +2096,8 @@ class GetQueueMetricsResponse(Response):
     """
     Response of queues.get_queue_metrics endpoint.
 
-    :param queues: List of the requested queues with their metrics. If no queue ids
-        were requested then 'all' queue is returned with the metrics averaged accross
-        all the company queues.
+    :param queues: List of the requested queues with their metrics. If no queue ids were requested then 'all' queue
+        is returned with the metrics averaged across all the company queues.
     :type queues: Sequence[QueueMetrics]
     """
 
@@ -2114,12 +2110,20 @@ class GetQueueMetricsResponse(Response):
             "queue_metrics": {
                 "properties": {
                     "avg_waiting_times": {
-                        "description": "List of average waiting times for tasks in the queue. The points correspond to the timestamps in the dates list. If more than one value exists for the given interval then the maximum value is taken.",
+                        "description": (
+                            "List of average waiting times for tasks in the queue. The points correspond to the"
+                            " timestamps in the dates list. If more than one value exists for the given interval then"
+                            " the maximum value is taken."
+                        ),
                         "items": {"type": "number"},
                         "type": ["array", "null"],
                     },
                     "dates": {
-                        "description": "List of timestamps (in seconds from epoch) in the acceding order. The timestamps are separated by the requested interval. Timestamps where no queue status change was recorded are omitted.",
+                        "description": (
+                            "List of timestamps (in seconds from epoch) in the acceding order. The timestamps are"
+                            " separated by the requested interval. Timestamps where no queue status change was recorded"
+                            " are omitted."
+                        ),
                         "items": {"type": "integer"},
                         "type": ["array", "null"],
                     },
@@ -2128,7 +2132,11 @@ class GetQueueMetricsResponse(Response):
                         "type": ["string", "null"],
                     },
                     "queue_lengths": {
-                        "description": "List of tasks counts in the queue. The points correspond to the timestamps in the dates list. If more than one value exists for the given interval then the count that corresponds to the maximum average value is taken.",
+                        "description": (
+                            "List of tasks counts in the queue. The points correspond to the timestamps in the dates"
+                            " list. If more than one value exists for the given interval then the count that"
+                            " corresponds to the maximum average value is taken."
+                        ),
                         "items": {"type": "integer"},
                         "type": ["array", "null"],
                     },
@@ -2138,7 +2146,10 @@ class GetQueueMetricsResponse(Response):
         },
         "properties": {
             "queues": {
-                "description": "List of the requested queues with their metrics. If no queue ids were requested then 'all' queue is returned with the metrics averaged accross all the company queues.",
+                "description": (
+                    "List of the requested queues with their metrics. If no queue ids were requested then 'all' queue"
+                    " is returned with the metrics averaged across all the company queues."
+                ),
                 "items": {"$ref": "#/definitions/queue_metrics"},
                 "type": ["array", "null"],
             }
@@ -2162,9 +2173,7 @@ class GetQueueMetricsResponse(Response):
 
         self.assert_isinstance(value, "queues", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                QueueMetrics.from_dict(v) if isinstance(v, dict) else v for v in value
-            ]
+            value = [QueueMetrics.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "queues", QueueMetrics, is_array=True)
         self._property_queues = value
@@ -2176,8 +2185,8 @@ class MoveTaskBackwardRequest(Request):
     :type queue: str
     :param task: Task id
     :type task: str
-    :param count: Number of positions in the queue to move the task forward
-        relative to the current position. Optional, the default value is 1.
+    :param count: Number of positions in the queue to move the task forward relative to the current position.
+        Optional, the default value is 1.
     :type count: int
     """
 
@@ -2188,7 +2197,10 @@ class MoveTaskBackwardRequest(Request):
         "definitions": {},
         "properties": {
             "count": {
-                "description": "Number of positions in the queue to move the task forward relative to the current position. Optional, the default value is 1.",
+                "description": (
+                    "Number of positions in the queue to move the task forward relative to the current position."
+                    " Optional, the default value is 1."
+                ),
                 "type": "integer",
             },
             "queue": {"description": "Queue id", "type": "string"},
@@ -2250,8 +2262,7 @@ class MoveTaskBackwardResponse(Response):
     """
     Response of queues.move_task_backward endpoint.
 
-    :param position: The new position of the task entry in the queue (index, -1
-        represents bottom of queue)
+    :param position: The new position of the task entry in the queue (index, -1 represents bottom of queue)
     :type position: int
     """
 
@@ -2298,8 +2309,8 @@ class MoveTaskForwardRequest(Request):
     :type queue: str
     :param task: Task id
     :type task: str
-    :param count: Number of positions in the queue to move the task forward
-        relative to the current position. Optional, the default value is 1.
+    :param count: Number of positions in the queue to move the task forward relative to the current position.
+        Optional, the default value is 1.
     :type count: int
     """
 
@@ -2310,7 +2321,10 @@ class MoveTaskForwardRequest(Request):
         "definitions": {},
         "properties": {
             "count": {
-                "description": "Number of positions in the queue to move the task forward relative to the current position. Optional, the default value is 1.",
+                "description": (
+                    "Number of positions in the queue to move the task forward relative to the current position."
+                    "Optional, the default value is 1."
+                ),
                 "type": "integer",
             },
             "queue": {"description": "Queue id", "type": "string"},
@@ -2372,8 +2386,7 @@ class MoveTaskForwardResponse(Response):
     """
     Response of queues.move_task_forward endpoint.
 
-    :param position: The new position of the task entry in the queue (index, -1
-        represents bottom of queue)
+    :param position: The new position of the task entry in the queue (index, -1 represents bottom of queue)
     :type position: int
     """
 
@@ -2469,8 +2482,7 @@ class MoveTaskToBackResponse(Response):
     """
     Response of queues.move_task_to_back endpoint.
 
-    :param position: The new position of the task entry in the queue (index, -1
-        represents bottom of queue)
+    :param position: The new position of the task entry in the queue (index, -1 represents bottom of queue)
     :type position: int
     """
 
@@ -2566,8 +2578,7 @@ class MoveTaskToFrontResponse(Response):
     """
     Response of queues.move_task_to_front endpoint.
 
-    :param position: The new position of the task entry in the queue (index, -1
-        represents bottom of queue)
+    :param position: The new position of the task entry in the queue (index, -1 represents bottom of queue)
     :type position: int
     """
 
@@ -2787,8 +2798,7 @@ class UpdateRequest(Request):
     :type name: str
     :param tags: User-defined tags list
     :type tags: Sequence[str]
-    :param system_tags: System tags list. This field is reserved for system use,
-        please don't use it.
+    :param system_tags: System tags list. This field is reserved for system use, please don't use it.
     :type system_tags: Sequence[str]
     """
 

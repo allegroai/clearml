@@ -91,9 +91,7 @@ class StatItem(NonStrictDataModel):
 
     _schema = {
         "properties": {
-            "category": {
-                "oneOf": [{"$ref": "#/definitions/aggregation_type"}, {"type": "null"}]
-            },
+            "category": {"oneOf": [{"$ref": "#/definitions/aggregation_type"}, {"type": "null"}]},
             "key": {"description": "Name of a metric", "type": ["string", "null"]},
         },
         "type": "object",
@@ -146,9 +144,7 @@ class AggregationStats(NonStrictDataModel):
 
     _schema = {
         "properties": {
-            "aggregation": {
-                "oneOf": [{"$ref": "#/definitions/aggregation_type"}, {"type": "null"}]
-            },
+            "aggregation": {"oneOf": [{"$ref": "#/definitions/aggregation_type"}, {"type": "null"}]},
             "values": {
                 "description": "List of values corresponding to the dates in metric statistics",
                 "items": {"type": "number"},
@@ -193,9 +189,7 @@ class AggregationStats(NonStrictDataModel):
 
         self.assert_isinstance(value, "values", (list, tuple))
 
-        self.assert_isinstance(
-            value, "values", six.integer_types + (float,), is_array=True
-        )
+        self.assert_isinstance(value, "values", six.integer_types + (float,), is_array=True)
         self._property_values = value
 
 
@@ -217,7 +211,10 @@ class MetricStats(NonStrictDataModel):
     _schema = {
         "properties": {
             "dates": {
-                "description": "List of timestamps (in seconds from epoch) in the acceding order. The timestamps are separated by the requested interval. Timestamps where no workers activity was recorded are omitted.",
+                "description": (
+                    "List of timestamps (in seconds from epoch) in the acceding order. The timestamps are separated by"
+                    " the requested interval. Timestamps where no workers activity was recorded are omitted."
+                ),
                 "items": {"type": "integer"},
                 "type": ["array", "null"],
             },
@@ -282,9 +279,7 @@ class MetricStats(NonStrictDataModel):
             return
 
         self.assert_isinstance(value, "dates", (list, tuple))
-        value = [
-            int(v) if isinstance(v, float) and v.is_integer() else v for v in value
-        ]
+        value = [int(v) if isinstance(v, float) and v.is_integer() else v for v in value]
 
         self.assert_isinstance(value, "dates", six.integer_types, is_array=True)
         self._property_dates = value
@@ -301,10 +296,7 @@ class MetricStats(NonStrictDataModel):
 
         self.assert_isinstance(value, "stats", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                AggregationStats.from_dict(v) if isinstance(v, dict) else v
-                for v in value
-            ]
+            value = [AggregationStats.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "stats", AggregationStats, is_array=True)
         self._property_stats = value
@@ -360,9 +352,7 @@ class WorkerStats(NonStrictDataModel):
 
         self.assert_isinstance(value, "metrics", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                MetricStats.from_dict(v) if isinstance(v, dict) else v for v in value
-            ]
+            value = [MetricStats.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "metrics", MetricStats, is_array=True)
         self._property_metrics = value
@@ -381,12 +371,18 @@ class ActivitySeries(NonStrictDataModel):
     _schema = {
         "properties": {
             "counts": {
-                "description": "List of worker counts corresponding to the timestamps in the dates list. None values are returned for the dates with no workers.",
+                "description": (
+                    "List of worker counts corresponding to the timestamps in the dates list. None values are returned"
+                    " for the dates with no workers."
+                ),
                 "items": {"type": "integer"},
                 "type": ["array", "null"],
             },
             "dates": {
-                "description": "List of timestamps (in seconds from epoch) in the acceding order. The timestamps are separated by the requested interval.",
+                "description": (
+                    "List of timestamps (in seconds from epoch) in the acceding order. The timestamps are separated by"
+                    " the requested interval."
+                ),
                 "items": {"type": "integer"},
                 "type": ["array", "null"],
             },
@@ -410,9 +406,7 @@ class ActivitySeries(NonStrictDataModel):
             return
 
         self.assert_isinstance(value, "dates", (list, tuple))
-        value = [
-            int(v) if isinstance(v, float) and v.is_integer() else v for v in value
-        ]
+        value = [int(v) if isinstance(v, float) and v.is_integer() else v for v in value]
 
         self.assert_isinstance(value, "dates", six.integer_types, is_array=True)
         self._property_dates = value
@@ -428,9 +422,7 @@ class ActivitySeries(NonStrictDataModel):
             return
 
         self.assert_isinstance(value, "counts", (list, tuple))
-        value = [
-            int(v) if isinstance(v, float) and v.is_integer() else v for v in value
-        ]
+        value = [int(v) if isinstance(v, float) and v.is_integer() else v for v in value]
 
         self.assert_isinstance(value, "counts", six.integer_types, is_array=True)
         self._property_counts = value
@@ -440,8 +432,7 @@ class Worker(NonStrictDataModel):
     """
     :param id: Worker ID
     :type id: str
-    :param user: Associated user (under whose credentials are used by the worker
-        daemon)
+    :param user: Associated user (under whose credentials are used by the worker daemon)
     :type user: IdNameEntry
     :param company: Associated company
     :type company: IdNameEntry
@@ -463,6 +454,8 @@ class Worker(NonStrictDataModel):
     :type queues: Sequence[QueueEntry]
     :param tags: User tags for the worker
     :type tags: Sequence[str]
+    :param key: Worker entry key
+    :type key: str
     """
 
     _schema = {
@@ -473,6 +466,7 @@ class Worker(NonStrictDataModel):
             },
             "id": {"description": "Worker ID", "type": ["string", "null"]},
             "ip": {"description": "IP of the worker", "type": ["string", "null"]},
+            "key": {"description": "Worker entry key", "type": ["string", "null"]},
             "last_activity_time": {
                 "description": "Last activity time (even if an error occurred)",
                 "format": "date-time",
@@ -535,6 +529,7 @@ class Worker(NonStrictDataModel):
         queue=None,
         queues=None,
         tags=None,
+        key=None,
         **kwargs
     ):
         super(Worker, self).__init__(**kwargs)
@@ -550,6 +545,7 @@ class Worker(NonStrictDataModel):
         self.queue = queue
         self.queues = queues
         self.tags = tags
+        self.key = key
 
     @schema_property("id")
     def id(self):
@@ -632,9 +628,7 @@ class Worker(NonStrictDataModel):
             self._property_last_activity_time = None
             return
 
-        self.assert_isinstance(
-            value, "last_activity_time", six.string_types + (datetime,)
-        )
+        self.assert_isinstance(value, "last_activity_time", six.string_types + (datetime,))
         if not isinstance(value, datetime):
             value = parse_datetime(value)
         self._property_last_activity_time = value
@@ -649,9 +643,7 @@ class Worker(NonStrictDataModel):
             self._property_last_report_time = None
             return
 
-        self.assert_isinstance(
-            value, "last_report_time", six.string_types + (datetime,)
-        )
+        self.assert_isinstance(value, "last_report_time", six.string_types + (datetime,))
         if not isinstance(value, datetime):
             value = parse_datetime(value)
         self._property_last_report_time = value
@@ -713,9 +705,7 @@ class Worker(NonStrictDataModel):
 
         self.assert_isinstance(value, "queues", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                QueueEntry.from_dict(v) if isinstance(v, dict) else v for v in value
-            ]
+            value = [QueueEntry.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "queues", QueueEntry, is_array=True)
         self._property_queues = value
@@ -734,6 +724,19 @@ class Worker(NonStrictDataModel):
 
         self.assert_isinstance(value, "tags", six.string_types, is_array=True)
         self._property_tags = value
+
+    @schema_property("key")
+    def key(self):
+        return self._property_key
+
+    @key.setter
+    def key(self, value):
+        if value is None:
+            self._property_key = None
+            return
+
+        self.assert_isinstance(value, "key", six.string_types)
+        self._property_key = value
 
 
 class IdNameEntry(NonStrictDataModel):
@@ -812,9 +815,7 @@ class CurrentTaskEntry(NonStrictDataModel):
         "type": "object",
     }
 
-    def __init__(
-        self, id=None, name=None, running_time=None, last_iteration=None, **kwargs
-    ):
+    def __init__(self, id=None, name=None, running_time=None, last_iteration=None, **kwargs):
         super(CurrentTaskEntry, self).__init__(**kwargs)
         self.id = id
         self.name = name
@@ -1116,9 +1117,7 @@ class MachineStats(NonStrictDataModel):
 
         self.assert_isinstance(value, "cpu_usage", (list, tuple))
 
-        self.assert_isinstance(
-            value, "cpu_usage", six.integer_types + (float,), is_array=True
-        )
+        self.assert_isinstance(value, "cpu_usage", six.integer_types + (float,), is_array=True)
         self._property_cpu_usage = value
 
     @schema_property("gpu_usage")
@@ -1133,9 +1132,7 @@ class MachineStats(NonStrictDataModel):
 
         self.assert_isinstance(value, "gpu_usage", (list, tuple))
 
-        self.assert_isinstance(
-            value, "gpu_usage", six.integer_types + (float,), is_array=True
-        )
+        self.assert_isinstance(value, "gpu_usage", six.integer_types + (float,), is_array=True)
         self._property_gpu_usage = value
 
     @schema_property("memory_used")
@@ -1179,13 +1176,9 @@ class MachineStats(NonStrictDataModel):
             return
 
         self.assert_isinstance(value, "gpu_memory_free", (list, tuple))
-        value = [
-            int(v) if isinstance(v, float) and v.is_integer() else v for v in value
-        ]
+        value = [int(v) if isinstance(v, float) and v.is_integer() else v for v in value]
 
-        self.assert_isinstance(
-            value, "gpu_memory_free", six.integer_types, is_array=True
-        )
+        self.assert_isinstance(value, "gpu_memory_free", six.integer_types, is_array=True)
         self._property_gpu_memory_free = value
 
     @schema_property("gpu_memory_used")
@@ -1199,13 +1192,9 @@ class MachineStats(NonStrictDataModel):
             return
 
         self.assert_isinstance(value, "gpu_memory_used", (list, tuple))
-        value = [
-            int(v) if isinstance(v, float) and v.is_integer() else v for v in value
-        ]
+        value = [int(v) if isinstance(v, float) and v.is_integer() else v for v in value]
 
-        self.assert_isinstance(
-            value, "gpu_memory_used", six.integer_types, is_array=True
-        )
+        self.assert_isinstance(value, "gpu_memory_used", six.integer_types, is_array=True)
         self._property_gpu_memory_used = value
 
     @schema_property("network_tx")
@@ -1310,9 +1299,7 @@ class MachineStats(NonStrictDataModel):
 
         self.assert_isinstance(value, "cpu_temperature", (list, tuple))
 
-        self.assert_isinstance(
-            value, "cpu_temperature", six.integer_types + (float,), is_array=True
-        )
+        self.assert_isinstance(value, "cpu_temperature", six.integer_types + (float,), is_array=True)
         self._property_cpu_temperature = value
 
     @schema_property("gpu_temperature")
@@ -1327,9 +1314,7 @@ class MachineStats(NonStrictDataModel):
 
         self.assert_isinstance(value, "gpu_temperature", (list, tuple))
 
-        self.assert_isinstance(
-            value, "gpu_temperature", six.integer_types + (float,), is_array=True
-        )
+        self.assert_isinstance(value, "gpu_temperature", six.integer_types + (float,), is_array=True)
         self._property_gpu_temperature = value
 
 
@@ -1337,13 +1322,11 @@ class GetActivityReportRequest(Request):
     """
     Returns count of active company workers in the selected time range.
 
-    :param from_date: Starting time (in seconds from epoch) for collecting
-        statistics
+    :param from_date: Starting time (in seconds from epoch) for collecting statistics
     :type from_date: float
     :param to_date: Ending time (in seconds from epoch) for collecting statistics
     :type to_date: float
-    :param interval: Time interval in seconds for a single statistics point. The
-        minimal value is 1
+    :param interval: Time interval in seconds for a single statistics point. The minimal value is 1
     :type interval: int
     """
 
@@ -1422,11 +1405,9 @@ class GetActivityReportResponse(Response):
     """
     Response of workers.get_activity_report endpoint.
 
-    :param total: Activity series that include all the workers that sent reports in
-        the given time interval.
+    :param total: Activity series that include all the workers that sent reports in the given time interval.
     :type total: ActivitySeries
-    :param active: Activity series that include only workers that worked on a task
-        in the given time interval.
+    :param active: Activity series that include only workers that worked on a task in the given time interval.
     :type active: ActivitySeries
     """
 
@@ -1439,12 +1420,18 @@ class GetActivityReportResponse(Response):
             "activity_series": {
                 "properties": {
                     "counts": {
-                        "description": "List of worker counts corresponding to the timestamps in the dates list. None values are returned for the dates with no workers.",
+                        "description": (
+                            "List of worker counts corresponding to the timestamps in the dates list. None values are"
+                            " returned for the dates with no workers."
+                        ),
                         "items": {"type": "integer"},
                         "type": ["array", "null"],
                     },
                     "dates": {
-                        "description": "List of timestamps (in seconds from epoch) in the acceding order. The timestamps are separated by the requested interval.",
+                        "description": (
+                            "List of timestamps (in seconds from epoch) in the acceding order. The timestamps are"
+                            " separated by the requested interval."
+                        ),
                         "items": {"type": "integer"},
                         "type": ["array", "null"],
                     },
@@ -1454,11 +1441,15 @@ class GetActivityReportResponse(Response):
         },
         "properties": {
             "active": {
-                "description": "Activity series that include only workers that worked on a task in the given time interval.",
+                "description": (
+                    "Activity series that include only workers that worked on a task in the given time interval."
+                ),
                 "oneOf": [{"$ref": "#/definitions/activity_series"}, {"type": "null"}],
             },
             "total": {
-                "description": "Activity series that include all the workers that sent reports in the given time interval.",
+                "description": (
+                    "Activity series that include all the workers that sent reports in the given time interval."
+                ),
                 "oneOf": [{"$ref": "#/definitions/activity_series"}, {"type": "null"}],
             },
         },
@@ -1505,11 +1496,10 @@ class GetAllRequest(Request):
     """
     Returns information on all registered workers.
 
-    :param last_seen: Filter out workers not active for more than last_seen
-        seconds. A value or 0 or 'none' will disable the filter.
+    :param last_seen: Filter out workers not active for more than last_seen seconds. A value or 0 or 'none'
+        will disable the filter.
     :type last_seen: int
-    :param tags: The list of allowed worker tags. Prepend tag value with '-' in
-        order to exclude
+    :param tags: The list of allowed worker tags. Prepend tag value with '-' in order to exclude
     :type tags: Sequence[str]
     """
 
@@ -1521,7 +1511,10 @@ class GetAllRequest(Request):
         "properties": {
             "last_seen": {
                 "default": 3600,
-                "description": "Filter out workers not active for more than last_seen seconds.\n                            A value or 0 or 'none' will disable the filter.",
+                "description": (
+                    "Filter out workers not active for more than last_seen seconds. A value or 0 or 'none' will "
+                    "disable the filter."
+                ),
                 "type": ["integer", "null"],
             },
             "tags": {
@@ -1637,6 +1630,10 @@ class GetAllResponse(Response):
                         "description": "IP of the worker",
                         "type": ["string", "null"],
                     },
+                    "key": {
+                        "description": "Worker entry key",
+                        "type": ["string", "null"],
+                    },
                     "last_activity_time": {
                         "description": "Last activity time (even if an error occurred)",
                         "format": "date-time",
@@ -1741,7 +1738,10 @@ class GetMetricKeysRequest(Request):
         "definitions": {},
         "properties": {
             "worker_ids": {
-                "description": "List of worker ids to collect metrics for. If not provided or empty then all the company workers metrics are analyzed.",
+                "description": (
+                    "List of worker ids to collect metrics for. If not provided or empty then all the company workers"
+                    " metrics are analyzed."
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -1773,8 +1773,7 @@ class GetMetricKeysResponse(Response):
     """
     Response of workers.get_metric_keys endpoint.
 
-    :param categories: List of unique metric categories found in the statistics of
-        the requested workers.
+    :param categories: List of unique metric categories found in the statistics of the requested workers.
     :type categories: Sequence[MetricsCategory]
     """
 
@@ -1825,10 +1824,7 @@ class GetMetricKeysResponse(Response):
 
         self.assert_isinstance(value, "categories", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                MetricsCategory.from_dict(v) if isinstance(v, dict) else v
-                for v in value
-            ]
+            value = [MetricsCategory.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "categories", MetricsCategory, is_array=True)
         self._property_categories = value
@@ -1841,13 +1837,11 @@ class GetStatsRequest(Request):
     :param worker_ids: List of worker ids to collect metrics for. If not provided
         or empty then all the company workers metrics are analyzed.
     :type worker_ids: Sequence[str]
-    :param from_date: Starting time (in seconds from epoch) for collecting
-        statistics
+    :param from_date: Starting time (in seconds from epoch) for collecting statistics
     :type from_date: float
     :param to_date: Ending time (in seconds from epoch) for collecting statistics
     :type to_date: float
-    :param interval: Time interval in seconds for a single statistics point. The
-        minimal value is 1
+    :param interval: Time interval in seconds for a single statistics point. The minimal value is 1
     :type interval: int
     :param items: List of metric keys and requested statistics
     :type items: Sequence[StatItem]
@@ -1905,7 +1899,10 @@ class GetStatsRequest(Request):
                 "type": "number",
             },
             "worker_ids": {
-                "description": "List of worker ids to collect metrics for. If not provided or empty then all the company workers metrics are analyzed.",
+                "description": (
+                    "List of worker ids to collect metrics for. If not provided or empty then all the company workers"
+                    " metrics are analyzed."
+                ),
                 "items": {"type": "string"},
                 "type": ["array", "null"],
             },
@@ -1914,16 +1911,7 @@ class GetStatsRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        from_date,
-        to_date,
-        interval,
-        items,
-        worker_ids=None,
-        split_by_variant=False,
-        **kwargs
-    ):
+    def __init__(self, from_date, to_date, interval, items, worker_ids=None, split_by_variant=False, **kwargs):
         super(GetStatsRequest, self).__init__(**kwargs)
         self.worker_ids = worker_ids
         self.from_date = from_date
@@ -2057,7 +2045,11 @@ class GetStatsResponse(Response):
             "metric_stats": {
                 "properties": {
                     "dates": {
-                        "description": "List of timestamps (in seconds from epoch) in the acceding order. The timestamps are separated by the requested interval. Timestamps where no workers activity was recorded are omitted.",
+                        "description": (
+                            "List of timestamps (in seconds from epoch) in the acceding order. The timestamps are"
+                            " separated by the requested interval. Timestamps where no workers activity was recorded"
+                            " are omitted."
+                        ),
                         "items": {"type": "integer"},
                         "type": ["array", "null"],
                     },
@@ -2071,7 +2063,9 @@ class GetStatsResponse(Response):
                         "type": ["array", "null"],
                     },
                     "variant": {
-                        "description": "Name of the metric component. Set only if 'split_by_variant' was set in the request",
+                        "description": (
+                            "Name of the metric component. Set only if 'split_by_variant' was set in the request"
+                        ),
                         "type": ["string", "null"],
                     },
                 },
@@ -2118,9 +2112,7 @@ class GetStatsResponse(Response):
 
         self.assert_isinstance(value, "workers", (list, tuple))
         if any(isinstance(v, dict) for v in value):
-            value = [
-                WorkerStats.from_dict(v) if isinstance(v, dict) else v for v in value
-            ]
+            value = [WorkerStats.from_dict(v) if isinstance(v, dict) else v for v in value]
         else:
             self.assert_isinstance(value, "workers", WorkerStats, is_array=True)
         self._property_workers = value
@@ -2160,7 +2152,11 @@ class RegisterRequest(Request):
             },
             "timeout": {
                 "default": 600,
-                "description": "Registration timeout in seconds. If timeout seconds have passed since the worker's last call to register or status_report, the worker is automatically removed from the list of registered workers.",
+                "description": (
+                    "Registration timeout in seconds. If timeout seconds have passed since the worker's last call to"
+                    " register or status_report, the worker is automatically removed from the list of registered"
+                    " workers."
+                ),
                 "type": "integer",
             },
             "worker": {
@@ -2257,14 +2253,14 @@ class StatusReportRequest(Request):
 
     :param worker: Worker id.
     :type worker: str
-    :param task: ID of a task currently being run by the worker. If no task is
-        sent, the worker's task field will be cleared.
+    :param task: ID of a task currently being run by the worker. If no task is sent, the worker's task field
+        will be cleared.
     :type task: str
-    :param queue: ID of the queue from which task was received. If no queue is
-        sent, the worker's queue field will be cleared.
+    :param queue: ID of the queue from which task was received. If no queue is sent, the worker's queue field
+        will be cleared.
     :type queue: str
-    :param queues: List of queue IDs on which the worker is listening. If null, the
-        worker's queues list will not be updated.
+    :param queues: List of queue IDs on which the worker is listening. If null, the worker's queues list
+        will not be updated.
     :type queues: Sequence[str]
     :param timestamp: UNIX time in seconds since epoch.
     :type timestamp: int
@@ -2353,11 +2349,17 @@ class StatusReportRequest(Request):
                 "description": "The machine statistics.",
             },
             "queue": {
-                "description": "ID of the queue from which task was received. If no queue is sent, the worker's queue field will be cleared.",
+                "description": (
+                    "ID of the queue from which task was received. If no queue is sent, the worker's queue field will"
+                    " be cleared."
+                ),
                 "type": "string",
             },
             "queues": {
-                "description": "List of queue IDs on which the worker is listening. If null, the worker's queues list will not be updated.",
+                "description": (
+                    "List of queue IDs on which the worker is listening. If null, the worker's queues list will not be"
+                    " updated."
+                ),
                 "items": {"type": "string"},
                 "type": "array",
             },
@@ -2367,7 +2369,10 @@ class StatusReportRequest(Request):
                 "type": "array",
             },
             "task": {
-                "description": "ID of a task currently being run by the worker. If no task is sent, the worker's task field will be cleared.",
+                "description": (
+                    "ID of a task currently being run by the worker. If no task is sent, the worker's task field will"
+                    " be cleared."
+                ),
                 "type": "string",
             },
             "timestamp": {
@@ -2380,17 +2385,7 @@ class StatusReportRequest(Request):
         "type": "object",
     }
 
-    def __init__(
-        self,
-        worker,
-        timestamp,
-        task=None,
-        queue=None,
-        queues=None,
-        machine_stats=None,
-        tags=None,
-        **kwargs
-    ):
+    def __init__(self, worker, timestamp, task=None, queue=None, queues=None, machine_stats=None, tags=None, **kwargs):
         super(StatusReportRequest, self).__init__(**kwargs)
         self.worker = worker
         self.task = task

@@ -1360,12 +1360,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def delete_artifacts(self, artifact_names, raise_on_errors):
         # type: (Sequence[str], bool) -> bool
         """
-                Delete a list of artifacts, by artifact name, from the Task.
+        Delete a list of artifacts, by artifact name, from the Task.
 
-                :param list artifact_names: list of artifact names
-                :param bool raise_on_errors: if True, do not suppress connectivity related exceptions
-                :return: True if successful
-                """
+        :param list artifact_names: list of artifact names
+        :param bool raise_on_errors: if True, do not suppress connectivity related exceptions
+        :return: True if successful
+        """
         return self._delete_artifacts(artifact_names, raise_on_errors)
 
     def _delete_artifacts(self, artifact_names, raise_on_errors=False):

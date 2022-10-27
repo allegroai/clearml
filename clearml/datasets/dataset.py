@@ -686,7 +686,7 @@ class Dataset(object):
                 chunk_size,
                 max_workers,
                 allow_zip_64=True,
-                compression=compression or ZIP_DEFLATED,
+                compression=ZIP_DEFLATED if compression is None else compression,
                 zip_prefix="dataset.{}.".format(self._id),
                 zip_suffix=".zip",
                 verbose=verbose,

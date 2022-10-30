@@ -1,4 +1,5 @@
 import json as json_lib
+import os
 import sys
 import types
 from socket import gethostname
@@ -20,7 +21,6 @@ from .defs import (
     ENV_WEB_HOST,
     ENV_FILES_HOST,
     ENV_OFFLINE_MODE,
-    ENV_CLEARML_NO_DEFAULT_SERVER,
     ENV_AUTH_TOKEN,
     ENV_DISABLE_VAULT_SUPPORT,
     ENV_ENABLE_ENV_CONFIG_SECTION,
@@ -75,11 +75,11 @@ class Session(TokenManager):
     max_api_version = '2.9'
     feature_set = 'basic'
     default_demo_host = "https://demoapi.demo.clear.ml"
-    default_host = default_demo_host
-    default_web = "https://demoapp.demo.clear.ml"
-    default_files = "https://demofiles.demo.clear.ml"
-    default_key = "EGRTCO8JMSIGI6S39GTP43NFWXDQOW"
-    default_secret = "x!XTov_G-#vspE*Y(h$Anm&DIc5Ou-F)jsl$PdOyj5wG1&E!Z8"
+    default_host = "https://api.clear.ml"
+    default_web = "https://app.clear.ml"
+    default_files = "https://files.clear.ml"
+    default_key = ""  # "EGRTCO8JMSIGI6S39GTP43NFWXDQOW"
+    default_secret = ""  # "x!XTov_G-#vspE*Y(h$Anm&DIc5Ou-F)jsl$PdOyj5wG1&E!Z8"
     force_max_api_version = None
 
     legacy_file_servers = ["https://files.community.clear.ml"]
@@ -156,22 +156,20 @@ class Session(TokenManager):
             # if we use a token we override make sure we are at least 3600 seconds (1 hour)
             # away from the token expiration date, ask for a new one.
             token_expiration_threshold_sec = max(token_expiration_threshold_sec, 3600)
-        else:
+        elif not self._offline_mode:
             self.__access_key = api_key or ENV_ACCESS_KEY.get(
                 default=(self.config.get("api.credentials.access_key", None) or self.default_key)
             )
-            if not self.access_key:
-                raise ValueError(
-                    "Missing access_key. Please set in configuration file or pass in session init."
-                )
-
             self.__secret_key = secret_key or ENV_SECRET_KEY.get(
                 default=(self.config.get("api.credentials.secret_key", None) or self.default_secret)
             )
-            if not self.secret_key:
-                raise ValueError(
-                    "Missing secret_key. Please set in configuration file or pass in session init."
-                )
+
+            # check if we can login to existing browser session
+            if not self.access_key and not self.secret_key:
+                self.__auth_token = \
+                    self.__get_browser_token(self.get_app_server_host(config=self.config)) or None
+                if self.__auth_token:
+                    token_expiration_threshold_sec = max(token_expiration_threshold_sec, 3600)
 
         # init the token manager
         super(Session, self).__init__(
@@ -180,11 +178,11 @@ class Session(TokenManager):
 
         host = host or self.get_api_server_host(config=self.config)
         if not host:
-            raise ValueError("host is required in init or config")
+            raise ValueError("ClearML host was not set, check your configuration file or environment variable")
 
-        if not self._offline_mode and ENV_CLEARML_NO_DEFAULT_SERVER.get() and host == self.default_demo_host:
+        if not self._offline_mode and (not self.secret_key and not self.access_key and not self.__auth_token):
             raise ValueError(
-                "ClearML configuration could not be found (missing `~/clearml.conf` or Environment CLEARML_API_HOST)\n"
+                "ClearML configuration could not be found (missing `~/clearml.conf` or environment configuration)\n"
                 "To get started with ClearML: setup your own `clearml-server`, "
                 "or create a free account at https://app.clear.ml"
             )
@@ -781,6 +779,52 @@ class Session(TokenManager):
                                  "exception: {}".format(res, ex))
         except Exception as ex:
             raise LoginError('Unrecognized Authentication Error: {} {}'.format(type(ex), ex))
+
+    @staticmethod
+    def __get_browser_token(webserver):
+        # try to get the token if we are running inside a browser session (i.e. CoLab, Kaggle etc.)
+        if not os.environ.get("JPY_PARENT_PID"):
+            return None
+
+        try:
+            from google.colab import output  # noqa
+            from google.colab._message import MessageError  # noqa
+            from IPython import display  # noqa
+
+            # must have cookie to same-origin: None for this one to work
+            display.display(
+                display.Javascript(
+                    """
+                    window._ApiKey = new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => reject("Failed authenticating existing browser session"), 5000)
+                        fetch("%s/api/auth.login", {
+                          method: 'GET',
+                          credentials: 'include'
+                        })
+                          .then((response) => resolve(response.json()))
+                          .then((json) => {
+                            clearTimeout(timeout);
+                          }).catch((err) => {
+                            clearTimeout(timeout);
+                            reject(err);
+                        });
+                    });
+                    """ % webserver.rstrip("/")
+                ))
+
+            response = output.eval_js("_ApiKey")
+            if not response:
+                return None
+            result_code = response.get("meta", {}).get("result_code")
+            token = response.get("data", {}).get("token")
+        except:  # noqa
+            return None
+
+        if result_code != 200:
+            raise ValueError(
+                "Automatic authenticating failed, please login to {} and try again".format(webserver))
+
+        return token
 
     def __str__(self):
         return "{self.__class__.__name__}[{self.host}, {self.access_key}/{secret_key}]".format(

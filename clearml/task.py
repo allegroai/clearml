@@ -3710,6 +3710,7 @@ class Task(_Task):
                 self._org_handlers = {}
                 self._signal_recursion_protection_flag = False
                 self._except_recursion_protection_flag = False
+                self._import_bind_path = os.path.join("clearml", "binding", "import_bind.py")
 
             def update_callback(self, callback):
                 if self._exit_callback and not six.PY2:
@@ -3773,6 +3774,26 @@ class Task(_Task):
 
                 self._except_recursion_protection_flag = True
                 self.exception = value
+
+                try:
+                    # remove us from import errors
+                    if six.PY3 and isinstance(exctype, type) and issubclass(exctype, ImportError):
+                        prev = cur = traceback
+                        while cur is not None:
+                            tb_next = cur.tb_next
+                            # if this is the import frame, we should remove it
+                            if cur.tb_frame.f_code.co_filename.endswith(self._import_bind_path):
+                                # remove this frame by connecting the previous one to the next one
+                                prev.tb_next = tb_next
+                                cur.tb_next = None
+                                del cur
+                                cur = prev
+
+                            prev = cur
+                            cur = tb_next
+                except:  # noqa
+                    pass
+
                 if self._orig_exc_handler:
                     # noinspection PyArgumentList
                     ret = self._orig_exc_handler(exctype, value, traceback, *args, **kwargs)

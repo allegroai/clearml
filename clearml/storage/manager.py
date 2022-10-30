@@ -14,7 +14,7 @@ from pathlib2 import Path
 
 from .cache import CacheManager
 from .helper import StorageHelper
-from .util import encode_string_to_filename
+from .util import encode_string_to_filename, safe_extract
 from ..debugging.log import LoggerRoot
 
 
@@ -165,47 +165,9 @@ class StorageManager(object):
                 ZipFile(cached_file.as_posix()).extractall(path=temp_target_folder.as_posix())
             elif suffix == ".tar.gz":
                 with tarfile.open(cached_file.as_posix()) as file:
-                    def is_within_directory(directory, target):
-                        
-                        abs_directory = os.path.abspath(directory)
-                        abs_target = os.path.abspath(target)
-                    
-                        prefix = os.path.commonprefix([abs_directory, abs_target])
-                        
-                        return prefix == abs_directory
-                    
-                    def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
-                    
-                        for member in tar.getmembers():
-                            member_path = os.path.join(path, member.name)
-                            if not is_within_directory(path, member_path):
-                                raise Exception("Attempted Path Traversal in Tar File")
-                    
-                        tar.extractall(path, members, numeric_owner=numeric_owner) 
-                        
-                    
                     safe_extract(file, temp_target_folder.as_posix())
             elif suffix == ".tgz":
                 with tarfile.open(cached_file.as_posix(), mode='r:gz') as file:
-                    def is_within_directory(directory, target):
-                        
-                        abs_directory = os.path.abspath(directory)
-                        abs_target = os.path.abspath(target)
-                    
-                        prefix = os.path.commonprefix([abs_directory, abs_target])
-                        
-                        return prefix == abs_directory
-                    
-                    def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
-                    
-                        for member in tar.getmembers():
-                            member_path = os.path.join(path, member.name)
-                            if not is_within_directory(path, member_path):
-                                raise Exception("Attempted Path Traversal in Tar File")
-                    
-                        tar.extractall(path, members, numeric_owner=numeric_owner) 
-                        
-                    
                     safe_extract(file, temp_target_folder.as_posix())
 
             if temp_target_folder != target_folder:

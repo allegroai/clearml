@@ -1357,7 +1357,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 self._edit(execution=execution)
         return self.data.execution.artifacts or []
 
-    def delete_artifacts(self, artifact_names, raise_on_errors):
+    def delete_artifacts(self, artifact_names, raise_on_errors=True):
         # type: (Sequence[str], bool) -> bool
         """
         Delete a list of artifacts, by artifact name, from the Task.

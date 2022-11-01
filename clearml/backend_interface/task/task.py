@@ -1357,12 +1357,24 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 self._edit(execution=execution)
         return self.data.execution.artifacts or []
 
-    def _delete_artifacts(self, artifact_names):
-        # type: (Sequence[str]) -> bool
+    def delete_artifacts(self, artifact_names, raise_on_errors=True):
+        # type: (Sequence[str], bool) -> bool
         """
         Delete a list of artifacts, by artifact name, from the Task.
 
         :param list artifact_names: list of artifact names
+        :param bool raise_on_errors: if True, do not suppress connectivity related exceptions
+        :return: True if successful
+        """
+        return self._delete_artifacts(artifact_names, raise_on_errors)
+
+    def _delete_artifacts(self, artifact_names, raise_on_errors=False):
+        # type: (Sequence[str], bool) -> bool
+        """
+        Delete a list of artifacts, by artifact name, from the Task.
+
+        :param list artifact_names: list of artifact names
+        :param bool raise_on_errors: if True, do not suppress connectivity related exceptions
         :return: True if successful
         """
         if not Session.check_min_api_version('2.3'):
@@ -1374,7 +1386,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             if Session.check_min_api_version("2.13") and not self._offline_mode:
                 req = tasks.DeleteArtifactsRequest(
                     task=self.task_id, artifacts=[{"key": n, "mode": "output"} for n in artifact_names], force=True)
-                res = self.send(req, raise_on_errors=False)
+                res = self.send(req, raise_on_errors=raise_on_errors)
                 if not res or not res.response or not res.response.deleted:
                     return False
                 self.reload()

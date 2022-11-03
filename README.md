@@ -57,7 +57,7 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
     * Resource Monitoring (CPU/GPU utilization, temperature, IO, network, etc.)
     * Model snapshots (With optional automatic upload to central storage: Shared folder, S3, GS, Azure, Http)
     * Artifacts log & store (Shared folder, S3, GS, Azure, Http)
-    * Tensorboard/TensorboardX scalars, metrics, histograms, **images, audio and video samples**
+    * Tensorboard/[TensorboardX](https://github.com/allegroai/clearml/tree/master/examples/frameworks/tensorboardx) scalars, metrics, histograms, **images, audio and video samples**
     * [Matplotlib & Seaborn](https://github.com/allegroai/clearml/tree/master/examples/frameworks/matplotlib)
     * [ClearML Logger](https://clear.ml/docs/latest/docs/fundamentals/logger) interface for complete flexibility.
 * Extensive platform support and integrations

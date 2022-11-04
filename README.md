@@ -138,7 +138,7 @@ experiment management,ML-Ops and data management.
 
 ## Who We Are
 
-ClearML is supported by the team behind *allegro.ai*,
+ClearML is supported by the team behind *clear.ml*,
 where we build deep learning pipelines and infrastructure for enterprise companies.
 
 We built ClearML to track and control the glorious but messy process of training production-grade deep learning models.

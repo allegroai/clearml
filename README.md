@@ -138,7 +138,7 @@ experiment management,ML-Ops and data management.
 
 ## Who We Are
 
-ClearML is supported by the team behind *clear.ml*,
+ClearML is supported by the team behind [clear.ml](https://clear.ml),
 where we build deep learning pipelines and infrastructure for enterprise companies.
 
 We built ClearML to track and control the glorious but messy process of training production-grade deep learning models.
@@ -172,7 +172,7 @@ If you have any questions: post on our [Slack Channel](https://join.slack.com/t/
 
 For feature requests or bug reports, please use [GitHub issues](https://github.com/allegroai/clearml/issues).
 
-Additionally, you can always find us at *clearml@allegro.ai*
+Additionally, you can always find us at *info@clear.ml*
 
 ## Contributing
 

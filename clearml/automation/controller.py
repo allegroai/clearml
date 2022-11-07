@@ -824,9 +824,9 @@ class PipelineController(object):
             self._default_execution_queue = self._default_execution_queue or 'mock'
 
         # serialize state only if we are running locally
-        self._verify()
-        self._serialize_pipeline_task()
-        self.update_execution_plot()
+        if Task.running_locally() or not self._task.is_main_task():
+            self._verify()
+            self._serialize_pipeline_task()
 
         self._start(wait=True)
 

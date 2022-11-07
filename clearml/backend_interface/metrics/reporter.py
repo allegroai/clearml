@@ -175,6 +175,7 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
     def _write(self):
         if self._queue.empty():
             return
+
         # print('reporting %d events' % len(self._events))
         events = []
         while not self._queue.empty():
@@ -227,15 +228,12 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         reporter.flush()
     """
 
-    def __init__(self, metrics, task, flush_threshold=10, async_enable=False, use_subprocess=False):
+    def __init__(self, metrics, task, async_enable=False):
         """
         Create a reporter
         :param metrics: A Metrics manager instance that handles actual reporting, uploads etc.
         :type metrics: .backend_interface.metrics.Metrics
         :param task: Task object
-        :param flush_threshold: Events flush threshold. This determines the threshold over which cached reported events
-            are flushed and sent to the backend.
-        :type flush_threshold: int
         """
         log = metrics.log.getChild('reporter')
         log.setLevel(log.level)
@@ -247,8 +245,9 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._bucket_config = None
         self._storage_uri = None
         self._async_enable = async_enable
-        self._flush_frequency = 5.0
+        self._flush_frequency = config.get("development.worker.report_period_sec", 2)
         self._max_iteration = 0
+        flush_threshold = config.get("development.worker.report_event_flush_threshold", 50)
         self._report_service = BackgroundReportService(
             task=task, async_enable=async_enable, metrics=metrics,
             flush_frequency=self._flush_frequency, flush_threshold=flush_threshold)

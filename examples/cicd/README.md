@@ -21,6 +21,9 @@ You can find the values for each of these keys either in your `clearml.conf`-fil
 We'll need a Github authentication token too, if we want to be able to post a new comment on the open PR. (Only needed for the first Job)
 You can find more info about a Github token [here](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token)
 
+## Setup Workflows
+In order to run this workflow, copy paste the contents of this `cicd` example folder into a new git repository. Move `run_clearml_checks.yml` to a new folder `.github/workflows/run_clearml_checks.yml` so Github can pick it up. Then add your ClearML and optionally your Github credentials to the repository secrets using the keys specified above or in `run_clearml_checks.yml`. Finally, open a PR on the new repository with a change, and see how the Github Actions spring to life!
+
 ## Job 1: Add scalars to an open PR
 
 ### When to use

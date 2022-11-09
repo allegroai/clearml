@@ -2208,21 +2208,25 @@ class Dataset(object):
                 raise ValueError("Could not download dataset id={} entry={}".format(self._id, data_artifact_name))
             return local_zip
 
-        def _extract_part(local_zip):
+        def _extract_part(local_zip, data_artifact_name):
             # noinspection PyProtectedMember
             StorageManager._extract_to_cache(
                 cached_file=local_zip, name=self._id,
                 cache_context=self.__cache_context, target_folder=local_folder, force=True)
             # noinspection PyBroadException
             try:
-                Path(local_zip).unlink()
+                # do not delete files we accessed directly
+                url = self._task.artifacts[data_artifact_name].url
+                helper = StorageHelper.get(url)
+                if helper.get_driver_direct_access(url) is None:
+                    Path(local_zip).unlink()
             except Exception:
                 pass
 
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
             for d in data_artifact_entries:
                 local_zip = _download_part(d)
-                pool.submit(_extract_part, local_zip)
+                pool.submit(_extract_part, local_zip, d)
 
         return local_folder
 

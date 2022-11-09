@@ -227,7 +227,7 @@ class GitDetector(Detector):
 
     def _get_commands(self):
         return self.Commands(
-            url=["git", "ls-remote", "--get-url", "origin"],
+            url=["git", "ls-remote", "--get-url"],
             branch=["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
             commit=["git", "rev-parse", "HEAD"],
             root=["git", "rev-parse", "--show-toplevel"],

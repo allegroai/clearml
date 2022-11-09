@@ -1,3 +1,4 @@
+from __future__ import print_function
 import json as json_lib
 import os
 import sys
@@ -902,11 +903,11 @@ def browser_login(clearml_server=None):
         if not token:
             if not counter:
                 print(
-                    f"ClearML automatic browser login failed, please login or create a new account\n"
-                    f"To get started with ClearML: setup your own `clearml-server`, "
-                    f"or create a free account at {clearml_app_server}\n"
+                    "ClearML automatic browser login failed, please login or create a new account\n"
+                    "To get started with ClearML: setup your own `clearml-server`, "
+                    "or create a free account at {}\n".format(clearml_app_server)
                 )
-                print(f"Please login to {clearml_app_server} , then press [Enter] to connect ", end="")
+                print("Please login to {} , then press [Enter] to connect ".format(clearml_app_server), end="")
             else:
                 print("Oh no we failed to connect \N{worried face}, "
                       "try to logout and login again - Press [Enter] to retry ", end="")

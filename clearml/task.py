@@ -613,7 +613,9 @@ class Task(_Task):
                     # set defaults
                     if cls._offline_mode:
                         task.output_uri = None
-                    elif output_uri:
+                    elif output_uri is not None:
+                        if output_uri is True:
+                            output_uri = task.get_project_object().default_output_destination or True
                         task.output_uri = output_uri
                     elif task.get_project_object().default_output_destination:
                         task.output_uri = task.get_project_object().default_output_destination

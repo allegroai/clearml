@@ -62,7 +62,7 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
     * [ClearML Logger](https://clear.ml/docs/latest/docs/fundamentals/logger) interface for complete flexibility.
 * Extensive platform support and integrations
     * Supported ML/DL frameworks: [PyTorch](https://github.com/allegroai/clearml/tree/master/examples/frameworks/pytorch) (incl' [ignite](https://github.com/allegroai/clearml/tree/master/examples/frameworks/ignite) / [lightning](https://github.com/allegroai/clearml/tree/master/examples/frameworks/pytorch-lightning)), [Tensorflow](https://github.com/allegroai/clearml/tree/master/examples/frameworks/tensorflow), [Keras](https://github.com/allegroai/clearml/tree/master/examples/frameworks/keras), [AutoKeras](https://github.com/allegroai/clearml/tree/master/examples/frameworks/autokeras), [FastAI](https://github.com/allegroai/clearml/tree/master/examples/frameworks/fastai), [XGBoost](https://github.com/allegroai/clearml/tree/master/examples/frameworks/xgboost), [LightGBM](https://github.com/allegroai/clearml/tree/master/examples/frameworks/lightgbm), [MegEngine](https://github.com/allegroai/clearml/tree/master/examples/frameworks/megengine) and [Scikit-Learn](https://github.com/allegroai/clearml/tree/master/examples/frameworks/scikit-learn)
-    * Seamless integration (including version control) with **Jupyter Notebook**
+    * Seamless integration (including version control) with [**Jupyter Notebook**](https://jupyter.org/)
     and [*PyCharm* remote debugging](https://github.com/allegroai/trains-pycharm-plugin)
       
 #### [Start using ClearML](https://clear.ml/docs/latest/docs/getting_started/ds/ds_first_steps) 

@@ -595,8 +595,20 @@ class StorageHelper(object):
         :return: The size of the file in bytes.
             None if the file could not be found or an error occurred.
         """
-        size = None
         obj = self.get_object(remote_url, silence_errors=silence_errors)
+        return self._get_object_size_bytes(obj)
+
+    def _get_object_size_bytes(self, obj):
+        # type: (object, bool) -> [int, None]
+        """
+        Auxiliary function for `get_object_size_bytes`.
+        Get size of the remote object in bytes.
+
+        :param object obj: The remote object
+
+        :return: The size of the object in bytes.
+            None if an error occurred.
+        """
         if not obj:
             return None
         try:
@@ -614,6 +626,21 @@ class StorageHelper(object):
         except (ValueError, AttributeError, KeyError):
             pass
         return size
+
+    def get_object_metadata(self, obj):
+        # type: (object) -> dict
+        """
+        Get the metadata of the a remote object.
+        The metadata is a dict containing the following keys: `name`, `size`.
+        
+        :param object obj: The remote object
+        
+        :return: A dict containing the metadata of the remote object
+        """
+        return {
+            "name": obj.name if hasattr(obj, "name") else obj.url if hasattr(obj, "url") else None,
+            "size": self._get_object_size_bytes(obj),
+        }
 
     def verify_upload(self, folder_uri='', raise_on_error=True, log_on_error=True):
         """
@@ -716,12 +743,13 @@ class StorageHelper(object):
                 res = quote_url(res)
             return res
 
-    def list(self, prefix=None):
+    def list(self, prefix=None, with_metadata=False):
         """
         List entries in the helper base path.
 
-        Return a list of names inside this helper base path. The base path is
-        determined at creation time and is specific for each storage medium.
+        Return a list of names inside this helper base path or a list of dictionaries containing
+        the objects' metadata. The base path is determined at creation time and is specific
+        for each storage medium.
         For Google Storage and S3 it is the bucket of the path.
         For local files it is the root directory.
 
@@ -731,11 +759,14 @@ class StorageHelper(object):
             must be a string - the path of a sub directory under the base path.
             the returned list will include only objects under that subdir.
 
-        :return: The paths of all the objects in the storage base
-            path under prefix. Listed relative to the base path.
+        :param with_metadata: Instead of returning just the names of the objects, return a list of dictionaries
+            containing the name and metadata of the remote file. Thus, each dictionary will contain the following
+            keys: `name`, `size`.
 
+        :return: The paths of all the objects in the storage base path under prefix or
+            a list of dictionaries containing the objects' metadata.
+            Listed relative to the base path.
         """
-
         if prefix:
             if prefix.startswith(self._base_url):
                 prefix = prefix[len(self.base_url):].lstrip("/")
@@ -746,15 +777,22 @@ class StorageHelper(object):
                 res = self._driver.list_container_objects(self._container)
 
             result = [
-                obj.name
+                obj.name if not with_metadata else self.get_object_metadata(obj)
                 for obj in res
                 if (obj.name.startswith(prefix) or self._base_url == "file://") and obj.name != prefix
             ]
             if self._base_url == "file://":
-                result = [Path(f).as_posix() for f in result]
+                if not with_metadata:
+                    result = [Path(f).as_posix() for f in result]
+                else:
+                    for metadata_entry in result:
+                        metadata_entry["name"] = Path(metadata_entry["name"]).as_posix()
             return result
         else:
-            return [obj.name for obj in self._driver.list_container_objects(self._container)]
+            return [
+                obj.name if not with_metadata else self.get_object_metadata(obj)
+                for obj in self._driver.list_container_objects(self._container)
+            ]
 
     def download_to_file(
             self,

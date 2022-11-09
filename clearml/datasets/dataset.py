@@ -116,7 +116,7 @@ class Dataset(object):
     __default_dataset_version = "1.0.0"
     __dataset_folder_template = CacheManager.set_context_folder_lookup(__cache_context, "{0}_archive_{1}")
     __preview_max_file_entries = 15000
-    __preview_max_size = 5 * 1024 * 1024
+    __preview_max_size = 32 * 1024
     __min_api_version = "2.20"
     __hyperparams_section = "Datasets"
     __datasets_runtime_prop = "datasets"
@@ -409,11 +409,13 @@ class Dataset(object):
         dataset_path=None,  # type: Optional[str]
         recursive=True,  # type: bool
         verbose=False,  # type: bool
+        max_workers=None  # type: Optional[int]
     ):
-        # type: (...) -> ()
+        # type: (...) -> int
         """
-        Adds an external file or a folder to the current dataset.
-        External file links can be from cloud storage (s3://, gs://, azure://) or local / network storage (file://).
+        Adds external files or folders to the current dataset.
+        External file links can be from cloud storage (s3://, gs://, azure://), local / network storage (file://)
+        or http(s)// files.
         Calculates file size for each file and compares against parent.
 
         A few examples:
@@ -436,92 +438,32 @@ class Dataset(object):
             'image.jpg' will be downloaded to 's3_files/image.jpg' (relative path to the dataset)
         :param recursive: If True match all wildcard files recursively
         :param verbose: If True print to console files added/modified
-        :return: number of file links added
+        :param max_workers: The number of threads to add the external files with. Useful when `source_url` is
+            a sequence. Defaults to the number of logical cores 
+        :return: Number of file links added
         """
-        num_added = 0
         self._dirty = True
-        if not isinstance(source_url, str):
-            for source_url_ in source_url:
-                num_added += self.add_external_files(
+        num_added = 0
+        num_modified = 0
+        source_url_list = source_url if not isinstance(source_url, str) else [source_url]
+        max_workers = max_workers or psutil.cpu_count()
+        futures_ = []
+        with ThreadPoolExecutor(max_workers=max_workers) as tp:
+            for source_url_ in source_url_list:
+                futures_.append(
+                    tp.submit(
+                        self._add_external_files,
                         source_url_,
                         wildcard=wildcard,
                         dataset_path=dataset_path,
                         recursive=recursive,
-                        verbose=verbose
+                        verbose=verbose,
+                    )
                 )
-            return num_added
-        if dataset_path:
-            dataset_path = dataset_path.lstrip("/")
-        # noinspection PyBroadException
-        try:
-            if StorageManager.exists_file(source_url):
-                links = [source_url]
-            else:
-                if source_url[-1] != "/":
-                    source_url = source_url + "/"
-                links = StorageManager.list(source_url, return_full_path=True)
-        except Exception:
-            self._task.get_logger().report_text(
-                "Could not list/find remote file(s) when adding {}".format(source_url)
-            )
-            return 0
-        num_modified = 0
-        for link in links:
-            relative_path = link[len(source_url):]
-            if not relative_path:
-                relative_path = source_url.split("/")[-1]
-            if not matches_any_wildcard(relative_path, wildcard, recursive=recursive):
-                continue
-            try:
-                relative_path = Path(os.path.join(dataset_path or ".", relative_path)).as_posix()
-                size = StorageManager.get_file_size_bytes(link, silence_errors=True)
-                already_added_file = self._dataset_file_entries.get(relative_path)
-                if relative_path not in self._dataset_link_entries:
-                    if verbose:
-                        self._task.get_logger().report_text(
-                            "External file {} added".format(link),
-                            print_console=False,
-                        )
-                    self._dataset_link_entries[relative_path] = LinkEntry(
-                        link=link, relative_path=relative_path, parent_dataset_id=self._id, size=size
-                    )
-                    num_added += 1
-                elif already_added_file and already_added_file.size != size:
-                    if verbose:
-                        self._task.get_logger().report_text(
-                            "External file {} modified".format(link),
-                            print_console=False,
-                        )
-                    del self._dataset_file_entries[relative_path]
-                    self._dataset_link_entries[relative_path] = LinkEntry(
-                        link=link, relative_path=relative_path, parent_dataset_id=self._id, size=size
-                    )
-                    num_modified += 1
-                elif (
-                    relative_path in self._dataset_link_entries
-                    and self._dataset_link_entries[relative_path].size != size
-                ):
-                    if verbose:
-                        self._task.get_logger().report_text(
-                            "External file {} modified".format(link),
-                            print_console=False,
-                        )
-                    self._dataset_link_entries[relative_path] = LinkEntry(
-                        link=link, relative_path=relative_path, parent_dataset_id=self._id, size=size
-                    )
-                    num_modified += 1
-                else:
-                    if verbose:
-                        self._task.get_logger().report_text(
-                            "External file {} skipped as it was not modified".format(link),
-                            print_console=False,
-                        )
-            except Exception as e:
-                if verbose:
-                    self._task.get_logger().report_text(
-                        "Error '{}' encountered trying to add external file {}".format(e, link),
-                        print_console=False,
-                    )
+        for future_ in futures_:
+            num_added_this_call, num_modified_this_call = future_.result()
+            num_added += num_added_this_call
+            num_modified += num_modified_this_call
         self._task.add_tags([self.__external_files_tag])
         self._add_script_call(
             "add_external_files",
@@ -712,11 +654,21 @@ class Dataset(object):
                 )
                 total_size += zip_.size
                 chunks_count += 1
+                truncated_preview = ""
+                add_truncated_message = False
+                truncated_message = "...\ntruncated (too many files to preview)"
+                for preview_entry in zip_.archive_preview[: Dataset.__preview_max_file_entries]:
+                    truncated_preview += preview_entry + "\n"
+                    if len(truncated_preview) > Dataset.__preview_max_size:
+                        add_truncated_message = True
+                        break
+                if len(zip_.archive_preview) > Dataset.__preview_max_file_entries:
+                    add_truncated_message = True
                 pool.submit(
                     self._task.upload_artifact,
                     name=artifact_name,
                     artifact_object=Path(zip_path),
-                    preview=zip_.archive_preview,
+                    preview=truncated_preview + (truncated_message if add_truncated_message else ""),
                     delete_after_upload=True,
                     wait_on_upload=True,
                 )
@@ -2971,6 +2923,110 @@ class Dataset(object):
         if self._dependency_chunk_lookup is None:
             self._dependency_chunk_lookup = self._build_dependency_chunk_lookup()
         return self._dependency_chunk_lookup
+
+    def _add_external_files(
+        self,
+        source_url,  # type: str
+        wildcard=None,  # type: Optional[Union[str, Sequence[str]]]
+        dataset_path=None,  # type: Optional[str]
+        recursive=True,  # type: bool
+        verbose=False,  # type: bool
+    ):
+        # type: (...) -> Tuple[int, int]
+        """
+        Auxiliary function for `add_external_files`
+        Adds an external file or a folder to the current dataset.
+        External file links can be from cloud storage (s3://, gs://, azure://) or local / network storage (file://).
+        Calculates file size for each file and compares against parent.
+
+        :param source_url: Source url link (e.g. s3://bucket/folder/path)
+        :param wildcard: add only specific set of files.
+            Wildcard matching, can be a single string or a list of wildcards.
+        :param dataset_path: The location in the dataset where the file will be downloaded into.
+            e.g: for source_url='s3://bucket/remote_folder/image.jpg' and dataset_path='s3_files',
+            'image.jpg' will be downloaded to 's3_files/image.jpg' (relative path to the dataset)
+        :param recursive: If True match all wildcard files recursively
+        :param verbose: If True print to console files added/modified
+        :return: Number of file links added and modified
+        """
+        if dataset_path:
+            dataset_path = dataset_path.lstrip("/")
+        remote_objects = None
+        # noinspection PyBroadException
+        try:
+            if StorageManager.exists_file(source_url):
+                remote_objects = [StorageManager.get_metadata(source_url)]
+            elif not source_url.startswith(("http://", "https://")):
+                if source_url[-1] != "/":
+                    source_url = source_url + "/"
+                remote_objects = StorageManager.list(source_url, with_metadata=True, return_full_path=True)
+        except Exception:
+            pass
+        if not remote_objects:
+            self._task.get_logger().report_text(
+                "Could not list/find remote file(s) when adding {}".format(source_url)
+            )
+            return 0, 0
+        num_added = 0
+        num_modified = 0
+        for remote_object in remote_objects:
+            link = remote_object.get("name")
+            relative_path = link[len(source_url):]
+            if not relative_path:
+                relative_path = source_url.split("/")[-1]
+            if not matches_any_wildcard(relative_path, wildcard, recursive=recursive):
+                continue
+            try:
+                relative_path = Path(os.path.join(dataset_path or ".", relative_path)).as_posix()
+                size = remote_object.get("size")
+                already_added_file = self._dataset_file_entries.get(relative_path)
+                if relative_path not in self._dataset_link_entries:
+                    if verbose:
+                        self._task.get_logger().report_text(
+                            "External file {} added".format(link),
+                            print_console=False,
+                        )
+                    self._dataset_link_entries[relative_path] = LinkEntry(
+                        link=link, relative_path=relative_path, parent_dataset_id=self._id, size=size
+                    )
+                    num_added += 1
+                elif already_added_file and already_added_file.size != size:
+                    if verbose:
+                        self._task.get_logger().report_text(
+                            "External file {} modified".format(link),
+                            print_console=False,
+                        )
+                    del self._dataset_file_entries[relative_path]
+                    self._dataset_link_entries[relative_path] = LinkEntry(
+                        link=link, relative_path=relative_path, parent_dataset_id=self._id, size=size
+                    )
+                    num_modified += 1
+                elif (
+                    relative_path in self._dataset_link_entries
+                    and self._dataset_link_entries[relative_path].size != size
+                ):
+                    if verbose:
+                        self._task.get_logger().report_text(
+                            "External file {} modified".format(link),
+                            print_console=False,
+                        )
+                    self._dataset_link_entries[relative_path] = LinkEntry(
+                        link=link, relative_path=relative_path, parent_dataset_id=self._id, size=size
+                    )
+                    num_modified += 1
+                else:
+                    if verbose:
+                        self._task.get_logger().report_text(
+                            "External file {} skipped as it was not modified".format(link),
+                            print_console=False,
+                        )
+            except Exception as e:
+                if verbose:
+                    self._task.get_logger().report_text(
+                        "Error '{}' encountered trying to add external file {}".format(e, link),
+                        print_console=False,
+                    )
+        return num_added, num_modified
 
     def _build_chunk_selection(self, part, num_parts):
         # type: (int, int) -> Dict[str, int]

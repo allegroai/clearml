@@ -8,11 +8,11 @@ from .logger import Logger
 from .storage import StorageManager
 from .errors import UsageError
 from .datasets import Dataset
-from .backend_api import browser_login
 
 TaskTypes = Task.TaskTypes
 
 if not PY2:
+    from .backend_api import browser_login  # noqa: F401
     from .automation.controller import PipelineController, PipelineDecorator  # noqa: F401
 
     __all__ = [

@@ -80,6 +80,17 @@ class ProxyDictPreWrite(dict):
         return self._set_callback((prefix + '.' + key_value[0], key_value[1],))
 
 
+class StubObject(object):
+    def __call__(self, *args, **kwargs):
+        return self
+
+    def __getattr__(self, attr):
+        return self
+
+    def __setattr__(self, attr, val):
+        pass
+
+
 def verify_basic_type(a_dict_list, basic_types=None):
     basic_types = (float, int, bool, six.string_types, ) if not basic_types else \
         tuple(b for b in basic_types if b not in (list, tuple, dict))

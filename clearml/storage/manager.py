@@ -5,7 +5,7 @@ import tarfile
 from multiprocessing.pool import ThreadPool
 from random import random
 from time import time
-from typing import List, Optional
+from typing import List, Optional, Union
 from zipfile import ZipFile
 from six.moves.urllib.parse import urlparse
 
@@ -426,7 +426,7 @@ class StorageManager(object):
 
     @classmethod
     def list(cls, remote_url, return_full_path=False, with_metadata=False):
-        # type: (str, bool) -> Optional[List[Union[str, dict]]]
+        # type: (str, bool, bool) -> Optional[List[Union[str, dict]]]
         """
         Return a list of object names inside the base path or dictionaries containing the corresponding
         objects' metadata (in case `with_metadata` is True)
@@ -472,7 +472,7 @@ class StorageManager(object):
         """
         Get the metadata of the a remote object.
         The metadata is a dict containing the following keys: `name`, `size`.
-        
+
         :param str remote_url: Source remote storage location, tree structure of `remote_url` will
             be created under the target local_folder. Supports S3/GS/Azure, shared filesystem and http(s).
             Example: 's3://bucket/data/'
@@ -480,7 +480,7 @@ class StorageManager(object):
         :return: A dict containing the metadata of the remote object. In case of an error, `None` is returned
         """
         helper = StorageHelper.get(remote_url)
-        obj = helper.get_object(remote_url) 
+        obj = helper.get_object(remote_url)
         if not obj:
             return None
         return helper.get_object_metadata(obj)

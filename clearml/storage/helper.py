@@ -632,9 +632,9 @@ class StorageHelper(object):
         """
         Get the metadata of the a remote object.
         The metadata is a dict containing the following keys: `name`, `size`.
-        
+
         :param object obj: The remote object
-        
+
         :return: A dict containing the metadata of the remote object
         """
         return {

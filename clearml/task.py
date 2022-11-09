@@ -16,7 +16,7 @@ try:
     # noinspection PyCompatibility
     from collections.abc import Sequence as CollectionsSequence
 except ImportError:
-    from collections import Sequence as CollectionsSequence
+    from collections import Sequence as CollectionsSequence  # noqa
 
 from typing import (
     Optional,
@@ -92,7 +92,7 @@ from .binding.args import (
 from .utilities.dicts import ReadOnlyDict, merge_dicts
 from .utilities.proxy_object import (
     ProxyDictPreWrite, ProxyDictPostWrite, flatten_dictionary,
-    nested_from_flat_dictionary, naive_nested_from_flat_dictionary, )
+    nested_from_flat_dictionary, naive_nested_from_flat_dictionary, StubObject as _TaskStub)
 from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
@@ -605,7 +605,9 @@ class Task(_Task):
                         if not ENV_IGNORE_MISSING_CONFIG.get():
                             raise
                         getLogger().warning(str(e))
-                        return _TaskStub()
+                        # return a Task-stub instead of the original class
+                        # this will make sure users can still call the Stub without code breaking
+                        return _TaskStub()  # noqa
                     # set defaults
                     if cls._offline_mode:
                         task.output_uri = None
@@ -1932,10 +1934,11 @@ class Task(_Task):
         - In case the ``serialization_function`` argument is set - any extension is supported
 
         :param Callable[Any, Union[bytes, bytearray]] serialization_function: A serialization function that takes one
-            parameter of any types which is the object to be serialized. The function should return a `bytes` or `bytearray`
-            object, which represents the serialized object. Note that the object will be immediately serialized using this function,
-            thus other serialization methods will not be used (e.g. `pandas.DataFrame.to_csv`), even if possible.
-            To deserialize this artifact when getting it using the `Artifact.get` method, use its `deserialization_function` argument
+            parameter of any types which is the object to be serialized. The function should return
+            a `bytes` or `bytearray` object, which represents the serialized object. Note that the object will be
+            immediately serialized using this function, thus other serialization methods will not be used
+            (e.g. `pandas.DataFrame.to_csv`), even if possible. To deserialize this artifact when getting
+            it using the `Artifact.get` method, use its `deserialization_function` argument.
 
         :return: The status of the upload.
 
@@ -2703,7 +2706,7 @@ class Task(_Task):
             project_name = task_data.get('project_name') or Task._get_project_name(task_data.get('project', ''))
             target_task = Task.create(project_name=project_name, task_name=task_data.get('name', None))
         elif isinstance(target_task, six.string_types):
-            target_task = Task.get_task(task_id=target_task)
+            target_task = Task.get_task(task_id=target_task)  # type: Optional[Task]
         elif not isinstance(target_task, Task):
             raise ValueError(
                 "`target_task` must be either Task id (str) or Task object, "
@@ -4276,14 +4279,3 @@ class Task(_Task):
             auto_connect_frameworks={'detect_repository': False}) \
             if state['main'] else Task.get_task(task_id=state['id'])
         self.__dict__ = task.__dict__
-
-
-class _TaskStub(object):
-    def __call__(self, *args, **kwargs):
-        return self
-
-    def __getattr__(self, attr):
-        return self
-
-    def __setattr__(self, attr, val):
-        pass

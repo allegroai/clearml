@@ -915,7 +915,8 @@ def browser_login(clearml_server=None):
 
     print("")
     if counter:
-        print("\nHurrah! \N{FACE WITH PARTY HORN AND PARTY HAT} \N{CONFETTI BALL} \N{party popper}")
+        # these emojis actually requires python 3.6+
+        print("\nHurrah! \N{face with party horn and party hat} \N{confetti ball} \N{party popper}")  # noqa: E999
 
     if token:
         # set Token

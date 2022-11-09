@@ -439,7 +439,7 @@ class Dataset(object):
         :param recursive: If True match all wildcard files recursively
         :param verbose: If True print to console files added/modified
         :param max_workers: The number of threads to add the external files with. Useful when `source_url` is
-            a sequence. Defaults to the number of logical cores 
+            a sequence. Defaults to the number of logical cores
         :return: Number of file links added
         """
         self._dirty = True

@@ -18,6 +18,7 @@ ENV_DISABLE_VAULT_SUPPORT = EnvEntry('CLEARML_DISABLE_VAULT_SUPPORT', type=bool)
 ENV_ENABLE_ENV_CONFIG_SECTION = EnvEntry('CLEARML_ENABLE_ENV_CONFIG_SECTION', type=bool)
 ENV_ENABLE_FILES_CONFIG_SECTION = EnvEntry('CLEARML_ENABLE_FILES_CONFIG_SECTION', type=bool)
 ENV_DEFERRED_TASK_INIT = EnvEntry('CLEARML_DEFERRED_TASK_INIT', type=bool)
+ENV_IGNORE_MISSING_CONFIG = EnvEntry("CLEARML_IGNORE_MISSING_CONFIG", type=bool)
 
 """
 Experimental option to set the request method for all API requests and auth login.
@@ -35,3 +36,14 @@ NOTE: this changes behavior and might cause the experiment to wait
 for a very long time for a non-responding or mis-configured server
 """
 ENV_API_EXTRA_RETRY_CODES = EnvEntry("CLEARML_API_EXTRA_RETRY_CODES")
+
+
+class MissingConfigError(Exception):
+    def __init__(self, message=None):
+        if message is None:
+            message = (
+                "It seems ClearML is not configured on this machine!\n"
+                "To get started with ClearML, setup your own 'clearml-server' or create a free account at https://app.clear.ml\n"
+                "Setup instructions can be found here: https://clear.ml/docs/latest/docs"
+            )
+        super().__init__(message)

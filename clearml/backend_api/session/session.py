@@ -26,7 +26,9 @@ from .defs import (
     ENV_DISABLE_VAULT_SUPPORT,
     ENV_ENABLE_ENV_CONFIG_SECTION,
     ENV_ENABLE_FILES_CONFIG_SECTION,
-    ENV_API_EXTRA_RETRY_CODES, ENV_API_DEFAULT_REQ_METHOD,
+    ENV_API_EXTRA_RETRY_CODES,
+    ENV_API_DEFAULT_REQ_METHOD,
+    MissingConfigError
 )
 from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
@@ -175,11 +177,7 @@ class Session(TokenManager):
             raise ValueError("ClearML host was not set, check your configuration file or environment variable")
 
         if not self._offline_mode and (not self.secret_key and not self.access_key and not self.__auth_token):
-            raise ValueError(
-                "ClearML configuration could not be found (missing `~/clearml.conf` or environment configuration)\n"
-                "To get started with ClearML: setup your own `clearml-server`, "
-                "or create a free account at https://app.clear.ml"
-            )
+            raise MissingConfigError()
 
         self._ssl_error_count_verbosity = self.config.get(
             "api.ssl_error_count_verbosity", self._ssl_error_count_verbosity)

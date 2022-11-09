@@ -41,7 +41,7 @@ from .backend_config.defs import get_active_config_file, get_config_file
 from .backend_api.services import tasks, projects
 from .backend_api.session.session import (
     Session, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_HOST, ENV_WEB_HOST, ENV_FILES_HOST, )
-from .backend_api.session.defs import ENV_DEFERRED_TASK_INIT
+from .backend_api.session.defs import ENV_DEFERRED_TASK_INIT, ENV_IGNORE_MISSING_CONFIG, MissingConfigError
 from .backend_interface.metrics import Metrics
 from .backend_interface.model import Model as BackendModel
 from .backend_interface.task import Task as _Task
@@ -77,7 +77,7 @@ from .binding.jsonargs_bind import PatchJsonArgParse
 from .binding.frameworks import WeightsFileHandler
 from .config import (
     config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, DEV_DEFAULT_OUTPUT_URI,
-    deferred_config, TASK_SET_ITERATION_OFFSET, )
+    deferred_config, TASK_SET_ITERATION_OFFSET)
 from .config import running_remotely, get_remote_task_id
 from .config.cache import SessionCache
 from .debugging.log import LoggerRoot
@@ -529,16 +529,6 @@ class Task(_Task):
         # check that we are not a child process, in that case do nothing.
         # we should not get here unless this is Windows/macOS platform, linux support fork
         if cls.__is_subprocess():
-            class _TaskStub(object):
-                def __call__(self, *args, **kwargs):
-                    return self
-
-                def __getattr__(self, attr):
-                    return self
-
-                def __setattr__(self, attr, val):
-                    pass
-
             is_sub_process_task_id = cls.__get_master_id_task_id()
             # we could not find a task ID, revert to old stub behaviour
             if not is_sub_process_task_id:
@@ -598,18 +588,24 @@ class Task(_Task):
                     cls.__update_master_pid_task()
                 # if this is the main process, create the task
                 elif not is_sub_process_task_id:
-                    task = cls._create_dev_task(
-                        default_project_name=project_name,
-                        default_task_name=task_name,
-                        default_task_type=task_type,
-                        tags=tags,
-                        reuse_last_task_id=reuse_last_task_id,
-                        continue_last_task=continue_last_task,
-                        detect_repo=False if (
-                                isinstance(auto_connect_frameworks, dict) and
-                                not auto_connect_frameworks.get('detect_repository', True)) else True,
-                        auto_connect_streams=auto_connect_streams,
-                    )
+                    try:
+                        task = cls._create_dev_task(
+                            default_project_name=project_name,
+                            default_task_name=task_name,
+                            default_task_type=task_type,
+                            tags=tags,
+                            reuse_last_task_id=reuse_last_task_id,
+                            continue_last_task=continue_last_task,
+                            detect_repo=False if (
+                                    isinstance(auto_connect_frameworks, dict) and
+                                    not auto_connect_frameworks.get('detect_repository', True)) else True,
+                            auto_connect_streams=auto_connect_streams,
+                        )
+                    except MissingConfigError as e:
+                        if not ENV_IGNORE_MISSING_CONFIG.get():
+                            raise
+                        getLogger().warning(str(e))
+                        return _TaskStub()
                     # set defaults
                     if cls._offline_mode:
                         task.output_uri = None
@@ -4280,3 +4276,14 @@ class Task(_Task):
             auto_connect_frameworks={'detect_repository': False}) \
             if state['main'] else Task.get_task(task_id=state['id'])
         self.__dict__ = task.__dict__
+
+
+class _TaskStub(object):
+    def __call__(self, *args, **kwargs):
+        return self
+
+    def __getattr__(self, attr):
+        return self
+
+    def __setattr__(self, attr, val):
+        pass

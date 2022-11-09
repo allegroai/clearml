@@ -10,7 +10,7 @@ import requests
 import six
 from requests.auth import HTTPBasicAuth
 from six.moves.urllib.parse import urlparse, urlunparse
-from typing import List
+from typing import List, Optional
 
 from .callresult import CallResult
 from .defs import (
@@ -163,13 +163,6 @@ class Session(TokenManager):
             self.__secret_key = secret_key or ENV_SECRET_KEY.get(
                 default=(self.config.get("api.credentials.secret_key", None) or self.default_secret)
             )
-
-            # check if we can login to existing browser session
-            if not self.access_key and not self.secret_key:
-                self.__auth_token = \
-                    self.__get_browser_token(self.get_app_server_host(config=self.config)) or None
-                if self.__auth_token:
-                    token_expiration_threshold_sec = max(token_expiration_threshold_sec, 3600)
 
         # init the token manager
         super(Session, self).__init__(
@@ -839,3 +832,96 @@ class Session(TokenManager):
             if not self.logger:
                 self.logger = get_logger()
             return self.logger
+
+
+def browser_login(clearml_server=None):
+    # type: (Optional[str]) -> ()
+    """
+    Alternative authentication / login method, (instead of configuring ~/clearml.conf or Environment variables)
+    ** Only applicable when running inside a browser session,
+    for example Google Colab, Kaggle notebook, Jupyter Notebooks etc. **
+
+    Notice: If called inside a python script, or when running with an agent, this function is ignored
+
+    :param clearml_server: Optional, set the clearml server address, default: https://app.clear.ml
+    """
+
+    # check if we are running inside a Jupyter notebook of a sort
+    if not os.environ.get("JPY_PARENT_PID"):
+        return
+
+    # if we are running remotely or in offline mode, skip login
+    from clearml.config import running_remotely
+    # noinspection PyProtectedMember
+    if running_remotely():
+        return
+
+    # if we have working local configuration, nothing to do
+    try:
+        Session()
+        return
+    except:  # noqa
+        pass
+
+    # conform clearml_server address
+    if clearml_server:
+        if not clearml_server.lower().startswith("http"):
+            clearml_server = "http://{}".format(clearml_server)
+
+        parsed = urlparse(clearml_server)
+        if parsed.port:
+            parsed = parsed._replace(netloc=parsed.netloc.replace(':%d' % parsed.port, ':8008', 1))
+
+        if parsed.netloc.startswith('demoapp.'):
+            parsed = parsed._replace(netloc=parsed.netloc.replace('demoapp.', 'demoapi.', 1))
+        elif parsed.netloc.startswith('app.'):
+            parsed = parsed._replace(netloc=parsed.netloc.replace('app.', 'api.', 1))
+        elif parsed.netloc.startswith('api.'):
+            pass
+        else:
+            parsed = parsed._replace(netloc='api.' + parsed.netloc)
+
+        clearml_server = urlunparse(parsed)
+
+        # set for later usage
+        ENV_HOST.set(clearml_server)
+
+    token = None
+    counter = 0
+    clearml_app_server = Session.get_app_server_host()
+    while not token:
+        # try to get authentication toke
+        try:
+            # noinspection PyProtectedMember
+            token = Session._Session__get_browser_token(clearml_app_server)
+        except ValueError:
+            token = None
+        except Exception:  # noqa
+            token = None
+        # if we could not get a token, instruct the user to login
+        if not token:
+            if not counter:
+                print(
+                    f"ClearML automatic browser login failed, please login or create a new account\n"
+                    f"To get started with ClearML: setup your own `clearml-server`, "
+                    f"or create a free account at {clearml_app_server}\n"
+                )
+                print(f"Please login to {clearml_app_server} , then press [Enter] to connect ", end="")
+            else:
+                print("Oh no we failed to connect \N{worried face}, "
+                      "try to logout and login again - Press [Enter] to retry ", end="")
+
+            input()
+            counter += 1
+
+    print("")
+    if counter:
+        print("\nHurrah! \N{FACE WITH PARTY HORN AND PARTY HAT} \N{CONFETTI BALL} \N{party popper}")
+
+    if token:
+        # set Token
+        ENV_AUTH_TOKEN.set(token)
+        # verify token
+        Session()
+        # success
+        print("\N{robot face} ClearML connected successfully - let's build something! \N{rocket}")

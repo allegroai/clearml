@@ -8,6 +8,7 @@ from .logger import Logger
 from .storage import StorageManager
 from .errors import UsageError
 from .datasets import Dataset
+from .backend_api import browser_login
 
 TaskTypes = Task.TaskTypes
 
@@ -27,6 +28,7 @@ if not PY2:
         "Dataset",
         "PipelineController",
         "PipelineDecorator",
+        "browser_login",
     ]
 else:
     __all__ = [

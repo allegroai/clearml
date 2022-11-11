@@ -117,6 +117,7 @@ class Dataset(object):
     __dataset_folder_template = CacheManager.set_context_folder_lookup(__cache_context, "{0}_archive_{1}")
     __preview_max_file_entries = 15000
     __preview_max_size = 32 * 1024
+    __preview_total_max_size = 320 * 1024
     __min_api_version = "2.20"
     __hyperparams_section = "Datasets"
     __datasets_runtime_prop = "datasets"
@@ -131,15 +132,15 @@ class Dataset(object):
 
     def __init__(
         self,
-        _private,
-        task=None,
-        dataset_project=None,
-        dataset_name=None,
-        dataset_tags=None,
-        dataset_version=None,
-        description=None,
+        _private,  # type: int
+        task=None,  # type: Optional[Task]
+        dataset_project=None,  # type: Optional[str]
+        dataset_name=None,  # type: Optional[str]
+        dataset_tags=None,  # type: Optional[Sequence[str]]
+        dataset_version=None,  # type: Optional[str]
+        description=None,  # type: Optional[str]
     ):
-        # type: (int, Optional[Task], Optional[str], Optional[str], Optional[Sequence[str]], Optional[str], Optional[str]) -> ()
+        # type: (...) -> ()
         """
         Do not use directly! Use Dataset.create(...) or Dataset.get(...) instead.
         """
@@ -220,7 +221,8 @@ class Dataset(object):
             # generate the script section
             script = (
                 "from clearml import Dataset\n\n"
-                "ds = Dataset.create(dataset_project='{dataset_project}', dataset_name='{dataset_name}', dataset_version='{dataset_version}')\n".format(
+                "ds = Dataset.create(dataset_project='{dataset_project}', dataset_name='{dataset_name}', "
+                "dataset_version='{dataset_version}')\n".format(
                     dataset_project=dataset_project, dataset_name=dataset_name, dataset_version=dataset_version
                 )
             )
@@ -620,6 +622,7 @@ class Dataset(object):
 
         total_size = 0
         chunks_count = 0
+        total_preview_size = 0
         keep_as_file_entry = set()
         chunk_size = int(self._dataset_chunk_size_mb if not chunk_size else chunk_size)
 
@@ -649,7 +652,9 @@ class Dataset(object):
                 self._data_artifact_name = self._get_next_data_artifact_name(self._data_artifact_name)
                 self._task.get_logger().report_text(
                     "Uploading dataset changes ({} files compressed to {}) to {}".format(
-                        zip_.count, format_size(zip_.size, binary=True, use_b_instead_of_bytes=True), self.get_default_storage()
+                        zip_.count,
+                        format_size(zip_.size, binary=True, use_b_instead_of_bytes=True),
+                        self.get_default_storage()
                     )
                 )
                 total_size += zip_.size
@@ -657,23 +662,29 @@ class Dataset(object):
                 truncated_preview = ""
                 add_truncated_message = False
                 truncated_message = "...\ntruncated (too many files to preview)"
-                for preview_entry in zip_.archive_preview[: Dataset.__preview_max_file_entries]:
+                for preview_entry in zip_.archive_preview[:Dataset.__preview_max_file_entries]:
                     truncated_preview += preview_entry + "\n"
-                    if len(truncated_preview) > Dataset.__preview_max_size:
+                    if len(truncated_preview) > Dataset.__preview_max_size or \
+                            len(truncated_preview) + total_preview_size > Dataset.__preview_total_max_size:
                         add_truncated_message = True
                         break
                 if len(zip_.archive_preview) > Dataset.__preview_max_file_entries:
                     add_truncated_message = True
+
+                preview = truncated_preview + (truncated_message if add_truncated_message else "")
+                total_preview_size += len(preview)
+
                 pool.submit(
                     self._task.upload_artifact,
                     name=artifact_name,
                     artifact_object=Path(zip_path),
-                    preview=truncated_preview + (truncated_message if add_truncated_message else ""),
+                    preview=preview,
                     delete_after_upload=True,
                     wait_on_upload=True,
                 )
                 for file_entry in self._dataset_file_entries.values():
-                    if file_entry.local_path is not None and Path(file_entry.local_path).as_posix() in zip_.files_zipped:
+                    if file_entry.local_path is not None and \
+                            Path(file_entry.local_path).as_posix() in zip_.files_zipped:
                         keep_as_file_entry.add(file_entry.relative_path)
                         file_entry.artifact_name = artifact_name
                         if file_entry.parent_dataset_id == self._id:
@@ -684,7 +695,8 @@ class Dataset(object):
             "File compression and upload completed: total size {}, {} chunk(s) stored (average size {})".format(
                 format_size(total_size, binary=True, use_b_instead_of_bytes=True),
                 chunks_count,
-                format_size(0 if chunks_count == 0 else total_size / chunks_count, binary=True, use_b_instead_of_bytes=True),
+                format_size(0 if chunks_count == 0 else total_size / chunks_count,
+                            binary=True, use_b_instead_of_bytes=True),
             )
         )
         self._ds_total_size_compressed = total_size + self._get_total_size_compressed_parents()
@@ -1209,7 +1221,7 @@ class Dataset(object):
         return instance
 
     def _get_total_size_compressed_parents(self):
-        # type: () -> (int)
+        # type: () -> int
         """
         :return: the compressed size of the files contained in the parent datasets
         """
@@ -1733,14 +1745,14 @@ class Dataset(object):
     @classmethod
     def list_datasets(
         cls,
-        dataset_project=None,
-        partial_name=None,
-        tags=None,
-        ids=None,
-        only_completed=True,
-        recursive_project_search=True,
+        dataset_project=None,  # type: Optional[str]
+        partial_name=None,  # type: Optional[str]
+        tags=None,  # type: Optional[Sequence[str]]
+        ids=None,  # type: Optional[Sequence[str]]
+        only_completed=True,  # type: bool
+        recursive_project_search=True,  # type: bool
     ):
-        # type: (Optional[str], Optional[str], Optional[Sequence[str]], Optional[Sequence[str]], bool, bool) -> List[dict]
+        # type: (...) -> List[dict]
         """
         Query list of dataset in the system
 
@@ -1781,7 +1793,7 @@ class Dataset(object):
         )
         project_ids = {d.project for d in datasets}
         # noinspection PyProtectedMember
-        project_id_lookup = Task._get_project_names(project_ids)
+        project_id_lookup = Task._get_project_names(list(project_ids))
         return [
             {
                 "name": d.name,
@@ -1941,7 +1953,7 @@ class Dataset(object):
         removed_files_count = 0
         removed_files_size = 0
         parent_datasets_ids = self._dependency_graph[self._id]
-        parent_file_entries = {}
+        parent_file_entries = dict()  # type: Dict[str, FileEntry]
         for parent_dataset_id in parent_datasets_ids:
             if parent_dataset_id == self._id:
                 continue
@@ -2767,7 +2779,8 @@ class Dataset(object):
             if file_extension in compression_extensions:
                 compression = file_extension
                 _, file_extension = os.path.splitext(file_path[: -len(file_extension)])
-            if file_extension in tabular_extensions and self.__preview_tables_count >= self.__preview_tabular_table_count:
+            if file_extension in tabular_extensions and \
+                    self.__preview_tables_count >= self.__preview_tabular_table_count:
                 continue
             artifact = convert_to_tabular_artifact(file_path, file_extension, compression)
             if artifact is not None:
@@ -3079,7 +3092,7 @@ class Dataset(object):
         raise_on_multiple=False,
         shallow_search=True,
     ):
-        # type: (str, str, Optional[str]) -> Tuple[str, str]
+        # type: (str, str, Optional[str], Optional[str], bool, bool) -> Tuple[str, str]
         """
         Gets the dataset ID that matches a project, name and a version.
 
@@ -3194,7 +3207,7 @@ class Dataset(object):
 
     @classmethod
     def _remove_hidden_part_from_dataset_project(cls, dataset_project):
-        # type: (str, str) -> str
+        # type: (str) -> str
         """
         The project name contains the '.datasets' part, as well as the dataset_name.
         Remove those parts and return the project used when creating the dataset.

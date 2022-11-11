@@ -1139,13 +1139,15 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                         param_type = param_type.__name__ if hasattr(param_type, '__name__') else str(param_type)
 
                     def create_description():
-                        if org_param:
+                        if org_param and org_param.description:
                             return org_param.description
                         created_description = ""
                         if org_k in descriptions:
                             created_description = descriptions[org_k]
                         if isinstance(v, Enum):
                             # append enum values to description
+                            if created_description:
+                                created_description += "\n"
                             created_description += "Values:\n" + ",\n".join(
                                 [enum_key for enum_key in type(v).__dict__.keys() if not enum_key.startswith("_")]
                             )

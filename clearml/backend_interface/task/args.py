@@ -1,5 +1,6 @@
 import yaml
 
+from enum import Enum
 from inspect import isfunction
 from six import PY2
 from argparse import _StoreAction, ArgumentError, _StoreConstAction, _SubParsersAction, _AppendAction, SUPPRESS  # noqa
@@ -521,6 +522,11 @@ class _Arguments(object):
                 # this will be type(None), we deal with it later
                 v_type = type(v)
 
+            def warn_failed_parsing():
+                self._task.log.warning(
+                    "Failed parsing task parameter {}={} keeping default {}={}".format(k, param, k, v)
+                )
+
             # assume more general purpose type int -> float
             if v_type == int:
                 if v is not None and int(v) != float(v):
@@ -533,8 +539,7 @@ class _Arguments(object):
                     try:
                         param = str(param).lower().strip() == 'true'
                     except ValueError:
-                        self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
-                                               (str(k), str(param), str(k), str(v)))
+                        warn_failed_parsing()
                         continue
             elif v_type == list:
                 # noinspection PyBroadException
@@ -542,8 +547,7 @@ class _Arguments(object):
                     p = str(param).strip()
                     param = yaml.load(p, Loader=FloatSafeLoader)
                 except Exception:
-                    self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
-                                           (str(k), str(param), str(k), str(v)))
+                    warn_failed_parsing()
                     continue
             elif v_type == tuple:
                 # noinspection PyBroadException
@@ -551,8 +555,7 @@ class _Arguments(object):
                     p = str(param).strip().replace('(', '[', 1)[::-1].replace(')', ']', 1)[::-1]
                     param = tuple(yaml.load(p, Loader=FloatSafeLoader))
                 except Exception:
-                    self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
-                                           (str(k), str(param), str(k), str(v)))
+                    warn_failed_parsing()
                     continue
             elif v_type == dict:
                 # noinspection PyBroadException
@@ -560,8 +563,14 @@ class _Arguments(object):
                     p = str(param).strip()
                     param = yaml.load(p, Loader=FloatSafeLoader)
                 except Exception:
-                    self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
-                                           (str(k), str(param), str(k), str(v)))
+                    warn_failed_parsing()
+            elif issubclass(v_type, Enum):
+                # noinspection PyBroadException
+                try:
+                    param = getattr(v_type, param).value
+                except Exception:
+                    warn_failed_parsing()
+                    continue
 
             # noinspection PyBroadException
             try:
@@ -573,8 +582,7 @@ class _Arguments(object):
                 else:
                     dictionary[k] = None if param == '' else v_type(param)
             except Exception:
-                self._task.log.warning('Failed parsing task parameter %s=%s keeping default %s=%s' %
-                                       (str(k), str(param), str(k), str(v)))
+                warn_failed_parsing()
                 continue
         # add missing parameters to dictionary
         # for k, v in parameters.items():
@@ -593,7 +601,7 @@ class _Arguments(object):
         :param as_str: if True return string cast of the types
         :return: List of type objects supported for auto casting (serializing to string)
         """
-        supported_types = (int, float, bool, str, list, tuple)
+        supported_types = (int, float, bool, str, list, tuple, Enum)
         if as_str:
             return tuple([str(t) for t in supported_types])
 

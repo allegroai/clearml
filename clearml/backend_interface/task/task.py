@@ -160,7 +160,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._curr_label_stats = {}
         self._raise_on_validation_errors = raise_on_validation_errors
         self._parameters_allowed_types = tuple(set(
-            six.string_types + six.integer_types + (six.text_type, float, list, tuple, dict, type(None))
+            six.string_types + six.integer_types + (six.text_type, float, list, tuple, dict, type(None), Enum)
         ))
         self._app_server = None
         self._files_server = None
@@ -1056,6 +1056,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     except TypeError:
                         pass
 
+            if isinstance(value, Enum):
+                # remove the class name
+                return str_value.partition(".")[2]
+
             return str_value
 
         if not all(isinstance(x, (dict, Iterable)) for x in args):
@@ -1081,11 +1085,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         }
         if not_allowed:
             self.log.warning(
-                "Skipping parameter: {}, only builtin types are supported ({})".format(
-                    ', '.join('%s[%s]' % p for p in not_allowed.items()),
-                    ', '.join(t.__name__ for t in self._parameters_allowed_types))
+                "Parameters must be of builtin type ({})".format(
+                    ", ".join("%s[%s]" % p for p in not_allowed.items()),
+                )
             )
-            new_parameters = {k: v for k, v in new_parameters.items() if k not in not_allowed}
 
         use_hyperparams = Session.check_min_api_version('2.9')
 
@@ -1135,12 +1138,24 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     if param_type and not isinstance(param_type, str):
                         param_type = param_type.__name__ if hasattr(param_type, '__name__') else str(param_type)
 
+                    def create_description():
+                        if org_param:
+                            return org_param.description
+                        created_description = ""
+                        if org_k in descriptions:
+                            created_description = descriptions[org_k]
+                        if isinstance(v, Enum):
+                            # append enum values to description
+                            created_description += "Values:\n" + ",\n".join(
+                                [enum_key for enum_key in type(v).__dict__.keys() if not enum_key.startswith("_")]
+                            )
+                        return created_description
+
                     section[key] = tasks.ParamsItem(
-                        section=section_name, name=key,
+                        section=section_name,
+                        name=key,
                         value=stringify(v),
-                        description=descriptions[org_k] if org_k in descriptions else (
-                            org_param.description if org_param is not None else None
-                        ),
+                        description=create_description(),
                         type=param_type,
                     )
                     hyperparams[section_name] = section

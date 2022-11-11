@@ -6,9 +6,21 @@ from __future__ import print_function
 
 import sys
 from argparse import ArgumentParser
+from enum import Enum
 
 
 from clearml import Task
+
+
+class StringEnumClass(Enum):
+    A = 'a'
+    B = 'b'
+
+
+class IntEnumClass(Enum):
+    C = 1
+    D = 2
+
 
 # Connecting ClearML with the current process,
 # from here on everything is logged automatically
@@ -21,6 +33,8 @@ parameters = {
     'int': 3,
     'float': 2.2,
     'string': 'my string',
+    'IntEnumParam': StringEnumClass.A,
+    'StringEnumParam': IntEnumClass.C
 }
 parameters = task.connect(parameters)
 

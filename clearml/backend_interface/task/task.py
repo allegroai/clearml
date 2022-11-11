@@ -842,6 +842,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         then ClearML updates the model object associated with the Task an API call. The API call uses with the URI
         of the uploaded file, and other values provided by additional arguments.
 
+        Notice: A local model file will be uploaded to the task's `output_uri` destination,
+        If no `output_uri` was specified, the default files-server will be used to store the model file/s.
+
         :param model_path: A local weights file or folder to be uploaded.
             If remote URI is provided (e.g. http:// or s3: // etc) then the URI is stored as is, without any upload
         :param name: The updated model name.
@@ -859,6 +862,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :return: The URI of the uploaded weights file.
             Notice: upload is done is a background thread, while the function call returns immediately
         """
+        output_uri = self.storage_uri or self._get_default_report_storage_uri()
         from ...model import OutputModel
         output_model = OutputModel(
             task=self,
@@ -868,7 +872,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         )
         output_model.connect(task=self, name=name)
         url = output_model.update_weights(
-            weights_filename=model_path, iteration=iteration, auto_delete_file=auto_delete_file
+            weights_filename=model_path,
+            upload_uri=output_uri,
+            iteration=iteration,
+            auto_delete_file=auto_delete_file
         )
         return url
 

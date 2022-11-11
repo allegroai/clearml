@@ -2751,6 +2751,13 @@ class Dataset(object):
                         nrows=self.__preview_tabular_row_count,
                         compression=compression_.lstrip(".") if compression_ else None,
                     )
+                elif file_extension_ == ".tsv" and pd:
+                    return pd.read_csv(
+                        file_path_,
+                        sep='\t',
+                        nrows=self.__preview_tabular_row_count,
+                        compression=compression_.lstrip(".") if compression_ else None,
+                    )
                 elif file_extension_ == ".parquet" or file_extension_ == ".parq":
                     if pyarrow:
                         pf = pyarrow.parquet.ParquetFile(file_path_)
@@ -2765,7 +2772,7 @@ class Dataset(object):
             return None
 
         compression_extensions = {".gz", ".bz2", ".zip", ".xz", ".zst"}
-        tabular_extensions = {".csv", ".parquet", ".parq", ".npz", ".npy"}
+        tabular_extensions = {".csv", ".tsv", ".parquet", ".parq", ".npz", ".npy"}
         for file in self._dataset_file_entries.values():
             if file.local_path:
                 file_path = file.local_path
@@ -2786,9 +2793,14 @@ class Dataset(object):
             if artifact is not None:
                 # noinspection PyBroadException
                 try:
-                    self._task.get_logger().report_media(
-                        "Tables", file_name, stream=artifact.to_csv(index=False), file_extension=".txt"
-                    )
+                    if isinstance(artifact, pd.DataFrame):
+                        self._task.get_logger().report_table(
+                            "Tables", "summary", table_plot=artifact
+                        )
+                    else:
+                        self._task.get_logger().report_media(
+                            "Tables", file_name, stream=artifact.to_csv(index=False), file_extension=".txt"
+                        )
                     self.__preview_tables_count += 1
                 except Exception:
                     pass

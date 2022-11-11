@@ -35,7 +35,7 @@ The job simply starts a Github Actions instance and runs `task_stats_to_comment.
 ## Job 2: Compare model performance
 
 ### When to use
-The second job is similar to the first, but now we want to make sure that we never merge a code change that will worsen the model’s performance. So we can again get the ClearML task corresponding to the current PR but this time compare the model metrics to the ones from the previous best ClearML task. We’ll only allow the pipeline to succeed, if the metrics are equal or better. In this way we can guarantee the quality of our main branch.
+The second job is similar to the first, but now we want to make sure that we never merge a code change that will worsen the model's performance. So we can again get the ClearML task corresponding to the current PR but this time compare the model metrics to the ones from the previous best ClearML task. We’ll only allow the pipeline to succeed, if the metrics are equal or better. In this way we can guarantee the quality of our main branch.
 
 ### Technical details
 Similarly to Job 1, we have put all logic into the `compare_models.py` file. Please note here: this script imports a function from Job 1, so if you only want to include this job into your own project, make sure to copy the function over as well.

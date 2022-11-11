@@ -50,11 +50,11 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
         # We need this list because on close, the daemon thread might call _write.
         # _write will pop everything from queue and add the events to a list,
         # then attempt to send the list of events to the backend.
-        # But it’s possible on close for the daemon thread to die in the middle of all that.
+        # But it's possible on close for the daemon thread to die in the middle of all that.
         # So we have to preserve the list the daemon thread attempted to send to the backend
         # such that we can retry this.
-        # Is is possible that we send the same events twice or that we are missing exactly one event.
-        # Both of these cases should be very rare and I don’t really see how we can do better.
+        # It is possible that we send the same events twice or that we are missing exactly one event.
+        # Both of these cases should be very rare and I don't really see how we can do better.
         self._processing_events = []
 
     def set_storage_uri(self, uri):

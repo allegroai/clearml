@@ -377,8 +377,12 @@ class ParallelZipper(object):
         self._zipper_queue = PriorityQueue()
         self._zipper_results = Queue()
 
-    def zip_iter(self, file_paths, arcnames={}):
-        # type: (List[Union(str, Path)], Optional[dict[Union(str, Path), str]]) -> Generator[ParallelZipper.ZipperObject]
+    def zip_iter(
+            self,
+            file_paths,  # type: List[Union[str, Path]]
+            arcnames=None  # type: Optional[dict[Union[str, Path], str]]
+    ):
+        # type: (...) -> Generator[ParallelZipper.ZipperObject]
         """
         Generator function that returns zip files as soon as they are available.
         The zipping is done in parallel
@@ -388,6 +392,9 @@ class ParallelZipper(object):
 
         :return: Generator of ParallelZipper.ZipperObjects
         """
+        if arcnames is None:
+            arcnames = dict()
+
         while not self._zipper_queue.empty():
             self._zipper_queue.get_nowait()
         for _ in range(self._max_workers):
@@ -427,7 +434,7 @@ class ParallelZipper(object):
         for task in pooled:
             task.result()
         if not self._pool:
-            pool.close()
+            pool.shutdown()
 
         for result in self._yield_zipper_results():
             yield result

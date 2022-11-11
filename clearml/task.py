@@ -611,6 +611,9 @@ class Task(_Task):
                     # set defaults
                     if cls._offline_mode:
                         task.output_uri = None
+                        # create target data folder for logger / artifacts
+                        # noinspection PyProtectedMember
+                        Path(task._get_default_report_storage_uri()).mkdir(parents=True, exist_ok=True)
                     elif output_uri is not None:
                         if output_uri is True:
                             output_uri = task.get_project_object().default_output_destination or True

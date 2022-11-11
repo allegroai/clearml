@@ -211,7 +211,8 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
         if self._async_enable:
             self._add_async_result(res)
         else:
-            self._processing_events.clear()
+            # python 2.7 style clear()
+            self._processing_events[:] = []
 
     def send_all_events(self, wait=True):
         self._write()

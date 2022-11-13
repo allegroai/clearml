@@ -1096,6 +1096,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     ", ".join("%s[%s]" % p for p in not_allowed.items()),
                 )
             )
+            new_parameters = {k: v for k, v in new_parameters.items() if k not in not_allowed}
 
         use_hyperparams = Session.check_min_api_version('2.9')
 

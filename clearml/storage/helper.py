@@ -611,6 +611,7 @@ class StorageHelper(object):
         """
         if not obj:
             return None
+        size = None
         try:
             if isinstance(self._driver, _HttpDriver) and obj:
                 obj = self._driver._get_download_object(obj)  # noqa
@@ -1556,6 +1557,7 @@ class _Boto3Driver(_Driver):
     @attrs
     class ListResult(object):
         name = attrib(default=None)
+        size = attrib(default=None)
 
     def __init__(self):
         pass
@@ -1617,7 +1619,7 @@ class _Boto3Driver(_Driver):
         else:
             res = container.bucket.objects.all()
         for res in res:
-            yield self.ListResult(name=res.key)
+            yield self.ListResult(name=res.key, size=res.size)
 
     def delete_object(self, object, **kwargs):
         from botocore.exceptions import ClientError

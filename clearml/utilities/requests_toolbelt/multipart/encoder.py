@@ -30,7 +30,7 @@ class MultipartEncoder(object):
 
     The basic usage is:
 
-    .. code-block:: python
+    .. code-block:: py
 
         import requests
         from requests_toolbelt import MultipartEncoder
@@ -43,7 +43,7 @@ class MultipartEncoder(object):
     If you do not need to take advantage of streaming the post body, you can
     also do:
 
-    .. code-block:: python
+    .. code-block:: py
 
         r = requests.post('https://httpbin.org/post',
                           data=encoder.to_string(),
@@ -52,7 +52,7 @@ class MultipartEncoder(object):
     If you want the encoder to use a specific order, you can use an
     OrderedDict or more simply, a list of tuples:
 
-    .. code-block:: python
+    .. code-block:: py
 
         encoder = MultipartEncoder([('field', 'value'),
                                     ('other_field', 'other_value')])
@@ -62,7 +62,7 @@ class MultipartEncoder(object):
     You can also provide tuples as part values as you would provide them to
     requests' ``files`` parameter.
 
-    .. code-block:: python
+    .. code-block:: py
 
         encoder = MultipartEncoder({
             'field': ('file_name', b'{"a": "b"}', 'application/json',
@@ -333,7 +333,7 @@ class MultipartEncoderMonitor(object):
     To use this monitor, you construct your :class:`MultipartEncoder` as you
     normally would.
 
-    .. code-block:: python
+    .. code-block:: py
 
         from requests_toolbelt import (MultipartEncoder,
                                        MultipartEncoderMonitor)
@@ -352,7 +352,7 @@ class MultipartEncoderMonitor(object):
     Alternatively, if your use case is very simple, you can use the following
     pattern.
 
-    .. code-block:: python
+    .. code-block:: py
 
         from requests_toolbelt import MultipartEncoderMonitor
         import requests
@@ -585,7 +585,8 @@ class FileFromURLWrapper(object):
     You can use the :class:`FileFromURLWrapper` without a session or with
     a session as demonstated by the examples below:
 
-    .. code-block:: python
+    .. code-block:: py
+
         # no session
 
         import requests
@@ -602,7 +603,8 @@ class FileFromURLWrapper(object):
             headers={'Content-Type': streaming_encoder.content_type}
         )
 
-    .. code-block:: python
+    .. code-block:: py
+
         # using a session
 
         import requests

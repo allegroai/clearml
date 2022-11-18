@@ -416,6 +416,7 @@ class Task(_Task):
                }
 
             .. code-block:: py
+
                 auto_connect_frameworks={'tensorboard': {'report_hparams': False}}
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots

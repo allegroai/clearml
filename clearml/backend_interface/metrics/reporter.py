@@ -264,7 +264,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._async_enable = async_enable
         self._flush_frequency = 5.0
         self._max_iteration = 0
-        flush_threshold = config.get("development.worker.report_event_flush_threshold", 50)
+        flush_threshold = config.get("development.worker.report_event_flush_threshold", 100)
         self._report_service = BackgroundReportService(
             task=task, async_enable=async_enable, metrics=metrics,
             flush_frequency=self._flush_frequency, flush_threshold=flush_threshold)

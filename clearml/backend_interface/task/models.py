@@ -33,6 +33,9 @@ class ModelsList(UserList):
         except KeyError:
             return default
 
+    def keys(self):
+        return self._models.keys()
+
 
 class TaskModels(UserDict):
     _input_models_re = re.compile(pattern=r"((Using model id: )(\w+)?)", flags=re.IGNORECASE)

@@ -492,7 +492,8 @@ class Task(_Task):
                     )
 
         # if deferred_init==0 this means this is the nested call that actually generates the Task.init
-        if cls.__main_task is not None and deferred_init != 0:
+        # notice isinstance(False, int) is always True, so we have to check type (we wanted deferred_init != 0)
+        if cls.__main_task is not None and (not (type(deferred_init) == int and deferred_init == 0)):
             # if this is a subprocess, regardless of what the init was called for,
             # we have to fix the main task hooks and stdout bindings
             if cls.__forked_proc_main_pid != os.getpid() and cls.__is_subprocess():
@@ -560,7 +561,8 @@ class Task(_Task):
             if not running_remotely():
                 # only allow if running locally and creating the first Task
                 # otherwise we ignore and perform in order
-                if deferred_init != 0 and ENV_DEFERRED_TASK_INIT.get():
+                # notice isinstance(False, int) is always True, so we have to check type (we wanted deferred_init != 0)
+                if (not (type(deferred_init) == int and deferred_init == 0)) and ENV_DEFERRED_TASK_INIT.get():
                     deferred_init = True
                 if not is_sub_process_task_id and deferred_init:
                     def completed_cb(x):

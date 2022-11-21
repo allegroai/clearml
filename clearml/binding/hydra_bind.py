@@ -2,7 +2,7 @@ import io
 import sys
 from functools import partial
 
-from ..config import running_remotely, DEV_TASK_NO_REUSE
+from ..config import running_remotely, get_remote_task_id, DEV_TASK_NO_REUSE
 from ..debugging.log import LoggerRoot
 
 
@@ -68,6 +68,9 @@ class PatchHydra(object):
         # noinspection PyBroadException
         try:
             if running_remotely():
+                if not PatchHydra._current_task:
+                    from ..task import Task
+                    PatchHydra._current_task = Task.get_task(task_id=get_remote_task_id())
                 # get the _parameter_allow_full_edit casted back to boolean
                 connected_config = dict()
                 connected_config[PatchHydra._parameter_allow_full_edit] = False

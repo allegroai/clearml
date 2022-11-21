@@ -392,7 +392,11 @@ class AzureContainerConfigurations(object):
             ))
 
         if configuration is None:
-            return cls(default_container_configs, default_account=default_account, default_key=default_key)
+            return cls(
+                default_container_configs,
+                default_account=default_account,
+                default_key=default_key
+            )
 
         containers = configuration.get("containers", list())
         container_configs = [AzureContainerConfig(**entry) for entry in containers] + default_container_configs

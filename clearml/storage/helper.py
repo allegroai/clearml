@@ -1252,7 +1252,8 @@ class _HttpDriver(_Driver):
                     requests_codes.service_unavailable,
                     requests_codes.bandwidth_limit_exceeded,
                     requests_codes.too_many_requests,
-                ]
+                ],
+                config=config
             )
             self.attach_auth_header = any(
                 (name.rstrip('/') == host.rstrip('/') or name.startswith(host.rstrip('/') + '/'))
@@ -1921,9 +1922,10 @@ class _GoogleCloudStorageDriver(_Driver):
 
 
 class _AzureBlobServiceStorageDriver(_Driver):
-    scheme = 'azure'
+    scheme = "azure"
 
     _containers = {}
+    _max_connections = deferred_config("azure.storage.max_connections", None)
 
     class _Container(object):
         def __init__(self, name, config, account_url):
@@ -1965,9 +1967,10 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 )
 
         def create_blob_from_data(
-            self, container_name, object_name, blob_name, data, max_connections=2,
+            self, container_name, object_name, blob_name, data, max_connections=None,
                 progress_callback=None, content_settings=None
         ):
+            max_connections = max_connections or _AzureBlobServiceStorageDriver._max_connections
             if self.__legacy:
                 self.__blob_service.create_blob_from_bytes(
                     container_name,
@@ -1985,8 +1988,9 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 )
 
         def create_blob_from_path(
-            self, container_name, blob_name, path, max_connections=2, content_settings=None, progress_callback=None
+            self, container_name, blob_name, path, max_connections=None, content_settings=None, progress_callback=None
         ):
+            max_connections = max_connections or _AzureBlobServiceStorageDriver._max_connections
             if self.__legacy:
                 self.__blob_service.create_blob_from_path(
                     container_name,
@@ -2045,7 +2049,8 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 client = self.__blob_service.get_blob_client(container_name, blob_name)
                 return client.download_blob().content_as_bytes()
 
-        def get_blob_to_path(self, container_name, blob_name, path, max_connections=10, progress_callback=None):
+        def get_blob_to_path(self, container_name, blob_name, path, max_connections=None, progress_callback=None):
+            max_connections = max_connections or _AzureBlobServiceStorageDriver._max_connections
             if self.__legacy:
                 return self.__blob_service.get_blob_to_path(
                     container_name,
@@ -2078,10 +2083,11 @@ class _AzureBlobServiceStorageDriver(_Driver):
             self._containers[container_name] = self._Container(
                 name=container_name, config=config, account_url=account_url
             )
-        # self._containers[container_name].config.retries = kwargs.get('retries', 5)
         return self._containers[container_name]
 
-    def upload_object_via_stream(self, iterator, container, object_name, callback=None, extra=None, **kwargs):
+    def upload_object_via_stream(
+        self, iterator, container, object_name, callback=None, extra=None, max_connections=None, **kwargs
+    ):
         try:
             from azure.common import AzureHttpError  # noqa
         except ImportError:
@@ -2096,17 +2102,17 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 object_name,
                 blob_name,
                 iterator.read() if hasattr(iterator, "read") else bytes(iterator),
-                max_connections=2,
+                max_connections=max_connections,
                 progress_callback=callback,
-                )
+            )
             return True
         except AzureHttpError as ex:
-            self.get_logger().error('Failed uploading (Azure error): %s' % ex)
+            self.get_logger().error("Failed uploading (Azure error): %s" % ex)
         except Exception as ex:
-            self.get_logger().error('Failed uploading: %s' % ex)
+            self.get_logger().error("Failed uploading: %s" % ex)
         return False
 
-    def upload_object(self, file_path, container, object_name, callback=None, extra=None, **kwargs):
+    def upload_object(self, file_path, container, object_name, callback=None, extra=None, max_connections=None, **kwargs):
         try:
             from azure.common import AzureHttpError  # noqa
         except ImportError:
@@ -2123,7 +2129,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 container.name,
                 blob_name,
                 file_path,
-                max_connections=2,
+                max_connections=max_connections,
                 content_settings=ContentSettings(content_type=get_file_mimetype(object_name or file_path)),
                 progress_callback=callback,
             )
@@ -2177,10 +2183,10 @@ class _AzureBlobServiceStorageDriver(_Driver):
         else:
             return blob
 
-    def download_object(self, obj, local_path, overwrite_existing=True, delete_on_failure=True, callback=None, **_):
+    def download_object(self, obj, local_path, overwrite_existing=True, delete_on_failure=True, callback=None, max_connections=None, **_):
         p = Path(local_path)
         if not overwrite_existing and p.is_file():
-            self.get_logger().warning("failed saving after download: overwrite=False and file exists (%s)" % str(p))
+            self.get_logger().warning("Failed saving after download: overwrite=False and file exists (%s)" % str(p))
             return
 
         download_done = SafeEvent()
@@ -2200,7 +2206,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
             container.name,
             obj.blob_name,
             local_path,
-            max_connections=10,
+            max_connections=max_connections,
             progress_callback=callback_func,
         )
         if container.is_legacy():
@@ -2836,3 +2842,4 @@ driver_schemes = set(
 )
 
 remote_driver_schemes = driver_schemes - {_FileStorageDriver.scheme}
+cloud_driver_schemes = remote_driver_schemes - set(_HttpDriver.schemes)

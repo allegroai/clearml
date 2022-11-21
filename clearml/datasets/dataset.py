@@ -8,7 +8,7 @@ import re
 import logging
 from copy import deepcopy, copy
 from multiprocessing.pool import ThreadPool
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from tempfile import mkdtemp
 from typing import Union, Optional, Sequence, List, Dict, Any, Mapping, Tuple
 from zipfile import ZIP_DEFLATED
@@ -23,7 +23,7 @@ from ..backend_interface.task.development.worker import DevWorker
 from ..backend_interface.util import mutually_exclusive, exact_match_regex, get_or_create_project, rename_project
 from ..config import deferred_config, running_remotely, get_remote_task_id
 from ..debugging.log import LoggerRoot
-from ..storage.helper import StorageHelper
+from ..storage.helper import StorageHelper, cloud_driver_schemes
 from ..storage.cache import CacheManager
 from ..storage.util import sha256sum, is_windows, md5text, format_size
 from ..utilities.matching import matches_any_wildcard
@@ -368,7 +368,8 @@ class Dataset(object):
             local_base_folder=None,  # type: Optional[str]
             dataset_path=None,  # type: Optional[str]
             recursive=True,  # type: bool
-            verbose=False  # type: bool
+            verbose=False,  # type: bool
+            max_workers=None,  # type: Optional[int]
     ):
         # type: (...) -> ()
         """
@@ -382,8 +383,10 @@ class Dataset(object):
         :param dataset_path: where in the dataset the folder/files should be located
         :param recursive: If True match all wildcard files recursively
         :param verbose: If True print to console files added/modified
+        :param max_workers: The number of threads to add the files with. Defaults to the number of logical cores
         :return: number of files added
         """
+        max_workers = max_workers or psutil.cpu_count()
         self._dirty = True
         self._task.get_logger().report_text(
             'Adding files to dataset: {}'.format(
@@ -392,8 +395,14 @@ class Dataset(object):
             print_console=False)
 
         num_added, num_modified = self._add_files(
-            path=path, wildcard=wildcard, local_base_folder=local_base_folder,
-            dataset_path=dataset_path, recursive=recursive, verbose=verbose)
+            path=path,
+            wildcard=wildcard,
+            local_base_folder=local_base_folder,
+            dataset_path=dataset_path,
+            recursive=recursive,
+            verbose=verbose,
+            max_workers=max_workers,
+        )
 
         # update the task script
         self._add_script_call(
@@ -587,9 +596,16 @@ class Dataset(object):
         return num_removed, num_added, num_modified
 
     def upload(
-        self, show_progress=True, verbose=False, output_url=None, compression=None, chunk_size=None, max_workers=None
+        self,
+        show_progress=True,
+        verbose=False,
+        output_url=None,
+        compression=None,
+        chunk_size=None,
+        max_workers=None,
+        retries=3,
     ):
-        # type: (bool, bool, Optional[str], Optional[str], int, Optional[int]) -> ()
+        # type: (bool, bool, Optional[str], Optional[str], int, Optional[int], int) -> ()
         """
         Start file uploading, the function returns when all files are uploaded.
 
@@ -602,16 +618,21 @@ class Dataset(object):
             if not provided (None) use the default chunk size (512mb).
             If -1 is provided, use a single zip artifact for the entire dataset change-set (old behaviour)
         :param max_workers: Numbers of threads to be spawned when zipping and uploading the files.
-            Defaults to the number of logical cores.
+            If None (default) it will be set to:
+            - 1: if the upload destination is a cloud provider ('s3', 'gs', 'azure')
+            - number of logical cores: otherwise
+        :param int retries: Number of retries before failing to upload each zip. If 0, the upload is not retried.
+
+        :raise: If the upload failed (i.e. at least one zip failed to upload), raise a `ValueError`
         """
         self._report_dataset_preview()
-
-        if not max_workers:
-            max_workers = psutil.cpu_count()
 
         # set output_url
         if output_url:
             self._task.output_uri = output_url
+
+        if not max_workers:
+            max_workers = 1 if self._task.output_uri.startswith(tuple(cloud_driver_schemes)) else psutil.cpu_count()
 
         self._task.get_logger().report_text(
             "Uploading dataset files: {}".format(
@@ -625,9 +646,9 @@ class Dataset(object):
         total_preview_size = 0
         keep_as_file_entry = set()
         chunk_size = int(self._dataset_chunk_size_mb if not chunk_size else chunk_size)
+        upload_futures = []
 
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
-            futures = []
             parallel_zipper = ParallelZipper(
                 chunk_size,
                 max_workers,
@@ -648,6 +669,15 @@ class Dataset(object):
                 file_paths.append(f.local_path)
                 arcnames[f.local_path] = f.relative_path
             for zip_ in parallel_zipper.zip_iter(file_paths, arcnames=arcnames):
+                running_futures = []
+                for upload_future in upload_futures:
+                    if upload_future.running():
+                        running_futures.append(upload_future)
+                    else:
+                        if not upload_future.result():
+                            raise ValueError("Failed uploading dataset with ID {}".format(self._id))
+                upload_futures = running_futures
+
                 zip_path = Path(zip_.zip_path)
                 artifact_name = self._data_artifact_name
                 self._data_artifact_name = self._get_next_data_artifact_name(self._data_artifact_name)
@@ -675,14 +705,17 @@ class Dataset(object):
                 preview = truncated_preview + (truncated_message if add_truncated_message else "")
                 total_preview_size += len(preview)
 
-                futures.append(pool.submit(
-                    self._task.upload_artifact,
-                    name=artifact_name,
-                    artifact_object=Path(zip_path),
-                    preview=preview,
-                    delete_after_upload=True,
-                    wait_on_upload=True,
-                ))
+                upload_futures.append(
+                    pool.submit(
+                        self._task.upload_artifact,
+                        name=artifact_name,
+                        artifact_object=Path(zip_path),
+                        preview=preview,
+                        delete_after_upload=True,
+                        wait_on_upload=True,
+                        retries=retries
+                    )
+                )
                 for file_entry in self._dataset_file_entries.values():
                     if file_entry.local_path is not None and \
                             Path(file_entry.local_path).as_posix() in zip_.files_zipped:
@@ -691,12 +724,6 @@ class Dataset(object):
                         if file_entry.parent_dataset_id == self._id:
                             file_entry.local_path = None
                 self._serialize()
-            num_threads_with_errors = 0
-            for future in as_completed(futures):
-                if future.exception():
-                    num_threads_with_errors += 1
-            if num_threads_with_errors > 0:
-                raise ValueError(f"errors reported uploading {num_threads_with_errors} chunks")
 
         self._task.get_logger().report_text(
             "File compression and upload completed: total size {}, {} chunk(s) stored (average size {})".format(
@@ -836,8 +863,7 @@ class Dataset(object):
             self._task = Task.get_task(task_id=self._id)
         if not self.is_final():
             raise ValueError("Cannot get a local copy of a dataset that was not finalized/closed")
-        if not max_workers:
-            max_workers = psutil.cpu_count()
+        max_workers = max_workers or psutil.cpu_count()
 
         # now let's merge the parents
         target_folder = self._merge_datasets(
@@ -878,8 +904,7 @@ class Dataset(object):
         :return: The target folder containing the entire dataset
         """
         assert self._id
-        if not max_workers:
-            max_workers = psutil.cpu_count()
+        max_workers = max_workers or psutil.cpu_count()
         target_folder = Path(target_folder).absolute()
         target_folder.mkdir(parents=True, exist_ok=True)
         # noinspection PyBroadException
@@ -1812,14 +1837,16 @@ class Dataset(object):
             for d in datasets
         ]
 
-    def _add_files(self,
-                   path,  # type: Union[str, Path, _Path]
-                   wildcard=None,  # type: Optional[Union[str, Sequence[str]]]
-                   local_base_folder=None,  # type: Optional[str]
-                   dataset_path=None,  # type: Optional[str]
-                   recursive=True,  # type: bool
-                   verbose=False  # type: bool
-                   ):
+    def _add_files(
+        self,
+        path,  # type: Union[str, Path, _Path]
+        wildcard=None,  # type: Optional[Union[str, Sequence[str]]]
+        local_base_folder=None,  # type: Optional[str]
+        dataset_path=None,  # type: Optional[str]
+        recursive=True,  # type: bool
+        verbose=False,  # type: bool
+        max_workers=None,  # type: Optional[int]
+    ):
         # type: (...) -> tuple[int, int]
         """
         Add a folder into the current dataset. calculate file hash,
@@ -1832,7 +1859,9 @@ class Dataset(object):
         :param dataset_path: where in the dataset the folder/files should be located
         :param recursive: If True match all wildcard files recursively
         :param verbose: If True print to console added files
+        :param max_workers: The number of threads to add the files with. Defaults to the number of logical cores
         """
+        max_workers = max_workers or psutil.cpu_count()
         if dataset_path:
             dataset_path = dataset_path.lstrip("/")
         path = Path(path)
@@ -1869,7 +1898,7 @@ class Dataset(object):
                 for f in file_entries
             ]
             self._task.get_logger().report_text('Generating SHA2 hash for {} files'.format(len(file_entries)))
-            pool = ThreadPool(psutil.cpu_count())
+            pool = ThreadPool(max_workers)
             try:
                 import tqdm  # noqa
                 for _ in tqdm.tqdm(pool.imap_unordered(self._calc_file_hash, file_entries), total=len(file_entries)):
@@ -2083,8 +2112,7 @@ class Dataset(object):
 
         :return: Path to the local storage where the data was downloaded
         """
-        if not max_workers:
-            max_workers = psutil.cpu_count()
+        max_workers = max_workers or psutil.cpu_count()
         local_folder = self._extract_dataset_archive(
             force=force,
             selected_chunks=selected_chunks,
@@ -2189,8 +2217,7 @@ class Dataset(object):
         if not self._task:
             self._task = Task.get_task(task_id=self._id)
 
-        if not max_workers:
-            max_workers = psutil.cpu_count()
+        max_workers = max_workers or psutil.cpu_count()
 
         data_artifact_entries = self._get_data_artifact_names()
 
@@ -2305,8 +2332,7 @@ class Dataset(object):
         assert part is None or (isinstance(part, int) and part >= 0)
         assert num_parts is None or (isinstance(num_parts, int) and num_parts >= 1)
 
-        if max_workers is None:
-            max_workers = psutil.cpu_count()
+        max_workers = max_workers or psutil.cpu_count()
 
         if use_soft_links is None:
             use_soft_links = False if is_windows() else True
@@ -2863,8 +2889,7 @@ class Dataset(object):
     ):
         # type: (Path, List[str], dict, bool, bool, bool, Optional[int]) -> ()
         # create thread pool, for creating soft-links / copying
-        if not max_workers:
-            max_workers = psutil.cpu_count()
+        max_workers = max_workers or psutil.cpu_count()
         pool = ThreadPool(max_workers)
         for dataset_version_id in dependencies_by_order:
             # make sure we skip over empty dependencies

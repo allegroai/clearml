@@ -1889,7 +1889,8 @@ class Task(_Task):
             preview=None,  # type: Any
             wait_on_upload=False,  # type: bool
             extension_name=None,  # type: Optional[str]
-            serialization_function=None  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
+            serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
+            retries=0  # type: int
     ):
         # type: (...) -> bool
         """
@@ -1946,6 +1947,8 @@ class Task(_Task):
             (e.g. `pandas.DataFrame.to_csv`), even if possible. To deserialize this artifact when getting
             it using the `Artifact.get` method, use its `deserialization_function` argument.
 
+        :param int retries: Number of retries before failing to upload artifact. If 0, the upload is not retried
+
         :return: The status of the upload.
 
         - ``True`` - Upload succeeded.
@@ -1953,17 +1956,31 @@ class Task(_Task):
 
         :raise: If the artifact object type is not supported, raise a ``ValueError``.
         """
-        return self._artifacts_manager.upload_artifact(
-            name=name,
-            artifact_object=artifact_object,
-            metadata=metadata,
-            delete_after_upload=delete_after_upload,
-            auto_pickle=auto_pickle,
-            preview=preview,
-            wait_on_upload=wait_on_upload,
-            extension_name=extension_name,
-            serialization_function=serialization_function,
-        )
+        exception_to_raise = None
+        for retry in range(retries + 1):
+            # noinspection PyBroadException
+            try:
+                if self._artifacts_manager.upload_artifact(
+                    name=name,
+                    artifact_object=artifact_object,
+                    metadata=metadata,
+                    delete_after_upload=delete_after_upload,
+                    auto_pickle=auto_pickle,
+                    preview=preview,
+                    wait_on_upload=wait_on_upload,
+                    extension_name=extension_name,
+                    serialization_function=serialization_function,
+                ):
+                    return True
+            except Exception as e:
+                exception_to_raise = e
+            if retry < retries:
+                getLogger().warning(
+                    "Failed uploading artifact '{}'. Retrying... ({}/{})".format(name, retry + 1, retries)
+                )
+        if exception_to_raise:
+            raise exception_to_raise
+        return False
 
     def get_models(self):
         # type: () -> Mapping[str, Sequence[Model]]

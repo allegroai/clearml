@@ -187,6 +187,7 @@ class Session(TokenManager):
             "api.http.retries", ConfigTree()).as_plain_ordered_dict()
 
         http_retries_config["status_forcelist"] = self._get_retry_codes()
+        http_retries_config["config"] = self.config
         self.__http_session = get_http_session_with_retry(**http_retries_config)
         self.__http_session.write_timeout = self._write_session_timeout
         self.__http_session.request_size_threshold = self._write_session_data_size
@@ -237,6 +238,18 @@ class Session(TokenManager):
 
         self._apply_config_sections(local_logger)
 
+        self._update_default_api_method()
+
+    def _update_default_api_method(self):
+        if not ENV_API_DEFAULT_REQ_METHOD.get(default=None) and self.config.get("api.http.default_method", None):
+            def_method = str(self.config.get("api.http.default_method", None)).strip()
+            if def_method.upper() not in ("GET", "POST", "PUT"):
+                raise ValueError(
+                    "api.http.default_method variable must be 'get' or 'post' (any case is allowed)."
+                )
+            Request.def_method = def_method
+            Request._method = Request.def_method
+
     def _get_retry_codes(self):
         # type: () -> List[int]
         retry_codes = set(self._retry_codes)
@@ -278,7 +291,8 @@ class Session(TokenManager):
 
         # noinspection PyBroadException
         try:
-            res = self.send_request("users", "get_vaults", json={"enabled": True, "types": ["config"]})
+            # Use params and not data/json otherwise payload might be dropped if we're using GET with a strict firewall
+            res = self.send_request("users", "get_vaults", params="enabled=true&types=config&types=config")
             if res.ok:
                 vaults = res.json().get("data", {}).get("vaults", [])
                 data = list(filter(None, map(parse, vaults)))
@@ -312,12 +326,13 @@ class Session(TokenManager):
         service,
         action,
         version=None,
-        method=Request.def_method,
+        method=None,
         headers=None,
         auth=None,
         data=None,
         json=None,
         refresh_token_if_unauthorized=True,
+        params=None,
     ):
         """ Internal implementation for making a raw API request.
             - Constructs the api endpoint name
@@ -330,6 +345,9 @@ class Session(TokenManager):
         """
         if self._offline_mode:
             return None
+
+        if not method:
+            method = Request.def_method
 
         res = None
         host = self.host
@@ -401,11 +419,12 @@ class Session(TokenManager):
         service,
         action,
         version=None,
-        method=Request.def_method,
+        method=None,
         headers=None,
         data=None,
         json=None,
         async_enable=False,
+        params=None,
     ):
         """
         Send a raw API request.
@@ -420,6 +439,8 @@ class Session(TokenManager):
         :param async_enable: whether request is asynchronous
         :return: requests Response instance
         """
+        if not method:
+            method = Request.def_method
         headers = self.add_auth_headers(
             headers.copy() if headers else {}
         )
@@ -434,6 +455,7 @@ class Session(TokenManager):
             headers=headers,
             data=data,
             json=json,
+            params=params,
         )
 
     def send_request_batch(
@@ -444,7 +466,7 @@ class Session(TokenManager):
         headers=None,
         data=None,
         json=None,
-        method=Request.def_method,
+        method=None,
     ):
         """
         Send a raw batch API request. Batch requests always use application/json-lines content type.
@@ -468,6 +490,9 @@ class Session(TokenManager):
         if not data and not json:
             # Missing data (data or json), batch requests are meaningless without it.
             return None
+
+        if not method:
+            method = Request.def_method
 
         headers = headers.copy() if headers else {}
         headers["Content-Type"] = "application/json-lines"
@@ -677,7 +702,7 @@ class Session(TokenManager):
                             pass
                     cls.max_api_version = cls.api_version = cls._offline_default_version
             else:
-                # if the requested version is lower then the minium we support,
+                # if the requested version is lower then the minimum we support,
                 # no need to actually check what the server has, we assume it must have at least our version.
                 if cls._version_tuple(cls.api_version) >= cls._version_tuple(str(min_api_version)):
                    return True
@@ -736,15 +761,14 @@ class Session(TokenManager):
         auth = HTTPBasicAuth(self.access_key, self.secret_key) if self.access_key and self.secret_key else None
         res = None
         try:
-            data = {"expiration_sec": exp} if exp else {}
             res = self._send_request(
                 method=Request.def_method,
                 service="auth",
                 action="login",
                 auth=auth,
-                json=data,
                 headers=headers,
                 refresh_token_if_unauthorized=False,
+                params={"expiration_sec": exp} if exp else {},
             )
             try:
                 resp = res.json()

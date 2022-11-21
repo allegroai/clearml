@@ -95,7 +95,9 @@ def get_http_session_with_retry(
         backoff_factor=0,
         backoff_max=None,
         pool_connections=None,
-        pool_maxsize=None):
+        pool_maxsize=None,
+        config=None
+):
     global __disable_certificate_verification_warning
     if not all(isinstance(x, (int, type(None))) for x in (total, connect, read, redirect, status)):
         raise ValueError('Bad configuration. All retry count values must be null or int')
@@ -103,16 +105,18 @@ def get_http_session_with_retry(
     if status_forcelist and not all(isinstance(x, int) for x in status_forcelist):
         raise ValueError('Bad configuration. Retry status_forcelist must be null or list of ints')
 
+    config = config or get_config()
+
     pool_maxsize = (
         pool_maxsize
         if pool_maxsize is not None
-        else get_config().get('api.http.pool_maxsize', 512)
+        else config.get('api.http.pool_maxsize', 512)
     )
 
     pool_connections = (
         pool_connections
         if pool_connections is not None
-        else get_config().get('api.http.pool_connections', 512)
+        else config.get('api.http.pool_connections', 512)
     )
 
     session = SessionWithTimeout()
@@ -135,7 +139,7 @@ def get_http_session_with_retry(
     session.mount('http://', adapter)
     session.mount('https://', adapter)
     # update verify host certificate
-    session.verify = ENV_HOST_VERIFY_CERT.get(default=get_config().get('api.verify_certificate', True))
+    session.verify = ENV_HOST_VERIFY_CERT.get(default=config.get('api.verify_certificate', True))
     if not session.verify and __disable_certificate_verification_warning < 2:
         # show warning
         __disable_certificate_verification_warning += 1

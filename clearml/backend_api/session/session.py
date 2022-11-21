@@ -711,7 +711,7 @@ class Session(TokenManager):
                 # if the requested version is lower then the minimum we support,
                 # no need to actually check what the server has, we assume it must have at least our version.
                 if cls._version_tuple(cls.api_version) >= cls._version_tuple(str(min_api_version)):
-                   return True
+                    return True
 
                 # noinspection PyBroadException
                 try:

@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import functools
 import json
+import logging
 import os
 import sys
 import warnings
@@ -216,11 +217,19 @@ class Config(object):
                     file.parent.mkdir(parents=True, exist_ok=True)
                     file.touch()
 
+        loggers = logging_config.get("loggers", {})
+
+        for name, data in loggers.items():
+            if data.pop("force_level", True):
+                # Force the specified level (this is the default)
+                continue
+            if self._logger_exists(name):
+                # Use the currently defined level (don't change it)
+                data["level"] = logging.getLogger(name).level
+
         # remove dependency in deleted handlers
         root_logger = logging_config.get("root", None)
-        loggers = list(logging_config.get("loggers", {}).values()) + (
-            [root_logger] if root_logger else []
-        )
+        loggers = list(loggers.values()) + ([root_logger] if root_logger else [])
         for logger in loggers:
             handlers = logger.get("handlers", None)
             if not handlers:
@@ -232,6 +241,19 @@ class Config(object):
             extra = {"app": self._app}
         initialize_log(logging_config, extra=extra)
         return True
+
+    @staticmethod
+    def _logger_exists(name):
+        """
+        Check if logger by this name exists.
+        If not already created, it will either not appear in logging.Logger.manager.loggerDict or will have a type
+        of logging.PlaceHolder
+        """
+        # noinspection PyBroadException
+        try:
+            return isinstance(logging.Logger.manager.loggerDict.get(name, None), logging.Logger)
+        except Exception:
+            pass
 
     def __getitem__(self, key):
         return self._config[key]

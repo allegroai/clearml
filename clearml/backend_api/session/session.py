@@ -1,5 +1,6 @@
 from __future__ import print_function
 import json as json_lib
+import logging
 import os
 import sys
 import types
@@ -35,6 +36,7 @@ from .token_manager import TokenManager
 from ..config import load
 from ..utils import get_http_session_with_retry, urllib_log_warning_setup
 from ...debugging import get_logger
+from ...debugging.log import resolve_logging_level
 from ...utilities.pyhocon import ConfigTree, ConfigFactory
 from ...version import __version__
 from ...backend_config.utils import apply_files, apply_environment
@@ -142,16 +144,13 @@ class Session(TokenManager):
 
         self._verbose = verbose if verbose is not None else ENV_VERBOSE.get()
         self._logger = logger
+        if self._verbose and not self._logger:
+            level = resolve_logging_level(ENV_VERBOSE.get(converter=str))
+            self._logger = get_logger(level=level, stream=sys.stderr if level is logging.DEBUG else None)
+
         self.__auth_token = None
 
-        if not ENV_API_DEFAULT_REQ_METHOD.get(default=None) and self.config.get("api.http.default_method", None):
-            def_method = str(self.config.get("api.http.default_method", None)).strip()
-            if def_method.upper() not in ("GET", "POST", "PUT"):
-                raise ValueError(
-                    "api.http.default_method variable must be 'get' or 'post' (any case is allowed)."
-                )
-            Request.def_method = def_method
-            Request._method = Request.def_method
+        self._update_default_api_method()
 
         if ENV_AUTH_TOKEN.get():
             self.__access_key = self.__secret_key = None
@@ -372,8 +371,15 @@ class Session(TokenManager):
             else:
                 timeout = self._session_timeout
             try:
+                if self._verbose and self._logger:
+                    size = len(data or "")
+                    if json and self._logger.level == logging.DEBUG:
+                        size += len(json_lib.dumps(json))
+                    self._logger.debug("%s: %s [%d bytes, %d headers]", method.upper(), url, size, len(headers or {}))
                 res = self.__http_session.request(
-                    method, url, headers=headers, auth=auth, data=data, json=json, timeout=timeout)
+                    method, url, headers=headers, auth=auth, data=data, json=json, timeout=timeout, params=params)
+                if self._verbose and self._logger:
+                    self._logger.debug("--> took %s", res.elapsed)
             # except Exception as ex:
             except SSLError as ex:
                 retry_counter += 1

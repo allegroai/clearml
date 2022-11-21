@@ -74,7 +74,7 @@ class Session(TokenManager):
 
     _client = [(__package__.partition(".")[0], __version__)]
 
-    api_version = '2.9'
+    api_version = '2.9'  # this default version should match the lowest api version we have under service
     max_api_version = '2.9'
     feature_set = 'basic'
     default_demo_host = "https://demoapi.demo.clear.ml"
@@ -227,10 +227,11 @@ class Session(TokenManager):
         # notice: this is across the board warning omission
         urllib_log_warning_setup(total_retries=http_retries_config.get('total', 0), display_warning_after=3)
 
-        self.__class__._sessions_created += 1
-
         if self.force_max_api_version and self.check_min_api_version(self.force_max_api_version):
             Session.max_api_version = Session.api_version = str(self.force_max_api_version)
+
+        # update only after we have max_api
+        self.__class__._sessions_created += 1
 
         self._load_vaults()
 
@@ -676,6 +677,11 @@ class Session(TokenManager):
                             pass
                     cls.max_api_version = cls.api_version = cls._offline_default_version
             else:
+                # if the requested version is lower then the minium we support,
+                # no need to actually check what the server has, we assume it must have at least our version.
+                if cls._version_tuple(cls.api_version) >= cls._version_tuple(str(min_api_version)):
+                   return True
+
                 # noinspection PyBroadException
                 try:
                     cls()

@@ -52,8 +52,8 @@ def report_html_periodic_table(logger, iteration=0):
     }
     source = ColumnDataSource(autompg_clean)
     p = figure(
-        plot_width=900,
-        plot_height=500,
+        width=900,
+        height=500,
         title="Periodic Table (omitting LA and AC Series)",
         x_range=groups,
         y_range=list(reversed(periods)),
@@ -129,8 +129,8 @@ def report_html_groupby(logger, iteration=0):
         "cyl_mfr", palette=Spectral5, factors=sorted(bokeh_df.cyl.unique()), end=1
     )
     p = figure(
-        plot_width=800,
-        plot_height=300,
+        width=800,
+        height=300,
         title="Mean MPG by # Cylinders and Manufacturer",
         x_range=group,
         toolbar_location=None,

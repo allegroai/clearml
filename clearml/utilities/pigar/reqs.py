@@ -380,6 +380,11 @@ def _search_path(path):
 
     for file in os.listdir(path):
         # Install from PYPI.
+
+        # broken pip packages might start with '~' - ignore it
+        if str(file).startswith('~'):
+            continue
+
         if fnmatch.fnmatch(file, '*-info'):
             pkg_name, version = file.split('-')[:2]
             if version.endswith('dist'):

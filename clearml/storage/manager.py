@@ -5,7 +5,7 @@ import tarfile
 from multiprocessing.pool import ThreadPool
 from random import random
 from time import time
-from typing import List, Optional
+from typing import List, Optional, Union
 from zipfile import ZipFile
 from six.moves.urllib.parse import urlparse
 
@@ -14,7 +14,7 @@ from pathlib2 import Path
 
 from .cache import CacheManager
 from .helper import StorageHelper
-from .util import encode_string_to_filename
+from .util import encode_string_to_filename, safe_extract
 from ..debugging.log import LoggerRoot
 
 
@@ -165,10 +165,10 @@ class StorageManager(object):
                 ZipFile(cached_file.as_posix()).extractall(path=temp_target_folder.as_posix())
             elif suffix == ".tar.gz":
                 with tarfile.open(cached_file.as_posix()) as file:
-                    file.extractall(temp_target_folder.as_posix())
+                    safe_extract(file, temp_target_folder.as_posix())
             elif suffix == ".tgz":
                 with tarfile.open(cached_file.as_posix(), mode='r:gz') as file:
-                    file.extractall(temp_target_folder.as_posix())
+                    safe_extract(file, temp_target_folder.as_posix())
 
             if temp_target_folder != target_folder:
                 # we assume we will have such folder if we already extract the file
@@ -314,15 +314,21 @@ class StorageManager(object):
 
         :return: True is the remote_url stores a file and False otherwise
         """
-        if remote_url.startswith("file://"):
-            return os.path.isfile(remote_url[len("file://"):])
-        if remote_url.startswith("http://") or remote_url.startswith("https://"):
-            return requests.head(remote_url).status_code == requests.codes.ok
-        helper = StorageHelper.get(remote_url)
-        obj = helper.get_object(remote_url)
-        if not obj:
+        # noinspection PyBroadException
+        try:
+            if remote_url.endswith("/"):
+                return False
+            if remote_url.startswith("file://"):
+                return os.path.isfile(remote_url[len("file://"):])
+            if remote_url.startswith(("http://", "https://")):
+                return requests.head(remote_url).ok
+            helper = StorageHelper.get(remote_url)
+            obj = helper.get_object(remote_url)
+            if not obj:
+                return False
+            return True
+        except Exception:
             return False
-        return len(StorageManager.list(remote_url)) == 0
 
     @classmethod
     def get_file_size_bytes(cls, remote_url, silence_errors=False):
@@ -419,10 +425,11 @@ class StorageManager(object):
         return local_folder
 
     @classmethod
-    def list(cls, remote_url, return_full_path=False):
-        # type: (str, bool) -> Optional[List[str]]
+    def list(cls, remote_url, return_full_path=False, with_metadata=False):
+        # type: (str, bool, bool) -> Optional[List[Union[str, dict]]]
         """
-        Return a list of object names inside the base path
+        Return a list of object names inside the base path or dictionaries containing the corresponding
+        objects' metadata (in case `with_metadata` is True)
 
         :param str remote_url: The base path.
             For Google Storage, Azure and S3 it is the bucket of the path, for local files it is the root directory.
@@ -431,17 +438,49 @@ class StorageManager(object):
             Azure blob storage: `azure://bucket/folder_` and also file system listing: `/mnt/share/folder_`
         :param bool return_full_path: If True, return a list of full object paths, otherwise return a list of
             relative object paths (default False).
+        :param with_metadata: Instead of returning just the names of the objects, return a list of dictionaries
+            containing the name and metadata of the remote file. Thus, each dictionary will contain the following
+            keys: `name`, `size`.
+            `return_full_path` will modify the name of each dictionary entry to the full path.
 
-        :return: The paths of all the objects in the storage base path under prefix, relative to the base path.
+        :return: The paths of all the objects the storage base path under prefix or the dictionaries containing the objects' metadata, relative to the base path.
             None in case of list operation is not supported (http and https protocols for example)
         """
         helper = StorageHelper.get(remote_url)
         try:
-            names_list = helper.list(prefix=remote_url)
+            helper_list_result = helper.list(prefix=remote_url, with_metadata=with_metadata)
         except Exception as ex:
             LoggerRoot.get_base_logger().warning("Can not list files for '{}' - {}".format(remote_url, ex))
-            names_list = None
+            return None
 
-        if helper.base_url == 'file://':
-            return ["{}/{}".format(remote_url.rstrip('/'), name) for name in names_list] if return_full_path else names_list
-        return ["{}/{}".format(helper.base_url, name) for name in names_list] if return_full_path else names_list
+        prefix = remote_url.rstrip("/") if helper.base_url == "file://" else helper.base_url
+        if not with_metadata:
+            return (
+                ["{}/{}".format(prefix, name) for name in helper_list_result]
+                if return_full_path
+                else helper_list_result
+            )
+        else:
+            if return_full_path:
+                for obj in helper_list_result:
+                    obj["name"] = "{}/{}".format(prefix, obj.get("name"))
+            return helper_list_result
+
+    @classmethod
+    def get_metadata(cls, remote_url):
+        # type: (str) -> Optional[dict]
+        """
+        Get the metadata of the a remote object.
+        The metadata is a dict containing the following keys: `name`, `size`.
+
+        :param str remote_url: Source remote storage location, tree structure of `remote_url` will
+            be created under the target local_folder. Supports S3/GS/Azure, shared filesystem and http(s).
+            Example: 's3://bucket/data/'
+
+        :return: A dict containing the metadata of the remote object. In case of an error, `None` is returned
+        """
+        helper = StorageHelper.get(remote_url)
+        obj = helper.get_object(remote_url)
+        if not obj:
+            return None
+        return helper.get_object_metadata(obj)

@@ -824,9 +824,9 @@ class PipelineController(object):
             self._default_execution_queue = self._default_execution_queue or 'mock'
 
         # serialize state only if we are running locally
-        self._verify()
-        self._serialize_pipeline_task()
-        self.update_execution_plot()
+        if Task.running_locally() or not self._task.is_main_task():
+            self._verify()
+            self._serialize_pipeline_task()
 
         self._start(wait=True)
 
@@ -3632,7 +3632,8 @@ class PipelineDecorator(PipelineController):
         :param args_map: Map arguments to their specific configuration section. Arguments not included in this map
             will default to `Args` section. For example, for the following code:
 
-            .. code-block:: python
+            .. code-block:: py
+
                 @PipelineDecorator.pipeline(args_map={'sectionA':['paramA'], 'sectionB:['paramB','paramC']
                 def executing_pipeline(paramA, paramB, paramC, paramD):
                     pass
@@ -3965,7 +3966,7 @@ class PipelineDecorator(PipelineController):
         Add support for multiple pipeline function calls,
         enabling execute multiple instances of the same pipeline from a single script.
 
-        .. code-block:: python
+        .. code-block:: py
 
             @PipelineDecorator.pipeline(
                 multi_instance_support=True, name="custom pipeline logic", project="examples", version="1.0")

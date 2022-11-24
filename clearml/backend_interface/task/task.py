@@ -160,7 +160,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._curr_label_stats = {}
         self._raise_on_validation_errors = raise_on_validation_errors
         self._parameters_allowed_types = tuple(set(
-            six.string_types + six.integer_types + (six.text_type, float, list, tuple, dict, type(None))
+            six.string_types + six.integer_types + (six.text_type, float, list, tuple, dict, type(None), Enum)
         ))
         self._app_server = None
         self._files_server = None
@@ -842,6 +842,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         then ClearML updates the model object associated with the Task an API call. The API call uses with the URI
         of the uploaded file, and other values provided by additional arguments.
 
+        Notice: A local model file will be uploaded to the task's `output_uri` destination,
+        If no `output_uri` was specified, the default files-server will be used to store the model file/s.
+
         :param model_path: A local weights file or folder to be uploaded.
             If remote URI is provided (e.g. http:// or s3: // etc) then the URI is stored as is, without any upload
         :param name: The updated model name.
@@ -859,6 +862,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :return: The URI of the uploaded weights file.
             Notice: upload is done is a background thread, while the function call returns immediately
         """
+        output_uri = self.storage_uri or self._get_default_report_storage_uri()
         from ...model import OutputModel
         output_model = OutputModel(
             task=self,
@@ -868,7 +872,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         )
         output_model.connect(task=self, name=name)
         url = output_model.update_weights(
-            weights_filename=model_path, iteration=iteration, auto_delete_file=auto_delete_file
+            weights_filename=model_path,
+            upload_uri=output_uri,
+            iteration=iteration,
+            auto_delete_file=auto_delete_file
         )
         return url
 
@@ -1056,6 +1063,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     except TypeError:
                         pass
 
+            if isinstance(value, Enum):
+                # remove the class name
+                return str_value.partition(".")[2]
+
             return str_value
 
         if not all(isinstance(x, (dict, Iterable)) for x in args):
@@ -1081,9 +1092,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         }
         if not_allowed:
             self.log.warning(
-                "Skipping parameter: {}, only builtin types are supported ({})".format(
-                    ', '.join('%s[%s]' % p for p in not_allowed.items()),
-                    ', '.join(t.__name__ for t in self._parameters_allowed_types))
+                "Parameters must be of builtin type ({})".format(
+                    ", ".join("%s[%s]" % p for p in not_allowed.items()),
+                )
             )
             new_parameters = {k: v for k, v in new_parameters.items() if k not in not_allowed}
 
@@ -1135,12 +1146,26 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     if param_type and not isinstance(param_type, str):
                         param_type = param_type.__name__ if hasattr(param_type, '__name__') else str(param_type)
 
+                    def create_description():
+                        if org_param and org_param.description:
+                            return org_param.description
+                        created_description = ""
+                        if org_k in descriptions:
+                            created_description = descriptions[org_k]
+                        if isinstance(v, Enum):
+                            # append enum values to description
+                            if created_description:
+                                created_description += "\n"
+                            created_description += "Values:\n" + ",\n".join(
+                                [enum_key for enum_key in type(v).__dict__.keys() if not enum_key.startswith("_")]
+                            )
+                        return created_description
+
                     section[key] = tasks.ParamsItem(
-                        section=section_name, name=key,
+                        section=section_name,
+                        name=key,
                         value=stringify(v),
-                        description=descriptions[org_k] if org_k in descriptions else (
-                            org_param.description if org_param is not None else None
-                        ),
+                        description=create_description(),
                         type=param_type,
                     )
                     hyperparams[section_name] = section
@@ -1357,12 +1382,24 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 self._edit(execution=execution)
         return self.data.execution.artifacts or []
 
-    def _delete_artifacts(self, artifact_names):
-        # type: (Sequence[str]) -> bool
+    def delete_artifacts(self, artifact_names, raise_on_errors=True):
+        # type: (Sequence[str], bool) -> bool
         """
         Delete a list of artifacts, by artifact name, from the Task.
 
         :param list artifact_names: list of artifact names
+        :param bool raise_on_errors: if True, do not suppress connectivity related exceptions
+        :return: True if successful
+        """
+        return self._delete_artifacts(artifact_names, raise_on_errors)
+
+    def _delete_artifacts(self, artifact_names, raise_on_errors=False):
+        # type: (Sequence[str], bool) -> bool
+        """
+        Delete a list of artifacts, by artifact name, from the Task.
+
+        :param list artifact_names: list of artifact names
+        :param bool raise_on_errors: if True, do not suppress connectivity related exceptions
         :return: True if successful
         """
         if not Session.check_min_api_version('2.3'):
@@ -1374,7 +1411,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             if Session.check_min_api_version("2.13") and not self._offline_mode:
                 req = tasks.DeleteArtifactsRequest(
                     task=self.task_id, artifacts=[{"key": n, "mode": "output"} for n in artifact_names], force=True)
-                res = self.send(req, raise_on_errors=False)
+                res = self.send(req, raise_on_errors=raise_on_errors)
                 if not res or not res.response or not res.response.deleted:
                     return False
                 self.reload()
@@ -2458,7 +2495,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return {p.id: p.name for p in all_responses}
 
     def _get_all_events(
-        self, max_events=100, batch_size=500, order='asc', event_type=None, unique_selector=itemgetter("url")
+        self, max_events=100, batch_size=500, order='asc', event_type=None, unique_selector=None
     ):
         # type: (int, int, str, str, Callable[[dict], Any]) -> Union[List[Any], Set[Any]]
         """
@@ -2479,6 +2516,16 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         batch_size = max_events or batch_size
 
+        def apply_unique_selector(events_set, evs):
+            # type: (Set[Any], List[dict]) -> ()
+            try:
+                events_set.update(map(unique_selector, evs))
+            except TypeError:
+                self.log.error(
+                    "Failed applying unique_selector on events (note the selector's result must be hashable)"
+                )
+                raise
+
         log_events = self.send(events.GetTaskEventsRequest(
             task=self.id,
             order=order,
@@ -2490,7 +2537,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         total_events = log_events.response.total
         scroll = log_events.response.scroll_id
         if unique_selector:
-            events_list = set(map(unique_selector, log_events.response.events))
+            events_list = set([])
+            apply_unique_selector(events_list, log_events.response.events)
         else:
             events_list = log_events.response.events
 
@@ -2505,7 +2553,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             scroll = log_events.response.scroll_id
             returned_count += log_events.response.returned
             if unique_selector:
-                events_list.update(log_events.response.events)
+                apply_unique_selector(events_list, log_events.response.events)
             else:
                 events_list.extend(log_events.response.events)
 

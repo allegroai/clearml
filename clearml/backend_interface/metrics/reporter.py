@@ -47,6 +47,16 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
         self._async_enable = async_enable
         self._is_thread_mode_in_subprocess_flag = None
 
+        # We need this list because on close, the daemon thread might call _write.
+        # _write will pop everything from queue and add the events to a list,
+        # then attempt to send the list of events to the backend.
+        # But it's possible on close for the daemon thread to die in the middle of all that.
+        # So we have to preserve the list the daemon thread attempted to send to the backend
+        # such that we can retry this.
+        # It is possible that we send the same events twice or that we are missing exactly one event.
+        # Both of these cases should be very rare and I don't really see how we can do better.
+        self._processing_events = []
+
     def set_storage_uri(self, uri):
         self._storage_uri = uri
 
@@ -106,6 +116,7 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
                 # if enough time passed and the flush event was not cleared,
                 # there is no daemon thread running, we should leave
                 if time()-tic > self.__daemon_live_check_timeout and self._flush_event.wait(0):
+                    self._write()
                     break
         elif isinstance(self._empty_state_event, SafeEvent):
             tic = time()
@@ -175,8 +186,12 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
     def _write(self):
         if self._queue.empty():
             return
-        # print('reporting %d events' % len(self._events))
-        events = []
+
+        if self._async_enable:
+            events = []
+        else:
+            events = self._processing_events
+
         while not self._queue.empty():
             try:
                 events.append(self._queue.get(block=False))
@@ -195,6 +210,9 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
 
         if self._async_enable:
             self._add_async_result(res)
+        else:
+            # python 2.7 style clear()
+            self._processing_events[:] = []
 
     def send_all_events(self, wait=True):
         self._write()
@@ -227,15 +245,12 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         reporter.flush()
     """
 
-    def __init__(self, metrics, task, flush_threshold=10, async_enable=False, use_subprocess=False):
+    def __init__(self, metrics, task, async_enable=False):
         """
         Create a reporter
         :param metrics: A Metrics manager instance that handles actual reporting, uploads etc.
         :type metrics: .backend_interface.metrics.Metrics
         :param task: Task object
-        :param flush_threshold: Events flush threshold. This determines the threshold over which cached reported events
-            are flushed and sent to the backend.
-        :type flush_threshold: int
         """
         log = metrics.log.getChild('reporter')
         log.setLevel(log.level)
@@ -249,6 +264,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._async_enable = async_enable
         self._flush_frequency = 5.0
         self._max_iteration = 0
+        flush_threshold = config.get("development.worker.report_event_flush_threshold", 100)
         self._report_service = BackgroundReportService(
             task=task, async_enable=async_enable, metrics=metrics,
             flush_frequency=self._flush_frequency, flush_threshold=flush_threshold)

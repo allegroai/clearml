@@ -67,8 +67,8 @@ def main():
     print(description, end='')
     sentinel = ''
     parse_input = ''
-    # COLAB_GPU will always be available, even when running on CPU
-    if os.environ.get('COLAB_GPU'):
+
+    if os.environ.get("JPY_PARENT_PID"):
         # When running from a colab instance and calling clearml-init
         # colab will squish the api credentials into a single line
         # The regex splits this single line based on 2 spaces or more
@@ -80,6 +80,7 @@ def main():
             parse_input += line+'\n'
             if line.rstrip() == '}':
                 break
+
     credentials = None
     api_server = None
     web_server = None

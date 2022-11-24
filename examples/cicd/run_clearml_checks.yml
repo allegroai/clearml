@@ -1,0 +1,73 @@
+name: ClearML Checks
+on:
+  pull_request:
+    branches: [ main ]
+    types: [ assigned, opened, edited, reopened, synchronize ]
+
+jobs:
+  task-stats-to-comment:
+    env:
+      CLEARML_API_ACCESS_KEY: ${{ secrets.ACCESS_KEY }}
+      CLEARML_API_SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      CLEARML_API_HOST: ${{ secrets.CLEARML_API_HOST }}
+      GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install ClearML
+        run: |
+          python -m pip install --upgrade pip clearml pandas tabulate github3.py Jinja2
+      - name: Start the task
+        id: launch_task
+        run: |
+          python task_stats_to_comment.py
+
+  compare-models:
+    env:
+      CLEARML_API_ACCESS_KEY: ${{ secrets.ACCESS_KEY }}
+      CLEARML_API_SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      CLEARML_API_HOST: ${{ secrets.CLEARML_API_HOST }}
+      COMMIT_ID: ${{ github.event.pull_request.head.sha }}
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install ClearML
+        run: |
+          python -m pip install --upgrade pip clearml pandas tabulate github3.py Jinja2
+      - name: Start the task
+        id: launch_task
+        run: |
+          python compare_models.py
+
+  test-remote-runnable:
+    env:
+      CLEARML_API_ACCESS_KEY: ${{ secrets.ACCESS_KEY }}
+      CLEARML_API_SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      CLEARML_API_HOST: ${{ secrets.CLEARML_API_HOST }}
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install ClearML
+        run: |
+          python -m pip install --upgrade pip clearml
+          sudo apt-get update && sudo apt-get install -y ripgrep
+      - name: Start the task
+        id: launch_task
+        run: |
+          echo "TASK_ID=$(
+            clearml-task --project 'Github CICD Video' --name cicd_test --branch ${{ github.head_ref }} --script task.py --requirements requirements.txt --skip-task-init --queue default | rg -o 'Task id=(.*) sent' -r '$1'
+          )" >> $GITHUB_OUTPUT
+      - name: Poll for task progress
+        run: python check_clearml_task_running.py "${{ steps.launch_task.outputs.TASK_ID }}"

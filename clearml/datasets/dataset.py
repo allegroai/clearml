@@ -23,7 +23,7 @@ from ..backend_interface.task.development.worker import DevWorker
 from ..backend_interface.util import mutually_exclusive, exact_match_regex, get_or_create_project, rename_project
 from ..config import deferred_config, running_remotely, get_remote_task_id
 from ..debugging.log import LoggerRoot
-from ..storage.helper import StorageHelper
+from ..storage.helper import StorageHelper, cloud_driver_schemes
 from ..storage.cache import CacheManager
 from ..storage.util import sha256sum, is_windows, md5text, format_size
 from ..utilities.matching import matches_any_wildcard
@@ -116,7 +116,8 @@ class Dataset(object):
     __default_dataset_version = "1.0.0"
     __dataset_folder_template = CacheManager.set_context_folder_lookup(__cache_context, "{0}_archive_{1}")
     __preview_max_file_entries = 15000
-    __preview_max_size = 5 * 1024 * 1024
+    __preview_max_size = 32 * 1024
+    __preview_total_max_size = 320 * 1024
     __min_api_version = "2.20"
     __hyperparams_section = "Datasets"
     __datasets_runtime_prop = "datasets"
@@ -131,15 +132,15 @@ class Dataset(object):
 
     def __init__(
         self,
-        _private,
-        task=None,
-        dataset_project=None,
-        dataset_name=None,
-        dataset_tags=None,
-        dataset_version=None,
-        description=None,
+        _private,  # type: int
+        task=None,  # type: Optional[Task]
+        dataset_project=None,  # type: Optional[str]
+        dataset_name=None,  # type: Optional[str]
+        dataset_tags=None,  # type: Optional[Sequence[str]]
+        dataset_version=None,  # type: Optional[str]
+        description=None,  # type: Optional[str]
     ):
-        # type: (int, Optional[Task], Optional[str], Optional[str], Optional[Sequence[str]], Optional[str], Optional[str]) -> ()
+        # type: (...) -> ()
         """
         Do not use directly! Use Dataset.create(...) or Dataset.get(...) instead.
         """
@@ -220,7 +221,8 @@ class Dataset(object):
             # generate the script section
             script = (
                 "from clearml import Dataset\n\n"
-                "ds = Dataset.create(dataset_project='{dataset_project}', dataset_name='{dataset_name}', dataset_version='{dataset_version}')\n".format(
+                "ds = Dataset.create(dataset_project='{dataset_project}', dataset_name='{dataset_name}', "
+                "dataset_version='{dataset_version}')\n".format(
                     dataset_project=dataset_project, dataset_name=dataset_name, dataset_version=dataset_version
                 )
             )
@@ -366,7 +368,8 @@ class Dataset(object):
             local_base_folder=None,  # type: Optional[str]
             dataset_path=None,  # type: Optional[str]
             recursive=True,  # type: bool
-            verbose=False  # type: bool
+            verbose=False,  # type: bool
+            max_workers=None,  # type: Optional[int]
     ):
         # type: (...) -> ()
         """
@@ -380,8 +383,10 @@ class Dataset(object):
         :param dataset_path: where in the dataset the folder/files should be located
         :param recursive: If True match all wildcard files recursively
         :param verbose: If True print to console files added/modified
+        :param max_workers: The number of threads to add the files with. Defaults to the number of logical cores
         :return: number of files added
         """
+        max_workers = max_workers or psutil.cpu_count()
         self._dirty = True
         self._task.get_logger().report_text(
             'Adding files to dataset: {}'.format(
@@ -390,8 +395,14 @@ class Dataset(object):
             print_console=False)
 
         num_added, num_modified = self._add_files(
-            path=path, wildcard=wildcard, local_base_folder=local_base_folder,
-            dataset_path=dataset_path, recursive=recursive, verbose=verbose)
+            path=path,
+            wildcard=wildcard,
+            local_base_folder=local_base_folder,
+            dataset_path=dataset_path,
+            recursive=recursive,
+            verbose=verbose,
+            max_workers=max_workers,
+        )
 
         # update the task script
         self._add_script_call(
@@ -409,11 +420,13 @@ class Dataset(object):
         dataset_path=None,  # type: Optional[str]
         recursive=True,  # type: bool
         verbose=False,  # type: bool
+        max_workers=None  # type: Optional[int]
     ):
-        # type: (...) -> ()
+        # type: (...) -> int
         """
-        Adds an external file or a folder to the current dataset.
-        External file links can be from cloud storage (s3://, gs://, azure://) or local / network storage (file://).
+        Adds external files or folders to the current dataset.
+        External file links can be from cloud storage (s3://, gs://, azure://), local / network storage (file://)
+        or http(s)// files.
         Calculates file size for each file and compares against parent.
 
         A few examples:
@@ -436,92 +449,32 @@ class Dataset(object):
             'image.jpg' will be downloaded to 's3_files/image.jpg' (relative path to the dataset)
         :param recursive: If True match all wildcard files recursively
         :param verbose: If True print to console files added/modified
-        :return: number of file links added
+        :param max_workers: The number of threads to add the external files with. Useful when `source_url` is
+            a sequence. Defaults to the number of logical cores
+        :return: Number of file links added
         """
-        num_added = 0
         self._dirty = True
-        if not isinstance(source_url, str):
-            for source_url_ in source_url:
-                num_added += self.add_external_files(
+        num_added = 0
+        num_modified = 0
+        source_url_list = source_url if not isinstance(source_url, str) else [source_url]
+        max_workers = max_workers or psutil.cpu_count()
+        futures_ = []
+        with ThreadPoolExecutor(max_workers=max_workers) as tp:
+            for source_url_ in source_url_list:
+                futures_.append(
+                    tp.submit(
+                        self._add_external_files,
                         source_url_,
                         wildcard=wildcard,
                         dataset_path=dataset_path,
                         recursive=recursive,
-                        verbose=verbose
+                        verbose=verbose,
+                    )
                 )
-            return num_added
-        if dataset_path:
-            dataset_path = dataset_path.lstrip("/")
-        # noinspection PyBroadException
-        try:
-            if StorageManager.exists_file(source_url):
-                links = [source_url]
-            else:
-                if source_url[-1] != "/":
-                    source_url = source_url + "/"
-                links = StorageManager.list(source_url, return_full_path=True)
-        except Exception:
-            self._task.get_logger().report_text(
-                "Could not list/find remote file(s) when adding {}".format(source_url)
-            )
-            return 0
-        num_modified = 0
-        for link in links:
-            relative_path = link[len(source_url):]
-            if not relative_path:
-                relative_path = source_url.split("/")[-1]
-            if not matches_any_wildcard(relative_path, wildcard, recursive=recursive):
-                continue
-            try:
-                relative_path = Path(os.path.join(dataset_path or ".", relative_path)).as_posix()
-                size = StorageManager.get_file_size_bytes(link, silence_errors=True)
-                already_added_file = self._dataset_file_entries.get(relative_path)
-                if relative_path not in self._dataset_link_entries:
-                    if verbose:
-                        self._task.get_logger().report_text(
-                            "External file {} added".format(link),
-                            print_console=False,
-                        )
-                    self._dataset_link_entries[relative_path] = LinkEntry(
-                        link=link, relative_path=relative_path, parent_dataset_id=self._id, size=size
-                    )
-                    num_added += 1
-                elif already_added_file and already_added_file.size != size:
-                    if verbose:
-                        self._task.get_logger().report_text(
-                            "External file {} modified".format(link),
-                            print_console=False,
-                        )
-                    del self._dataset_file_entries[relative_path]
-                    self._dataset_link_entries[relative_path] = LinkEntry(
-                        link=link, relative_path=relative_path, parent_dataset_id=self._id, size=size
-                    )
-                    num_modified += 1
-                elif (
-                    relative_path in self._dataset_link_entries
-                    and self._dataset_link_entries[relative_path].size != size
-                ):
-                    if verbose:
-                        self._task.get_logger().report_text(
-                            "External file {} modified".format(link),
-                            print_console=False,
-                        )
-                    self._dataset_link_entries[relative_path] = LinkEntry(
-                        link=link, relative_path=relative_path, parent_dataset_id=self._id, size=size
-                    )
-                    num_modified += 1
-                else:
-                    if verbose:
-                        self._task.get_logger().report_text(
-                            "External file {} skipped as it was not modified".format(link),
-                            print_console=False,
-                        )
-            except Exception as e:
-                if verbose:
-                    self._task.get_logger().report_text(
-                        "Error '{}' encountered trying to add external file {}".format(e, link),
-                        print_console=False,
-                    )
+        for future_ in futures_:
+            num_added_this_call, num_modified_this_call = future_.result()
+            num_added += num_added_this_call
+            num_modified += num_modified_this_call
         self._task.add_tags([self.__external_files_tag])
         self._add_script_call(
             "add_external_files",
@@ -643,9 +596,16 @@ class Dataset(object):
         return num_removed, num_added, num_modified
 
     def upload(
-        self, show_progress=True, verbose=False, output_url=None, compression=None, chunk_size=None, max_workers=None
+        self,
+        show_progress=True,
+        verbose=False,
+        output_url=None,
+        compression=None,
+        chunk_size=None,
+        max_workers=None,
+        retries=3,
     ):
-        # type: (bool, bool, Optional[str], Optional[str], int, Optional[int]) -> ()
+        # type: (bool, bool, Optional[str], Optional[str], int, Optional[int], int) -> ()
         """
         Start file uploading, the function returns when all files are uploaded.
 
@@ -658,16 +618,21 @@ class Dataset(object):
             if not provided (None) use the default chunk size (512mb).
             If -1 is provided, use a single zip artifact for the entire dataset change-set (old behaviour)
         :param max_workers: Numbers of threads to be spawned when zipping and uploading the files.
-            Defaults to the number of logical cores.
+            If None (default) it will be set to:
+            - 1: if the upload destination is a cloud provider ('s3', 'gs', 'azure')
+            - number of logical cores: otherwise
+        :param int retries: Number of retries before failing to upload each zip. If 0, the upload is not retried.
+
+        :raise: If the upload failed (i.e. at least one zip failed to upload), raise a `ValueError`
         """
         self._report_dataset_preview()
-
-        if not max_workers:
-            max_workers = psutil.cpu_count()
 
         # set output_url
         if output_url:
             self._task.output_uri = output_url
+
+        if not max_workers:
+            max_workers = 1 if self._task.output_uri.startswith(tuple(cloud_driver_schemes)) else psutil.cpu_count()
 
         self._task.get_logger().report_text(
             "Uploading dataset files: {}".format(
@@ -678,15 +643,17 @@ class Dataset(object):
 
         total_size = 0
         chunks_count = 0
+        total_preview_size = 0
         keep_as_file_entry = set()
         chunk_size = int(self._dataset_chunk_size_mb if not chunk_size else chunk_size)
+        upload_futures = []
 
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
             parallel_zipper = ParallelZipper(
                 chunk_size,
                 max_workers,
                 allow_zip_64=True,
-                compression=compression or ZIP_DEFLATED,
+                compression=ZIP_DEFLATED if compression is None else compression,
                 zip_prefix="dataset.{}.".format(self._id),
                 zip_suffix=".zip",
                 verbose=verbose,
@@ -702,26 +669,56 @@ class Dataset(object):
                 file_paths.append(f.local_path)
                 arcnames[f.local_path] = f.relative_path
             for zip_ in parallel_zipper.zip_iter(file_paths, arcnames=arcnames):
+                running_futures = []
+                for upload_future in upload_futures:
+                    if upload_future.running():
+                        running_futures.append(upload_future)
+                    else:
+                        if not upload_future.result():
+                            raise ValueError("Failed uploading dataset with ID {}".format(self._id))
+                upload_futures = running_futures
+
                 zip_path = Path(zip_.zip_path)
                 artifact_name = self._data_artifact_name
                 self._data_artifact_name = self._get_next_data_artifact_name(self._data_artifact_name)
                 self._task.get_logger().report_text(
                     "Uploading dataset changes ({} files compressed to {}) to {}".format(
-                        zip_.count, format_size(zip_.size, binary=True, use_b_instead_of_bytes=True), self.get_default_storage()
+                        zip_.count,
+                        format_size(zip_.size, binary=True, use_b_instead_of_bytes=True),
+                        self.get_default_storage()
                     )
                 )
                 total_size += zip_.size
                 chunks_count += 1
-                pool.submit(
-                    self._task.upload_artifact,
-                    name=artifact_name,
-                    artifact_object=Path(zip_path),
-                    preview=zip_.archive_preview,
-                    delete_after_upload=True,
-                    wait_on_upload=True,
+                truncated_preview = ""
+                add_truncated_message = False
+                truncated_message = "...\ntruncated (too many files to preview)"
+                for preview_entry in zip_.archive_preview[:Dataset.__preview_max_file_entries]:
+                    truncated_preview += preview_entry + "\n"
+                    if len(truncated_preview) > Dataset.__preview_max_size or \
+                            len(truncated_preview) + total_preview_size > Dataset.__preview_total_max_size:
+                        add_truncated_message = True
+                        break
+                if len(zip_.archive_preview) > Dataset.__preview_max_file_entries:
+                    add_truncated_message = True
+
+                preview = truncated_preview + (truncated_message if add_truncated_message else "")
+                total_preview_size += len(preview)
+
+                upload_futures.append(
+                    pool.submit(
+                        self._task.upload_artifact,
+                        name=artifact_name,
+                        artifact_object=Path(zip_path),
+                        preview=preview,
+                        delete_after_upload=True,
+                        wait_on_upload=True,
+                        retries=retries
+                    )
                 )
                 for file_entry in self._dataset_file_entries.values():
-                    if file_entry.local_path is not None and Path(file_entry.local_path).as_posix() in zip_.files_zipped:
+                    if file_entry.local_path is not None and \
+                            Path(file_entry.local_path).as_posix() in zip_.files_zipped:
                         keep_as_file_entry.add(file_entry.relative_path)
                         file_entry.artifact_name = artifact_name
                         if file_entry.parent_dataset_id == self._id:
@@ -732,7 +729,8 @@ class Dataset(object):
             "File compression and upload completed: total size {}, {} chunk(s) stored (average size {})".format(
                 format_size(total_size, binary=True, use_b_instead_of_bytes=True),
                 chunks_count,
-                format_size(0 if chunks_count == 0 else total_size / chunks_count, binary=True, use_b_instead_of_bytes=True),
+                format_size(0 if chunks_count == 0 else total_size / chunks_count,
+                            binary=True, use_b_instead_of_bytes=True),
             )
         )
         self._ds_total_size_compressed = total_size + self._get_total_size_compressed_parents()
@@ -865,8 +863,7 @@ class Dataset(object):
             self._task = Task.get_task(task_id=self._id)
         if not self.is_final():
             raise ValueError("Cannot get a local copy of a dataset that was not finalized/closed")
-        if not max_workers:
-            max_workers = psutil.cpu_count()
+        max_workers = max_workers or psutil.cpu_count()
 
         # now let's merge the parents
         target_folder = self._merge_datasets(
@@ -907,8 +904,7 @@ class Dataset(object):
         :return: The target folder containing the entire dataset
         """
         assert self._id
-        if not max_workers:
-            max_workers = psutil.cpu_count()
+        max_workers = max_workers or psutil.cpu_count()
         target_folder = Path(target_folder).absolute()
         target_folder.mkdir(parents=True, exist_ok=True)
         # noinspection PyBroadException
@@ -1257,7 +1253,7 @@ class Dataset(object):
         return instance
 
     def _get_total_size_compressed_parents(self):
-        # type: () -> (int)
+        # type: () -> int
         """
         :return: the compressed size of the files contained in the parent datasets
         """
@@ -1781,14 +1777,14 @@ class Dataset(object):
     @classmethod
     def list_datasets(
         cls,
-        dataset_project=None,
-        partial_name=None,
-        tags=None,
-        ids=None,
-        only_completed=True,
-        recursive_project_search=True,
+        dataset_project=None,  # type: Optional[str]
+        partial_name=None,  # type: Optional[str]
+        tags=None,  # type: Optional[Sequence[str]]
+        ids=None,  # type: Optional[Sequence[str]]
+        only_completed=True,  # type: bool
+        recursive_project_search=True,  # type: bool
     ):
-        # type: (Optional[str], Optional[str], Optional[Sequence[str]], Optional[Sequence[str]], bool, bool) -> List[dict]
+        # type: (...) -> List[dict]
         """
         Query list of dataset in the system
 
@@ -1829,7 +1825,7 @@ class Dataset(object):
         )
         project_ids = {d.project for d in datasets}
         # noinspection PyProtectedMember
-        project_id_lookup = Task._get_project_names(project_ids)
+        project_id_lookup = Task._get_project_names(list(project_ids))
         return [
             {
                 "name": d.name,
@@ -1841,14 +1837,16 @@ class Dataset(object):
             for d in datasets
         ]
 
-    def _add_files(self,
-                   path,  # type: Union[str, Path, _Path]
-                   wildcard=None,  # type: Optional[Union[str, Sequence[str]]]
-                   local_base_folder=None,  # type: Optional[str]
-                   dataset_path=None,  # type: Optional[str]
-                   recursive=True,  # type: bool
-                   verbose=False  # type: bool
-                   ):
+    def _add_files(
+        self,
+        path,  # type: Union[str, Path, _Path]
+        wildcard=None,  # type: Optional[Union[str, Sequence[str]]]
+        local_base_folder=None,  # type: Optional[str]
+        dataset_path=None,  # type: Optional[str]
+        recursive=True,  # type: bool
+        verbose=False,  # type: bool
+        max_workers=None,  # type: Optional[int]
+    ):
         # type: (...) -> tuple[int, int]
         """
         Add a folder into the current dataset. calculate file hash,
@@ -1861,7 +1859,9 @@ class Dataset(object):
         :param dataset_path: where in the dataset the folder/files should be located
         :param recursive: If True match all wildcard files recursively
         :param verbose: If True print to console added files
+        :param max_workers: The number of threads to add the files with. Defaults to the number of logical cores
         """
+        max_workers = max_workers or psutil.cpu_count()
         if dataset_path:
             dataset_path = dataset_path.lstrip("/")
         path = Path(path)
@@ -1898,7 +1898,7 @@ class Dataset(object):
                 for f in file_entries
             ]
             self._task.get_logger().report_text('Generating SHA2 hash for {} files'.format(len(file_entries)))
-            pool = ThreadPool(psutil.cpu_count())
+            pool = ThreadPool(max_workers)
             try:
                 import tqdm  # noqa
                 for _ in tqdm.tqdm(pool.imap_unordered(self._calc_file_hash, file_entries), total=len(file_entries)):
@@ -1989,7 +1989,7 @@ class Dataset(object):
         removed_files_count = 0
         removed_files_size = 0
         parent_datasets_ids = self._dependency_graph[self._id]
-        parent_file_entries = {}
+        parent_file_entries = dict()  # type: Dict[str, FileEntry]
         for parent_dataset_id in parent_datasets_ids:
             if parent_dataset_id == self._id:
                 continue
@@ -2112,8 +2112,7 @@ class Dataset(object):
 
         :return: Path to the local storage where the data was downloaded
         """
-        if not max_workers:
-            max_workers = psutil.cpu_count()
+        max_workers = max_workers or psutil.cpu_count()
         local_folder = self._extract_dataset_archive(
             force=force,
             selected_chunks=selected_chunks,
@@ -2218,8 +2217,7 @@ class Dataset(object):
         if not self._task:
             self._task = Task.get_task(task_id=self._id)
 
-        if not max_workers:
-            max_workers = psutil.cpu_count()
+        max_workers = max_workers or psutil.cpu_count()
 
         data_artifact_entries = self._get_data_artifact_names()
 
@@ -2256,21 +2254,25 @@ class Dataset(object):
                 raise ValueError("Could not download dataset id={} entry={}".format(self._id, data_artifact_name))
             return local_zip
 
-        def _extract_part(local_zip):
+        def _extract_part(local_zip, data_artifact_name):
             # noinspection PyProtectedMember
             StorageManager._extract_to_cache(
                 cached_file=local_zip, name=self._id,
                 cache_context=self.__cache_context, target_folder=local_folder, force=True)
             # noinspection PyBroadException
             try:
-                Path(local_zip).unlink()
+                # do not delete files we accessed directly
+                url = self._task.artifacts[data_artifact_name].url
+                helper = StorageHelper.get(url)
+                if helper.get_driver_direct_access(url) is None:
+                    Path(local_zip).unlink()
             except Exception:
                 pass
 
         with ThreadPoolExecutor(max_workers=max_workers) as pool:
             for d in data_artifact_entries:
                 local_zip = _download_part(d)
-                pool.submit(_extract_part, local_zip)
+                pool.submit(_extract_part, local_zip, d)
 
         return local_folder
 
@@ -2330,8 +2332,7 @@ class Dataset(object):
         assert part is None or (isinstance(part, int) and part >= 0)
         assert num_parts is None or (isinstance(num_parts, int) and num_parts >= 1)
 
-        if max_workers is None:
-            max_workers = psutil.cpu_count()
+        max_workers = max_workers or psutil.cpu_count()
 
         if use_soft_links is None:
             use_soft_links = False if is_windows() else True
@@ -2783,6 +2784,13 @@ class Dataset(object):
                         nrows=self.__preview_tabular_row_count,
                         compression=compression_.lstrip(".") if compression_ else None,
                     )
+                elif file_extension_ == ".tsv" and pd:
+                    return pd.read_csv(
+                        file_path_,
+                        sep='\t',
+                        nrows=self.__preview_tabular_row_count,
+                        compression=compression_.lstrip(".") if compression_ else None,
+                    )
                 elif file_extension_ == ".parquet" or file_extension_ == ".parq":
                     if pyarrow:
                         pf = pyarrow.parquet.ParquetFile(file_path_)
@@ -2797,7 +2805,7 @@ class Dataset(object):
             return None
 
         compression_extensions = {".gz", ".bz2", ".zip", ".xz", ".zst"}
-        tabular_extensions = {".csv", ".parquet", ".parq", ".npz", ".npy"}
+        tabular_extensions = {".csv", ".tsv", ".parquet", ".parq", ".npz", ".npy"}
         for file in self._dataset_file_entries.values():
             if file.local_path:
                 file_path = file.local_path
@@ -2811,15 +2819,21 @@ class Dataset(object):
             if file_extension in compression_extensions:
                 compression = file_extension
                 _, file_extension = os.path.splitext(file_path[: -len(file_extension)])
-            if file_extension in tabular_extensions and self.__preview_tables_count >= self.__preview_tabular_table_count:
+            if file_extension in tabular_extensions and \
+                    self.__preview_tables_count >= self.__preview_tabular_table_count:
                 continue
             artifact = convert_to_tabular_artifact(file_path, file_extension, compression)
             if artifact is not None:
                 # noinspection PyBroadException
                 try:
-                    self._task.get_logger().report_media(
-                        "Tables", file_name, stream=artifact.to_csv(index=False), file_extension=".txt"
-                    )
+                    if isinstance(artifact, pd.DataFrame):
+                        self._task.get_logger().report_table(
+                            "Tables", "summary", table_plot=artifact
+                        )
+                    else:
+                        self._task.get_logger().report_media(
+                            "Tables", file_name, stream=artifact.to_csv(index=False), file_extension=".txt"
+                        )
                     self.__preview_tables_count += 1
                 except Exception:
                     pass
@@ -2875,8 +2889,7 @@ class Dataset(object):
     ):
         # type: (Path, List[str], dict, bool, bool, bool, Optional[int]) -> ()
         # create thread pool, for creating soft-links / copying
-        if not max_workers:
-            max_workers = psutil.cpu_count()
+        max_workers = max_workers or psutil.cpu_count()
         pool = ThreadPool(max_workers)
         for dataset_version_id in dependencies_by_order:
             # make sure we skip over empty dependencies
@@ -2972,6 +2985,110 @@ class Dataset(object):
             self._dependency_chunk_lookup = self._build_dependency_chunk_lookup()
         return self._dependency_chunk_lookup
 
+    def _add_external_files(
+        self,
+        source_url,  # type: str
+        wildcard=None,  # type: Optional[Union[str, Sequence[str]]]
+        dataset_path=None,  # type: Optional[str]
+        recursive=True,  # type: bool
+        verbose=False,  # type: bool
+    ):
+        # type: (...) -> Tuple[int, int]
+        """
+        Auxiliary function for `add_external_files`
+        Adds an external file or a folder to the current dataset.
+        External file links can be from cloud storage (s3://, gs://, azure://) or local / network storage (file://).
+        Calculates file size for each file and compares against parent.
+
+        :param source_url: Source url link (e.g. s3://bucket/folder/path)
+        :param wildcard: add only specific set of files.
+            Wildcard matching, can be a single string or a list of wildcards.
+        :param dataset_path: The location in the dataset where the file will be downloaded into.
+            e.g: for source_url='s3://bucket/remote_folder/image.jpg' and dataset_path='s3_files',
+            'image.jpg' will be downloaded to 's3_files/image.jpg' (relative path to the dataset)
+        :param recursive: If True match all wildcard files recursively
+        :param verbose: If True print to console files added/modified
+        :return: Number of file links added and modified
+        """
+        if dataset_path:
+            dataset_path = dataset_path.lstrip("/")
+        remote_objects = None
+        # noinspection PyBroadException
+        try:
+            if StorageManager.exists_file(source_url):
+                remote_objects = [StorageManager.get_metadata(source_url)]
+            elif not source_url.startswith(("http://", "https://")):
+                if source_url[-1] != "/":
+                    source_url = source_url + "/"
+                remote_objects = StorageManager.list(source_url, with_metadata=True, return_full_path=True)
+        except Exception:
+            pass
+        if not remote_objects:
+            self._task.get_logger().report_text(
+                "Could not list/find remote file(s) when adding {}".format(source_url)
+            )
+            return 0, 0
+        num_added = 0
+        num_modified = 0
+        for remote_object in remote_objects:
+            link = remote_object.get("name")
+            relative_path = link[len(source_url):]
+            if not relative_path:
+                relative_path = source_url.split("/")[-1]
+            if not matches_any_wildcard(relative_path, wildcard, recursive=recursive):
+                continue
+            try:
+                relative_path = Path(os.path.join(dataset_path or ".", relative_path)).as_posix()
+                size = remote_object.get("size")
+                already_added_file = self._dataset_file_entries.get(relative_path)
+                if relative_path not in self._dataset_link_entries:
+                    if verbose:
+                        self._task.get_logger().report_text(
+                            "External file {} added".format(link),
+                            print_console=False,
+                        )
+                    self._dataset_link_entries[relative_path] = LinkEntry(
+                        link=link, relative_path=relative_path, parent_dataset_id=self._id, size=size
+                    )
+                    num_added += 1
+                elif already_added_file and already_added_file.size != size:
+                    if verbose:
+                        self._task.get_logger().report_text(
+                            "External file {} modified".format(link),
+                            print_console=False,
+                        )
+                    del self._dataset_file_entries[relative_path]
+                    self._dataset_link_entries[relative_path] = LinkEntry(
+                        link=link, relative_path=relative_path, parent_dataset_id=self._id, size=size
+                    )
+                    num_modified += 1
+                elif (
+                    relative_path in self._dataset_link_entries
+                    and self._dataset_link_entries[relative_path].size != size
+                ):
+                    if verbose:
+                        self._task.get_logger().report_text(
+                            "External file {} modified".format(link),
+                            print_console=False,
+                        )
+                    self._dataset_link_entries[relative_path] = LinkEntry(
+                        link=link, relative_path=relative_path, parent_dataset_id=self._id, size=size
+                    )
+                    num_modified += 1
+                else:
+                    if verbose:
+                        self._task.get_logger().report_text(
+                            "External file {} skipped as it was not modified".format(link),
+                            print_console=False,
+                        )
+            except Exception as e:
+                if verbose:
+                    self._task.get_logger().report_text(
+                        "Error '{}' encountered trying to add external file {}".format(e, link),
+                        print_console=False,
+                    )
+        return num_added, num_modified
+
     def _build_chunk_selection(self, part, num_parts):
         # type: (int, int) -> Dict[str, int]
         """
@@ -3019,7 +3136,7 @@ class Dataset(object):
         raise_on_multiple=False,
         shallow_search=True,
     ):
-        # type: (str, str, Optional[str]) -> Tuple[str, str]
+        # type: (str, str, Optional[str], Optional[str], bool, bool) -> Tuple[str, str]
         """
         Gets the dataset ID that matches a project, name and a version.
 
@@ -3134,7 +3251,7 @@ class Dataset(object):
 
     @classmethod
     def _remove_hidden_part_from_dataset_project(cls, dataset_project):
-        # type: (str, str) -> str
+        # type: (str) -> str
         """
         The project name contains the '.datasets' part, as well as the dataset_name.
         Remove those parts and return the project used when creating the dataset.

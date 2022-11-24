@@ -238,7 +238,7 @@ class ParallelZipper(object):
             self.fd, self.zip_path = mkstemp(prefix=zip_prefix, suffix=zip_suffix)
             self.zip_path = Path(self.zip_path)
             self.zip_file = ZipFile(self.zip_path.as_posix(), "w", allowZip64=allow_zip_64, compression=compression)
-            self.archive_preview = ""
+            self.archive_preview = []
             self.count = 0
             self.files_zipped = set()
 
@@ -259,7 +259,7 @@ class ParallelZipper(object):
             preview_path = arcname
             if not preview_path:
                 preview_path = file_path
-            self.archive_preview += "{} - {}\n".format(preview_path, format_size(self.size))
+            self.archive_preview.append("{} - {}".format(preview_path, format_size(self.size)))
             self.files_zipped.add(Path(file_path).as_posix())
             if self._chunk_size <= 0 or self.size < self._chunk_size:
                 self._zipper_queue.put(self)
@@ -294,7 +294,7 @@ class ParallelZipper(object):
                         parent_zip.writestr(child_name, child_zip.open(child_name).read())
             self.files_zipped |= other.files_zipped
             self.count += other.count
-            self.archive_preview += other.archive_preview
+            self.archive_preview.extend(other.archive_preview)
 
         def close(self):
             # type: () -> ()
@@ -377,8 +377,12 @@ class ParallelZipper(object):
         self._zipper_queue = PriorityQueue()
         self._zipper_results = Queue()
 
-    def zip_iter(self, file_paths, arcnames={}):
-        # type: (List[Union(str, Path)], Optional[dict[Union(str, Path), str]]) -> Generator[ParallelZipper.ZipperObject]
+    def zip_iter(
+            self,
+            file_paths,  # type: List[Union[str, Path]]
+            arcnames=None  # type: Optional[dict[Union[str, Path], str]]
+    ):
+        # type: (...) -> Generator[ParallelZipper.ZipperObject]
         """
         Generator function that returns zip files as soon as they are available.
         The zipping is done in parallel
@@ -388,6 +392,9 @@ class ParallelZipper(object):
 
         :return: Generator of ParallelZipper.ZipperObjects
         """
+        if arcnames is None:
+            arcnames = dict()
+
         while not self._zipper_queue.empty():
             self._zipper_queue.get_nowait()
         for _ in range(self._max_workers):
@@ -427,7 +434,7 @@ class ParallelZipper(object):
         for task in pooled:
             task.result()
         if not self._pool:
-            pool.close()
+            pool.shutdown()
 
         for result in self._yield_zipper_results():
             yield result

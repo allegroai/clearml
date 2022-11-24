@@ -118,6 +118,12 @@ def cli():
     add.add_argument('--non-recursive', action='store_true', default=False,
                      help='Disable recursive scan of files')
     add.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
+    add.add_argument(
+        "--max-workers",
+        type=int,
+        default=None,
+        help="Number of threads to add the files with. Defaults to the number of logical cores",
+    )
     add.set_defaults(func=ds_add)
 
     set_description = subparsers.add_parser("set-description", help="Set description to the dataset")
@@ -195,6 +201,12 @@ def cli():
                         help='Set dataset artifact chunk size in MB. Default 512, (pass -1 for a single chunk). '
                              'Example: 512, dataset will be split and uploaded in 512mb chunks.')
     upload.add_argument('--verbose', default=False, action='store_true', help='Verbose reporting')
+    upload.add_argument(
+        "--max-workers",
+        type=int,
+        default=None,
+        help="Number of threads to upload the files with. Defaults to 1 if uploading to a cloud provider ('s3', 'azure', 'gs') OR to the number of logical cores otherwise",
+    )
     upload.set_defaults(func=ds_upload)
 
     finalize = subparsers.add_parser('close', help='Finalize and close the dataset (implies auto upload)')
@@ -210,6 +222,12 @@ def cli():
                           help='Set dataset artifact chunk size in MB. Default 512, (pass -1 for a single chunk). '
                                'Example: 512, dataset will be split and uploaded in 512mb chunks.')
     finalize.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
+    finalize.add_argument(
+        "--max-workers",
+        type=int,
+        default=None,
+        help="Number of threads to upload the files with. Defaults to 1 if uploading to a cloud provider ('s3', 'azure', 'gs') OR to the number of logical cores otherwise",
+    )
     finalize.set_defaults(func=ds_close)
 
     publish = subparsers.add_parser('publish', help='Publish dataset task')
@@ -327,6 +345,12 @@ def cli():
                           'can be divided into 4 parts')
     get.add_argument('--overwrite', action='store_true', default=False, help='If True, overwrite the target folder')
     get.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
+    get.add_argument(
+        "--max-workers",
+        type=int,
+        default=None,
+        help="Number of threads to get the files with. Defaults to the number of logical cores",
+    )
     get.set_defaults(func=ds_get)
 
     args = parser.parse_args()
@@ -426,7 +450,9 @@ def ds_get(args):
                 pass
     if args.copy:
         ds_folder = args.copy
-        ds.get_mutable_local_copy(target_folder=ds_folder, part=args.part, num_parts=args.num_parts)
+        ds.get_mutable_local_copy(
+            target_folder=ds_folder, part=args.part, num_parts=args.num_parts, max_workers=args.max_workers
+        )
     else:
         if args.link:
             Path(args.link).mkdir(parents=True, exist_ok=True)
@@ -438,7 +464,7 @@ def ds_get(args):
                     Path(args.link).unlink()
                 except Exception:
                     raise ValueError("Target directory {} is not empty. Use --overwrite.".format(args.link))
-        ds_folder = ds.get_local_copy(part=args.part, num_parts=args.num_parts)
+        ds_folder = ds.get_local_copy(part=args.part, num_parts=args.num_parts, max_workers=args.max_workers)
         if args.link:
             os.symlink(ds_folder, args.link)
             ds_folder = args.link
@@ -568,10 +594,13 @@ def ds_close(args):
             raise ValueError("Pending uploads, cannot finalize dataset. run `clearml-data upload`")
         # upload the files
         print("Pending uploads, starting dataset upload to {}".format(args.storage or ds.get_default_storage()))
-        ds.upload(show_progress=True,
-                  verbose=args.verbose,
-                  output_url=args.storage or None,
-                  chunk_size=args.chunk_size or -1,)
+        ds.upload(
+            show_progress=True,
+            verbose=args.verbose,
+            output_url=args.storage or None,
+            chunk_size=args.chunk_size or -1,
+            max_workers=args.max_workers,
+        )
 
     ds.finalize()
     print('Dataset closed and finalized')
@@ -598,7 +627,12 @@ def ds_upload(args):
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
-    ds.upload(verbose=args.verbose, output_url=args.storage or None, chunk_size=args.chunk_size or -1)
+    ds.upload(
+        verbose=args.verbose,
+        output_url=args.storage or None,
+        chunk_size=args.chunk_size or -1,
+        max_workers=args.max_workers,
+    )
     print('Dataset upload completed')
     return 0
 
@@ -667,6 +701,7 @@ def ds_add(args):
             verbose=args.verbose,
             dataset_path=args.dataset_folder or None,
             wildcard=args.wildcard,
+            max_workers=args.max_workers
         )
     for link in args.links or []:
         num_files += ds.add_external_files(
@@ -675,6 +710,7 @@ def ds_add(args):
             recursive=not args.non_recursive,
             verbose=args.verbose,
             wildcard=args.wildcard,
+            max_workers=args.max_workers
         )
     message = "{} file{} added".format(num_files, "s" if num_files != 1 else "")
     print(message)

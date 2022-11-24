@@ -1,0 +1,5 @@
+allegroai~=3.5.7
+clearml
+numpy
+Pillow
+torch

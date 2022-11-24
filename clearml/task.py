@@ -16,7 +16,7 @@ try:
     # noinspection PyCompatibility
     from collections.abc import Sequence as CollectionsSequence
 except ImportError:
-    from collections import Sequence as CollectionsSequence
+    from collections import Sequence as CollectionsSequence  # noqa
 
 from typing import (
     Optional,
@@ -41,7 +41,7 @@ from .backend_config.defs import get_active_config_file, get_config_file
 from .backend_api.services import tasks, projects
 from .backend_api.session.session import (
     Session, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_HOST, ENV_WEB_HOST, ENV_FILES_HOST, )
-from .backend_api.session.defs import ENV_DEFERRED_TASK_INIT
+from .backend_api.session.defs import ENV_DEFERRED_TASK_INIT, ENV_IGNORE_MISSING_CONFIG, MissingConfigError
 from .backend_interface.metrics import Metrics
 from .backend_interface.model import Model as BackendModel
 from .backend_interface.task import Task as _Task
@@ -77,7 +77,7 @@ from .binding.jsonargs_bind import PatchJsonArgParse
 from .binding.frameworks import WeightsFileHandler
 from .config import (
     config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, DEV_DEFAULT_OUTPUT_URI,
-    deferred_config, TASK_SET_ITERATION_OFFSET, )
+    deferred_config, TASK_SET_ITERATION_OFFSET)
 from .config import running_remotely, get_remote_task_id
 from .config.cache import SessionCache
 from .debugging.log import LoggerRoot
@@ -92,7 +92,7 @@ from .binding.args import (
 from .utilities.dicts import ReadOnlyDict, merge_dicts
 from .utilities.proxy_object import (
     ProxyDictPreWrite, ProxyDictPostWrite, flatten_dictionary,
-    nested_from_flat_dictionary, naive_nested_from_flat_dictionary, )
+    nested_from_flat_dictionary, naive_nested_from_flat_dictionary, StubObject as _TaskStub)
 from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
@@ -416,6 +416,7 @@ class Task(_Task):
                }
 
             .. code-block:: py
+
                 auto_connect_frameworks={'tensorboard': {'report_hparams': False}}
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
@@ -491,7 +492,8 @@ class Task(_Task):
                     )
 
         # if deferred_init==0 this means this is the nested call that actually generates the Task.init
-        if cls.__main_task is not None and deferred_init != 0:
+        # notice isinstance(False, int) is always True, so we have to check type (we wanted deferred_init != 0)
+        if cls.__main_task is not None and (not (type(deferred_init) == int and deferred_init == 0)):
             # if this is a subprocess, regardless of what the init was called for,
             # we have to fix the main task hooks and stdout bindings
             if cls.__forked_proc_main_pid != os.getpid() and cls.__is_subprocess():
@@ -529,16 +531,6 @@ class Task(_Task):
         # check that we are not a child process, in that case do nothing.
         # we should not get here unless this is Windows/macOS platform, linux support fork
         if cls.__is_subprocess():
-            class _TaskStub(object):
-                def __call__(self, *args, **kwargs):
-                    return self
-
-                def __getattr__(self, attr):
-                    return self
-
-                def __setattr__(self, attr, val):
-                    pass
-
             is_sub_process_task_id = cls.__get_master_id_task_id()
             # we could not find a task ID, revert to old stub behaviour
             if not is_sub_process_task_id:
@@ -569,7 +561,8 @@ class Task(_Task):
             if not running_remotely():
                 # only allow if running locally and creating the first Task
                 # otherwise we ignore and perform in order
-                if deferred_init != 0 and ENV_DEFERRED_TASK_INIT.get():
+                # notice isinstance(False, int) is always True, so we have to check type (we wanted deferred_init != 0)
+                if (not (type(deferred_init) == int and deferred_init == 0)) and ENV_DEFERRED_TASK_INIT.get():
                     deferred_init = True
                 if not is_sub_process_task_id and deferred_init:
                     def completed_cb(x):
@@ -598,22 +591,35 @@ class Task(_Task):
                     cls.__update_master_pid_task()
                 # if this is the main process, create the task
                 elif not is_sub_process_task_id:
-                    task = cls._create_dev_task(
-                        default_project_name=project_name,
-                        default_task_name=task_name,
-                        default_task_type=task_type,
-                        tags=tags,
-                        reuse_last_task_id=reuse_last_task_id,
-                        continue_last_task=continue_last_task,
-                        detect_repo=False if (
-                                isinstance(auto_connect_frameworks, dict) and
-                                not auto_connect_frameworks.get('detect_repository', True)) else True,
-                        auto_connect_streams=auto_connect_streams,
-                    )
+                    try:
+                        task = cls._create_dev_task(
+                            default_project_name=project_name,
+                            default_task_name=task_name,
+                            default_task_type=task_type,
+                            tags=tags,
+                            reuse_last_task_id=reuse_last_task_id,
+                            continue_last_task=continue_last_task,
+                            detect_repo=False if (
+                                    isinstance(auto_connect_frameworks, dict) and
+                                    not auto_connect_frameworks.get('detect_repository', True)) else True,
+                            auto_connect_streams=auto_connect_streams,
+                        )
+                    except MissingConfigError as e:
+                        if not ENV_IGNORE_MISSING_CONFIG.get():
+                            raise
+                        getLogger().warning(str(e))
+                        # return a Task-stub instead of the original class
+                        # this will make sure users can still call the Stub without code breaking
+                        return _TaskStub()  # noqa
                     # set defaults
                     if cls._offline_mode:
                         task.output_uri = None
-                    elif output_uri:
+                        # create target data folder for logger / artifacts
+                        # noinspection PyProtectedMember
+                        Path(task._get_default_report_storage_uri()).mkdir(parents=True, exist_ok=True)
+                    elif output_uri is not None:
+                        if output_uri is True:
+                            output_uri = task.get_project_object().default_output_destination or True
                         task.output_uri = output_uri
                     elif task.get_project_object().default_output_destination:
                         task.output_uri = task.get_project_object().default_output_destination
@@ -1883,7 +1889,8 @@ class Task(_Task):
             preview=None,  # type: Any
             wait_on_upload=False,  # type: bool
             extension_name=None,  # type: Optional[str]
-            serialization_function=None  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
+            serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
+            retries=0  # type: int
     ):
         # type: (...) -> bool
         """
@@ -1934,10 +1941,13 @@ class Task(_Task):
         - In case the ``serialization_function`` argument is set - any extension is supported
 
         :param Callable[Any, Union[bytes, bytearray]] serialization_function: A serialization function that takes one
-            parameter of any types which is the object to be serialized. The function should return a `bytes` or `bytearray`
-            object, which represents the serialized object. Note that the object will be immediately serialized using this function,
-            thus other serialization methods will not be used (e.g. `pandas.DataFrame.to_csv`), even if possible.
-            To deserialize this artifact when getting it using the `Artifact.get` method, use its `deserialization_function` argument
+            parameter of any types which is the object to be serialized. The function should return
+            a `bytes` or `bytearray` object, which represents the serialized object. Note that the object will be
+            immediately serialized using this function, thus other serialization methods will not be used
+            (e.g. `pandas.DataFrame.to_csv`), even if possible. To deserialize this artifact when getting
+            it using the `Artifact.get` method, use its `deserialization_function` argument.
+
+        :param int retries: Number of retries before failing to upload artifact. If 0, the upload is not retried
 
         :return: The status of the upload.
 
@@ -1946,17 +1956,31 @@ class Task(_Task):
 
         :raise: If the artifact object type is not supported, raise a ``ValueError``.
         """
-        return self._artifacts_manager.upload_artifact(
-            name=name,
-            artifact_object=artifact_object,
-            metadata=metadata,
-            delete_after_upload=delete_after_upload,
-            auto_pickle=auto_pickle,
-            preview=preview,
-            wait_on_upload=wait_on_upload,
-            extension_name=extension_name,
-            serialization_function=serialization_function,
-        )
+        exception_to_raise = None
+        for retry in range(retries + 1):
+            # noinspection PyBroadException
+            try:
+                if self._artifacts_manager.upload_artifact(
+                    name=name,
+                    artifact_object=artifact_object,
+                    metadata=metadata,
+                    delete_after_upload=delete_after_upload,
+                    auto_pickle=auto_pickle,
+                    preview=preview,
+                    wait_on_upload=wait_on_upload,
+                    extension_name=extension_name,
+                    serialization_function=serialization_function,
+                ):
+                    return True
+            except Exception as e:
+                exception_to_raise = e
+            if retry < retries:
+                getLogger().warning(
+                    "Failed uploading artifact '{}'. Retrying... ({}/{})".format(name, retry + 1, retries)
+                )
+        if exception_to_raise:
+            raise exception_to_raise
+        return False
 
     def get_models(self):
         # type: () -> Mapping[str, Sequence[Model]]
@@ -2705,7 +2729,7 @@ class Task(_Task):
             project_name = task_data.get('project_name') or Task._get_project_name(task_data.get('project', ''))
             target_task = Task.create(project_name=project_name, task_name=task_data.get('name', None))
         elif isinstance(target_task, six.string_types):
-            target_task = Task.get_task(task_id=target_task)
+            target_task = Task.get_task(task_id=target_task)  # type: Optional[Task]
         elif not isinstance(target_task, Task):
             raise ValueError(
                 "`target_task` must be either Task id (str) or Task object, "
@@ -3710,6 +3734,7 @@ class Task(_Task):
                 self._org_handlers = {}
                 self._signal_recursion_protection_flag = False
                 self._except_recursion_protection_flag = False
+                self._import_bind_path = os.path.join("clearml", "binding", "import_bind.py")
 
             def update_callback(self, callback):
                 if self._exit_callback and not six.PY2:
@@ -3773,6 +3798,26 @@ class Task(_Task):
 
                 self._except_recursion_protection_flag = True
                 self.exception = value
+
+                try:
+                    # remove us from import errors
+                    if six.PY3 and isinstance(exctype, type) and issubclass(exctype, ImportError):
+                        prev = cur = traceback
+                        while cur is not None:
+                            tb_next = cur.tb_next
+                            # if this is the import frame, we should remove it
+                            if cur.tb_frame.f_code.co_filename.endswith(self._import_bind_path):
+                                # remove this frame by connecting the previous one to the next one
+                                prev.tb_next = tb_next
+                                cur.tb_next = None
+                                del cur
+                                cur = prev
+
+                            prev = cur
+                            cur = tb_next
+                except:  # noqa
+                    pass
+
                 if self._orig_exc_handler:
                     # noinspection PyArgumentList
                     ret = self._orig_exc_handler(exctype, value, traceback, *args, **kwargs)

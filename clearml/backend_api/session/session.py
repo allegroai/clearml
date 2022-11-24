@@ -1,4 +1,7 @@
+from __future__ import print_function
 import json as json_lib
+import logging
+import os
 import sys
 import types
 from socket import gethostname
@@ -9,7 +12,7 @@ import requests
 import six
 from requests.auth import HTTPBasicAuth
 from six.moves.urllib.parse import urlparse, urlunparse
-from typing import List
+from typing import List, Optional
 
 from .callresult import CallResult
 from .defs import (
@@ -20,18 +23,20 @@ from .defs import (
     ENV_WEB_HOST,
     ENV_FILES_HOST,
     ENV_OFFLINE_MODE,
-    ENV_CLEARML_NO_DEFAULT_SERVER,
     ENV_AUTH_TOKEN,
     ENV_DISABLE_VAULT_SUPPORT,
     ENV_ENABLE_ENV_CONFIG_SECTION,
     ENV_ENABLE_FILES_CONFIG_SECTION,
-    ENV_API_EXTRA_RETRY_CODES, ENV_API_DEFAULT_REQ_METHOD,
+    ENV_API_EXTRA_RETRY_CODES,
+    ENV_API_DEFAULT_REQ_METHOD,
+    MissingConfigError
 )
 from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
 from ..config import load
 from ..utils import get_http_session_with_retry, urllib_log_warning_setup
 from ...debugging import get_logger
+from ...debugging.log import resolve_logging_level
 from ...utilities.pyhocon import ConfigTree, ConfigFactory
 from ...version import __version__
 from ...backend_config.utils import apply_files, apply_environment
@@ -71,15 +76,15 @@ class Session(TokenManager):
 
     _client = [(__package__.partition(".")[0], __version__)]
 
-    api_version = '2.9'
+    api_version = '2.9'  # this default version should match the lowest api version we have under service
     max_api_version = '2.9'
     feature_set = 'basic'
     default_demo_host = "https://demoapi.demo.clear.ml"
-    default_host = default_demo_host
-    default_web = "https://demoapp.demo.clear.ml"
-    default_files = "https://demofiles.demo.clear.ml"
-    default_key = "EGRTCO8JMSIGI6S39GTP43NFWXDQOW"
-    default_secret = "x!XTov_G-#vspE*Y(h$Anm&DIc5Ou-F)jsl$PdOyj5wG1&E!Z8"
+    default_host = "https://api.clear.ml"
+    default_web = "https://app.clear.ml"
+    default_files = "https://files.clear.ml"
+    default_key = ""  # "EGRTCO8JMSIGI6S39GTP43NFWXDQOW"
+    default_secret = ""  # "x!XTov_G-#vspE*Y(h$Anm&DIc5Ou-F)jsl$PdOyj5wG1&E!Z8"
     force_max_api_version = None
 
     legacy_file_servers = ["https://files.community.clear.ml"]
@@ -139,16 +144,13 @@ class Session(TokenManager):
 
         self._verbose = verbose if verbose is not None else ENV_VERBOSE.get()
         self._logger = logger
+        if self._verbose and not self._logger:
+            level = resolve_logging_level(ENV_VERBOSE.get(converter=str))
+            self._logger = get_logger(level=level, stream=sys.stderr if level is logging.DEBUG else None)
+
         self.__auth_token = None
 
-        if not ENV_API_DEFAULT_REQ_METHOD.get(default=None) and self.config.get("api.http.default_method", None):
-            def_method = str(self.config.get("api.http.default_method", None)).strip()
-            if def_method.upper() not in ("GET", "POST", "PUT"):
-                raise ValueError(
-                    "api.http.default_method variable must be 'get' or 'post' (any case is allowed)."
-                )
-            Request.def_method = def_method
-            Request._method = Request.def_method
+        self._update_default_api_method()
 
         if ENV_AUTH_TOKEN.get():
             self.__access_key = self.__secret_key = None
@@ -156,22 +158,13 @@ class Session(TokenManager):
             # if we use a token we override make sure we are at least 3600 seconds (1 hour)
             # away from the token expiration date, ask for a new one.
             token_expiration_threshold_sec = max(token_expiration_threshold_sec, 3600)
-        else:
+        elif not self._offline_mode:
             self.__access_key = api_key or ENV_ACCESS_KEY.get(
                 default=(self.config.get("api.credentials.access_key", None) or self.default_key)
             )
-            if not self.access_key:
-                raise ValueError(
-                    "Missing access_key. Please set in configuration file or pass in session init."
-                )
-
             self.__secret_key = secret_key or ENV_SECRET_KEY.get(
                 default=(self.config.get("api.credentials.secret_key", None) or self.default_secret)
             )
-            if not self.secret_key:
-                raise ValueError(
-                    "Missing secret_key. Please set in configuration file or pass in session init."
-                )
 
         # init the token manager
         super(Session, self).__init__(
@@ -180,14 +173,10 @@ class Session(TokenManager):
 
         host = host or self.get_api_server_host(config=self.config)
         if not host:
-            raise ValueError("host is required in init or config")
+            raise ValueError("ClearML host was not set, check your configuration file or environment variable")
 
-        if not self._offline_mode and ENV_CLEARML_NO_DEFAULT_SERVER.get() and host == self.default_demo_host:
-            raise ValueError(
-                "ClearML configuration could not be found (missing `~/clearml.conf` or Environment CLEARML_API_HOST)\n"
-                "To get started with ClearML: setup your own `clearml-server`, "
-                "or create a free account at https://app.clear.ml"
-            )
+        if not self._offline_mode and (not self.secret_key and not self.access_key and not self.__auth_token):
+            raise MissingConfigError()
 
         self._ssl_error_count_verbosity = self.config.get(
             "api.ssl_error_count_verbosity", self._ssl_error_count_verbosity)
@@ -197,6 +186,7 @@ class Session(TokenManager):
             "api.http.retries", ConfigTree()).as_plain_ordered_dict()
 
         http_retries_config["status_forcelist"] = self._get_retry_codes()
+        http_retries_config["config"] = self.config
         self.__http_session = get_http_session_with_retry(**http_retries_config)
         self.__http_session.write_timeout = self._write_session_timeout
         self.__http_session.request_size_threshold = self._write_session_data_size
@@ -237,14 +227,27 @@ class Session(TokenManager):
         # notice: this is across the board warning omission
         urllib_log_warning_setup(total_retries=http_retries_config.get('total', 0), display_warning_after=3)
 
-        self.__class__._sessions_created += 1
-
         if self.force_max_api_version and self.check_min_api_version(self.force_max_api_version):
             Session.max_api_version = Session.api_version = str(self.force_max_api_version)
+
+        # update only after we have max_api
+        self.__class__._sessions_created += 1
 
         self._load_vaults()
 
         self._apply_config_sections(local_logger)
+
+        self._update_default_api_method()
+
+    def _update_default_api_method(self):
+        if not ENV_API_DEFAULT_REQ_METHOD.get(default=None) and self.config.get("api.http.default_method", None):
+            def_method = str(self.config.get("api.http.default_method", None)).strip()
+            if def_method.upper() not in ("GET", "POST", "PUT"):
+                raise ValueError(
+                    "api.http.default_method variable must be 'get' or 'post' (any case is allowed)."
+                )
+            Request.def_method = def_method
+            Request._method = Request.def_method
 
     def _get_retry_codes(self):
         # type: () -> List[int]
@@ -287,7 +290,8 @@ class Session(TokenManager):
 
         # noinspection PyBroadException
         try:
-            res = self.send_request("users", "get_vaults", json={"enabled": True, "types": ["config"]})
+            # Use params and not data/json otherwise payload might be dropped if we're using GET with a strict firewall
+            res = self.send_request("users", "get_vaults", params="enabled=true&types=config&types=config")
             if res.ok:
                 vaults = res.json().get("data", {}).get("vaults", [])
                 data = list(filter(None, map(parse, vaults)))
@@ -321,12 +325,13 @@ class Session(TokenManager):
         service,
         action,
         version=None,
-        method=Request.def_method,
+        method=None,
         headers=None,
         auth=None,
         data=None,
         json=None,
         refresh_token_if_unauthorized=True,
+        params=None,
     ):
         """ Internal implementation for making a raw API request.
             - Constructs the api endpoint name
@@ -339,6 +344,9 @@ class Session(TokenManager):
         """
         if self._offline_mode:
             return None
+
+        if not method:
+            method = Request.def_method
 
         res = None
         host = self.host
@@ -363,8 +371,15 @@ class Session(TokenManager):
             else:
                 timeout = self._session_timeout
             try:
+                if self._verbose and self._logger:
+                    size = len(data or "")
+                    if json and self._logger.level == logging.DEBUG:
+                        size += len(json_lib.dumps(json))
+                    self._logger.debug("%s: %s [%d bytes, %d headers]", method.upper(), url, size, len(headers or {}))
                 res = self.__http_session.request(
-                    method, url, headers=headers, auth=auth, data=data, json=json, timeout=timeout)
+                    method, url, headers=headers, auth=auth, data=data, json=json, timeout=timeout, params=params)
+                if self._verbose and self._logger:
+                    self._logger.debug("--> took %s", res.elapsed)
             # except Exception as ex:
             except SSLError as ex:
                 retry_counter += 1
@@ -410,11 +425,12 @@ class Session(TokenManager):
         service,
         action,
         version=None,
-        method=Request.def_method,
+        method=None,
         headers=None,
         data=None,
         json=None,
         async_enable=False,
+        params=None,
     ):
         """
         Send a raw API request.
@@ -429,6 +445,8 @@ class Session(TokenManager):
         :param async_enable: whether request is asynchronous
         :return: requests Response instance
         """
+        if not method:
+            method = Request.def_method
         headers = self.add_auth_headers(
             headers.copy() if headers else {}
         )
@@ -443,6 +461,7 @@ class Session(TokenManager):
             headers=headers,
             data=data,
             json=json,
+            params=params,
         )
 
     def send_request_batch(
@@ -453,7 +472,7 @@ class Session(TokenManager):
         headers=None,
         data=None,
         json=None,
-        method=Request.def_method,
+        method=None,
     ):
         """
         Send a raw batch API request. Batch requests always use application/json-lines content type.
@@ -477,6 +496,9 @@ class Session(TokenManager):
         if not data and not json:
             # Missing data (data or json), batch requests are meaningless without it.
             return None
+
+        if not method:
+            method = Request.def_method
 
         headers = headers.copy() if headers else {}
         headers["Content-Type"] = "application/json-lines"
@@ -686,6 +708,11 @@ class Session(TokenManager):
                             pass
                     cls.max_api_version = cls.api_version = cls._offline_default_version
             else:
+                # if the requested version is lower then the minimum we support,
+                # no need to actually check what the server has, we assume it must have at least our version.
+                if cls._version_tuple(cls.api_version) >= cls._version_tuple(str(min_api_version)):
+                    return True
+
                 # noinspection PyBroadException
                 try:
                     cls()
@@ -740,15 +767,14 @@ class Session(TokenManager):
         auth = HTTPBasicAuth(self.access_key, self.secret_key) if self.access_key and self.secret_key else None
         res = None
         try:
-            data = {"expiration_sec": exp} if exp else {}
             res = self._send_request(
                 method=Request.def_method,
                 service="auth",
                 action="login",
                 auth=auth,
-                json=data,
                 headers=headers,
                 refresh_token_if_unauthorized=False,
+                params={"expiration_sec": exp} if exp else {},
             )
             try:
                 resp = res.json()
@@ -782,6 +808,52 @@ class Session(TokenManager):
         except Exception as ex:
             raise LoginError('Unrecognized Authentication Error: {} {}'.format(type(ex), ex))
 
+    @staticmethod
+    def __get_browser_token(webserver):
+        # try to get the token if we are running inside a browser session (i.e. CoLab, Kaggle etc.)
+        if not os.environ.get("JPY_PARENT_PID"):
+            return None
+
+        try:
+            from google.colab import output  # noqa
+            from google.colab._message import MessageError  # noqa
+            from IPython import display  # noqa
+
+            # must have cookie to same-origin: None for this one to work
+            display.display(
+                display.Javascript(
+                    """
+                    window._ApiKey = new Promise((resolve, reject) => {
+                        const timeout = setTimeout(() => reject("Failed authenticating existing browser session"), 5000)
+                        fetch("%s/api/auth.login", {
+                          method: 'GET',
+                          credentials: 'include'
+                        })
+                          .then((response) => resolve(response.json()))
+                          .then((json) => {
+                            clearTimeout(timeout);
+                          }).catch((err) => {
+                            clearTimeout(timeout);
+                            reject(err);
+                        });
+                    });
+                    """ % webserver.rstrip("/")
+                ))
+
+            response = output.eval_js("_ApiKey")
+            if not response:
+                return None
+            result_code = response.get("meta", {}).get("result_code")
+            token = response.get("data", {}).get("token")
+        except:  # noqa
+            return None
+
+        if result_code != 200:
+            raise ValueError(
+                "Automatic authenticating failed, please login to {} and try again".format(webserver))
+
+        return token
+
     def __str__(self):
         return "{self.__class__.__name__}[{self.host}, {self.access_key}/{secret_key}]".format(
             self=self, secret_key=self.secret_key[:5] + "*" * (len(self.secret_key) - 5)
@@ -795,3 +867,98 @@ class Session(TokenManager):
             if not self.logger:
                 self.logger = get_logger()
             return self.logger
+
+
+def browser_login(clearml_server=None):
+    # type: (Optional[str]) -> ()
+    """
+    Alternative authentication / login method, (instead of configuring ~/clearml.conf or Environment variables)
+    ** Only applicable when running inside a browser session,
+    for example Google Colab, Kaggle notebook, Jupyter Notebooks etc. **
+
+    Notice: If called inside a python script, or when running with an agent, this function is ignored
+
+    :param clearml_server: Optional, set the clearml server address, default: https://app.clear.ml
+    """
+
+    # check if we are running inside a Jupyter notebook of a sort
+    if not os.environ.get("JPY_PARENT_PID"):
+        return
+
+    # if we are running remotely or in offline mode, skip login
+    from clearml.config import running_remotely
+    # noinspection PyProtectedMember
+    if running_remotely():
+        return
+
+    # if we have working local configuration, nothing to do
+    try:
+        Session()
+        return
+    except:  # noqa
+        pass
+
+    # conform clearml_server address
+    if clearml_server:
+        if not clearml_server.lower().startswith("http"):
+            clearml_server = "http://{}".format(clearml_server)
+
+        parsed = urlparse(clearml_server)
+        if parsed.port:
+            parsed = parsed._replace(netloc=parsed.netloc.replace(':%d' % parsed.port, ':8008', 1))
+
+        if parsed.netloc.startswith('demoapp.'):
+            parsed = parsed._replace(netloc=parsed.netloc.replace('demoapp.', 'demoapi.', 1))
+        elif parsed.netloc.startswith('app.'):
+            parsed = parsed._replace(netloc=parsed.netloc.replace('app.', 'api.', 1))
+        elif parsed.netloc.startswith('api.'):
+            pass
+        else:
+            parsed = parsed._replace(netloc='api.' + parsed.netloc)
+
+        clearml_server = urlunparse(parsed)
+
+        # set for later usage
+        ENV_HOST.set(clearml_server)
+
+    token = None
+    counter = 0
+    clearml_app_server = Session.get_app_server_host()
+    while not token:
+        # try to get authentication toke
+        try:
+            # noinspection PyProtectedMember
+            token = Session._Session__get_browser_token(clearml_app_server)
+        except ValueError:
+            token = None
+        except Exception:  # noqa
+            token = None
+        # if we could not get a token, instruct the user to login
+        if not token:
+            if not counter:
+                print(
+                    "ClearML automatic browser login failed, please login or create a new account\n"
+                    "To get started with ClearML: setup your own `clearml-server`, "
+                    "or create a free account at {}\n".format(clearml_app_server)
+                )
+                print("Please login to {} , then press [Enter] to connect ".format(clearml_app_server), end="")
+            else:
+                print("Oh no we failed to connect \N{worried face}, "
+                      "try to logout and login again - Press [Enter] to retry ", end="")
+
+            input()
+            counter += 1
+
+    print("")
+    if counter:
+        # these emojis actually requires python 3.6+
+        # print("\nHurrah! \N{face with party horn and party hat} \N{confetti ball} \N{party popper}")
+        print("\nHurrah! \U0001f973 \U0001f38a \U0001f389")
+
+    if token:
+        # set Token
+        ENV_AUTH_TOKEN.set(token)
+        # verify token
+        Session()
+        # success
+        print("\N{robot face} ClearML connected successfully - let's build something! \N{rocket}")

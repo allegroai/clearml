@@ -595,10 +595,23 @@ class StorageHelper(object):
         :return: The size of the file in bytes.
             None if the file could not be found or an error occurred.
         """
-        size = None
         obj = self.get_object(remote_url, silence_errors=silence_errors)
+        return self._get_object_size_bytes(obj)
+
+    def _get_object_size_bytes(self, obj):
+        # type: (object, bool) -> [int, None]
+        """
+        Auxiliary function for `get_object_size_bytes`.
+        Get size of the remote object in bytes.
+
+        :param object obj: The remote object
+
+        :return: The size of the object in bytes.
+            None if an error occurred.
+        """
         if not obj:
             return None
+        size = None
         try:
             if isinstance(self._driver, _HttpDriver) and obj:
                 obj = self._driver._get_download_object(obj)  # noqa
@@ -614,6 +627,21 @@ class StorageHelper(object):
         except (ValueError, AttributeError, KeyError):
             pass
         return size
+
+    def get_object_metadata(self, obj):
+        # type: (object) -> dict
+        """
+        Get the metadata of the a remote object.
+        The metadata is a dict containing the following keys: `name`, `size`.
+
+        :param object obj: The remote object
+
+        :return: A dict containing the metadata of the remote object
+        """
+        return {
+            "name": obj.name if hasattr(obj, "name") else obj.url if hasattr(obj, "url") else None,
+            "size": self._get_object_size_bytes(obj),
+        }
 
     def verify_upload(self, folder_uri='', raise_on_error=True, log_on_error=True):
         """
@@ -716,12 +744,13 @@ class StorageHelper(object):
                 res = quote_url(res)
             return res
 
-    def list(self, prefix=None):
+    def list(self, prefix=None, with_metadata=False):
         """
         List entries in the helper base path.
 
-        Return a list of names inside this helper base path. The base path is
-        determined at creation time and is specific for each storage medium.
+        Return a list of names inside this helper base path or a list of dictionaries containing
+        the objects' metadata. The base path is determined at creation time and is specific
+        for each storage medium.
         For Google Storage and S3 it is the bucket of the path.
         For local files it is the root directory.
 
@@ -731,11 +760,14 @@ class StorageHelper(object):
             must be a string - the path of a sub directory under the base path.
             the returned list will include only objects under that subdir.
 
-        :return: The paths of all the objects in the storage base
-            path under prefix. Listed relative to the base path.
+        :param with_metadata: Instead of returning just the names of the objects, return a list of dictionaries
+            containing the name and metadata of the remote file. Thus, each dictionary will contain the following
+            keys: `name`, `size`.
 
+        :return: The paths of all the objects in the storage base path under prefix or
+            a list of dictionaries containing the objects' metadata.
+            Listed relative to the base path.
         """
-
         if prefix:
             if prefix.startswith(self._base_url):
                 prefix = prefix[len(self.base_url):].lstrip("/")
@@ -746,15 +778,22 @@ class StorageHelper(object):
                 res = self._driver.list_container_objects(self._container)
 
             result = [
-                obj.name
+                obj.name if not with_metadata else self.get_object_metadata(obj)
                 for obj in res
                 if (obj.name.startswith(prefix) or self._base_url == "file://") and obj.name != prefix
             ]
             if self._base_url == "file://":
-                result = [Path(f).as_posix() for f in result]
+                if not with_metadata:
+                    result = [Path(f).as_posix() for f in result]
+                else:
+                    for metadata_entry in result:
+                        metadata_entry["name"] = Path(metadata_entry["name"]).as_posix()
             return result
         else:
-            return [obj.name for obj in self._driver.list_container_objects(self._container)]
+            return [
+                obj.name if not with_metadata else self.get_object_metadata(obj)
+                for obj in self._driver.list_container_objects(self._container)
+            ]
 
     def download_to_file(
             self,
@@ -1213,7 +1252,8 @@ class _HttpDriver(_Driver):
                     requests_codes.service_unavailable,
                     requests_codes.bandwidth_limit_exceeded,
                     requests_codes.too_many_requests,
-                ]
+                ],
+                config=config
             )
             self.attach_auth_header = any(
                 (name.rstrip('/') == host.rstrip('/') or name.startswith(host.rstrip('/') + '/'))
@@ -1518,6 +1558,7 @@ class _Boto3Driver(_Driver):
     @attrs
     class ListResult(object):
         name = attrib(default=None)
+        size = attrib(default=None)
 
     def __init__(self):
         pass
@@ -1579,7 +1620,7 @@ class _Boto3Driver(_Driver):
         else:
             res = container.bucket.objects.all()
         for res in res:
-            yield self.ListResult(name=res.key)
+            yield self.ListResult(name=res.key, size=res.size)
 
     def delete_object(self, object, **kwargs):
         from botocore.exceptions import ClientError
@@ -1881,9 +1922,10 @@ class _GoogleCloudStorageDriver(_Driver):
 
 
 class _AzureBlobServiceStorageDriver(_Driver):
-    scheme = 'azure'
+    scheme = "azure"
 
     _containers = {}
+    _max_connections = deferred_config("azure.storage.max_connections", None)
 
     class _Container(object):
         def __init__(self, name, config, account_url):
@@ -1925,9 +1967,10 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 )
 
         def create_blob_from_data(
-            self, container_name, object_name, blob_name, data, max_connections=2,
+            self, container_name, object_name, blob_name, data, max_connections=None,
                 progress_callback=None, content_settings=None
         ):
+            max_connections = max_connections or _AzureBlobServiceStorageDriver._max_connections
             if self.__legacy:
                 self.__blob_service.create_blob_from_bytes(
                     container_name,
@@ -1945,8 +1988,9 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 )
 
         def create_blob_from_path(
-            self, container_name, blob_name, path, max_connections=2, content_settings=None, progress_callback=None
+            self, container_name, blob_name, path, max_connections=None, content_settings=None, progress_callback=None
         ):
+            max_connections = max_connections or _AzureBlobServiceStorageDriver._max_connections
             if self.__legacy:
                 self.__blob_service.create_blob_from_path(
                     container_name,
@@ -2005,7 +2049,8 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 client = self.__blob_service.get_blob_client(container_name, blob_name)
                 return client.download_blob().content_as_bytes()
 
-        def get_blob_to_path(self, container_name, blob_name, path, max_connections=10, progress_callback=None):
+        def get_blob_to_path(self, container_name, blob_name, path, max_connections=None, progress_callback=None):
+            max_connections = max_connections or _AzureBlobServiceStorageDriver._max_connections
             if self.__legacy:
                 return self.__blob_service.get_blob_to_path(
                     container_name,
@@ -2038,10 +2083,11 @@ class _AzureBlobServiceStorageDriver(_Driver):
             self._containers[container_name] = self._Container(
                 name=container_name, config=config, account_url=account_url
             )
-        # self._containers[container_name].config.retries = kwargs.get('retries', 5)
         return self._containers[container_name]
 
-    def upload_object_via_stream(self, iterator, container, object_name, callback=None, extra=None, **kwargs):
+    def upload_object_via_stream(
+        self, iterator, container, object_name, callback=None, extra=None, max_connections=None, **kwargs
+    ):
         try:
             from azure.common import AzureHttpError  # noqa
         except ImportError:
@@ -2056,17 +2102,17 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 object_name,
                 blob_name,
                 iterator.read() if hasattr(iterator, "read") else bytes(iterator),
-                max_connections=2,
+                max_connections=max_connections,
                 progress_callback=callback,
-                )
+            )
             return True
         except AzureHttpError as ex:
-            self.get_logger().error('Failed uploading (Azure error): %s' % ex)
+            self.get_logger().error("Failed uploading (Azure error): %s" % ex)
         except Exception as ex:
-            self.get_logger().error('Failed uploading: %s' % ex)
+            self.get_logger().error("Failed uploading: %s" % ex)
         return False
 
-    def upload_object(self, file_path, container, object_name, callback=None, extra=None, **kwargs):
+    def upload_object(self, file_path, container, object_name, callback=None, extra=None, max_connections=None, **kwargs):
         try:
             from azure.common import AzureHttpError  # noqa
         except ImportError:
@@ -2083,7 +2129,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 container.name,
                 blob_name,
                 file_path,
-                max_connections=2,
+                max_connections=max_connections,
                 content_settings=ContentSettings(content_type=get_file_mimetype(object_name or file_path)),
                 progress_callback=callback,
             )
@@ -2137,10 +2183,10 @@ class _AzureBlobServiceStorageDriver(_Driver):
         else:
             return blob
 
-    def download_object(self, obj, local_path, overwrite_existing=True, delete_on_failure=True, callback=None, **_):
+    def download_object(self, obj, local_path, overwrite_existing=True, delete_on_failure=True, callback=None, max_connections=None, **_):
         p = Path(local_path)
         if not overwrite_existing and p.is_file():
-            self.get_logger().warning("failed saving after download: overwrite=False and file exists (%s)" % str(p))
+            self.get_logger().warning("Failed saving after download: overwrite=False and file exists (%s)" % str(p))
             return
 
         download_done = SafeEvent()
@@ -2160,7 +2206,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
             container.name,
             obj.blob_name,
             local_path,
-            max_connections=10,
+            max_connections=max_connections,
             progress_callback=callback_func,
         )
         if container.is_legacy():
@@ -2796,3 +2842,4 @@ driver_schemes = set(
 )
 
 remote_driver_schemes = driver_schemes - {_FileStorageDriver.scheme}
+cloud_driver_schemes = remote_driver_schemes - set(_HttpDriver.schemes)

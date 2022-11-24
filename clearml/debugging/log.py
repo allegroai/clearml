@@ -4,12 +4,47 @@ import logging
 import logging.handlers
 import os
 import sys
+from os import getenv
 from platform import system
+from typing import Optional, Union
 
 from pathlib2 import Path
 from six import BytesIO
 
 default_level = logging.INFO
+
+_levelToName = {
+    logging.CRITICAL: 'CRITICAL',
+    logging.ERROR: 'ERROR',
+    logging.WARNING: 'WARNING',
+    logging.INFO: 'INFO',
+    logging.DEBUG: 'DEBUG',
+    logging.NOTSET: 'NOTSET',
+}
+
+_nameToLevel = {
+    'CRITICAL': logging.CRITICAL,
+    'FATAL': logging.FATAL,
+    'ERROR': logging.ERROR,
+    'WARN': logging.WARNING,
+    'WARNING': logging.WARNING,
+    'INFO': logging.INFO,
+    'DEBUG': logging.DEBUG,
+    'NOTSET': logging.NOTSET,
+}
+
+
+def resolve_logging_level(level):
+    # type: (Union[str, int]) -> Optional[int]
+    # noinspection PyBroadException
+    try:
+        level = int(level)
+    except Exception:
+        pass
+    if isinstance(level, str):
+        return _nameToLevel.get(level.upper(), None)
+    if level in _levelToName:
+        return level
 
 
 class PickledLogger(logging.getLoggerClass()):
@@ -86,13 +121,28 @@ class LoggerRoot(object):
     def get_base_logger(cls, level=None, stream=sys.stdout, colored=False):
         if LoggerRoot.__base_logger:
             return LoggerRoot.__base_logger
+
+        # Note we can't use LOG_LEVEL_ENV_VAR defined in clearml.config.defs due to a circular dependency
+        if level is None and getenv("CLEARML_LOG_LEVEL"):
+            level = resolve_logging_level(getenv("CLEARML_LOG_LEVEL").strip())
+            if level is None:
+                print('Invalid value in environment variable CLEARML_LOG_LEVEL: %s' % getenv("CLEARML_LOG_LEVEL"))
+
+        clearml_logger = logging.getLogger('clearml')
+
+        if level is None:
+            level = clearml_logger.level
+
         # avoid nested imports
         from ..config import get_log_redirect_level
         LoggerRoot.__base_logger = PickledLogger.wrapper(
-            logging.getLogger('clearml'),
+            clearml_logger,
             func=cls.get_base_logger,
-            level=level, stream=stream, colored=colored)
-        level = level if level is not None else default_level
+            level=level,
+            stream=stream,
+            colored=colored
+        )
+
         LoggerRoot.__base_logger.setLevel(level)
 
         redirect_level = get_log_redirect_level()
@@ -149,7 +199,7 @@ def get_logger(path=None, level=None, stream=None, colored=False):
     except BaseException:
         # if for some reason we could not find the calling file, use our own
         path = os.path.abspath(__file__)
-    root_log = LoggerRoot.get_base_logger(level=default_level, stream=sys.stdout, colored=colored)
+    root_log = LoggerRoot.get_base_logger(stream=sys.stdout, colored=colored)
     log = root_log.getChild(Path(path).stem)
     if level is not None:
         log.setLevel(level)
@@ -157,6 +207,7 @@ def get_logger(path=None, level=None, stream=None, colored=False):
         ch = logging.StreamHandler(stream=stream)
         if level is not None:
             ch.setLevel(level)
+        log.addHandler(ch)
     log.propagate = True
     return PickledLogger.wrapper(
         log, func=get_logger, path=path, level=level, stream=stream, colored=colored)

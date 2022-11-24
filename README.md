@@ -57,12 +57,12 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
     * Resource Monitoring (CPU/GPU utilization, temperature, IO, network, etc.)
     * Model snapshots (With optional automatic upload to central storage: Shared folder, S3, GS, Azure, Http)
     * Artifacts log & store (Shared folder, S3, GS, Azure, Http)
-    * Tensorboard/TensorboardX scalars, metrics, histograms, **images, audio and video samples**
+    * Tensorboard/[TensorboardX](https://github.com/allegroai/clearml/tree/master/examples/frameworks/tensorboardx) scalars, metrics, histograms, **images, audio and video samples**
     * [Matplotlib & Seaborn](https://github.com/allegroai/clearml/tree/master/examples/frameworks/matplotlib)
     * [ClearML Logger](https://clear.ml/docs/latest/docs/fundamentals/logger) interface for complete flexibility.
 * Extensive platform support and integrations
     * Supported ML/DL frameworks: [PyTorch](https://github.com/allegroai/clearml/tree/master/examples/frameworks/pytorch) (incl' [ignite](https://github.com/allegroai/clearml/tree/master/examples/frameworks/ignite) / [lightning](https://github.com/allegroai/clearml/tree/master/examples/frameworks/pytorch-lightning)), [Tensorflow](https://github.com/allegroai/clearml/tree/master/examples/frameworks/tensorflow), [Keras](https://github.com/allegroai/clearml/tree/master/examples/frameworks/keras), [AutoKeras](https://github.com/allegroai/clearml/tree/master/examples/frameworks/autokeras), [FastAI](https://github.com/allegroai/clearml/tree/master/examples/frameworks/fastai), [XGBoost](https://github.com/allegroai/clearml/tree/master/examples/frameworks/xgboost), [LightGBM](https://github.com/allegroai/clearml/tree/master/examples/frameworks/lightgbm), [MegEngine](https://github.com/allegroai/clearml/tree/master/examples/frameworks/megengine) and [Scikit-Learn](https://github.com/allegroai/clearml/tree/master/examples/frameworks/scikit-learn)
-    * Seamless integration (including version control) with **Jupyter Notebook**
+    * Seamless integration (including version control) with [**Jupyter Notebook**](https://jupyter.org/)
     and [*PyCharm* remote debugging](https://github.com/allegroai/trains-pycharm-plugin)
       
 #### [Start using ClearML](https://clear.ml/docs/latest/docs/getting_started/ds/ds_first_steps) 
@@ -138,7 +138,7 @@ experiment management,ML-Ops and data management.
 
 ## Who We Are
 
-ClearML is supported by the team behind *allegro.ai*,
+ClearML is supported by the team behind [clear.ml](https://clear.ml),
 where we build deep learning pipelines and infrastructure for enterprise companies.
 
 We built ClearML to track and control the glorious but messy process of training production-grade deep learning models.
@@ -172,7 +172,7 @@ If you have any questions: post on our [Slack Channel](https://join.slack.com/t/
 
 For feature requests or bug reports, please use [GitHub issues](https://github.com/allegroai/clearml/issues).
 
-Additionally, you can always find us at *clearml@allegro.ai*
+Additionally, you can always find us at *info@clear.ml*
 
 ## Contributing
 

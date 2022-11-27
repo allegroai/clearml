@@ -19,10 +19,10 @@ class StdStreamPatch(object):
                 (not running_remotely() or DEBUG_SIMULATE_REMOTE_TASK.get()):
             StdStreamPatch._stdout_proxy = PrintPatchLogger(
                 sys.stdout, a_logger, level=logging.INFO, load_config_defaults=load_config_defaults) \
-                if connect_stdout else None
+                if connect_stdout and not sys.stdout.closed else None
             StdStreamPatch._stderr_proxy = PrintPatchLogger(
                 sys.stderr, a_logger, level=logging.ERROR, load_config_defaults=load_config_defaults) \
-                if connect_stderr else None
+                if connect_stderr and not sys.stderr.closed else None
 
             if StdStreamPatch._stdout_proxy:
                 # noinspection PyBroadException
@@ -199,11 +199,15 @@ class PrintPatchLogger(object):
                 self._test_lr_flush()
 
                 self.lock.acquire()
-                with PrintPatchLogger.recursion_protect_lock:
-                    if hasattr(self._terminal, '_original_write'):
-                        self._terminal._original_write(message)  # noqa
-                    else:
-                        self._terminal.write(message)
+                # noinspection PyBroadException
+                try:
+                    with PrintPatchLogger.recursion_protect_lock:
+                        if hasattr(self._terminal, '_original_write'):
+                            self._terminal._original_write(message)  # noqa
+                        else:
+                            self._terminal.write(message)
+                except Exception:
+                    pass
 
                 do_flush = '\n' in message
                 # check for CR character
@@ -245,10 +249,14 @@ class PrintPatchLogger(object):
                         # what can we do, nothing
                         pass
         else:
-            if hasattr(self._terminal, '_original_write'):
-                self._terminal._original_write(message)  # noqa
-            else:
-                self._terminal.write(message)
+            # noinspection PyBroadException
+            try:
+                if hasattr(self._terminal, '_original_write'):
+                    self._terminal._original_write(message)  # noqa
+                else:
+                    self._terminal.write(message)
+            except Exception:
+                pass
 
     def connect(self, logger):
         # refresh if needed

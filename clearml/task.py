@@ -3534,6 +3534,16 @@ class Task(_Task):
         #     # we have to forcefully shutdown if we have forked processes, sometimes they will get stuck
         #     os._exit(self.__exit_hook.exit_code if self.__exit_hook and self.__exit_hook.exit_code else 0)
 
+    @staticmethod
+    def _clear_loggers():
+        # https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
+        import logging
+        loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
+        for logger in loggers:
+            handlers = getattr(logger, 'handlers', [])
+            for handler in handlers:
+                logger.removeHandler(handler)
+
     def __shutdown(self):
         """
         Will happen automatically once we exit code, i.e. atexit
@@ -3559,6 +3569,8 @@ class Task(_Task):
         else:
             # from here only a single thread can re-enter
             self._at_exit_called = get_current_thread_id()
+
+        Task._clear_loggers()
 
         # disable lock on signal callbacks, to avoid deadlocks.
         if self.__exit_hook and self.__exit_hook.signal is not None:

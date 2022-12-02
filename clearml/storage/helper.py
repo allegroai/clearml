@@ -1764,7 +1764,10 @@ class _GoogleCloudStorageDriver(_Driver):
             self.name = name[len(_GoogleCloudStorageDriver.scheme_prefix):]
 
             if cfg.credentials_json:
-                credentials = service_account.Credentials.from_service_account_file(cfg.credentials_json)
+                try:
+                    credentials = service_account.Credentials.from_service_account_file(cfg.credentials_json)
+                except ValueError:
+                    credentials = None
             else:
                 credentials = None
 

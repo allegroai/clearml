@@ -33,7 +33,6 @@ from .defs import (
 )
 from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
-from ..config import load
 from ..utils import get_http_session_with_retry, urllib_log_warning_setup
 from ...debugging import get_logger
 from ...debugging.log import resolve_logging_level
@@ -125,18 +124,15 @@ class Session(TokenManager):
         host=None,
         logger=None,
         verbose=None,
-        initialize_logging=True,
         config=None,
         http_retries_config=None,
         **kwargs
     ):
-
         if config is not None:
             self.config = config
         else:
-            self.config = load()
-            if initialize_logging:
-                self.config.initialize_logging()
+            from clearml.config import ConfigWrapper
+            self.config = ConfigWrapper._init()
 
         token_expiration_threshold_sec = self.config.get(
             "auth.token_expiration_threshold_sec", 60
@@ -233,7 +229,10 @@ class Session(TokenManager):
         # update only after we have max_api
         self.__class__._sessions_created += 1
 
-        self._load_vaults()
+        if self._load_vaults():
+            from clearml.config import ConfigWrapper, ConfigSDKWrapper
+            ConfigWrapper.set_config_impl(self.config)
+            ConfigSDKWrapper.clear_config_impl()
 
         self._apply_config_sections(local_logger)
 
@@ -269,6 +268,7 @@ class Session(TokenManager):
         return list(retry_codes)
 
     def _load_vaults(self):
+        # () -> Optional[bool]
         if not self.check_min_api_version("2.15") or self.feature_set == "basic":
             return
 
@@ -297,6 +297,7 @@ class Session(TokenManager):
                 data = list(filter(None, map(parse, vaults)))
                 if data:
                     self.config.set_overrides(*data)
+                    return True
             elif res.status_code != 404:
                 raise Exception(res.json().get("meta", {}).get("result_msg", res.text))
         except Exception as ex:

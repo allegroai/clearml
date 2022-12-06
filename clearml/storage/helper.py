@@ -1193,6 +1193,7 @@ class StorageHelper(object):
 
         :return: The remote object
         """
+        path = self._canonize_url(path)
         object_name = self._normalize_object_name(path)
         try:
             return self._driver.get_object(

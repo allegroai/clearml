@@ -134,7 +134,7 @@ class BaseField(object):
     def _validate_name(self):
         if self.name is None:
             return
-        if not re.match('^[A-Za-z_](([\w\-]*)?\w+)?$', self.name):  # noqa: W605
+        if not re.match(r'^[A-Za-z_](([\w\-]*)?\w+)?$', self.name):  # noqa: W605
             raise ValueError('Wrong name', self.name)
 
     def structue_name(self, default):

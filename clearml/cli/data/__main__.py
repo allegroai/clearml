@@ -667,7 +667,7 @@ def ds_sync(args):
     print("Sync completed: {} files removed, {} added, {} modified".format(removed, added, modified))
 
     if not args.skip_close:
-        if dataset_created and not removed and not added:
+        if dataset_created and not removed and not added and not modified:
             print('Zero modifications on local copy, reverting dataset creation.')
             Dataset.delete(ds.id, force=True)
             return 0

@@ -1089,15 +1089,32 @@ class Task(_Task):
     @property
     def output_uri(self):
         # type: () -> str
+        """
+        The storage / output url for this task. This is the default location for output models and other artifacts.
+
+        :return: The url string.
+        """
         return self.storage_uri
 
     @property
     def last_worker(self):
+        # type: () -> str
+        """
+        ID of last worker that handled the task.
+
+        :return: The worker ID.
+        """
         return self._data.last_worker
 
     @output_uri.setter
     def output_uri(self, value):
         # type: (Union[str, bool]) -> None
+        """
+        Set the storage / output url for this task. This is the default location for output models and other artifacts.
+
+        :param str/bool value: The value to set for output URI. Can be either a bucket link, True for default server
+            or False. Check Task.init reference docs for more info (output_uri is a parameter).
+        """
 
         # check if this is boolean
         if value is False:
@@ -4030,6 +4047,7 @@ class Task(_Task):
             project_names = project_name
 
         project_ids = []
+        projects_not_found = []
         if project_names:
             for name in project_names:
                 aux_kwargs = {}
@@ -4045,6 +4063,16 @@ class Task(_Task):
                 )
                 if res.response and res.response.projects:
                     project_ids.extend([project.id for project in res.response.projects])
+                else:
+                    projects_not_found.append(name)
+            if projects_not_found:
+                # If any of the given project names does not exist, fire off a warning
+                LoggerRoot.get_base_logger().warning(
+                    "No projects were found with name(s): {}".format(", ".join(projects_not_found))
+                )
+            if not project_ids:
+                # If not a single project exists or was found, return empty right away
+                return []
 
         session = cls._get_default_session()
         system_tags = 'system_tags' if hasattr(tasks.Task, 'system_tags') else 'tags'

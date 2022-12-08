@@ -168,7 +168,8 @@ More information in the [official documentation](https://clear.ml/docs) and [on 
 
 For examples and use cases, check the [examples folder](https://github.com/allegroai/clearml/tree/master/examples) and [corresponding documentation](https://clear.ml/docs/latest/docs/guides).
 
-If you have any questions: post on our [Slack Channel](https://join.slack.com/t/clearml/shared_invite/zt-c0t13pty-aVUZZW1TSSSg2vyIGVPBhg), or tag your questions on [stackoverflow](https://stackoverflow.com/questions/tagged/clearml) with '**[clearml](https://stackoverflow.com/questions/tagged/clearml)**' tag (*previously [trains](https://stackoverflow.com/questions/tagged/trains) tag*).
+If you have any questions: post on our [Slack Channel](https://join.slack.com/t/clearml/shared_invite/zt-1kvcxu5hf-SRH_rmmHdLL7l2WadRJTQg
+), or tag your questions on [stackoverflow](https://stackoverflow.com/questions/tagged/clearml) with '**[clearml](https://stackoverflow.com/questions/tagged/clearml)**' tag (*previously [trains](https://stackoverflow.com/questions/tagged/trains) tag*).
 
 For feature requests or bug reports, please use [GitHub issues](https://github.com/allegroai/clearml/issues).
 

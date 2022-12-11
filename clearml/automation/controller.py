@@ -959,7 +959,7 @@ class PipelineController(object):
         :param timeout: Wait timeout for the optimization thread to exit (minutes).
             The default is ``None``, indicating do not wait terminate immediately.
         :param mark_failed: If True, mark the pipeline task as failed. (default False)
-        :param mark_aborted: If False, mark the pipeline task as aborted. (default False)
+        :param mark_aborted: If True, mark the pipeline task as aborted. (default False)
         """
         self._stop_event.set()
 
@@ -974,7 +974,7 @@ class PipelineController(object):
         if mark_failed:
             self._task.mark_failed(status_reason='Pipeline aborted and failed', force=True)
         elif mark_aborted:
-            self._task.mark_aborted(status_reason='Pipeline aborted', force=True)
+            self._task.mark_stopped(status_reason='Pipeline aborted', force=True)
         elif self._pipeline_task_status_failed:
             print('Setting pipeline controller Task as failed (due to failed steps) !')
             self._task.mark_failed(status_reason='Pipeline step failed', force=True)

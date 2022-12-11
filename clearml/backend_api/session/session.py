@@ -243,7 +243,7 @@ class Session(TokenManager):
             def_method = str(self.config.get("api.http.default_method", None)).strip()
             if def_method.upper() not in ("GET", "POST", "PUT"):
                 raise ValueError(
-                    "api.http.default_method variable must be 'get' or 'post' (any case is allowed)."
+                    "api.http.default_method variable must be 'get', 'post' or 'put' (any case is allowed)."
                 )
             Request.def_method = def_method
             Request._method = Request.def_method

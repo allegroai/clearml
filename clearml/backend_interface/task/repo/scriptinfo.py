@@ -13,7 +13,7 @@ from threading import Thread
 
 from .util import get_command_output, remove_user_pass_from_url
 from ....backend_api import Session
-from ....config import deferred_config, VCS_WORK_DIR
+from ....config import deferred_config, VCS_WORK_DIR, VCS_ENTRY_POINT, VCS_DIFF
 from ....debugging import get_logger
 from .detectors import GitEnvDetector, GitDetector, HgEnvDetector, HgDetector, Result as DetectionResult
 from ....utilities.process.mp import SafeEvent
@@ -790,6 +790,9 @@ class ScriptInfo(object):
 
     @classmethod
     def _get_entry_point(cls, repo_root, script_path):
+        if VCS_ENTRY_POINT.get():
+            return VCS_ENTRY_POINT.get()
+
         repo_root = Path(repo_root).absolute()
         script_path = Path(script_path)
 
@@ -820,6 +823,9 @@ class ScriptInfo(object):
 
     @classmethod
     def _get_working_dir(cls, repo_root, return_abs=False):
+        if VCS_WORK_DIR.get():
+            return VCS_WORK_DIR.get()
+
         # get the repository working directory (might be different from actual cwd)
         repo_root = Path(repo_root).absolute()
         cwd = cls._cwd()
@@ -843,6 +849,15 @@ class ScriptInfo(object):
 
     @classmethod
     def _get_script_code(cls, script_path):
+        # allow to override with env variable
+        # noinspection PyBroadException
+        try:
+            diff = VCS_DIFF.get()
+            if diff:
+                return diff
+        except Exception:
+            pass
+
         # noinspection PyBroadException
         try:
             with open(script_path, 'r') as f:
@@ -915,13 +930,13 @@ class ScriptInfo(object):
 
         repo_root = repo_info.root or script_dir
         if not plugin:
-            working_dir = '.'
-            entry_point = str(script_path.name)
+            working_dir = VCS_WORK_DIR.get() or '.'
+            entry_point = VCS_ENTRY_POINT.get() or str(script_path.name)
         else:
             # allow to override the VCS working directory (notice relative to the git repo)
             # because we can have a sync folder on remote pycharm sessions
             # not syncing from the Git repo, but from a subfolder, so the pycharm plugin need to pass the override
-            working_dir = VCS_WORK_DIR.get() if VCS_WORK_DIR.get() else cls._get_working_dir(repo_root)
+            working_dir = cls._get_working_dir(repo_root)
             entry_point = cls._get_entry_point(repo_root, script_path)
 
         if check_uncommitted:

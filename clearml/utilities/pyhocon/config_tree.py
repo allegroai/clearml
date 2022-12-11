@@ -338,7 +338,7 @@ class ConfigTree(OrderedDict):
         elif isinstance(value, ConfigTree):
             lst = []
             for k, v in sorted(value.items(), key=lambda kv: kv[0]):
-                if re.match('^[1-9][0-9]*$|0', k):
+                if re.match(r'^[1-9][0-9]*$|0', k):
                     lst.append(v)
                 else:
                     raise ConfigException(u"{key} does not translate to a list".format(key=key))

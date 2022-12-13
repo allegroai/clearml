@@ -3016,7 +3016,7 @@ class Dataset(object):
         # noinspection PyBroadException
         try:
             if StorageManager.exists_file(source_url):
-                remote_objects = [StorageManager.get_metadata(source_url)]
+                remote_objects = [StorageManager.get_metadata(source_url, return_full_path=True)]
             elif not source_url.startswith(("http://", "https://")):
                 if source_url[-1] != "/":
                     source_url = source_url + "/"

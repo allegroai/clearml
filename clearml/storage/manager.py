@@ -320,15 +320,8 @@ class StorageManager(object):
         try:
             if remote_url.endswith("/"):
                 return False
-            if remote_url.startswith("file://"):
-                return os.path.isfile(remote_url[len("file://"):])
-            if remote_url.startswith(("http://", "https://")):
-                return requests.head(remote_url).ok
             helper = StorageHelper.get(remote_url)
-            obj = helper.get_object(remote_url)
-            if not obj:
-                return False
-            return True
+            return helper.exists_file(remote_url)
         except Exception:
             return False
 
@@ -469,7 +462,7 @@ class StorageManager(object):
             return helper_list_result
 
     @classmethod
-    def get_metadata(cls, remote_url):
+    def get_metadata(cls, remote_url, return_full_path=False):
         # type: (str) -> Optional[dict]
         """
         Get the metadata of the a remote object.
@@ -485,4 +478,7 @@ class StorageManager(object):
         obj = helper.get_object(remote_url)
         if not obj:
             return None
-        return helper.get_object_metadata(obj)
+        metadata = helper.get_object_metadata(obj)
+        if return_full_path and not metadata["name"].startswith(helper.base_url):
+            metadata["name"] = helper.base_url + ("/" if not helper.base_url.endswith("/") else "") + metadata["name"]
+        return metadata

@@ -9,13 +9,13 @@ from typing import List, Optional, Union
 from zipfile import ZipFile
 from six.moves.urllib.parse import urlparse
 
-import requests
 from pathlib2 import Path
 
 from .cache import CacheManager
 from .helper import StorageHelper
 from .util import encode_string_to_filename, safe_extract
 from ..debugging.log import LoggerRoot
+from ..config import deferred_config
 
 
 class StorageManager(object):
@@ -24,6 +24,8 @@ class StorageManager(object):
     Support remote servers: http(s)/S3/GS/Azure/File-System-Folder
     Cache is enabled by default for all downloaded remote urls/files
     """
+
+    _file_upload_retries = deferred_config("network.file_upload_retries", 3)
 
     @classmethod
     def get_local_copy(
@@ -55,8 +57,8 @@ class StorageManager(object):
 
     @classmethod
     def upload_file(
-        cls, local_file, remote_url, wait_for_upload=True, retries=3
-    ):  # type: (str, str, bool, int) -> str
+        cls, local_file, remote_url, wait_for_upload=True, retries=None
+    ):  # type: (str, str, bool, Optional[int]) -> str
         """
         Upload a local file to a remote location. remote url is the finale destination of the uploaded file.
 
@@ -71,14 +73,14 @@ class StorageManager(object):
         :param str local_file: Full path of a local file to be uploaded
         :param str remote_url: Full path or remote url to upload to (including file name)
         :param bool wait_for_upload: If False, return immediately and upload in the background. Default True.
-        :param int retries: Number of retries before failing to upload file, default 3.
+        :param int retries: Number of retries before failing to upload file.
         :return: Newly uploaded remote URL.
         """
         return CacheManager.get_cache_manager().upload_file(
             local_file=local_file,
             remote_url=remote_url,
             wait_for_upload=wait_for_upload,
-            retries=retries,
+            retries=retries if retries else cls._file_upload_retries,
         )
 
     @classmethod

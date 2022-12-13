@@ -726,6 +726,16 @@ class EventTrainsWriter(object):
                         'Received event without step, assuming step = {}'.format(step))
             else:
                 step = int(step)
+            # unlike other frameworks, tensorflow already accounts for the iteration number
+            # when continuing the training. we substract the smallest iteration such that we
+            # don't increment the step twice number
+            step_before = step
+            if EventTrainsWriter._current_task:
+                step -= EventTrainsWriter._current_task.get_initial_iteration()
+            # there can be a few metrics getting reported again, so the step can be negative
+            # for the first few reports
+            if step <= 0:
+                return
             self._max_step = max(self._max_step, step)
             if value_dicts is None:
                 LoggerRoot.get_base_logger(TensorflowBinding).debug("Summary arrived without 'value'")

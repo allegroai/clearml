@@ -1760,7 +1760,8 @@ class Task(_Task):
 
     def close(self):
         """
-        Close the current Task. Enables you to manually shutdown the task.
+        Closes the current Task and changes its status to completed.
+        Enables you to manually shutdown the task.
 
         .. warning::
            Only call :meth:`Task.close` if you are certain the Task is not needed.

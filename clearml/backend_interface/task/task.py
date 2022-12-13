@@ -1207,7 +1207,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     section_name, key = k.split('/', 1)
                     section = hyperparams.get(section_name, dict())
                     org_param = org_hyperparams.get(section_name, dict()).get(key, None)
-                    param_type = params_types[org_k] if org_k in params_types else (
+                    param_type = params_types.get(org_k) or (
                         org_param.type if org_param is not None and org_param.type else
                         get_basic_type(v) if v is not None else None
                     )

@@ -1552,6 +1552,7 @@ class _Boto3Driver(_Driver):
                     "endpoint_url": endpoint,
                     "use_ssl": cfg.secure,
                     "verify": cfg.verify,
+                    "region_name": cfg.region or None,  # None in case cfg.region is an empty string
                     "config": botocore.client.Config(
                         max_pool_connections=max(
                             int(_Boto3Driver._min_pool_connections),

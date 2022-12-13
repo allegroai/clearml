@@ -1528,6 +1528,7 @@ class Dataset(object):
         dataset_tags=None,  # type: Optional[Sequence[str]]
         only_completed=False,  # type: bool
         only_published=False,  # type: bool
+        include_archived=False,  # type: bool
         auto_create=False,  # type: bool
         writable_copy=False,  # type: bool
         dataset_version=None,  # type: Optional[str]
@@ -1549,6 +1550,7 @@ class Dataset(object):
         :param dataset_tags: Requested dataset tags (list of tag strings)
         :param only_completed: Return only if the requested dataset is completed or published
         :param only_published: Return only if the requested dataset is published
+        :param include_archived: Include archived tasks and datasets also
         :param auto_create: Create a new dataset if it does not exist yet
         :param writable_copy: Get a newly created mutable dataset with the current one as its parent,
             so new files can added to the instance.
@@ -1562,6 +1564,9 @@ class Dataset(object):
 
         :return: Dataset object
         """
+        system_tags = ["__$all", cls.__tag]
+        if not include_archived:
+            system_tags = ["__$all", cls.__tag, "__$not", "archived"]
         if not any([dataset_id, dataset_project, dataset_name, dataset_tags]):
             raise ValueError("Dataset selection criteria not met. Didn't provide id/name/project/tags correctly.")
         current_task = Task.current_task()
@@ -1644,7 +1649,7 @@ class Dataset(object):
                 dataset_version=dataset_version,
                 dataset_filter=dict(
                     tags=dataset_tags,
-                    system_tags=[cls.__tag, "-archived"],
+                    system_tags=system_tags,
                     type=[str(Task.TaskTypes.data_processing)],
                     status=["published"]
                     if only_published

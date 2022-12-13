@@ -697,14 +697,7 @@ class ScriptInfo(object):
             log_history = False
             colab_name = None
             # check if this is google.colab, then there is no local file
-            # noinspection PyBroadException
-            try:
-                # noinspection PyPackageRequirements
-                from IPython import get_ipython
-                if get_ipython() and 'google.colab' in get_ipython().extension_manager.loaded:
-                    is_google_colab = True
-            except Exception:
-                pass
+            is_google_colab = ScriptInfo.is_google_colab()
 
             if is_google_colab:
                 # check if we can get the notebook
@@ -978,6 +971,7 @@ class ScriptInfo(object):
         else:
             script_requirements = None
 
+        ide = ScriptInfo.get_ide(jupyter_status=isinstance(jupyter_filepath, str))
         script_info = dict(
             repository=remove_user_pass_from_url(repo_info.url),
             branch=repo_info.branch,
@@ -985,6 +979,7 @@ class ScriptInfo(object):
             entry_point=entry_point,
             working_dir=working_dir,
             diff=diff,
+            ide=ide,
             requirements={'pip': requirements, 'conda': conda_requirements} if requirements else None,
             binary='python{}.{}'.format(sys.version_info.major, sys.version_info.minor),
             repo_root=repo_root,
@@ -1091,6 +1086,80 @@ class ScriptInfo(object):
         except Exception:
             pass
         return script_dict
+
+    @staticmethod
+    def is_google_colab():
+        # type: () -> bool
+        """ Know if the script is running from Google Colab """
+
+        # noinspection PyBroadException
+        try:
+            # noinspection PyPackageRequirements
+            from IPython import get_ipython
+            if get_ipython() and 'google.colab' in get_ipython().extension_manager.loaded:
+                return True
+        except Exception:
+            pass
+        return False
+
+    @staticmethod
+    def is_vscode():
+        # type: () -> bool
+        """ Know if the script is running from VSCode """
+
+        if os.environ.get("TERM_PROGRAM") == "vscode":
+            return True
+        for key in os.environ.keys():
+            if key.startswith("VSCODE_"):
+                return True
+        return False
+
+    @staticmethod
+    def is_pycharm():
+        # type: () -> bool
+        """ Know if the script is running from PyCharm """
+
+        # youtrack.jetbrains.com ISSUE #PY-4853 added this variables
+        if os.environ.get("PYCHARM_HOSTED"):
+            return True
+        if os.environ.get("TERMINAL_EMULATOR") == "JetBrains-JediTerm":
+            return True
+        return False
+
+    @staticmethod
+    def is_jupyter():
+        # type: () -> bool
+        """ Know if the script is running from Jupyter """
+
+        if isinstance(ScriptInfo._get_jupyter_notebook_filename(), str):
+            return True
+        return False
+
+    @staticmethod
+    def get_ide(jupyter_status=False):
+        """
+        Get the details of ide script is running from
+
+        :param jupyter_status: Jupyter status (default False)
+        :type jupyter_status: bool
+
+        :return: Name of the IDE
+        :rtype: str
+        """
+
+        if ScriptInfo.is_pycharm():
+            ide_str = "PyCharm"
+        elif ScriptInfo.is_vscode():
+            ide_str = "VSCode"
+        elif ScriptInfo.is_google_colab():
+            ide_str = "Google Colab"
+        else:
+            ide_str = "Other"
+
+        if jupyter_status:
+            ide_str = "{} - Jupyter".format(ide_str)
+
+        return ide_str
 
     @classmethod
     def close(cls):

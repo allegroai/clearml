@@ -1591,6 +1591,23 @@ class _Boto3Driver(_Driver):
                 Callback=callback,
                 ExtraArgs=extra_args,
             )
+        except RuntimeError:
+            # one might get an error similar to: "RuntimeError: cannot schedule new futures after interpreter shutdown"
+            # In this case, retry the upload without threads
+            try:
+                container.bucket.upload_fileobj(
+                    stream,
+                    object_name,
+                    Config=boto3.s3.transfer.TransferConfig(
+                        use_threads=False,
+                        num_download_attempts=container.config.retries,
+                    ),
+                    Callback=callback,
+                    ExtraArgs=extra_args,
+                )
+            except Exception as ex:
+                self.get_logger().error("Failed uploading: %s" % ex)
+                return False
         except Exception as ex:
             self.get_logger().error('Failed uploading: %s' % ex)
             return False
@@ -1610,8 +1627,24 @@ class _Boto3Driver(_Driver):
                 Callback=callback,
                 ExtraArgs=extra_args,
             )
+        except RuntimeError:
+            # one might get an error similar to: "RuntimeError: cannot schedule new futures after interpreter shutdown"
+            # In this case, retry the upload without threads
+            try:
+                container.bucket.upload_file(
+                    file_path,
+                    object_name,
+                    Config=boto3.s3.transfer.TransferConfig(
+                        use_threads=False, num_download_attempts=container.config.retries
+                    ),
+                    Callback=callback,
+                    ExtraArgs=extra_args,
+                )
+            except Exception as ex:
+                self.get_logger().error("Failed uploading: %s" % ex)
+                return False
         except Exception as ex:
-            self.get_logger().error('Failed uploading: %s' % ex)
+            self.get_logger().error("Failed uploading: %s" % ex)
             return False
         return True
 

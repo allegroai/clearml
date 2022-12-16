@@ -1438,7 +1438,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         with self._edit_lock:
             if Session.check_min_api_version("2.13") and not self._offline_mode:
                 req = tasks.AddOrUpdateArtifactsRequest(task=self.task_id, artifacts=artifacts_list, force=True)
-                res = self.send(req, raise_on_errors=False)
+                res = self.send(req, raise_on_errors=True)
                 if not res or not res.response or not res.response.updated:
                     return None
                 self.reload()
@@ -2317,7 +2317,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                         "[status={} fields={}]".format(status, list(kwargs.keys()))
                     )
 
-            res = self.send(tasks.EditRequest(task=self.id, force=True, **kwargs), raise_on_errors=False)
+            res = self.send(tasks.EditRequest(task=self.id, force=True, **kwargs), raise_on_errors=True)
             return res
 
     def _update_requirements(self, requirements):

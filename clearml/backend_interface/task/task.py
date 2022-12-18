@@ -160,7 +160,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._curr_label_stats = {}
         self._raise_on_validation_errors = raise_on_validation_errors
         self._parameters_allowed_types = tuple(set(
-            six.string_types + six.integer_types + (six.text_type, float, list, tuple, dict, type(None), Enum)
+            six.string_types + six.integer_types + (six.text_type, float, list, tuple, dict, type(None), Enum)  # noqa
         ))
         self._app_server = None
         self._files_server = None
@@ -350,7 +350,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         tags = [self._development_tag] if not running_remotely() else []
         extra_properties = {'system_tags': tags} if Session.check_min_api_version('2.3') else {'tags': tags}
         if not Session.check_min_api_version("2.20"):
-            extra_properties["input"] = {"view": {}}
+            extra_properties["input"] = {"view": {}}  # noqa
         req = tasks.CreateRequest(
             name=task_name or make_message('Anonymous task (%(user)s@%(host)s %(time)s)'),
             type=tasks.TaskTypeEnum(task_type),
@@ -2358,8 +2358,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self.data.script = script
             self._edit(script=script)
 
-    def _set_configuration(self, name, description=None, config_type=None, config_text=None, config_dict=None,
-                           **kwargs):
+    def _set_configuration(
+            self, name, description=None, config_type=None, config_text=None, config_dict=None, **kwargs):
         # type: (str, Optional[str], Optional[str], Optional[str], Optional[Union[Mapping, list]], **Any) -> None
         """
         Set Task configuration text/dict. Multiple configurations are supported.

@@ -1331,7 +1331,7 @@ class PipelineController(object):
         existing_tasks = Task._query_tasks(
             project=[self._task.project], task_name=exact_match_regex(self._task.name),
             type=[str(self._task.task_type)],
-            system_tags=['-{}'.format(Task.archived_tag), self._tag],
+            system_tags=["__$all", self._tag, "__$not", Task.archived_tag],
             _all_=dict(fields=['runtime.{}'.format(self._runtime_property_hash)],
                        pattern=":{}".format(self._version)),
             only_fields=['id', 'runtime'],
@@ -1350,7 +1350,7 @@ class PipelineController(object):
                 existing_tasks = Task._query_tasks(
                     project=[self._task.project], task_name=exact_match_regex(self._task.name),
                     type=[str(self._task.task_type)],
-                    system_tags=['-{}'.format(Task.archived_tag), self._tag],
+                    system_tags=["__$all", self._tag, "__$not", Task.archived_tag],
                     only_fields=['id', 'hyperparams', 'runtime'],
                 )
                 found_match_version = False

@@ -1148,16 +1148,13 @@ class ScriptInfo(object):
         """
 
         if ScriptInfo.is_pycharm():
-            ide_str = "PyCharm"
+            ide_str = "PyCharm{}".format("_Jupyter" if jupyter_status else "")
         elif ScriptInfo.is_vscode():
-            ide_str = "VSCode"
+            ide_str = "VSCode{}".format("_Jupyter" if jupyter_status else "")
         elif ScriptInfo.is_google_colab():
-            ide_str = "Google Colab"
+            ide_str = "Google_Colab"
         else:
-            ide_str = "Other"
-
-        if jupyter_status:
-            ide_str = "{} - Jupyter".format(ide_str)
+            ide_str = "Jupyter" if jupyter_status else ""
 
         return ide_str
 

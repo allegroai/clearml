@@ -695,7 +695,7 @@ class StorageHelper(object):
         extra.update(self._extra)
         last_ex = None
         cb = UploadProgressReport.from_stream(stream, object_name, self._verbose, self._log)
-        for i in range(max(1, retries)):
+        for i in range(max(1, int(retries))):
             try:
                 self._driver.upload_object_via_stream(
                     iterator=stream,
@@ -1157,7 +1157,7 @@ class StorageHelper(object):
             else:
                 self._log.info(msg)
         last_ex = None
-        for i in range(max(1, retries)):
+        for i in range(max(1, int(retries))):
             try:
                 if not self._upload_from_file(local_path=src_path, dest_path=dest_path, extra=extra):
                     # retry if failed

@@ -681,7 +681,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         if hasattr(tasks, 'CompletedRequest') and callable(tasks.CompletedRequest):
             return self.send(
-                tasks.CompletedRequest(self.id, status_reason='completed', status_message=status_message, force=force),
+                tasks.CompletedRequest(
+                    self.id, status_reason='completed', status_message=status_message, force=force,
+                    publish=True if self._get_runtime_properties().get("_publish_on_complete") else False),
                 ignore_errors=ignore_errors
             )
         return self.send(
@@ -706,6 +708,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         resp = self.send(tasks.PublishRequest(self.id), ignore_errors=ignore_errors)
         assert isinstance(resp.response, tasks.PublishResponse)
         return resp
+
+    def publish_on_completion(self, enable=True):
+        # type: (bool) -> ()
+        """ The signal that this task will be published automatically on task completion """
+        self._set_runtime_properties(runtime_properties={"_publish_on_complete": enable})
 
     def _delete(
         self,
@@ -2154,7 +2161,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         Notice: Must be called before `Task.init` !
 
-        :param force: Set force using `pip freeze` flag on/off
+        :param force: Set force storing the main python file as a single standalone script
         """
         cls._force_store_standalone_script = bool(force)
 

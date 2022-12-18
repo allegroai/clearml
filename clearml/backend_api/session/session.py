@@ -34,6 +34,7 @@ from .defs import (
 from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
 from ..utils import get_http_session_with_retry, urllib_log_warning_setup
+from ...backend_config.defs import get_config_file
 from ...debugging import get_logger
 from ...debugging.log import resolve_logging_level
 from ...utilities.pyhocon import ConfigTree, ConfigFactory
@@ -943,11 +944,43 @@ def browser_login(clearml_server=None):
                     "or create a free account at {}\n".format(clearml_app_server)
                 )
                 print("Please login to {} , then press [Enter] to connect ".format(clearml_app_server), end="")
-            else:
+                input()
+            elif counter < 1:
                 print("Oh no we failed to connect \N{worried face}, "
                       "try to logout and login again - Press [Enter] to retry ", end="")
+                input()
+            else:
+                print(
+                    "\n"
+                    "We cannot connect automatically (adblocker / incognito?) \N{worried face} \n"
+                    "Please go to {}/settings/workspace-configuration \n"
+                    "Then press \x1B[1m\x1B[48;2;26;30;44m\x1B[37m + Create new credentials \x1b[0m \n"
+                    "And copy/paste your \x1B[1m\x1B[4mAccess Key\x1b[0m here: ".format(
+                        clearml_app_server.lstrip("/")), end="")
 
-            input()
+                creds = input()
+                if creds:
+                    print(" Setting access key ")
+                    ENV_ACCESS_KEY.set(creds.strip())
+
+                print("Now copy/paste your \x1B[1m\x1B[4mSecret Key\x1b[0m here: ", end="")
+                creds = input()
+                if creds:
+                    print(" Setting secret key ")
+                    ENV_SECRET_KEY.set(creds.strip())
+
+                if ENV_ACCESS_KEY.get() and ENV_SECRET_KEY.get():
+                    # store in conf file for persistence in runtime
+                    # noinspection PyBroadException
+                    try:
+                        with open(get_config_file(), "wt") as f:
+                            f.write("api.credentials.access_key={}\napi.credentials.secret_key={}\n".format(
+                                ENV_ACCESS_KEY.get(), ENV_SECRET_KEY.get()
+                            ))
+                    except Exception:
+                        pass
+                    break
+
             counter += 1
 
     print("")
@@ -959,6 +992,8 @@ def browser_login(clearml_server=None):
     if token:
         # set Token
         ENV_AUTH_TOKEN.set(token)
+
+    if token or (ENV_ACCESS_KEY.get() and ENV_SECRET_KEY.get()):
         # verify token
         Session()
         # success

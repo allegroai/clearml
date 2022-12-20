@@ -1894,7 +1894,8 @@ class PipelineController(object):
         node.job.task.get_logger().report_text(
             "\nNode '{}' failed. Retrying... (this is retry number {})\n".format(node.name, self._retries[node.name])
         )
-        node.job.launch(queue_name=node.queue or self._default_execution_queue)
+        parsed_queue_name = self._parse_step_ref(node.queue)
+        node.job.launch(queue_name=parsed_queue_name or self._default_execution_queue)
 
     def _launch_node(self, node):
         # type: (PipelineController.Node) -> ()
@@ -1983,7 +1984,9 @@ class PipelineController(object):
             self._running_nodes.append(node.name)
         else:
             self._running_nodes.append(node.name)
-            return node.job.launch(queue_name=node.queue or self._default_execution_queue)
+
+            parsed_queue_name = self._parse_step_ref(node.queue)
+            return node.job.launch(parsed_queue_name or self._default_execution_queue)
 
         return True
 

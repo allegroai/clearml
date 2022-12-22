@@ -14,7 +14,7 @@ except ImportError:
 
 from ..config import running_remotely, get_remote_task_id
 from .frameworks import _patched_call  # noqa
-from ..utilities.proxy_object import verify_basic_type
+from ..utilities.proxy_object import verify_basic_type, flatten_dictionary
 
 
 class PatchJsonArgParse(object):

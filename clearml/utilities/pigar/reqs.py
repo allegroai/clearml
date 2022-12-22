@@ -360,6 +360,12 @@ def get_installed_pkgs_detail():
     if 'tensorflow_gpu' in mapping:
         mapping['tensorflow'] = mapping['tensorflow_gpu']
 
+    # HACK: prefer tensorflow_macos over tensorflow
+    if 'tensorflow_macos' in mapping:
+        p = mapping.pop('tensorflow_macos', None)
+        if p and isinstance(p, (tuple, list)) and len(p) == 2:
+            mapping['tensorflow'] = ('tensorflow', p[1])
+
     return mapping
 
 

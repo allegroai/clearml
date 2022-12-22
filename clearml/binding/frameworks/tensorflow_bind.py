@@ -395,17 +395,14 @@ class EventTrainsWriter(object):
                     suffix=guess_extension(im.get_format_mimetype()) if hasattr(im, 'get_format_mimetype')
                     else ".{}".format(str(im.format).lower())
                 )
-                os.write(fd, imdata)
-                os.close(fd)
+                with open(fd, "wb") as f:
+                    f.write(imdata)
                 return temp_file
-
-            image = np.asarray(im)
             output.close()
             if height is not None and height > 0 and width is not None and width > 0:
-                # noinspection PyArgumentList
-                val = image.reshape(height, width, -1).astype(np.uint8)
+                val = np.array(im).reshape((height, width, -1)).astype(np.uint8)
             else:
-                val = image.astype(np.uint8)
+                val = np.array(im).astype(np.uint8)
             if val.ndim == 3 and val.shape[2] == 3:
                 if self._visualization_mode == 'BGR':
                     val = val[:, :, [2, 1, 0]]

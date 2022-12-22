@@ -1633,8 +1633,8 @@ class Task(_Task):
             fd, local_filename = mkstemp(prefix='clearml_task_config_',
                                          suffix=configuration_path.suffixes[-1] if
                                          configuration_path.suffixes else '.txt')
-            os.write(fd, configuration_text.encode('utf-8'))
-            os.close(fd)
+            with open(fd, "w") as f:
+                f.write(configuration_text)
             if pathlib_Path:
                 return pathlib_Path(local_filename)
             return Path(local_filename) if isinstance(configuration, Path) else local_filename

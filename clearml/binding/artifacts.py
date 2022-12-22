@@ -562,8 +562,8 @@ class Artifacts(object):
             if serialized_text is not None:
                 override_filename_in_uri = name + override_filename_ext_in_uri
                 fd, local_filename = mkstemp(prefix=quote(name, safe="") + ".", suffix=override_filename_ext_in_uri)
-                os.write(fd, bytes(serialized_text.encode()))
-                os.close(fd)
+                with open(fd, "w") as f:
+                    f.write(serialized_text)
                 preview = preview or serialized_text
                 if len(preview) < self.max_preview_size_bytes:
                     artifact_type_data.preview = preview

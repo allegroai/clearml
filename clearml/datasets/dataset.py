@@ -2747,22 +2747,48 @@ class Dataset(object):
         current_index = 0
         dataset_struct = {}
         indices = {}
-        dependency_graph_ex = deepcopy(self._dependency_graph)
+        dependency_graph_ex_copy = deepcopy(self._dependency_graph)
+        # Make sure that id we reference a node as a parent, they exist on the DAG itself
         for parents in self._dependency_graph.values():
             for parent in parents:
                 if parent not in self._dependency_graph:
-                    dependency_graph_ex[parent] = []
-        for id_, parents in dependency_graph_ex.items():
+                    dependency_graph_ex_copy[parent] = []
+        # get data from the parent versions
+        dependency_graph_ex = {}
+        while dependency_graph_ex_copy:
+            id_, parents = dependency_graph_ex_copy.popitem()
+            dependency_graph_ex[id_] = parents
+
             task = Task.get_task(task_id=id_)
             dataset_struct_entry = {"job_id": id_, "status": task.status}
             # noinspection PyProtectedMember
             last_update = task._get_last_update()
             if last_update:
                 last_update = calendar.timegm(last_update.timetuple())
+            # fetch the parents of this version (task) based on what we have on the Task itself.
+            # noinspection PyBroadException
+            try:
+                dataset_version_node = task.get_configuration_object_as_dict("Dataset Struct")
+                # fine the one that is us
+                for node in dataset_version_node.values():
+                    if node["job_id"] != id_:
+                        continue
+                    for parent in node.get("parents", []):
+                        parent_id = dataset_version_node[parent]["job_id"]
+                        if parent_id not in dependency_graph_ex_copy and parent_id not in dependency_graph_ex:
+                            # add p to dependency_graph_ex
+                            dependency_graph_ex_copy[parent_id] = []
+                        if parent_id not in parents:
+                            parents.append(parent_id)
+                    break
+            except Exception:
+                pass
             dataset_struct_entry["last_update"] = last_update
             dataset_struct_entry["parents"] = parents
+            # noinspection PyProtectedMember
             dataset_struct_entry["job_size"] = task._get_runtime_properties().get("ds_total_size")
             dataset_struct_entry["name"] = task.name
+            # noinspection PyProtectedMember
             dataset_struct_entry["version"] = task._get_runtime_properties().get("version")
             dataset_struct[str(current_index)] = dataset_struct_entry
             indices[id_] = str(current_index)

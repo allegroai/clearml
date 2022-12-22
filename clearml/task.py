@@ -951,6 +951,7 @@ class Task(_Task):
             project_name=None,  # type: Optional[Union[Sequence[str],str]]
             task_name=None,  # type: Optional[str]
             tags=None,  # type: Optional[Sequence[str]]
+            allow_archived=True,  # type: bool
             task_filter=None  # type: Optional[Dict]
     ):
         # type: (...) -> List[TaskInstance]
@@ -983,6 +984,7 @@ class Task(_Task):
             If None is passed, returns all tasks within the project
         :param list tags: Filter based on the requested list of tags (strings) (Task must have all the listed tags)
             To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
+        :param bool allow_archived: If True (default) allow to return archived Tasks, if False filter out archived Tasks
         :param dict task_filter: filter and order Tasks. See service.tasks.GetAllRequest for details
             `parent`: (str) filter by parent task-id matching
             `search_text`: (str) free text search (in task fields comment/name/id)
@@ -1009,8 +1011,12 @@ class Task(_Task):
         :return: The Tasks specified by the parameter combinations (see the parameters).
         :rtype: List[Task]
         """
+        task_filter = task_filter or {}
+        if not allow_archived:
+            task_filter['system_tags'] = (task_filter.get('system_tags') or []) + ['-{}'.format(cls.archived_tag)]
+
         return cls.__get_tasks(task_ids=task_ids, project_name=project_name, tags=tags,
-                               task_name=task_name, **(task_filter or {}))
+                               task_name=task_name, **task_filter)
 
     @classmethod
     def query_tasks(

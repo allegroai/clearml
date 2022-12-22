@@ -2051,7 +2051,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
             self, container_name, object_name, blob_name, data, max_connections=None,
                 progress_callback=None, content_settings=None
         ):
-            max_connections = max_connections or _AzureBlobServiceStorageDriver._max_connections
+            max_connections = max_connections or int(_AzureBlobServiceStorageDriver._max_connections)
             if self.__legacy:
                 self.__blob_service.create_blob_from_bytes(
                     container_name,
@@ -2071,7 +2071,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
         def create_blob_from_path(
             self, container_name, blob_name, path, max_connections=None, content_settings=None, progress_callback=None
         ):
-            max_connections = max_connections or _AzureBlobServiceStorageDriver._max_connections
+            max_connections = max_connections or int(_AzureBlobServiceStorageDriver._max_connections)
             if self.__legacy:
                 self.__blob_service.create_blob_from_path(
                     container_name,
@@ -2131,7 +2131,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 return client.download_blob().content_as_bytes()
 
         def get_blob_to_path(self, container_name, blob_name, path, max_connections=None, progress_callback=None):
-            max_connections = max_connections or _AzureBlobServiceStorageDriver._max_connections
+            max_connections = max_connections or int(_AzureBlobServiceStorageDriver._max_connections)
             if self.__legacy:
                 return self.__blob_service.get_blob_to_path(
                     container_name,

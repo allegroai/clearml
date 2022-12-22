@@ -12,6 +12,7 @@ from six.moves.urllib.parse import urlparse
 from pathlib2 import Path
 
 from .cache import CacheManager
+from .callbacks import ProgressReport
 from .helper import StorageHelper
 from .util import encode_string_to_filename, safe_extract
 from ..debugging.log import LoggerRoot
@@ -463,7 +464,7 @@ class StorageManager(object):
 
     @classmethod
     def get_metadata(cls, remote_url, return_full_path=False):
-        # type: (str) -> Optional[dict]
+        # type: (str, bool) -> Optional[dict]
         """
         Get the metadata of the a remote object.
         The metadata is a dict containing the following keys: `name`, `size`.
@@ -471,6 +472,7 @@ class StorageManager(object):
         :param str remote_url: Source remote storage location, tree structure of `remote_url` will
             be created under the target local_folder. Supports S3/GS/Azure, shared filesystem and http(s).
             Example: 's3://bucket/data/'
+        :param return_full_path: True for returning a full path (with the base url)
 
         :return: A dict containing the metadata of the remote object. In case of an error, `None` is returned
         """
@@ -482,3 +484,33 @@ class StorageManager(object):
         if return_full_path and not metadata["name"].startswith(helper.base_url):
             metadata["name"] = helper.base_url + ("/" if not helper.base_url.endswith("/") else "") + metadata["name"]
         return metadata
+
+    @classmethod
+    def set_report_upload_chunk_size(cls, chunk_size_mb):
+        # type: (int) -> ()
+        """
+        Set the upload progress report chunk size (in MB). The chunk size
+        determines how often the progress reports are logged:
+        every time a chunk of data with a size greater than `chunk_size_mb`
+        is uploaded, log the report.
+        This function overwrites the `sdk.storage.log.report_upload_chunk_size_mb`
+        config entry
+
+        :param chunk_size_mb: The chunk size, in megabytes
+        """
+        ProgressReport.report_upload_chunk_size_mb = int(chunk_size_mb)
+
+    @classmethod
+    def set_report_download_chunk_size(cls, chunk_size_mb):
+        # type: (int) -> ()
+        """
+        Set the download progress report chunk size (in MB). The chunk size
+        determines how often the progress reports are logged:
+        every time a chunk of data with a size greater than `chunk_size_mb`
+        is downloaded, log the report.
+        This function overwrites the `sdk.storage.log.report_download_chunk_size_mb`
+        config entry
+
+        :param chunk_size_mb: The chunk size, in megabytes
+        """
+        ProgressReport.report_download_chunk_size_mb = int(chunk_size_mb)

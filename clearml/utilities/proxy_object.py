@@ -115,6 +115,9 @@ def convert_bool(s):
 
 def cast_basic_type(value, type_str):
     if not type_str:
+        # empty string with no type is treated as None
+        if value == "":
+            return None
         return value
 
     basic_types = {str(getattr(v, '__name__', v)): v for v in (float, int, str, list, tuple, dict)}

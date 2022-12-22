@@ -801,7 +801,7 @@ class Dataset(object):
         return True
 
     def set_metadata(self, metadata, metadata_name='metadata', ui_visible=True):
-        # type: (Union[numpy.array, pd.DataFrame, Dict[str, Any]], str, bool) -> ()
+        # type: (Union[numpy.array, pd.DataFrame, Dict[str, Any]], str, bool) -> () # noqa: F821
         """
         Attach a user-defined metadata to the dataset. Check `Task.upload_artifact` for supported types.
         If type is Optionally make it visible as a table in the UI.
@@ -821,7 +821,7 @@ class Dataset(object):
                 )
 
     def get_metadata(self, metadata_name='metadata'):
-        # type: (str) -> Optional[numpy.array, pd.DataFrame, dict, str, bool]
+        # type: (str) -> Optional[numpy.array, pd.DataFrame, dict, str, bool] # noqa: F821
         """
         Get attached metadata back in its original format. Will return None if none was found.
         """

@@ -800,6 +800,40 @@ class Dataset(object):
 
         return True
 
+    def set_metadata(self, metadata, metadata_name='metadata', ui_visible=True):
+        # type: (Union[numpy.array, pd.DataFrame, Dict[str, Any]], str, bool) -> ()
+        """
+        Attach a user-defined metadata to the dataset. Check `Task.upload_artifact` for supported types.
+        If type is Optionally make it visible as a table in the UI.
+        """
+        self._task.upload_artifact(name=metadata_name, artifact_object=metadata)
+        if ui_visible:
+            if pd and isinstance(metadata, pd.DataFrame):
+                self.get_logger().report_table(
+                    title='Dataset Metadata',
+                    series='Dataset Metadata',
+                    table_plot=metadata
+                )
+            else:
+                self._task.get_logger().report_text(
+                    "Displaying metadata in the UI is only supported for pandas Dataframes for now. Skipping!",
+                    print_console=True,
+                )
+
+    def get_metadata(self, metadata_name='metadata'):
+        # type: (str) -> Optional[numpy.array, pd.DataFrame, dict, str, bool]
+        """
+        Get attached metadata back in its original format. Will return None if none was found.
+        """
+        metadata = self._task.artifacts.get(metadata_name)
+        if metadata is None:
+            self._task.get_logger().report_text(
+                "Cannot find metadata on this task, are you sure it has the correct name?",
+                print_console=True,
+            )
+            return None
+        return metadata.get()
+
     def set_description(self, description):
         # type: (str) -> ()
         """
@@ -2291,7 +2325,7 @@ class Dataset(object):
         return local_folder, cache
 
     def _release_lock_ds_target_folder(self, target_folder):
-        # type: () -> None
+        # type: (Union[str, Path]) -> None
         cache = CacheManager.get_cache_manager(cache_context=self.__cache_context)
         cache.unlock_cache_folder(target_folder)
 
@@ -3167,7 +3201,7 @@ class Dataset(object):
         raise_on_multiple=False,
         shallow_search=True,
     ):
-        # type: (str, str, Optional[str], Optional[str], bool, bool) -> Tuple[str, str]
+        # type: (str, str, Optional[str], Optional[str], bool, bool) -> Tuple[Optional[str], Optional[str]]
         """
         Gets the dataset ID that matches a project, name and a version.
 
@@ -3257,7 +3291,7 @@ class Dataset(object):
 
     @classmethod
     def _build_hidden_project_name(cls, dataset_project, dataset_name):
-        # type: (str, str) -> Tuple[str, str]
+        # type: (str, str) -> Tuple[Optional[str], Optional[str]]
         """
         Build the corresponding hidden name of a dataset, given its `dataset_project`
         and `dataset_name`

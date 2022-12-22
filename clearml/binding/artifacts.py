@@ -141,7 +141,7 @@ class Artifact(object):
         self._object = self._not_set
 
     def get(self, force_download=False, deserialization_function=None):
-        # type: (bool, Optional[Callable[bytes, Any]]) -> Any
+        # type: (bool, Optional[Callable[[bytes], Any]]) -> Any
         """
         Return an object constructed from the artifact file
 
@@ -357,7 +357,7 @@ class Artifacts(object):
         auto_pickle=True,  # type: bool
         wait_on_upload=False,  # type: bool
         extension_name=None,  # type: Optional[str]
-        serialization_function=None,  # type: Optional[Callable[Any, Union[bytes, bytearray]]]
+        serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
     ):
         # type: (...) -> bool
         if not Session.check_min_api_version("2.3"):

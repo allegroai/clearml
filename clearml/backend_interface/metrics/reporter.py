@@ -108,14 +108,19 @@ class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
         if isinstance(self._empty_state_event, ForkEvent):
             self._flush_event.set()
             tic = time()
-            while self._thread and self._thread.is_alive() and (not timeout or time()-tic < timeout):
+
+            while (
+                self._thread
+                and (self._thread is True or self._thread.is_alive())
+                and (not timeout or time() - tic < timeout)
+            ):
                 if self._empty_state_event.wait(timeout=1.0):
                     break
                 if self._event.wait(0) or self._done_ev.wait(0):
                     break
                 # if enough time passed and the flush event was not cleared,
                 # there is no daemon thread running, we should leave
-                if time()-tic > self.__daemon_live_check_timeout and self._flush_event.wait(0):
+                if time() - tic > self.__daemon_live_check_timeout and self._flush_event.wait(0):
                     self._write()
                     break
         elif isinstance(self._empty_state_event, SafeEvent):

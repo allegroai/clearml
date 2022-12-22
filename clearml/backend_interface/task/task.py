@@ -81,6 +81,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     __default_random_seed = 1337
     _random_seed = __default_random_seed
 
+    __nested_deferred_init_flag = type('_NestedDeferredInitFlag', (object,), {'content': {}})
+
     class TaskTypes(Enum):
         def __str__(self):
             return str(self.value)

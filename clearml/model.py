@@ -467,7 +467,7 @@ class BaseModel(object):
                         "key": str(key),
                         "value": str(value),
                         "type": str(v_type)
-                        if v_type in (float, int, bool, six.string_types, list, tuple, dict) else
+                        if str(v_type) in ('float', 'int', 'bool', 'str', 'basestring', 'list', 'tuple', 'dict') else
                         str(None)
                     }],
                     model=self.id,

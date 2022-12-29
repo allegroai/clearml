@@ -96,7 +96,7 @@ class WeightsGradientHistHelper(object):
             cur_idx_above = cur_idx_above[:int(_histogram_granularity * ratio / (1 + ratio))]
         else:
             cur_idx_above = np.array([])
-        _cur_idx = np.unique(np.sort(np.concatenate((cur_idx_below, cur_idx_above)).astype(np.int)))
+        _cur_idx = np.unique(np.sort(np.concatenate((cur_idx_below, cur_idx_above)).astype(np.int64)))
         return _cur_idx
 
     def add_histograms(self, histograms):

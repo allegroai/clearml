@@ -445,6 +445,7 @@ class Session(TokenManager):
                      content type will be application/json)
         :param data: Dictionary, bytes, or file-like object to send in the request body
         :param async_enable: whether request is asynchronous
+        :param params: additional query parameters
         :return: requests Response instance
         """
         if not method:

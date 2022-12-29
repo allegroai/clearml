@@ -275,11 +275,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 )
 
             # add ide info into task runtime_properties
-            # noinspection PyBroadException
-            try:
-                self._set_runtime_properties(runtime_properties={"ide": result.script["ide"]})
-            except Exception as ex:
-                self.log.info("Failed logging ide information: {}".format(ex))
+            if result.script and result.script.get("ide"):
+                # noinspection PyBroadException
+                try:
+                    self._set_runtime_properties(runtime_properties={"ide": result.script["ide"]})
+                except Exception as ex:
+                    self.log.info("Failed logging ide information: {}".format(ex))
 
             # store original entry point
             entry_point = result.script.get('entry_point') if result.script else None

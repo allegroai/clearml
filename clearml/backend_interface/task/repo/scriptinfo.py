@@ -873,6 +873,10 @@ class ScriptInfo(object):
             scripts_path = [Path(cls._absolute_path(os.path.normpath(f), cwd)) for f in filepaths if f]
             scripts_path = [f for f in scripts_path if f.exists()]
             if not scripts_path:
+                for f in (filepaths or []):
+                    if f and f.endswith("/<stdin>"):
+                        raise ScriptInfoError("python console detected")
+
                 raise ScriptInfoError(
                     "Script file {} could not be found".format(filepaths)
                 )
@@ -1056,6 +1060,8 @@ class ScriptInfo(object):
 
     @classmethod
     def detect_running_module(cls, script_dict):
+        if not script_dict:
+            return script_dict
         # noinspection PyBroadException
         try:
             # If this is jupyter, do not try to detect the running module, we know what we have.

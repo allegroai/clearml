@@ -10,6 +10,7 @@ from typing import Tuple, Type, Union
 
 from ...backend_api import Session
 from ...binding.args import call_original_argparser
+from ...utilities.proxy_object import get_type_from_basic_type_str
 
 
 class _Arguments(object):
@@ -517,7 +518,7 @@ class _Arguments(object):
                 v_type = type(v)
             elif parameters_type.get(k):
                 v_type_str = parameters_type.get(k)
-                v_type = next((t for t in (bool, int, float, str, list, tuple) if t.__name__ == v_type_str), str)
+                v_type = get_type_from_basic_type_str(v_type_str)
             else:
                 # this will be type(None), we deal with it later
                 v_type = type(v)

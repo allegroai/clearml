@@ -148,6 +148,23 @@ def cast_basic_type(value, type_str):
     return value
 
 
+def get_type_from_basic_type_str(type_str):
+    # default to str
+    if not type_str:
+        return str
+
+    if str(type_str).startswith("list/"):
+        v_type = list
+    elif str(type_str).startswith("tuple/"):
+        v_type = tuple
+    elif str(type_str).startswith("dict/"):
+        v_type = dict
+    else:
+        v_type = next((t for t in (bool, int, float, str, list, tuple, dict) if t.__name__ == type_str), str)
+
+    return v_type
+
+
 def get_basic_type(value):
     basic_types = (float, int, bool, six.string_types, list, tuple, dict)
 

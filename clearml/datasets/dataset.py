@@ -800,6 +800,40 @@ class Dataset(object):
 
         return True
 
+    def set_metadata(self, metadata, metadata_name='metadata', ui_visible=True):
+        # type: (Union[numpy.array, pd.DataFrame, Dict[str, Any]], str, bool) -> () # noqa: F821
+        """
+        Attach a user-defined metadata to the dataset. Check `Task.upload_artifact` for supported types.
+        If type is Optionally make it visible as a table in the UI.
+        """
+        self._task.upload_artifact(name=metadata_name, artifact_object=metadata)
+        if ui_visible:
+            if pd and isinstance(metadata, pd.DataFrame):
+                self.get_logger().report_table(
+                    title='Dataset Metadata',
+                    series='Dataset Metadata',
+                    table_plot=metadata
+                )
+            else:
+                self._task.get_logger().report_text(
+                    "Displaying metadata in the UI is only supported for pandas Dataframes for now. Skipping!",
+                    print_console=True,
+                )
+
+    def get_metadata(self, metadata_name='metadata'):
+        # type: (str) -> Optional[numpy.array, pd.DataFrame, dict, str, bool] # noqa: F821
+        """
+        Get attached metadata back in its original format. Will return None if none was found.
+        """
+        metadata = self._task.artifacts.get(metadata_name)
+        if metadata is None:
+            self._task.get_logger().report_text(
+                "Cannot find metadata on this task, are you sure it has the correct name?",
+                print_console=True,
+            )
+            return None
+        return metadata.get()
+
     def set_description(self, description):
         # type: (str) -> ()
         """
@@ -1528,6 +1562,7 @@ class Dataset(object):
         dataset_tags=None,  # type: Optional[Sequence[str]]
         only_completed=False,  # type: bool
         only_published=False,  # type: bool
+        include_archived=False,  # type: bool
         auto_create=False,  # type: bool
         writable_copy=False,  # type: bool
         dataset_version=None,  # type: Optional[str]
@@ -1549,6 +1584,7 @@ class Dataset(object):
         :param dataset_tags: Requested dataset tags (list of tag strings)
         :param only_completed: Return only if the requested dataset is completed or published
         :param only_published: Return only if the requested dataset is published
+        :param include_archived: Include archived tasks and datasets also
         :param auto_create: Create a new dataset if it does not exist yet
         :param writable_copy: Get a newly created mutable dataset with the current one as its parent,
             so new files can added to the instance.
@@ -1562,6 +1598,9 @@ class Dataset(object):
 
         :return: Dataset object
         """
+        system_tags = ["__$all", cls.__tag]
+        if not include_archived:
+            system_tags = ["__$all", cls.__tag, "__$not", "archived"]
         if not any([dataset_id, dataset_project, dataset_name, dataset_tags]):
             raise ValueError("Dataset selection criteria not met. Didn't provide id/name/project/tags correctly.")
         current_task = Task.current_task()
@@ -1644,7 +1683,7 @@ class Dataset(object):
                 dataset_version=dataset_version,
                 dataset_filter=dict(
                     tags=dataset_tags,
-                    system_tags=[cls.__tag, "-archived"],
+                    system_tags=system_tags,
                     type=[str(Task.TaskTypes.data_processing)],
                     status=["published"]
                     if only_published
@@ -2286,7 +2325,7 @@ class Dataset(object):
         return local_folder, cache
 
     def _release_lock_ds_target_folder(self, target_folder):
-        # type: () -> None
+        # type: (Union[str, Path]) -> None
         cache = CacheManager.get_cache_manager(cache_context=self.__cache_context)
         cache.unlock_cache_folder(target_folder)
 
@@ -2742,22 +2781,48 @@ class Dataset(object):
         current_index = 0
         dataset_struct = {}
         indices = {}
-        dependency_graph_ex = deepcopy(self._dependency_graph)
+        dependency_graph_ex_copy = deepcopy(self._dependency_graph)
+        # Make sure that id we reference a node as a parent, they exist on the DAG itself
         for parents in self._dependency_graph.values():
             for parent in parents:
                 if parent not in self._dependency_graph:
-                    dependency_graph_ex[parent] = []
-        for id_, parents in dependency_graph_ex.items():
+                    dependency_graph_ex_copy[parent] = []
+        # get data from the parent versions
+        dependency_graph_ex = {}
+        while dependency_graph_ex_copy:
+            id_, parents = dependency_graph_ex_copy.popitem()
+            dependency_graph_ex[id_] = parents
+
             task = Task.get_task(task_id=id_)
             dataset_struct_entry = {"job_id": id_, "status": task.status}
             # noinspection PyProtectedMember
             last_update = task._get_last_update()
             if last_update:
                 last_update = calendar.timegm(last_update.timetuple())
+            # fetch the parents of this version (task) based on what we have on the Task itself.
+            # noinspection PyBroadException
+            try:
+                dataset_version_node = task.get_configuration_object_as_dict("Dataset Struct")
+                # fine the one that is us
+                for node in dataset_version_node.values():
+                    if node["job_id"] != id_:
+                        continue
+                    for parent in node.get("parents", []):
+                        parent_id = dataset_version_node[parent]["job_id"]
+                        if parent_id not in dependency_graph_ex_copy and parent_id not in dependency_graph_ex:
+                            # add p to dependency_graph_ex
+                            dependency_graph_ex_copy[parent_id] = []
+                        if parent_id not in parents:
+                            parents.append(parent_id)
+                    break
+            except Exception:
+                pass
             dataset_struct_entry["last_update"] = last_update
             dataset_struct_entry["parents"] = parents
+            # noinspection PyProtectedMember
             dataset_struct_entry["job_size"] = task._get_runtime_properties().get("ds_total_size")
             dataset_struct_entry["name"] = task.name
+            # noinspection PyProtectedMember
             dataset_struct_entry["version"] = task._get_runtime_properties().get("version")
             dataset_struct[str(current_index)] = dataset_struct_entry
             indices[id_] = str(current_index)
@@ -3016,7 +3081,7 @@ class Dataset(object):
         # noinspection PyBroadException
         try:
             if StorageManager.exists_file(source_url):
-                remote_objects = [StorageManager.get_metadata(source_url)]
+                remote_objects = [StorageManager.get_metadata(source_url, return_full_path=True)]
             elif not source_url.startswith(("http://", "https://")):
                 if source_url[-1] != "/":
                     source_url = source_url + "/"
@@ -3136,7 +3201,7 @@ class Dataset(object):
         raise_on_multiple=False,
         shallow_search=True,
     ):
-        # type: (str, str, Optional[str], Optional[str], bool, bool) -> Tuple[str, str]
+        # type: (str, str, Optional[str], Optional[str], bool, bool) -> Tuple[Optional[str], Optional[str]]
         """
         Gets the dataset ID that matches a project, name and a version.
 
@@ -3226,7 +3291,7 @@ class Dataset(object):
 
     @classmethod
     def _build_hidden_project_name(cls, dataset_project, dataset_name):
-        # type: (str, str) -> Tuple[str, str]
+        # type: (str, str) -> Tuple[Optional[str], Optional[str]]
         """
         Build the corresponding hidden name of a dataset, given its `dataset_project`
         and `dataset_name`

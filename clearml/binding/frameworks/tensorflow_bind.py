@@ -96,7 +96,7 @@ class WeightsGradientHistHelper(object):
             cur_idx_above = cur_idx_above[:int(_histogram_granularity * ratio / (1 + ratio))]
         else:
             cur_idx_above = np.array([])
-        _cur_idx = np.unique(np.sort(np.concatenate((cur_idx_below, cur_idx_above)).astype(np.int)))
+        _cur_idx = np.unique(np.sort(np.concatenate((cur_idx_below, cur_idx_above)).astype(np.int64)))
         return _cur_idx
 
     def add_histograms(self, histograms):
@@ -395,17 +395,14 @@ class EventTrainsWriter(object):
                     suffix=guess_extension(im.get_format_mimetype()) if hasattr(im, 'get_format_mimetype')
                     else ".{}".format(str(im.format).lower())
                 )
-                os.write(fd, imdata)
-                os.close(fd)
+                with open(fd, "wb") as f:
+                    f.write(imdata)
                 return temp_file
-
-            image = np.asarray(im)
             output.close()
             if height is not None and height > 0 and width is not None and width > 0:
-                # noinspection PyArgumentList
-                val = image.reshape(height, width, -1).astype(np.uint8)
+                val = np.array(im).reshape((height, width, -1)).astype(np.uint8)
             else:
-                val = image.astype(np.uint8)
+                val = np.array(im).astype(np.uint8)
             if val.ndim == 3 and val.shape[2] == 3:
                 if self._visualization_mode == 'BGR':
                     val = val[:, :, [2, 1, 0]]
@@ -726,6 +723,15 @@ class EventTrainsWriter(object):
                         'Received event without step, assuming step = {}'.format(step))
             else:
                 step = int(step)
+            # unlike other frameworks, tensorflow already accounts for the iteration number
+            # when continuing the training. we substract the smallest iteration such that we
+            # don't increment the step twice number
+            if EventTrainsWriter._current_task:
+                step -= EventTrainsWriter._current_task.get_initial_iteration()
+            # there can be a few metrics getting reported again, so the step can be negative
+            # for the first few reports
+            if step <= 0:
+                return
             self._max_step = max(self._max_step, step)
             if value_dicts is None:
                 LoggerRoot.get_base_logger(TensorflowBinding).debug("Summary arrived without 'value'")

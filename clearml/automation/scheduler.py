@@ -669,8 +669,9 @@ class TaskScheduler(BaseScheduler):
             [j for j in self._schedule_jobs if j.next_run() is not None],
             key=lambda x: x.next_run()
         )
-        timeout_jobs = sorted(list(self._timeout_jobs.values()))
-        if not scheduled_jobs and not timeout_jobs:
+        # sort by key
+        timeout_job_datetime = min(self._timeout_jobs, key=self._timeout_jobs.get) if self._timeout_jobs else None
+        if not scheduled_jobs and timeout_job_datetime is None:
             # sleep and retry
             seconds = 60. * self._sync_frequency_minutes
             self._log('Nothing to do, sleeping for {:.2f} minutes.'.format(seconds / 60.))
@@ -678,9 +679,10 @@ class TaskScheduler(BaseScheduler):
             return False
 
         next_time_stamp = scheduled_jobs[0].next_run() if scheduled_jobs else None
-        if timeout_jobs:
-            next_time_stamp = min(timeout_jobs[0], next_time_stamp) \
-                if next_time_stamp else timeout_jobs[0]
+        if timeout_job_datetime is not None:
+            next_time_stamp = (
+                min(next_time_stamp, timeout_job_datetime) if next_time_stamp else timeout_job_datetime
+            )
 
         sleep_time = (next_time_stamp - datetime.utcnow()).total_seconds()
         if sleep_time > 0:
@@ -691,12 +693,11 @@ class TaskScheduler(BaseScheduler):
             return False
 
         # check if this is a Task timeout check
-        if timeout_jobs and next_time_stamp == timeout_jobs[0]:
-            self._log('Aborting timeout job: {}'.format(timeout_jobs[0]))
-            # mark aborted
-            task_id = [k for k, v in self._timeout_jobs.items() if v == timeout_jobs[0]][0]
+        if timeout_job_datetime is not None and next_time_stamp == timeout_job_datetime:
+            task_id = self._timeout_jobs[timeout_job_datetime]
+            self._log('Aborting job due to timeout: {}'.format(task_id))
             self._cancel_task(task_id=task_id)
-            self._timeout_jobs.pop(task_id, None)
+            self._timeout_jobs.pop(timeout_job_datetime, None)
         else:
             self._log('Launching job: {}'.format(scheduled_jobs[0]))
             self._launch_job(scheduled_jobs[0])
@@ -733,16 +734,12 @@ class TaskScheduler(BaseScheduler):
         json_str = json.dumps(
             dict(
                 scheduled_jobs=[j.to_dict(full=True) for j in self._schedule_jobs],
-                timeout_jobs=self._timeout_jobs,
-                executed_jobs=[j.to_dict(full=True) for j in self._executed_jobs],
+                timeout_jobs={datetime_to_isoformat(k): v for k, v in self._timeout_jobs.items()},
+                executed_jobs=[j.to_dict(full=True) for j in self._executed_jobs]
             ),
             default=datetime_to_isoformat
         )
-        self._task.upload_artifact(
-            name='state',
-            artifact_object=json_str,
-            preview='scheduler internal state'
-        )
+        self._task.upload_artifact(name="state", artifact_object=json_str, preview="scheduler internal state")
 
     def _deserialize_state(self):
         # type: () -> None
@@ -760,7 +757,7 @@ class TaskScheduler(BaseScheduler):
                     serialized_jobs_dicts=state_dict.get('scheduled_jobs', []),
                     current_jobs=self._schedule_jobs
                 )
-                self._timeout_jobs = state_dict.get('timeout_jobs') or {}
+                self._timeout_jobs = {datetime_from_isoformat(k): v for k, v in (state_dict.get('timeout_jobs') or {})}
                 self._executed_jobs = [ExecutedJob(**j) for j in state_dict.get('executed_jobs', [])]
 
     def _deserialize(self):

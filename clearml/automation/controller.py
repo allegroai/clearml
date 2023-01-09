@@ -137,6 +137,13 @@ class PipelineController(object):
             abort_on_failure=False,  # type: bool
             add_run_number=True,  # type: bool
             retry_on_failure=None,  # type: Optional[Union[int, Callable[[PipelineController, PipelineController.Node, int], bool]]]   # noqa
+            docker=None,  # type: Optional[str]
+            docker_args=None,  # type: Optional[str]
+            docker_bash_setup_script=None,  # type: Optional[str]
+            packages=None,  # type: Optional[Union[str, Sequence[str]]]
+            repo=None,  # type: Optional[str]
+            repo_branch=None,  # type: Optional[str]
+            repo_commit=None  # type: Optional[str]
     ):
         # type: (...) -> None
         """
@@ -178,6 +185,23 @@ class PipelineController(object):
                         print(node.name, ' failed')
                         # allow up to 5 retries (total of 6 runs)
                         return retries < 5
+        :param docker: Select the docker image to be executed in by the remote session
+        :param docker_args: Add docker arguments, pass a single string
+        :param docker_bash_setup_script: Add bash script to be executed
+            inside the docker before setting up the Task's environment
+        :param packages: Manually specify a list of required packages or a local requirements.txt file.
+            Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
+            If not provided, packages are automatically added.
+        :param repo: Optional, specify a repository to attach to the pipeline controller, when remotely executing.
+            Allow users to execute the controller inside the specified repository, enabling them to load modules/script
+            from the repository. Notice the execution work directory will be the repository root folder.
+            Supports both git repo url link, and local repository path (automatically converted into the remote
+            git/commit as is currently checkout).
+            Example remote url: 'https://github.com/user/repo.git'
+            Example local repo copy: './repo' -> will automatically store the remote
+            repo url and commit ID based on the locally cloned copy
+        :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
+        :param repo_commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
         """
         self._nodes = {}
         self._running_nodes = []
@@ -236,6 +260,11 @@ class PipelineController(object):
 
             self._task.set_system_tags((self._task.get_system_tags() or []) + [self._tag])
             self._task.set_user_properties(version=self._version)
+        self._task.set_base_docker(
+            docker_image=docker, docker_arguments=docker_args, docker_setup_bash_script=docker_bash_setup_script
+        )
+        self._task.set_packages(packages)
+        self._task.set_repo(repo, branch=repo_branch, commit=repo_commit)
         self._auto_connect_task = bool(self._task)
         # make sure we add to the main Task the pipeline tag
         if self._task and not self._pipeline_as_sub_project:
@@ -959,7 +988,7 @@ class PipelineController(object):
         :param timeout: Wait timeout for the optimization thread to exit (minutes).
             The default is ``None``, indicating do not wait terminate immediately.
         :param mark_failed: If True, mark the pipeline task as failed. (default False)
-        :param mark_aborted: If False, mark the pipeline task as aborted. (default False)
+        :param mark_aborted: If True, mark the pipeline task as aborted. (default False)
         """
         self._stop_event.set()
 
@@ -974,7 +1003,7 @@ class PipelineController(object):
         if mark_failed:
             self._task.mark_failed(status_reason='Pipeline aborted and failed', force=True)
         elif mark_aborted:
-            self._task.mark_aborted(status_reason='Pipeline aborted', force=True)
+            self._task.mark_stopped(status_message='Pipeline aborted', force=True)
         elif self._pipeline_task_status_failed:
             print('Setting pipeline controller Task as failed (due to failed steps) !')
             self._task.mark_failed(status_reason='Pipeline step failed', force=True)
@@ -1331,7 +1360,7 @@ class PipelineController(object):
         existing_tasks = Task._query_tasks(
             project=[self._task.project], task_name=exact_match_regex(self._task.name),
             type=[str(self._task.task_type)],
-            system_tags=['-{}'.format(Task.archived_tag), self._tag],
+            system_tags=["__$all", self._tag, "__$not", Task.archived_tag],
             _all_=dict(fields=['runtime.{}'.format(self._runtime_property_hash)],
                        pattern=":{}".format(self._version)),
             only_fields=['id', 'runtime'],
@@ -1350,7 +1379,7 @@ class PipelineController(object):
                 existing_tasks = Task._query_tasks(
                     project=[self._task.project], task_name=exact_match_regex(self._task.name),
                     type=[str(self._task.task_type)],
-                    system_tags=['-{}'.format(Task.archived_tag), self._tag],
+                    system_tags=["__$all", self._tag, "__$not", Task.archived_tag],
                     only_fields=['id', 'hyperparams', 'runtime'],
                 )
                 found_match_version = False
@@ -2872,6 +2901,13 @@ class PipelineDecorator(PipelineController):
             abort_on_failure=False,  # type: bool
             add_run_number=True,  # type: bool
             retry_on_failure=None,  # type: Optional[Union[int, Callable[[PipelineController, PipelineController.Node, int], bool]]]   # noqa
+            docker=None,  # type: Optional[str]
+            docker_args=None,  # type: Optional[str]
+            docker_bash_setup_script=None,  # type: Optional[str]
+            packages=None,  # type: Optional[Union[str, Sequence[str]]]
+            repo=None,  # type: Optional[str]
+            repo_branch=None,  # type: Optional[str]
+            repo_commit=None  # type: Optional[str]
     ):
         # type: (...) -> ()
         """
@@ -2909,7 +2945,23 @@ class PipelineDecorator(PipelineController):
                         print(node.name, ' failed')
                         # allow up to 5 retries (total of 6 runs)
                         return retries < 5
-
+        :param docker: Select the docker image to be executed in by the remote session
+        :param docker_args: Add docker arguments, pass a single string
+        :param docker_bash_setup_script: Add bash script to be executed
+            inside the docker before setting up the Task's environment
+        :param packages: Manually specify a list of required packages or a local requirements.txt file.
+            Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
+            If not provided, packages are automatically added.
+        :param repo: Optional, specify a repository to attach to the pipeline controller, when remotely executing.
+            Allow users to execute the controller inside the specified repository, enabling them to load modules/script
+            from the repository. Notice the execution work directory will be the repository root folder.
+            Supports both git repo url link, and local repository path (automatically converted into the remote
+            git/commit as is currently checkout).
+            Example remote url: 'https://github.com/user/repo.git'
+            Example local repo copy: './repo' -> will automatically store the remote
+            repo url and commit ID based on the locally cloned copy
+        :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
+        :param repo_commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
         """
         super(PipelineDecorator, self).__init__(
             name=name,
@@ -2921,6 +2973,13 @@ class PipelineDecorator(PipelineController):
             abort_on_failure=abort_on_failure,
             add_run_number=add_run_number,
             retry_on_failure=retry_on_failure,
+            docker=docker,
+            docker_args=docker_args,
+            docker_bash_setup_script=docker_bash_setup_script,
+            packages=packages,
+            repo=repo,
+            repo_branch=repo_branch,
+            repo_commit=repo_commit
         )
 
         # if we are in eager execution, make sure parent class knows it
@@ -3595,7 +3654,14 @@ class PipelineDecorator(PipelineController):
             add_run_number=True,  # type: bool
             args_map=None,  # type: dict[str, List[str]]
             start_controller_locally=False,  # type: bool
-            retry_on_failure=None  # type: Optional[Union[int, Callable[[PipelineController, PipelineController.Node, int], bool]]]   # noqa
+            retry_on_failure=None,  # type: Optional[Union[int, Callable[[PipelineController, PipelineController.Node, int], bool]]]   # noqa
+            docker=None,  # type: Optional[str]
+            docker_args=None,  # type: Optional[str]
+            docker_bash_setup_script=None,  # type: Optional[str]
+            packages=None,  # type: Optional[Union[str, Sequence[str]]]
+            repo=None,  # type: Optional[str]
+            repo_branch=None,  # type: Optional[str]
+            repo_commit=None  # type: Optional[str]
     ):
         # type: (...) -> Callable
         """
@@ -3662,7 +3728,23 @@ class PipelineDecorator(PipelineController):
                         print(node.name, ' failed')
                         # allow up to 5 retries (total of 6 runs)
                         return retries < 5
-
+        :param docker: Select the docker image to be executed in by the remote session
+        :param docker_args: Add docker arguments, pass a single string
+        :param docker_bash_setup_script: Add bash script to be executed
+            inside the docker before setting up the Task's environment
+        :param packages: Manually specify a list of required packages or a local requirements.txt file.
+            Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
+            If not provided, packages are automatically added based on the imports used in the function.
+        :param repo: Optional, specify a repository to attach to the function, when remotely executing.
+            Allow users to execute the function inside the specified repository, enabling them to load modules/script
+            from the repository. Notice the execution work directory will be the repository root folder.
+            Supports both git repo url link, and local repository path (automatically converted into the remote
+            git/commit as is currently checkout).
+            Example remote url: 'https://github.com/user/repo.git'
+            Example local repo copy: './repo' -> will automatically store the remote
+            repo url and commit ID based on the locally cloned copy
+        :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
+        :param repo_commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
         """
         def decorator_wrap(func):
 
@@ -3700,6 +3782,13 @@ class PipelineDecorator(PipelineController):
                         abort_on_failure=abort_on_failure,
                         add_run_number=add_run_number,
                         retry_on_failure=retry_on_failure,
+                        docker=docker,
+                        docker_args=docker_args,
+                        docker_bash_setup_script=docker_bash_setup_script,
+                        packages=packages,
+                        repo=repo,
+                        repo_branch=repo_branch,
+                        repo_commit=repo_commit
                     )
                     ret_val = func(**pipeline_kwargs)
                     LazyEvalWrapper.trigger_all_remote_references()
@@ -3741,7 +3830,14 @@ class PipelineDecorator(PipelineController):
                     target_project=target_project,
                     abort_on_failure=abort_on_failure,
                     add_run_number=add_run_number,
-                    retry_on_failure=retry_on_failure
+                    retry_on_failure=retry_on_failure,
+                    docker=docker,
+                    docker_args=docker_args,
+                    docker_bash_setup_script=docker_bash_setup_script,
+                    packages=packages,
+                    repo=repo,
+                    repo_branch=repo_branch,
+                    repo_commit=repo_commit
                 )
 
                 a_pipeline._args_map = args_map or {}

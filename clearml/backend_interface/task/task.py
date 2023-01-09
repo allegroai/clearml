@@ -37,6 +37,7 @@ from ...backend_api.services import tasks, models, events, projects
 from ...backend_api.session.defs import ENV_OFFLINE_MODE
 from ...utilities.pyhocon import ConfigTree, ConfigFactory
 from ...utilities.config import config_dict_to_text, text_to_config_dict
+from ...errors import ArtifactUriDeleteError
 
 from ..base import IdObjectBase, InterfaceBase
 from ..metrics import Metrics, Reporter
@@ -80,6 +81,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     __default_random_seed = 1337
     _random_seed = __default_random_seed
+
+    __nested_deferred_init_flag = type('_NestedDeferredInitFlag', (object,), {'content': {}})
 
     class TaskTypes(Enum):
         def __str__(self):
@@ -160,7 +163,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._curr_label_stats = {}
         self._raise_on_validation_errors = raise_on_validation_errors
         self._parameters_allowed_types = tuple(set(
-            six.string_types + six.integer_types + (six.text_type, float, list, tuple, dict, type(None), Enum)
+            six.string_types + six.integer_types + (six.text_type, float, list, tuple, dict, type(None), Enum)  # noqa
         ))
         self._app_server = None
         self._files_server = None
@@ -271,6 +274,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     preview=diff_preview,
                 )
 
+            # add ide info into task runtime_properties
+            if result.script and result.script.get("ide"):
+                # noinspection PyBroadException
+                try:
+                    self._set_runtime_properties(runtime_properties={"ide": result.script["ide"]})
+                except Exception as ex:
+                    self.log.info("Failed logging ide information: {}".format(ex))
+
             # store original entry point
             entry_point = result.script.get('entry_point') if result.script else None
 
@@ -343,7 +354,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         tags = [self._development_tag] if not running_remotely() else []
         extra_properties = {'system_tags': tags} if Session.check_min_api_version('2.3') else {'tags': tags}
         if not Session.check_min_api_version("2.20"):
-            extra_properties["input"] = {"view": {}}
+            extra_properties["input"] = {"view": {}}  # noqa
         req = tasks.CreateRequest(
             name=task_name or make_message('Anonymous task (%(user)s@%(host)s %(time)s)'),
             type=tasks.TaskTypeEnum(task_type),
@@ -364,6 +375,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     @property
     def storage_uri(self):
         # type: () -> Optional[str]
+        """
+        The storage / output url for this task. This is the default location for output models and other artifacts.
+
+        :return: The url string or None if not set.
+        """
         if self._storage_uri:
             return self._storage_uri
         if running_remotely():
@@ -374,41 +390,83 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     @storage_uri.setter
     def storage_uri(self, value):
         # type: (str) -> ()
+        """
+        Set the storage / output url for this task. This is the default location for output models and other artifacts.
+
+        :param str value: The value to set for output URI.
+        """
         self._set_storage_uri(value)
 
     @property
     def task_id(self):
         # type: () -> str
+        """
+        Returns the current Task's ID.
+        """
         return self.id
 
     @property
     def name(self):
         # type: () -> str
+        """
+        Returns the current Task's name.
+        """
         return self.data.name or ''
 
     @name.setter
     def name(self, value):
         # type: (str) -> ()
+        """
+        Set the current Task's name.
+
+        :param str value: Name to set.
+        """
         self.set_name(value)
 
     @property
     def task_type(self):
         # type: () -> str
+        """
+        Returns the current Task's type.
+
+            Valid task types:
+
+            - ``TaskTypes.training`` (default)
+            - ``TaskTypes.testing``
+            - ``TaskTypes.inference``
+            - ``TaskTypes.data_processing``
+            - ``TaskTypes.application``
+            - ``TaskTypes.monitor``
+            - ``TaskTypes.controller``
+            - ``TaskTypes.optimizer``
+            - ``TaskTypes.service``
+            - ``TaskTypes.qc``
+            - ``TaskTypes.custom``
+        """
         return self.data.type
 
     @property
     def project(self):
         # type: () -> str
+        """
+        Returns the current Task's project name.
+        """
         return self.data.project
 
     @property
     def parent(self):
         # type: () -> str
+        """
+        Returns the current Task's parent task ID (str).
+        """
         return self.data.parent
 
     @property
     def input_models_id(self):
         # type: () -> Mapping[str, str]
+        """
+        Returns the current Task's input model IDs as a dictionary.
+        """
         if not Session.check_min_api_version("2.13"):
             model_id = self._get_task_property('execution.model', raise_on_error=False)
             return {'Input Model': model_id} if model_id else {}
@@ -419,6 +477,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     @property
     def output_models_id(self):
         # type: () -> Mapping[str, str]
+        """
+        Returns the current Task's output model IDs as a dictionary.
+        """
         if not Session.check_min_api_version("2.13"):
             model_id = self._get_task_property('output.model', raise_on_error=False)
             return {'Output Model': model_id} if model_id else {}
@@ -429,11 +490,19 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     @property
     def comment(self):
         # type: () -> str
+        """
+        Returns the current Task's (user defined) comments.
+        """
         return self.data.comment or ''
 
     @comment.setter
     def comment(self, value):
         # type: (str) -> ()
+        """
+        Set the comment of the task. Please note that this will override any comment currently
+        present. If you want to add lines to the comment field, get the comments first, add your
+        own and then set them again.
+        """
         self.set_comment(value)
 
     @property
@@ -605,7 +674,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def mark_completed(self, ignore_errors=True, status_message=None, force=False):
         # type: (bool, Optional[str], bool) -> ()
         """
-        Manually mark a Task as completed
+        Manually mark a Task as completed. This will close the running process and will change the Task's status
+        to Completed (Use this function to close and change status of remotely executed tasks).
+        To simply change the Task's status to completed, use task.close()
 
         :param bool ignore_errors: If True (default), ignore any errors raised
         :param bool force: If True the task status will be changed to `stopped` regardless of the current Task state.
@@ -614,7 +685,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         if hasattr(tasks, 'CompletedRequest') and callable(tasks.CompletedRequest):
             return self.send(
-                tasks.CompletedRequest(self.id, status_reason='completed', status_message=status_message, force=force),
+                tasks.CompletedRequest(
+                    self.id, status_reason='completed', status_message=status_message, force=force,
+                    publish=True if self._get_runtime_properties().get("_publish_on_complete") else False),
                 ignore_errors=ignore_errors
             )
         return self.send(
@@ -633,12 +706,17 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def publish(self, ignore_errors=True):
         # type: (bool) -> ()
-        """ The signal that this Task will be published """
+        """ The signal that this task will be published """
         if str(self.status) not in (str(tasks.TaskStatusEnum.stopped), str(tasks.TaskStatusEnum.completed)):
             raise ValueError("Can't publish, Task is not stopped")
         resp = self.send(tasks.PublishRequest(self.id), ignore_errors=ignore_errors)
         assert isinstance(resp.response, tasks.PublishResponse)
         return resp
+
+    def publish_on_completion(self, enable=True):
+        # type: (bool) -> ()
+        """ The signal that this task will be published automatically on task completion """
+        self._set_runtime_properties(runtime_properties={"_publish_on_complete": enable})
 
     def _delete(
         self,
@@ -1140,8 +1218,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     section_name, key = k.split('/', 1)
                     section = hyperparams.get(section_name, dict())
                     org_param = org_hyperparams.get(section_name, dict()).get(key, None)
-                    param_type = params_types[org_k] if org_k in params_types else (
-                        org_param.type if org_param is not None and org_param.type else
+                    param_type = params_types.get(org_k) or (
+                        org_param.type if org_param is not None and (org_param.type or v == "") else
                         get_basic_type(v) if v is not None else None
                     )
                     if param_type and not isinstance(param_type, str):
@@ -1320,6 +1398,52 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 execution.docker_cmd = image + (' {}'.format(arguments) if arguments else '')
                 self._edit(execution=execution)
 
+    def set_packages(self, packages):
+        # type: (Union[str, Sequence[str]]) -> ()
+        """
+        Manually specify a list of required packages or a local requirements.txt file.
+
+        :param packages: The list of packages or the path to the requirements.txt file.
+            Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
+        """
+        if not packages:
+            return
+        if not isinstance(packages, str) or not os.path.exists(packages):
+            # noinspection PyProtectedMember
+            self._update_requirements(packages)
+            return
+        with open(packages) as f:
+            # noinspection PyProtectedMember
+            self._update_requirements([line.strip() for line in f.readlines()])
+
+    def set_repo(self, repo, branch=None, commit=None):
+        # type: (str, Optional[str], Optional[str]) -> ()
+        """
+        Specify a repository to attach to the function.
+        Allow users to execute the task inside the specified repository, enabling them to load modules/script
+        from the repository. Notice the execution work directory will be the repository root folder.
+        Supports both git repo url link, and local repository path (automatically converted into the remote
+        git/commit as is currently checkout).
+        Example remote url: 'https://github.com/user/repo.git'.
+        Example local repo copy: './repo' -> will automatically store the remote
+        repo url and commit ID based on the locally cloned copy.
+
+        :param repo: Remote URL for the repository to use, OR path to local copy of the git repository
+            Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'
+        :param branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
+        :param commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
+        """
+        if not repo:
+            return
+        with self._edit_lock:
+            self.reload()
+            self.data.script.repository = repo
+            if branch:
+                self.data.script.branch = branch
+            if commit:
+                self.data.script.version_num = commit
+            self._edit(script=self.data.script)
+
     def get_base_docker(self):
         # type: () -> str
         """Get the base Docker command (image) that is set for this experiment."""
@@ -1383,32 +1507,55 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 self._edit(execution=execution)
         return self.data.execution.artifacts or []
 
-    def delete_artifacts(self, artifact_names, raise_on_errors=True):
-        # type: (Sequence[str], bool) -> bool
+    def delete_artifacts(self, artifact_names, raise_on_errors=True, delete_from_storage=True):
+        # type: (Sequence[str], bool, bool) -> bool
         """
         Delete a list of artifacts, by artifact name, from the Task.
 
         :param list artifact_names: list of artifact names
         :param bool raise_on_errors: if True, do not suppress connectivity related exceptions
+        :param bool delete_from_storage: If True try to delete the actual
+        file from the external storage (e.g. S3, GS, Azure, File Server etc.)
+
         :return: True if successful
         """
-        return self._delete_artifacts(artifact_names, raise_on_errors)
+        return self._delete_artifacts(artifact_names, raise_on_errors, delete_from_storage)
 
-    def _delete_artifacts(self, artifact_names, raise_on_errors=False):
-        # type: (Sequence[str], bool) -> bool
+    def _delete_artifacts(self, artifact_names, raise_on_errors=False, delete_from_storage=True):
+        # type: (Sequence[str], bool, bool) -> bool
         """
         Delete a list of artifacts, by artifact name, from the Task.
 
         :param list artifact_names: list of artifact names
         :param bool raise_on_errors: if True, do not suppress connectivity related exceptions
+        :param bool delete_from_storage: If True try to delete the actual
+        file from the external storage (e.g. S3, GS, Azure, File Server etc.)
+
         :return: True if successful
         """
         if not Session.check_min_api_version('2.3'):
             return False
+        if not artifact_names:
+            return True
         if not isinstance(artifact_names, (list, tuple)):
             raise ValueError('Expected artifact names as List[str]')
 
+        uris = []
         with self._edit_lock:
+            if delete_from_storage:
+                if any(a not in self.artifacts for a in artifact_names):
+                    self.reload()
+
+                for artifact in artifact_names:
+                    # noinspection PyBroadException
+                    try:
+                        uri = self.artifacts[artifact].url
+                    except Exception:
+                        if raise_on_errors:
+                            raise
+                        uri = None
+                    uris.append(uri)
+
             if Session.check_min_api_version("2.13") and not self._offline_mode:
                 req = tasks.DeleteArtifactsRequest(
                     task=self.task_id, artifacts=[{"key": n, "mode": "output"} for n in artifact_names], force=True)
@@ -1421,7 +1568,16 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 execution = self.data.execution
                 execution.artifacts = [a for a in execution.artifacts or [] if a.key not in artifact_names]
                 self._edit(execution=execution)
-        return self.data.execution.artifacts or []
+
+        # check if we need to remove the actual files from an external storage, it can also be our file server
+        if uris:
+            for i, (artifact, uri) in enumerate(zip(artifact_names, uris)):
+                # delete the actual file from storage, and raise if error and needed
+                if uri and not self._delete_uri(uri) and raise_on_errors:
+                    remaining_uris = {name: uri for name, uri in zip(artifact_names[i + 1:], uris[i + 1:])}
+                    raise ArtifactUriDeleteError(artifact=artifact, uri=uri, remaining_uris=remaining_uris)
+
+        return True
 
     def _set_model_design(self, design=None):
         # type: (str) -> ()
@@ -1493,6 +1649,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def set_project(self, project_id=None, project_name=None):
         # type: (Optional[str], Optional[str]) -> ()
+        """
+        Set the project of the current task by either specifying a project name or ID
+        """
 
         # if running remotely and we are the main task, skip setting ourselves.
         if self._is_remote_main_task():
@@ -1511,6 +1670,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def get_project_name(self):
         # type: () -> Optional[str]
+        """
+        Get the current Task's project name.
+        """
         if self.project is None:
             return self._project_name[1] if self._project_name and len(self._project_name) > 1 else None
 
@@ -1525,6 +1687,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def get_project_object(self):
         # type: () -> dict
+        """ Get the current Task's project as a python object. """
         if self.project is None:
             return self._project_object[1] if self._project_object and len(self._project_object) > 1 else None
 
@@ -1539,6 +1702,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def get_tags(self):
         # type: () -> Sequence[str]
+        """ Get all current Task's tags."""
         return self._get_task_property("tags")
 
     def set_system_tags(self, tags):
@@ -1558,6 +1722,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     def set_tags(self, tags):
         # type: (Sequence[str]) -> ()
+        """
+        Set the current Task's tags. Please note this will overwrite anything that is there already.
+
+        :param Sequence(str) tags: Any sequence of tags to set.
+        """
         assert isinstance(tags, (list, tuple))
         if not Session.check_min_api_version('2.3'):
             # not supported
@@ -1949,7 +2118,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
     @classmethod
     def get_projects(cls, **kwargs):
-        # type: () -> (List['projects.Project'])
+        # type: (**Any) -> (List['projects.Project'])
         """
         Return a list of projects in the system, sorted by last updated time
 
@@ -2029,7 +2198,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         try:
             import pkg_resources
         except ImportError:
-            get_logger("task").warning("Requirement file %s skipped since pkg_resources is not installed" % package_name)
+            get_logger("task").warning(
+                "Requirement file %s skipped since pkg_resources is not installed" % package_name)
         else:
             with Path(package_name).open() as requirements_txt:
                 for req in pkg_resources.parse_requirements(requirements_txt):
@@ -2073,7 +2243,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         Notice: Must be called before `Task.init` !
 
-        :param force: Set force using `pip freeze` flag on/off
+        :param force: Set force storing the main python file as a single standalone script
         """
         cls._force_store_standalone_script = bool(force)
 
@@ -2223,7 +2393,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
             # Since we ae using forced update, make sure he task status is valid
             status = self._data.status if self._data and self._reload_skip_flag else self.data.status
-            if not kwargs.pop("force", False) and status not in (tasks.TaskStatusEnum.created, tasks.TaskStatusEnum.in_progress):
+            if not kwargs.pop("force", False) and \
+                    status not in (tasks.TaskStatusEnum.created, tasks.TaskStatusEnum.in_progress):
                 # the exception being name/comment that we can always change.
                 if kwargs and all(
                     k in ("name", "project", "comment", "tags", "system_tags", "runtime") for k in kwargs.keys()
@@ -2239,7 +2410,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return res
 
     def _update_requirements(self, requirements):
-        # type: (Union[dict, str]) -> ()
+        # type: (Union[dict, str, Sequence[str]]) -> ()
         if not isinstance(requirements, dict):
             requirements = {'pip': requirements}
 
@@ -2269,8 +2440,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self.data.script = script
             self._edit(script=script)
 
-    def _set_configuration(self, name, description=None, config_type=None, config_text=None, config_dict=None, **kwargs):
-        # type: (str, Optional[str], Optional[str], Optional[str], Optional[Union[Mapping, list]]) -> None
+    def _set_configuration(
+            self, name, description=None, config_type=None, config_text=None, config_dict=None, **kwargs):
+        # type: (str, Optional[str], Optional[str], Optional[str], Optional[Union[Mapping, list]], **Any) -> None
         """
         Set Task configuration text/dict. Multiple configurations are supported.
 
@@ -2463,6 +2635,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     @classmethod
     def get_by_name(cls, task_name):
         # type: (str) -> Task
+        """
+        Returns the most recent task with the given name from anywhere in the system as a Task object.
+
+        :param str task_name: The name of the task to search for.
+
+        :return: Task object of the most recent task with that name.
+        """
         res = cls._send(cls._get_default_session(), tasks.GetAllRequest(name=exact_match_regex(task_name)))
 
         task = get_single_result(entity='task', query=task_name, results=res.response.tasks)
@@ -2481,7 +2660,6 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         page = -1
         page_size = 500
         all_responses = []
-        res = None
         while True:
             page += 1
             res = cls._send(

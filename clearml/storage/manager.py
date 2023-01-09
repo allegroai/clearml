@@ -9,13 +9,14 @@ from typing import List, Optional, Union
 from zipfile import ZipFile
 from six.moves.urllib.parse import urlparse
 
-import requests
 from pathlib2 import Path
 
 from .cache import CacheManager
+from .callbacks import ProgressReport
 from .helper import StorageHelper
 from .util import encode_string_to_filename, safe_extract
 from ..debugging.log import LoggerRoot
+from ..config import deferred_config
 
 
 class StorageManager(object):
@@ -24,6 +25,8 @@ class StorageManager(object):
     Support remote servers: http(s)/S3/GS/Azure/File-System-Folder
     Cache is enabled by default for all downloaded remote urls/files
     """
+
+    _file_upload_retries = deferred_config("network.file_upload_retries", 3)
 
     @classmethod
     def get_local_copy(
@@ -55,8 +58,8 @@ class StorageManager(object):
 
     @classmethod
     def upload_file(
-        cls, local_file, remote_url, wait_for_upload=True, retries=3
-    ):  # type: (str, str, bool, int) -> str
+        cls, local_file, remote_url, wait_for_upload=True, retries=None
+    ):  # type: (str, str, bool, Optional[int]) -> str
         """
         Upload a local file to a remote location. remote url is the finale destination of the uploaded file.
 
@@ -71,14 +74,14 @@ class StorageManager(object):
         :param str local_file: Full path of a local file to be uploaded
         :param str remote_url: Full path or remote url to upload to (including file name)
         :param bool wait_for_upload: If False, return immediately and upload in the background. Default True.
-        :param int retries: Number of retries before failing to upload file, default 3.
+        :param int retries: Number of retries before failing to upload file.
         :return: Newly uploaded remote URL.
         """
         return CacheManager.get_cache_manager().upload_file(
             local_file=local_file,
             remote_url=remote_url,
             wait_for_upload=wait_for_upload,
-            retries=retries,
+            retries=retries if retries else cls._file_upload_retries,
         )
 
     @classmethod
@@ -318,15 +321,8 @@ class StorageManager(object):
         try:
             if remote_url.endswith("/"):
                 return False
-            if remote_url.startswith("file://"):
-                return os.path.isfile(remote_url[len("file://"):])
-            if remote_url.startswith(("http://", "https://")):
-                return requests.head(remote_url).ok
             helper = StorageHelper.get(remote_url)
-            obj = helper.get_object(remote_url)
-            if not obj:
-                return False
-            return True
+            return helper.exists_file(remote_url)
         except Exception:
             return False
 
@@ -467,8 +463,8 @@ class StorageManager(object):
             return helper_list_result
 
     @classmethod
-    def get_metadata(cls, remote_url):
-        # type: (str) -> Optional[dict]
+    def get_metadata(cls, remote_url, return_full_path=False):
+        # type: (str, bool) -> Optional[dict]
         """
         Get the metadata of the a remote object.
         The metadata is a dict containing the following keys: `name`, `size`.
@@ -476,6 +472,7 @@ class StorageManager(object):
         :param str remote_url: Source remote storage location, tree structure of `remote_url` will
             be created under the target local_folder. Supports S3/GS/Azure, shared filesystem and http(s).
             Example: 's3://bucket/data/'
+        :param return_full_path: True for returning a full path (with the base url)
 
         :return: A dict containing the metadata of the remote object. In case of an error, `None` is returned
         """
@@ -483,4 +480,37 @@ class StorageManager(object):
         obj = helper.get_object(remote_url)
         if not obj:
             return None
-        return helper.get_object_metadata(obj)
+        metadata = helper.get_object_metadata(obj)
+        if return_full_path and not metadata["name"].startswith(helper.base_url):
+            metadata["name"] = helper.base_url + ("/" if not helper.base_url.endswith("/") else "") + metadata["name"]
+        return metadata
+
+    @classmethod
+    def set_report_upload_chunk_size(cls, chunk_size_mb):
+        # type: (int) -> ()
+        """
+        Set the upload progress report chunk size (in MB). The chunk size
+        determines how often the progress reports are logged:
+        every time a chunk of data with a size greater than `chunk_size_mb`
+        is uploaded, log the report.
+        This function overwrites the `sdk.storage.log.report_upload_chunk_size_mb`
+        config entry
+
+        :param chunk_size_mb: The chunk size, in megabytes
+        """
+        ProgressReport.report_upload_chunk_size_mb = int(chunk_size_mb)
+
+    @classmethod
+    def set_report_download_chunk_size(cls, chunk_size_mb):
+        # type: (int) -> ()
+        """
+        Set the download progress report chunk size (in MB). The chunk size
+        determines how often the progress reports are logged:
+        every time a chunk of data with a size greater than `chunk_size_mb`
+        is downloaded, log the report.
+        This function overwrites the `sdk.storage.log.report_download_chunk_size_mb`
+        config entry
+
+        :param chunk_size_mb: The chunk size, in megabytes
+        """
+        ProgressReport.report_download_chunk_size_mb = int(chunk_size_mb)

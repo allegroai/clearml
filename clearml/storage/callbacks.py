@@ -6,6 +6,9 @@ from ..config import config
 
 
 class ProgressReport(object):
+    report_upload_chunk_size_mb = None
+    report_download_chunk_size_mb = None
+
     def __init__(self, verbose, total_size, log, report_chunk_size_mb):
         self.current_status_mb = 0.
         self.last_reported = 0.
@@ -34,9 +37,10 @@ class ProgressReport(object):
 
 
 class UploadProgressReport(ProgressReport):
-    def __init__(self, filename, verbose, total_size, log, report_chunk_size_mb=0):
-        if not report_chunk_size_mb:
-            report_chunk_size_mb = int(config.get('storage.log.report_upload_chunk_size_mb', 0) or 5)
+    def __init__(self, filename, verbose, total_size, log, report_chunk_size_mb=None):
+        report_chunk_size_mb = report_chunk_size_mb if report_chunk_size_mb is not None \
+            else ProgressReport.report_upload_chunk_size_mb or \
+            int(config.get("storage.log.report_upload_chunk_size_mb", 5))
         super(UploadProgressReport, self).__init__(verbose, total_size, log, report_chunk_size_mb)
         self._filename = filename
 
@@ -74,10 +78,10 @@ class UploadProgressReport(ProgressReport):
 
 
 class DownloadProgressReport(ProgressReport):
-    def __init__(self, total_size, verbose, remote_path, log, report_chunk_size_mb=0):
-        if not report_chunk_size_mb:
-            report_chunk_size_mb = int(config.get('storage.log.report_download_chunk_size_mb', 0) or 5)
-
+    def __init__(self, total_size, verbose, remote_path, log, report_chunk_size_mb=None):
+        report_chunk_size_mb = report_chunk_size_mb if report_chunk_size_mb is not None \
+            else ProgressReport.report_download_chunk_size_mb or \
+            int(config.get("storage.log.report_download_chunk_size_mb", 5))
         super(DownloadProgressReport, self).__init__(verbose, total_size, log, report_chunk_size_mb)
         self._remote_path = remote_path
 

@@ -115,6 +115,9 @@ def convert_bool(s):
 
 def cast_basic_type(value, type_str):
     if not type_str:
+        # empty string with no type is treated as None
+        if value == "":
+            return None
         return value
 
     basic_types = {str(getattr(v, '__name__', v)): v for v in (float, int, str, list, tuple, dict)}
@@ -143,6 +146,23 @@ def cast_basic_type(value, type_str):
             return value
 
     return value
+
+
+def get_type_from_basic_type_str(type_str):
+    # default to str
+    if not type_str:
+        return str
+
+    if str(type_str).startswith("list/"):
+        v_type = list
+    elif str(type_str).startswith("tuple/"):
+        v_type = tuple
+    elif str(type_str).startswith("dict/"):
+        v_type = dict
+    else:
+        v_type = next((t for t in (bool, int, float, str, list, tuple, dict) if t.__name__ == type_str), str)
+
+    return v_type
 
 
 def get_basic_type(value):

@@ -57,6 +57,7 @@ def setup_parser(parser):
         "--params-search",
         type=str,
         nargs="*",
+        default=[],
         help="List of parameters to search optimal value of. Each parameter must be a JSON having the following format:\n"
         "{\n"
         '  "name": str,  # Name of the paramter you want to optimize\n'
@@ -87,6 +88,7 @@ def setup_parser(parser):
         "--params-override",
         type=str,
         nargs="*",
+        default=[],
         help="List of parameters to override (won't be searched, just override default). "
         "Each parameter must be a JSON having the following format:\n"
         "{\n"

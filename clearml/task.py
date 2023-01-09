@@ -491,9 +491,7 @@ class Task(_Task):
                         )
                     )
 
-        # if deferred_init==0 this means this is the nested call that actually generates the Task.init
-        # notice isinstance(False, int) is always True, so we have to check type (we wanted deferred_init != 0)
-        if cls.__main_task is not None and (not (type(deferred_init) == int and deferred_init == 0)):
+        if cls.__main_task is not None and deferred_init != cls.__nested_deferred_init_flag:
             # if this is a subprocess, regardless of what the init was called for,
             # we have to fix the main task hooks and stdout bindings
             if cls.__forked_proc_main_pid != os.getpid() and cls.__is_subprocess():
@@ -561,10 +559,9 @@ class Task(_Task):
             if not running_remotely():
                 # only allow if running locally and creating the first Task
                 # otherwise we ignore and perform in order
-                # notice isinstance(False, int) is always True, so we have to check type (we wanted deferred_init != 0)
-                if (not (type(deferred_init) == int and deferred_init == 0)) and ENV_DEFERRED_TASK_INIT.get():
+                if ENV_DEFERRED_TASK_INIT.get():
                     deferred_init = True
-                if not is_sub_process_task_id and deferred_init:
+                if not is_sub_process_task_id and deferred_init and deferred_init != cls.__nested_deferred_init_flag:
                     def completed_cb(x):
                         Task.__main_task = x
 
@@ -584,7 +581,7 @@ class Task(_Task):
                         auto_connect_frameworks=auto_connect_frameworks,
                         auto_resource_monitoring=auto_resource_monitoring,
                         auto_connect_streams=auto_connect_streams,
-                        deferred_init=0,  # notice we use it as a flag to mark the nested call
+                        deferred_init=cls.__nested_deferred_init_flag,
                     )
                     is_deferred = True
                     # mark as temp master
@@ -954,6 +951,7 @@ class Task(_Task):
             project_name=None,  # type: Optional[Union[Sequence[str],str]]
             task_name=None,  # type: Optional[str]
             tags=None,  # type: Optional[Sequence[str]]
+            allow_archived=True,  # type: bool
             task_filter=None  # type: Optional[Dict]
     ):
         # type: (...) -> List[TaskInstance]
@@ -986,6 +984,7 @@ class Task(_Task):
             If None is passed, returns all tasks within the project
         :param list tags: Filter based on the requested list of tags (strings) (Task must have all the listed tags)
             To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
+        :param bool allow_archived: If True (default) allow to return archived Tasks, if False filter out archived Tasks
         :param dict task_filter: filter and order Tasks. See service.tasks.GetAllRequest for details
             `parent`: (str) filter by parent task-id matching
             `search_text`: (str) free text search (in task fields comment/name/id)
@@ -1012,8 +1011,12 @@ class Task(_Task):
         :return: The Tasks specified by the parameter combinations (see the parameters).
         :rtype: List[Task]
         """
+        task_filter = task_filter or {}
+        if not allow_archived:
+            task_filter['system_tags'] = (task_filter.get('system_tags') or []) + ['-{}'.format(cls.archived_tag)]
+
         return cls.__get_tasks(task_ids=task_ids, project_name=project_name, tags=tags,
-                               task_name=task_name, **(task_filter or {}))
+                               task_name=task_name, **task_filter)
 
     @classmethod
     def query_tasks(
@@ -1089,15 +1092,32 @@ class Task(_Task):
     @property
     def output_uri(self):
         # type: () -> str
+        """
+        The storage / output url for this task. This is the default location for output models and other artifacts.
+
+        :return: The url string.
+        """
         return self.storage_uri
 
     @property
     def last_worker(self):
+        # type: () -> str
+        """
+        ID of last worker that handled the task.
+
+        :return: The worker ID.
+        """
         return self._data.last_worker
 
     @output_uri.setter
     def output_uri(self, value):
         # type: (Union[str, bool]) -> None
+        """
+        Set the storage / output url for this task. This is the default location for output models and other artifacts.
+
+        :param str/bool value: The value to set for output URI. Can be either a bucket link, True for default server
+            or False. Check Task.init reference docs for more info (output_uri is a parameter).
+        """
 
         # check if this is boolean
         if value is False:
@@ -1619,8 +1639,8 @@ class Task(_Task):
             fd, local_filename = mkstemp(prefix='clearml_task_config_',
                                          suffix=configuration_path.suffixes[-1] if
                                          configuration_path.suffixes else '.txt')
-            os.write(fd, configuration_text.encode('utf-8'))
-            os.close(fd)
+            with open(fd, "w") as f:
+                f.write(configuration_text)
             if pathlib_Path:
                 return pathlib_Path(local_filename)
             return Path(local_filename) if isinstance(configuration, Path) else local_filename
@@ -1743,7 +1763,8 @@ class Task(_Task):
 
     def close(self):
         """
-        Close the current Task. Enables you to manually shutdown the task.
+        Closes the current Task and changes its status to completed.
+        Enables you to manually shutdown the task.
 
         .. warning::
            Only call :meth:`Task.close` if you are certain the Task is not needed.
@@ -2378,6 +2399,41 @@ class Task(_Task):
             docker_arguments=docker_arguments,
             docker_setup_bash_script=docker_setup_bash_script
         )
+
+    def set_packages(self, packages):
+        # type: (Union[str, Sequence[str]]) -> ()
+        """
+        Manually specify a list of required packages or a local requirements.txt file.
+        When running remotely the call is ignored
+
+        :param packages: The list of packages or the path to the requirements.txt file.
+            Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
+        """
+        if running_remotely():
+            return
+        super(Task, self).set_packages(packages)
+
+    def set_repo(self, repo, branch=None, commit=None):
+        # type: (str, Optional[str], Optional[str]) -> ()
+        """
+        Specify a repository to attach to the function.
+        Allow users to execute the task inside the specified repository, enabling them to load modules/script
+        from the repository. Notice the execution work directory will be the repository root folder.
+        Supports both git repo url link, and local repository path (automatically converted into the remote
+        git/commit as is currently checkout).
+        Example remote url: 'https://github.com/user/repo.git'.
+        Example local repo copy: './repo' -> will automatically store the remote
+        repo url and commit ID based on the locally cloned copy.
+        When executing remotely, this call will not override the repository data (it is ignored)
+
+        :param repo: Remote URL for the repository to use, OR path to local copy of the git repository
+            Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'
+        :param branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
+        :param commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
+        """
+        if running_remotely():
+            return
+        super(Task, self).set_repo(repo, branch=branch, commit=commit)
 
     def set_resource_monitor_iteration_timeout(self, seconds_from_start=1800):
         # type: (float) -> bool
@@ -3534,16 +3590,6 @@ class Task(_Task):
         #     # we have to forcefully shutdown if we have forked processes, sometimes they will get stuck
         #     os._exit(self.__exit_hook.exit_code if self.__exit_hook and self.__exit_hook.exit_code else 0)
 
-    @staticmethod
-    def _clear_loggers():
-        # https://github.com/pytest-dev/pytest/issues/5502#issuecomment-647157873
-        import logging
-        loggers = [logging.getLogger()] + list(logging.Logger.manager.loggerDict.values())
-        for logger in loggers:
-            handlers = getattr(logger, 'handlers', [])
-            for handler in handlers:
-                logger.removeHandler(handler)
-
     def __shutdown(self):
         """
         Will happen automatically once we exit code, i.e. atexit
@@ -3570,7 +3616,7 @@ class Task(_Task):
             # from here only a single thread can re-enter
             self._at_exit_called = get_current_thread_id()
 
-        Task._clear_loggers()
+        LoggerRoot.clear_logger_handlers()
 
         # disable lock on signal callbacks, to avoid deadlocks.
         if self.__exit_hook and self.__exit_hook.signal is not None:
@@ -4030,6 +4076,7 @@ class Task(_Task):
             project_names = project_name
 
         project_ids = []
+        projects_not_found = []
         if project_names:
             for name in project_names:
                 aux_kwargs = {}
@@ -4045,6 +4092,16 @@ class Task(_Task):
                 )
                 if res.response and res.response.projects:
                     project_ids.extend([project.id for project in res.response.projects])
+                else:
+                    projects_not_found.append(name)
+            if projects_not_found:
+                # If any of the given project names does not exist, fire off a warning
+                LoggerRoot.get_base_logger().warning(
+                    "No projects were found with name(s): {}".format(", ".join(projects_not_found))
+                )
+            if not project_ids:
+                # If not a single project exists or was found, return empty right away
+                return []
 
         session = cls._get_default_session()
         system_tags = 'system_tags' if hasattr(tasks.Task, 'system_tags') else 'tags'

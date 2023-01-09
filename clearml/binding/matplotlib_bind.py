@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import os
 import sys
 import threading
 from copy import deepcopy
@@ -559,8 +558,8 @@ class PatchedMatplotlib:
                                       facecolor=None)
                     buffer_.seek(0)
                 fd, image = mkstemp(suffix='.' + image_format)
-                os.write(fd, buffer_.read())
-                os.close(fd)
+                with open(fd, "wb") as f:
+                    f.write(buffer_.read())
 
             # check if we need to restore the active object
             if set_active and not _pylab_helpers.Gcf.get_active() and stored_figure:

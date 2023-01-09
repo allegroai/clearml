@@ -141,7 +141,7 @@ class Artifact(object):
         self._object = self._not_set
 
     def get(self, force_download=False, deserialization_function=None):
-        # type: (bool, Optional[Callable[bytes, Any]]) -> Any
+        # type: (bool, Optional[Callable[[bytes], Any]]) -> Any
         """
         Return an object constructed from the artifact file
 
@@ -357,7 +357,7 @@ class Artifacts(object):
         auto_pickle=True,  # type: bool
         wait_on_upload=False,  # type: bool
         extension_name=None,  # type: Optional[str]
-        serialization_function=None,  # type: Optional[Callable[Any, Union[bytes, bytearray]]]
+        serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
     ):
         # type: (...) -> bool
         if not Session.check_min_api_version("2.3"):
@@ -562,8 +562,8 @@ class Artifacts(object):
             if serialized_text is not None:
                 override_filename_in_uri = name + override_filename_ext_in_uri
                 fd, local_filename = mkstemp(prefix=quote(name, safe="") + ".", suffix=override_filename_ext_in_uri)
-                os.write(fd, bytes(serialized_text.encode()))
-                os.close(fd)
+                with open(fd, "w") as f:
+                    f.write(serialized_text)
                 preview = preview or serialized_text
                 if len(preview) < self.max_preview_size_bytes:
                     artifact_type_data.preview = preview

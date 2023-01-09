@@ -11,7 +11,7 @@ from typing import List, Set, Union, Any, Sequence, Optional, Mapping, Callable
 
 from .job import ClearmlJob, LocalClearmlJob
 from .parameters import Parameter
-from ..backend_interface.util import get_or_create_project
+from ..backend_interface.util import get_or_create_project, datetime_from_isoformat
 from ..logger import Logger
 from ..backend_api.services import workers as workers_service, tasks as tasks_service, events as events_service
 from ..task import Task
@@ -1989,8 +1989,7 @@ class HyperParameterOptimizer(object):
             response = res.wait()
             if not response.ok() or response.response_data["task"].get("status") != Task.TaskStatusEnum.completed:
                 continue
-            completed_time = datetime.strptime(response.response_data["task"]["completed"].partition("+")[0],
-                                               "%Y-%m-%dT%H:%M:%S.%f")
+            completed_time = datetime_from_isoformat(response.response_data["task"]["completed"].partition("+")[0])
             completed_time = completed_time.timestamp()
             completed_values = self._get_last_value(response)
             obj_values.append(completed_values['max_value'] if series_name == "max" else completed_values['min_value'])

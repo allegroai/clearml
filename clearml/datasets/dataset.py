@@ -381,8 +381,8 @@ class Dataset(object):
             Wildcard matching, can be a single string or a list of wildcards.
         :param local_base_folder: files will be located based on their relative path from local_base_folder
         :param dataset_path: where in the dataset the folder/files should be located
-        :param recursive: If True match all wildcard files recursively
-        :param verbose: If True print to console files added/modified
+        :param recursive: If True, match all wildcard files recursively
+        :param verbose: If True, print to console files added/modified
         :param max_workers: The number of threads to add the files with. Defaults to the number of logical cores
         :return: number of files added
         """
@@ -447,8 +447,8 @@ class Dataset(object):
         :param dataset_path: The location in the dataset where the file will be downloaded into.
             e.g: for source_url='s3://bucket/remote_folder/image.jpg' and dataset_path='s3_files',
             'image.jpg' will be downloaded to 's3_files/image.jpg' (relative path to the dataset)
-        :param recursive: If True match all wildcard files recursively
-        :param verbose: If True print to console files added/modified
+        :param recursive: If True, match all wildcard files recursively
+        :param verbose: If True, print to console files added/modified
         :param max_workers: The number of threads to add the external files with. Useful when `source_url` is
             a sequence. Defaults to the number of logical cores
         :return: Number of file links added
@@ -496,8 +496,8 @@ class Dataset(object):
         :param dataset_path: Remove files from the dataset.
             The path is always relative to the dataset (e.g 'folder/file.bin').
             External files can also be removed by their links (e.g. 's3://bucket/file')
-        :param recursive: If True match all wildcard files recursively
-        :param verbose: If True print to console files removed
+        :param recursive: If True, match all wildcard files recursively
+        :param verbose: If True, print to console files removed
         :return: Number of files removed
         """
         self._task.get_logger().report_text(
@@ -549,7 +549,7 @@ class Dataset(object):
 
         :param local_path: Local folder to sync (assumes all files and recursive)
         :param dataset_path: Target dataset path to sync with (default the root of the dataset)
-        :param verbose: If true print to console files added/modified/removed
+        :param verbose: If True, print to console files added/modified/removed
         :return: number of files removed, number of files modified/added
         """
         def filter_f(f):
@@ -609,8 +609,8 @@ class Dataset(object):
         """
         Start file uploading, the function returns when all files are uploaded.
 
-        :param show_progress: If True show upload progress bar
-        :param verbose: If True print verbose progress report
+        :param show_progress: If True, show upload progress bar
+        :param verbose: If True, print verbose progress report
         :param output_url: Target storage for the compressed dataset (default: file server)
             Examples: `s3://bucket/data`, `gs://bucket/data` , `azure://bucket/data` , `/mnt/share/data`
         :param compression: Compression algorithm for the Zipped dataset file (default: ZIP_DEFLATED)
@@ -760,8 +760,8 @@ class Dataset(object):
         Finalize the dataset publish dataset Task. upload must first called to verify there are not pending uploads.
         If files do need to be uploaded, it throws an exception (or return False)
 
-        :param verbose: If True print verbose progress report
-        :param raise_on_error: If True raise exception if dataset finalizing failed
+        :param verbose: If True, print verbose progress report
+        :param raise_on_error: If True, raise exception if dataset finalizing failed
         :param auto_upload: Automatically upload dataset if not called yet, will upload to default location.
         """
         # check we do not have files waiting for upload.
@@ -849,7 +849,7 @@ class Dataset(object):
         Publish the dataset
         If dataset is not finalize, throw exception
 
-        :param raise_on_error: If True raise exception if dataset publishing failed
+        :param raise_on_error: If True, raise exception if dataset publishing failed
         """
         # check we can publish this dataset
         if not self.is_final():
@@ -874,7 +874,7 @@ class Dataset(object):
         Return a base folder with a read-only (immutable) local copy of the entire dataset
         download and copy / soft-link, files from all the parent dataset versions. The dataset needs to be finalized
 
-        :param use_soft_links: If True use soft links, default False on windows True on Posix systems
+        :param use_soft_links: If True, use soft links, default False on windows True on Posix systems
         :param part: Optional, if provided only download the selected part (index) of the Dataset.
             First part number is `0` and last part is `num_parts-1`
             Notice, if `num_parts` is not provided, number of parts will be equal to the total number of chunks
@@ -886,7 +886,7 @@ class Dataset(object):
             Example: Assuming total 8 chunks for this dataset (including parent datasets),
             and `num_parts=5`, the chunk index used per parts would be:
             part=0 -> chunks[0,5], part=1 -> chunks[1,6], part=2 -> chunks[2,7], part=3 -> chunks[3, ]
-        :param raise_on_error: If True raise exception if dataset merging failed on any file
+        :param raise_on_error: If True, raise exception if dataset merging failed on any file
         :param max_workers: Number of threads to be spawned when getting the dataset copy. Defaults
             to the number of logical cores.
 
@@ -931,7 +931,7 @@ class Dataset(object):
             Example: Assuming total 8 chunks for this dataset (including parent datasets),
             and `num_parts=5`, the chunk index used per parts would be:
             part=0 -> chunks[0,5], part=1 -> chunks[1,6], part=2 -> chunks[2,7], part=3 -> chunks[3, ]
-        :param raise_on_error: If True raise exception if dataset merging failed on any file
+        :param raise_on_error: If True, raise exception if dataset merging failed on any file
         :param max_workers: Number of threads to be spawned when getting the dataset copy. Defaults
             to the number of logical cores.
 
@@ -966,7 +966,7 @@ class Dataset(object):
 
         :param dataset_path: Only match files matching the dataset_path (including wildcards).
             Example: 'folder/sub/*.json'
-        :param recursive: If True (default) matching dataset_path recursively
+        :param recursive: If True (default), matching dataset_path recursively
         :param dataset_id: Filter list based on the dataset id containing the latest version of the file.
             Default: None, do not filter files based on parent dataset.
 
@@ -1109,7 +1109,7 @@ class Dataset(object):
         :param local_copy_path: Specify local path containing a copy of the dataset,
             If not provide use the cached folder
         :param skip_hash: If True, skip hash checks and verify file size only
-        :param verbose: If True print errors while testing dataset files hash
+        :param verbose: If True, print errors while testing dataset files hash
         :return: List of files with unmatched hashes
         """
         local_path = local_copy_path or self.get_local_copy()
@@ -1896,8 +1896,8 @@ class Dataset(object):
             Wildcard matching, can be a single string or a list of wildcards)
         :param local_base_folder: files will be located based on their relative path from local_base_folder
         :param dataset_path: where in the dataset the folder/files should be located
-        :param recursive: If True match all wildcard files recursively
-        :param verbose: If True print to console added files
+        :param recursive: If True, match all wildcard files recursively
+        :param verbose: If True, print to console added files
         :param max_workers: The number of threads to add the files with. Defaults to the number of logical cores
         """
         max_workers = max_workers or psutil.cpu_count()
@@ -2138,13 +2138,13 @@ class Dataset(object):
         it won't be downloaded from the remote storage unless it is added again using
         Dataset.add_external_files().
 
-        :param force: If True extract dataset content even if target folder exists and is not empty
+        :param force: If True, extract dataset content even if target folder exists and is not empty
         :param selected_chunks: Optional, if provided only download the selected chunks (index) of the Dataset.
             Example: Assuming 8 chunks on this version
             selected_chunks=[0,1,2]
         :param lock_target_folder: If True, local the target folder so the next cleanup will not delete
             Notice you should unlock it manually, or wait for the process to finish for auto unlocking.
-        :param cleanup_target_folder: If True remove target folder recursively
+        :param cleanup_target_folder: If True, remove target folder recursively
         :param target_folder: If provided use the specified target folder, default, auto generate from Dataset ID.
         :param max_workers: Number of threads to be spawned when getting dataset files. Defaults
             to the number of virtual cores.
@@ -2239,7 +2239,7 @@ class Dataset(object):
         Download the dataset archive, and extract the zip content to a cached folder.
         Notice no merging is done.
 
-        :param force: If True extract dataset content even if target folder exists and is not empty
+        :param force: If True, extract dataset content even if target folder exists and is not empty
         :param selected_chunks: Optional, if provided only download the selected chunks (index) of the Dataset.
             Example: Assuming 8 chunks on this version
             selected_chunks=[0,1,2]

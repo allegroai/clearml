@@ -41,7 +41,7 @@ class StorageManager(object):
 
         :param str remote_url: remote url link (string)
         :param str cache_context: Optional caching context identifier (string), default context 'global'
-        :param bool extract_archive: if True returned path will be a cached folder containing the archive's content,
+        :param bool extract_archive: if True, returned path will be a cached folder containing the archive's content,
             currently only zip files are supported.
         :param str name: name of the target file
         :param bool force_download: download file from remote even if exists in local cache
@@ -61,7 +61,7 @@ class StorageManager(object):
         cls, local_file, remote_url, wait_for_upload=True, retries=None
     ):  # type: (str, str, bool, Optional[int]) -> str
         """
-        Upload a local file to a remote location. remote url is the finale destination of the uploaded file.
+        Upload a local file to a remote location. remote url is the final destination of the uploaded file.
 
         Examples:
 
@@ -284,9 +284,9 @@ class StorageManager(object):
             be created under the target local_folder. Supports S3/GS/Azure and shared filesystem.
             Example: 's3://bucket/data/'
         :param bool overwrite: If False, and target files exist do not download.
-            If True always download the remote files. Default False.
-        :param bool skip_zero_size_check: If True no error will be raised for files with zero bytes size.
-        :param bool silence_errors: If True, silence errors that might pop up when trying to downlaod
+            If True, always download the remote files. Default False.
+        :param bool skip_zero_size_check: If True, no error will be raised for files with zero bytes size.
+        :param bool silence_errors: If True, silence errors that might pop up when trying to download
             files stored remotely. Default False
 
         :return: Path to downloaded file or None on error
@@ -372,9 +372,9 @@ class StorageManager(object):
         :param match_wildcard: If specified only download files matching the `match_wildcard`
             Example: `*.json`
         :param bool overwrite: If False, and target files exist do not download.
-            If True always download the remote files. Default False.
-        :param bool skip_zero_size_check: If True no error will be raised for files with zero bytes size.
-        :param bool silence_errors: If True, silence errors that might pop up when trying to downlaod
+            If True, always download the remote files. Default False.
+        :param bool skip_zero_size_check: If True, no error will be raised for files with zero bytes size.
+        :param bool silence_errors: If True, silence errors that might pop up when trying to download
             files stored remotely. Default False
 
         :return: Target local folder
@@ -466,7 +466,7 @@ class StorageManager(object):
     def get_metadata(cls, remote_url, return_full_path=False):
         # type: (str, bool) -> Optional[dict]
         """
-        Get the metadata of the a remote object.
+        Get the metadata of the remote object.
         The metadata is a dict containing the following keys: `name`, `size`.
 
         :param str remote_url: Source remote storage location, tree structure of `remote_url` will

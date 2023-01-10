@@ -207,7 +207,7 @@ class Logger(object):
            logger.report_vector(title='vector example', series='vector series', values=vector_series, iteration=0,
                 labels=['A','B'], xaxis='X axis label', yaxis='Y axis label')
 
-        You can view the vectors plots in the **ClearML Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
+        You can view the vectors plot in the **ClearML Web-App (UI)**, **RESULTS** tab, **PLOTS** sub-tab.
 
         :param title: The title (metric) of the plot.
         :param series: The series name (variant) of the reported histogram.
@@ -647,7 +647,7 @@ class Logger(object):
         :param str yaxis: The y-axis title. (Optional)
         :param list(str) xlabels: Labels for each column of the matrix. (Optional)
         :param list(str) ylabels: Labels for each row of the matrix. (Optional)
-        :param bool yaxis_reversed: If False 0,0 is at the bottom left corner. If True 0,0 is at the Top left corner
+        :param bool yaxis_reversed: If False 0,0 is at the bottom left corner. If True, 0,0 is at the top left corner
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
             See full details on the supported configuration: https://plotly.com/javascript/reference/heatmap/
@@ -702,7 +702,7 @@ class Logger(object):
         :param str yaxis: The y-axis title. (Optional)
         :param list(str) xlabels: Labels for each column of the matrix. (Optional)
         :param list(str) ylabels: Labels for each row of the matrix. (Optional)
-        :param bool yaxis_reversed: If False 0,0 is at the bottom left corner. If True 0,0 is at the Top left corner
+        :param bool yaxis_reversed: If False, 0,0 is at the bottom left corner. If True, 0,0 is at the top left corner
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
             See full details on the supported configuration: https://plotly.com/javascript/reference/heatmap/
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
@@ -914,12 +914,12 @@ class Logger(object):
         :param str title: The title (metric) of the media.
         :param str series: The series name (variant) of the reported media.
         :param int iteration: The reported iteration / step.
-        :param str local_path: A path to an media file.
+        :param str local_path: A path to a media file.
         :param stream: BytesIO stream to upload. If provided, ``file_extension`` must also be provided.
         :param str url: A URL to the location of a pre-uploaded media.
         :param file_extension: A file extension to use when ``stream`` is passed.
-        :param int max_history: The maximum number of media files to store per metric/variant combination
-            use negative value for unlimited. default is set in global configuration (default=5)
+        :param int max_history: The maximum number of media files to store per metric/variant combination.
+            Use negative value for unlimited. Default is set in global configuration (default=5)
         :param bool delete_after_upload: After the file is uploaded, delete the local copy
 
             - ``True`` - Delete
@@ -984,7 +984,7 @@ class Logger(object):
         :param str title: The title (metric) of the plot.
         :param str series: The series name (variant) of the reported plot.
         :param int iteration: The reported iteration / step.
-        :param dict figure: A ``plotly`` Figure object or a ``poltly`` dictionary
+        :param dict figure: A ``plotly`` Figure object or a ``plotly`` dictionary
         """
         # if task was not started, we have to start it
         self._start_task_if_needed()
@@ -1023,11 +1023,11 @@ class Logger(object):
         :param str series: The series name (variant) of the reported plot.
         :param int iteration: The reported iteration / step.
         :param MatplotlibFigure figure: A ``matplotlib`` Figure object
-        :param report_image: Default False. If True the plot will be uploaded as a debug sample (png image),
+        :param report_image: Default False. If True, the plot will be uploaded as a debug sample (png image),
             and will appear under the debug samples tab (instead of the Plots tab).
-        :param report_interactive: If True (default) it will try to convert the matplotlib into interactive
-            plot in the UI. If False the matplotlib is saved as is and will
-            be non-interactive (with the exception of zooming in/out)
+        :param report_interactive: If True (default), it will try to convert the matplotlib into interactive
+            plot in the UI. If False, the matplotlib is saved as is and will
+            be non-interactive (except zooming in/out)
         """
         # if task was not started, we have to start it
         self._start_task_if_needed()
@@ -1239,11 +1239,11 @@ class Logger(object):
     def matplotlib_force_report_non_interactive(cls, force):
         # type: (bool) -> None
         """
-        If True all matplotlib are always converted to non interactive static plots (images), appearing in under
+        If True, all matplotlib are always converted to non interactive static plots (images), appearing in under
         the Plots section. If False (default), matplotlib figures are converted into interactive web UI plotly
         figures, in case figure conversion fails, it defaults to non-interactive plots.
 
-        :param force: If True all matplotlib figures are converted automatically to non-interactive plots.
+        :param force: If True, all matplotlib figures are converted automatically to non-interactive plots.
         """
         from clearml.backend_interface.metrics import Reporter
         Reporter.matplotlib_force_report_non_interactive(force=force)

@@ -157,7 +157,7 @@ class PipelineController(object):
         :param bool add_pipeline_tags: (default: False) if True, add `pipe: <pipeline_task_id>` tag to all
             steps (Tasks) created by this pipeline.
         :param str target_project: If provided, all pipeline steps are cloned into the target project.
-            If True pipeline steps are stored into the pipeline project
+            If True, pipeline steps are stored into the pipeline project
         :param bool auto_version_bump: If True (default), if the same pipeline version already exists
             (with any difference from the current one), the current pipeline version will be bumped to a new version
             version bump examples: 1.0.0 -> 1.0.1 , 1.2 -> 1.3, 10 -> 11 etc.
@@ -404,7 +404,7 @@ class PipelineController(object):
             use the base_task_project and base_task_name combination to retrieve the base_task_id to use for the step.
         :param base_task_name: If base_task_id is not given,
             use the base_task_project and base_task_name combination to retrieve the base_task_id to use for the step.
-        :param clone_base_task: If True (default) the pipeline will clone the base task, and modify/enqueue
+        :param clone_base_task: If True (default), the pipeline will clone the base task, and modify/enqueue
             the cloned Task. If False, the base-task is used directly, notice it has to be in draft-mode (created).
         :param continue_on_fail: (default False). If True, failed step will not cause the pipeline to stop
             (or marked as failed). Notice, that steps that are connected (or indirectly connected)
@@ -957,7 +957,7 @@ class PipelineController(object):
             - ``True`` - Delete the local copy of the artifact.
             - ``False`` - Do not delete. (default)
 
-        :param bool auto_pickle: If True (default) and the artifact_object is not one of the following types:
+        :param bool auto_pickle: If True (default), and the artifact_object is not one of the following types:
             pathlib2.Path, dict, pandas.DataFrame, numpy.ndarray, PIL.Image, url (string), local_file (string)
             the artifact_object will be pickled and uploaded as pickle file artifact (with file extension .pkl)
 
@@ -1090,7 +1090,7 @@ class PipelineController(object):
     def get_processed_nodes(self):
         # type: () -> Sequence[PipelineController.Node]
         """
-        Return the a list of the processed pipeline nodes, each entry in the list is PipelineController.Node object.
+        Return a list of the processed pipeline nodes, each entry in the list is PipelineController.Node object.
 
         :return: executed (excluding currently executing) nodes list
         """
@@ -1099,7 +1099,7 @@ class PipelineController(object):
     def get_running_nodes(self):
         # type: () -> Sequence[PipelineController.Node]
         """
-        Return the a list of the currently running pipeline nodes,
+        Return a list of the currently running pipeline nodes,
         each entry in the list is PipelineController.Node object.
 
         :return: Currently running nodes list
@@ -2595,7 +2595,7 @@ class PipelineController(object):
         """
         return the pipeline components target folder name/id
 
-        :param return_project_id: if False (default) return target folder name, if True return project id
+        :param return_project_id: if False (default), return target folder name. If True, return project id
         :return: project id/name (None if not valid)
         """
         if not self._target_project:

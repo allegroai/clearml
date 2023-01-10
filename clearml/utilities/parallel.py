@@ -215,7 +215,7 @@ class ParallelZipper(object):
                 Else, a fresh ParallelZipper.ZipperObject will be inserted
             :param zipper_results: Queue that holds ParallelZipper.ZipperObject instances. These instances
                 are added to this queue when chunk_size is exceeded
-            :param allow_zip_64: if True ZipFile will create files with ZIP64 extensions when
+            :param allow_zip_64: if True, ZipFile will create files with ZIP64 extensions when
                 needed, otherwise it will raise an exception when this would be necessary
             :param compression: ZipFile.ZIP_STORED (no compression), ZipFile.ZIP_DEFLATED (requires zlib),
                 ZipFile.ZIP_BZIP2 (requires bz2) or ZipFile.ZIP_LZMA (requires lzma).
@@ -352,7 +352,7 @@ class ParallelZipper(object):
         :param chunk_size: Chunk size, in MB. The ParallelZipper will try its best not to exceed this size,
             but that is not guaranteed
         :param max_workers: The maximum number of workers spawned when zipping the files
-        :param allow_zip_64: if True ZipFile will create files with ZIP64 extensions when
+        :param allow_zip_64: if True, ZipFile will create files with ZIP64 extensions when
             needed, otherwise it will raise an exception when this would be necessary
         :param compression: ZipFile.ZIP_STORED (no compression), ZipFile.ZIP_DEFLATED (requires zlib),
             ZipFile.ZIP_BZIP2 (requires bz2) or ZipFile.ZIP_LZMA (requires lzma).

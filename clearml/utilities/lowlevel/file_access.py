@@ -36,7 +36,7 @@ def get_filename_from_file_object(file_object, flush=False, analyze_file_handle=
     Return a string of the file location, extracted from any file object
     :param file_object: str, file, stream, FileIO etc.
     :param flush: If True, flush file object before returning (default: False)
-    :param analyze_file_handle: If True try to retrieve filename from file handler object (default: False)
+    :param analyze_file_handle: If True, try to retrieve filename from file handler object (default: False)
     :return: string full path of file location or None if filename cannot be extract
     """
     if isinstance(file_object, six.string_types):

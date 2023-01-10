@@ -149,7 +149,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param log_to_backend: If True, all calls to the task's log will be logged to the backend using the API.
             This value can be overridden using the environment variable TRAINS_LOG_TASK_TO_BACKEND.
         :type log_to_backend: bool
-        :param force_create: If True a new task will always be created (task_id, if provided, will be ignored)
+        :param force_create: If True, a new task will always be created (task_id, if provided, will be ignored)
         :type force_create: bool
         """
         SingletonLock.instantiate()
@@ -638,7 +638,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         Reset the task. Task will be reloaded following a successful reset.
 
-        :param set_started_on_success: If True automatically set Task status to started after resetting it.
+        :param set_started_on_success: If True, automatically set Task status to started after resetting it.
         :param force: If not true, call fails if the task status is 'completed'
         """
         self.send(tasks.ResetRequest(task=self.id, force=force))
@@ -678,8 +678,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         to Completed (Use this function to close and change status of remotely executed tasks).
         To simply change the Task's status to completed, use task.close()
 
-        :param bool ignore_errors: If True (default), ignore any errors raised
-        :param bool force: If True the task status will be changed to `stopped` regardless of the current Task state.
+        :param bool ignore_errors: If True default), ignore any errors raised
+        :param bool force: If True, the task status will be changed to `stopped` regardless of the current Task state.
         :param str status_message: Optional, add status change message to the stop request.
             This message will be stored as status_message on the Task's info panel
         """
@@ -737,8 +737,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param delete_artifacts_and_models: If True, artifacts and models would also be deleted (default True).
                                             If callback is provided, this argument is ignored.
         :param skip_models_used_by_other_tasks: If True, models used by other tasks would not be deleted (default True)
-        :param raise_on_error: If True an exception will be raised when encountering an error.
-                               If False an error would be printed and no exception will be raised.
+        :param raise_on_error: If True, an exception will be raised when encountering an error.
+                               If False, an error would be printed and no exception will be raised.
         :param callback: An optional callback accepting a uri type (string) and a uri (string) that will be called
                          for each artifact and model. If provided, the delete_artifacts_and_models is ignored.
                          Return True to indicate the artifact/model should be deleted or False otherwise.
@@ -917,7 +917,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         Update the Task's output model weights file. First, ClearML uploads the file to the preconfigured output
         destination (see the Task's ``output.destination`` property or call the ``setup_upload`` method),
-        then ClearML updates the model object associated with the Task an API call. The API call uses with the URI
+        then ClearML updates the model object associated with the Task. The API call uses the URI
         of the uploaded file, and other values provided by additional arguments.
 
         Notice: A local model file will be uploaded to the task's `output_uri` destination,
@@ -1060,7 +1060,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Notice the returned parameter dict is flat:
         i.e. {'Args/param': 'value'} is the argument "param" from section "Args"
 
-        :param backwards_compatibility: If True (default) parameters without section name
+        :param backwards_compatibility: If True (default), parameters without section name
             (API version < 2.9, clearml-server < 0.16) will be at dict root level.
             If False, parameters without section name, will be nested under "Args/" key.
         :param cast: If True, cast the parameter to the original type. Default False,
@@ -1514,7 +1514,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         :param list artifact_names: list of artifact names
         :param bool raise_on_errors: if True, do not suppress connectivity related exceptions
-        :param bool delete_from_storage: If True try to delete the actual
+        :param bool delete_from_storage: If True, try to delete the actual
         file from the external storage (e.g. S3, GS, Azure, File Server etc.)
 
         :return: True if successful
@@ -1528,7 +1528,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         :param list artifact_names: list of artifact names
         :param bool raise_on_errors: if True, do not suppress connectivity related exceptions
-        :param bool delete_from_storage: If True try to delete the actual
+        :param bool delete_from_storage: If True, try to delete the actual
         file from the external storage (e.g. S3, GS, Azure, File Server etc.)
 
         :return: True if successful
@@ -1809,7 +1809,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         Archive the Task or remove it from the archived folder.
 
-        :param archive: If True archive the Task, If False make sure it is removed from the archived folder
+        :param archive: If True, archive the Task. If False, make sure it is removed from the archived folder
         """
         with self._edit_lock:
             system_tags = list(set(self.get_system_tags()) | {self.archived_tag}) \
@@ -1821,7 +1821,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         Return the Archive state of the Task
 
-        :return: If True the Task is archived, otherwise it is not.
+        :return: If True, the Task is archived, otherwise it is not.
         """
         return self.archived_tag in self.get_system_tags()
 
@@ -2067,7 +2067,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def get_reported_single_values(self):
         # type: () -> Dict[str, float]
         """
-        Get all repoted single values as a dictionary, where the keys are the names of the values
+        Get all reported single values as a dictionary, where the keys are the names of the values
         and the values of the dictionary are the actual reported values.
 
         :return: A dict containing the reported values
@@ -2075,7 +2075,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not Session.check_min_api_version("2.20"):
             raise ValueError(
                 "Current 'clearml-server' does not support getting reported single values. "
-                "Please upgrade to the lastest version"
+                "Please upgrade to the latest version"
             )
         res = self.send(events.GetTaskSingleValueMetricsRequest(tasks=[self.id]))
         res = res.wait()

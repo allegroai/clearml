@@ -292,7 +292,7 @@ class BaseJob(object):
         """
         Return True, if job is waiting for execution
 
-        :return: True the task is currently is currently queued.
+        :return: True if the task is currently queued.
         """
         return self.status() in (Task.TaskStatusEnum.queued, Task.TaskStatusEnum.created)
 
@@ -484,7 +484,7 @@ class ClearmlJob(BaseJob):
         :param dict kwargs: additional Task creation parameters
         :param bool disable_clone_task: if False (default), clone base task id.
             If True, use the base_task_id directly (base-task must be in draft-mode / created),
-        :param bool allow_caching: If True, check if we have a previously executed Task with the same specification
+        :param bool allow_caching: If True, check if we have a previously executed Task with the same specification.
             If we do, use it and set internal is_cached flag. Default False (always create new Task).
         :param str target_project: Optional, Set the target project name to create the cloned Task in.
         """

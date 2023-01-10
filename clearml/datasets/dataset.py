@@ -542,7 +542,7 @@ class Dataset(object):
         """
         Synchronize the dataset with a local folder. The dataset is synchronized from the
         relative_base_folder (default: dataset root)  and deeper with the specified local path.
-        Note that if a remote file is identified in as being modified when syncing, it will
+        Note that if a remote file is identified as being modified when syncing, it will
         be added as a FileEntry, ready to be uploaded to the ClearML server. This version of the
         file is considered "newer" and it will be downloaded instead of the one stored at its
         remote address when calling Dataset.get_local_copy().
@@ -757,7 +757,7 @@ class Dataset(object):
     def finalize(self, verbose=False, raise_on_error=True, auto_upload=False):
         # type: (bool, bool, bool) -> bool
         """
-        Finalize the dataset publish dataset Task. upload must first called to verify there are not pending uploads.
+        Finalize the dataset publish dataset Task. Upload must first be called to verify that there are no pending uploads.
         If files do need to be uploaded, it throws an exception (or return False)
 
         :param verbose: If True, print verbose progress report
@@ -881,7 +881,7 @@ class Dataset(object):
             (i.e. sum over all chunks from the specified Dataset including all parent Datasets).
             This argument is passed to parent datasets, as well as the implicit `num_parts`,
             allowing users to get a partial copy of the entire dataset, for multi node/step processing.
-        :param num_parts: Optional, If specified normalize the number of chunks stored to the
+        :param num_parts: Optional, if specified, normalize the number of chunks stored to the
             requested number of parts. Notice that the actual chunks used per part are rounded down.
             Example: Assuming total 8 chunks for this dataset (including parent datasets),
             and `num_parts=5`, the chunk index used per parts would be:
@@ -926,7 +926,7 @@ class Dataset(object):
             (i.e. sum over all chunks from the specified Dataset including all parent Datasets).
             This argument is passed to parent datasets, as well as the implicit `num_parts`,
             allowing users to get a partial copy of the entire dataset, for multi node/step processing.
-        :param num_parts: Optional, If specified normalize the number of chunks stored to the
+        :param num_parts: Optional, if specified, normalize the number of chunks stored to the
             requested number of parts. Notice that the actual chunks used per part are rounded down.
             Example: Assuming total 8 chunks for this dataset (including parent datasets),
             and `num_parts=5`, the chunk index used per parts would be:
@@ -1354,7 +1354,7 @@ class Dataset(object):
         :param dataset_version: The version of the corresponding dataset. If set to `None` (default),
             then get the dataset with the latest version
         :param entire_dataset: If True, get all datasets that match the given `dataset_project`,
-            `dataset_name`, `dataset_version`. Note that `force` has to be True if this paramer is True
+            `dataset_name`, `dataset_version`. Note that `force` has to be True if this parameter is True
         :param action: Corresponding action, used for logging/building error texts
         :param shallow_search: If True, search only the first 500 results (first page)
 
@@ -1417,9 +1417,9 @@ class Dataset(object):
         :param dataset_name: The name of the dataset(s) to be deleted
         :param force: If True, deleted the dataset(s) even when being used. Also required to be set to
             True when `entire_dataset` is set.
-        :param dataset_version: The version of the dataset(s) to be deletedd
+        :param dataset_version: The version of the dataset(s) to be deleted
         :param entire_dataset: If True, delete all datasets that match the given `dataset_project`,
-            `dataset_name`, `dataset_version`. Note that `force` has to be True if this paramer is True
+            `dataset_name`, `dataset_version`. Note that `force` has to be True if this parameter is True
         :param shallow_search: If True, search only the first 500 results (first page)
         """
         if not any([dataset_id, dataset_project, dataset_name]):
@@ -1518,7 +1518,7 @@ class Dataset(object):
     ):
         # type: (...) -> ()
         """
-        Move the dataset to a another project.
+        Move the dataset to another project.
 
         :param new_dataset_project: New project to move the dataset(s) to
         :param dataset_project: Project of the dataset(s) to move to new project
@@ -1574,7 +1574,7 @@ class Dataset(object):
         # type: (...) -> "Dataset"
         """
         Get a specific Dataset. If multiple datasets are found, the dataset with the
-        highest semantic version is returned. If no semantic version if found, the most recently
+        highest semantic version is returned. If no semantic version is found, the most recently
         updated dataset is returned. This functions raises an Exception in case no dataset
         can be found and the ``auto_create=True`` flag is not set
 
@@ -1587,7 +1587,7 @@ class Dataset(object):
         :param include_archived: Include archived tasks and datasets also
         :param auto_create: Create a new dataset if it does not exist yet
         :param writable_copy: Get a newly created mutable dataset with the current one as its parent,
-            so new files can added to the instance.
+            so new files can be added to the instance.
         :param dataset_version: Requested version of the Dataset
         :param alias: Alias of the dataset. If set, the 'alias : dataset ID' key-value pair
             will be set under the hyperparameters section 'Datasets'
@@ -1831,7 +1831,7 @@ class Dataset(object):
         :param partial_name: Specify partial match to a dataset name
         :param tags: Specify user tags
         :param ids: List specific dataset based on IDs list
-        :param only_completed: If False return dataset that are still in progress (uploading/edited etc.)
+        :param only_completed: If False return datasets that are still in progress (uploading/edited etc.)
         :param recursive_project_search: If True and the `dataset_project` argument is set,
             search inside subprojects as well.
             If False, don't search inside subprojects (except for the special `.datasets` subproject)
@@ -2359,7 +2359,7 @@ class Dataset(object):
             Notice, if `num_parts` is not provided, number of parts will be equal to the number of chunks.
             This argument is passed to parent versions, as well as the implicit `num_parts`,
             allowing users to get a partial copy of the entire dataset, for multi node/step processing.
-        :param num_parts: Optional, If specified normalize the number of chunks stored to the
+        :param num_parts: Optional, if specified, normalize the number of chunks stored to the
             requested number of parts. Notice that the actual chunks used per part are rounded down.
             Example: Assuming 8 chunks on this version, and `num_parts=5`, the chunk index used per parts would be:
             part=0 -> chunks[0,5], part=1 -> chunks[1,6], part=2 -> chunks[2,7], part=3 -> chunks[3, ]

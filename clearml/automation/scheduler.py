@@ -534,7 +534,7 @@ class TaskScheduler(BaseScheduler):
         if not provided, a name is randomly generated.
 
         When timespec parameters are specified exclusively, they define the time between task launches (see
-        `year` and `weekdays` exceptions). When multiple timespec parameter are specified, the parameter representing
+        `year` and `weekdays` exceptions). When multiple timespec parameters are specified, the parameter representing
         the longest duration defines the time between task launches, and the shorter timespec parameters define specific
         times.
 

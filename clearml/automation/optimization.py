@@ -1339,7 +1339,7 @@ class HyperParameterOptimizer(object):
         Stop the HyperParameterOptimizer controller and the optimization thread.
 
         :param float timeout: Wait timeout for the optimization thread to exit (minutes).
-            The default is ``None``, indicating do not wait terminate immediately.
+            The default is ``None``, indicating do not wait to terminate immediately.
         :param wait_for_reporter: Wait for reporter to flush data.
         """
         if not self._thread or not self._stop_event or not self.optimizer:

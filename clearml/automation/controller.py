@@ -986,7 +986,7 @@ class PipelineController(object):
         unless one of the steps failed, then mark the pipeline as failed.
 
         :param timeout: Wait timeout for the optimization thread to exit (minutes).
-            The default is ``None``, indicating do not wait terminate immediately.
+            The default is ``None``, indicating do not wait to terminate immediately.
         :param mark_failed: If True, mark the pipeline task as failed. (default False)
         :param mark_aborted: If True, mark the pipeline task as aborted. (default False)
         """

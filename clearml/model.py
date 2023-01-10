@@ -767,8 +767,8 @@ class Model(BaseModel):
 
 class InputModel(Model):
     """
-    Load an existing model in the system, search by model id.
-    The Model will be read-only and can be used to pre initialize a network
+    Load an existing model in the system, search by model ID.
+    The Model will be read-only and can be used to pre initialize a network.
     We can connect the model to a task as input model, then when running remotely override it with the UI.
     """
 
@@ -792,7 +792,7 @@ class InputModel(Model):
     ):
         # type: (...) -> InputModel
         """
-        Create an InputModel object from a pre-trained model by specifying the URL of an initial weight files.
+        Create an InputModel object from a pre-trained model by specifying the URL of an initial weight file.
         Optionally, input a configuration, label enumeration, name for the model, tags describing the model,
         comment as a description of the model, indicate whether the model is a package, specify the model's
         framework, and indicate whether to immediately set the model's status to ``Published``.
@@ -1391,7 +1391,7 @@ class OutputModel(BaseModel):
         Set the URI of the storage destination for uploaded model weight files.
         Supported storage destinations include S3, Google Cloud Storage), and file locations.
 
-        Using this method, files uploads are separate and then a link to each is stored in the model object.
+        Using this method, file uploads are separate and then a link to each is stored in the model object.
 
         .. note::
            For storage requiring credentials, the credentials are stored in the ClearML configuration file,

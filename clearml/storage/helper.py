@@ -1237,6 +1237,7 @@ class StorageHelper(object):
                 pass
 
     def exists_file(self, remote_url):
+        remote_url = self._canonize_url(remote_url)
         object_name = self._normalize_object_name(remote_url)
         return self._driver.exists_file(
             container_name=self._container.name if self._container else "", object_name=object_name

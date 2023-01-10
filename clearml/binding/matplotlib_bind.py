@@ -53,7 +53,7 @@ class PatchedMatplotlib:
     def force_report_as_image(force):
         # type: (bool) -> None
         """
-        Set force_report_as_image. If True all matplotlib are always converted to images
+        Set force_report_as_image. If True, all matplotlib are always converted to images.
         Otherwise we try to convert them into interactive plotly plots.
         :param force: True force
         """

@@ -599,7 +599,7 @@ class _Arguments(object):
         # type: (bool) -> Union[Type, Tuple[str]]
         """
         Return the basic types supported by Argument casting
-        :param as_str: if True return string cast of the types
+        :param as_str: if True, return string cast of the types
         :return: List of type objects supported for auto casting (serializing to string)
         """
         supported_types = (int, float, bool, str, list, tuple, Enum)

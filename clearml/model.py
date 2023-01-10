@@ -334,7 +334,7 @@ class BaseModel(object):
         """
         Download the base model and return the locally stored filename.
 
-        :param bool raise_on_error: If True and the artifact could not be downloaded,
+        :param bool raise_on_error: If True, and the artifact could not be downloaded,
             raise ValueError, otherwise return None on failure and output log warning.
 
         :return: The locally stored file.
@@ -353,7 +353,7 @@ class BaseModel(object):
             - ``True`` - Download the model weights into a temporary directory, and return the temporary directory path.
             - ``False`` - Return a list of the locally stored filenames. (Default)
 
-        :param bool raise_on_error: If True and the artifact could not be downloaded,
+        :param bool raise_on_error: If True, and the artifact could not be downloaded,
             raise ValueError, otherwise return None on failure and output log warning.
 
         :return: The model weights, or a list of the locally stored filenames.
@@ -584,12 +584,12 @@ class Model(BaseModel):
         """
         Retrieve a valid link to the model file(s).
         If the model URL is a file system link, it will be returned directly.
-        If the model URL is points to a remote location (http/s3/gs etc.),
+        If the model URL points to a remote location (http/s3/gs etc.),
         it will download the file(s) and return the temporary location of the downloaded model.
 
-        :param bool extract_archive: If True and the model is of type 'packaged' (e.g. TensorFlow compressed folder)
+        :param bool extract_archive: If True, and the model is of type 'packaged' (e.g. TensorFlow compressed folder)
             The returned path will be a temporary folder containing the archive content
-        :param bool raise_on_error: If True and the artifact could not be downloaded,
+        :param bool raise_on_error: If True, and the artifact could not be downloaded,
             raise ValueError, otherwise return None on failure and output log warning.
 
         :return: A local path to the model (or a downloaded copy of it).
@@ -636,8 +636,8 @@ class Model(BaseModel):
         :param model_name: Optional Model name as shown in the model artifactory
         :param tags: Optional filter models based on list of tags, example: ['production', 'verified', '-qa']
             Notice use '-' prefix to filter out tags.
-        :param only_published: If True only return published models.
-        :param include_archived: If True return archived models.
+        :param only_published: If True, only return published models.
+        :param include_archived: If True, return archived models.
         :param max_results: Optional return the last X models,
             sorted by last update time (from the most recent to the least).
         :param metadata: Filter based on metadata. This parameter is a dictionary. Notice that the type of the
@@ -707,7 +707,7 @@ class Model(BaseModel):
         Optional, delete the model weights file from the remote storage.
 
         :param model: Model ID or Model object to remove
-        :param delete_weights_file: If True (default) delete the weights file from the remote storage
+        :param delete_weights_file: If True (default), delete the weights file from the remote storage
         :param force: If True, remove model even if other Tasks are using this model. default False.
         :param raise_on_errors: If True, throw ValueError if something went wrong, default False.
         :return: True if Model was removed successfully
@@ -767,8 +767,8 @@ class Model(BaseModel):
 
 class InputModel(Model):
     """
-    Load an existing model in the system, search by model id.
-    The Model will be read-only and can be used to pre initialize a network
+    Load an existing model in the system, search by model ID.
+    The Model will be read-only and can be used to pre initialize a network.
     We can connect the model to a task as input model, then when running remotely override it with the UI.
     """
 
@@ -792,7 +792,7 @@ class InputModel(Model):
     ):
         # type: (...) -> InputModel
         """
-        Create an InputModel object from a pre-trained model by specifying the URL of an initial weight files.
+        Create an InputModel object from a pre-trained model by specifying the URL of an initial weight file.
         Optionally, input a configuration, label enumeration, name for the model, tags describing the model,
         comment as a description of the model, indicate whether the model is a package, specify the model's
         framework, and indicate whether to immediately set the model's status to ``Published``.
@@ -1056,7 +1056,7 @@ class InputModel(Model):
         :param name: Model name to search and load
         :param project: Model project name to search model in
         :param tags: Model tags list to filter by
-        :param only_published: If True filter out non-published (draft) models
+        :param only_published: If True, filter out non-published (draft) models
         """
         if not model_id:
             found_models = self.query_models(
@@ -1391,7 +1391,7 @@ class OutputModel(BaseModel):
         Set the URI of the storage destination for uploaded model weight files.
         Supported storage destinations include S3, Google Cloud Storage), and file locations.
 
-        Using this method, files uploads are separate and then a link to each is stored in the model object.
+        Using this method, file uploads are separate and then a link to each is stored in the model object.
 
         .. note::
            For storage requiring credentials, the credentials are stored in the ClearML configuration file,

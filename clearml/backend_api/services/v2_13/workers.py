@@ -1829,7 +1829,7 @@ class GetStatsRequest(Request):
     :type interval: int
     :param items: List of metric keys and requested statistics
     :type items: Sequence[StatItem]
-    :param split_by_variant: If true then break statistics by hardware sub types
+    :param split_by_variant: If True, then break statistics by hardware sub types
     :type split_by_variant: bool
     """
 

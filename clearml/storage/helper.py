@@ -273,7 +273,7 @@ class StorageHelper(object):
         Download a file from remote URL to a local storage, and return path to local copy,
 
         :param remote_url: Remote URL. Example: https://example.com/file.jpg s3://bucket/folder/file.mp4 etc.
-        :param skip_zero_size_check: If True no error will be raised for files with zero bytes size.
+        :param skip_zero_size_check: If True, no error will be raised for files with zero bytes size.
         :return: Path to local copy of the downloaded file. None if error occurred.
         """
         helper = cls.get(remote_url)
@@ -641,7 +641,7 @@ class StorageHelper(object):
     def get_object_metadata(self, obj):
         # type: (object) -> dict
         """
-        Get the metadata of the a remote object.
+        Get the metadata of the remote object.
         The metadata is a dict containing the following keys: `name`, `size`.
 
         :param object obj: The remote object
@@ -1008,8 +1008,8 @@ class StorageHelper(object):
 
         :param remote_url: Remote URL. Example: https://example.com/image.jpg or s3://bucket/folder/file.mp4 etc.
         :param local_path: target location for downloaded file. Example: /tmp/image.jpg
-        :param overwrite_existing: If True and local_path exists, it will overwrite it, otherwise print warning
-        :param skip_zero_size_check: If True no error will be raised for files with zero bytes size.
+        :param overwrite_existing: If True, and local_path exists, it will overwrite it, otherwise print warning
+        :param skip_zero_size_check: If True, no error will be raised for files with zero bytes size.
         :return: local_path if download was successful.
         """
         helper = cls.get(remote_url)

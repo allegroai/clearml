@@ -339,7 +339,7 @@ class Task(_Task):
                 You can specify a Task ID to be used with `reuse_last_task_id='task_id_here'`
 
         :param str output_uri: The default location for output models and other artifacts.
-            If True is passed, the default files_server will be used for model storage.
+            If True, the default files_server will be used for model storage.
             In the default location, ClearML creates a subfolder for the output.
             The subfolder structure is the following:
             <output destination name> / <project name> / <task name>.<Task ID>
@@ -360,7 +360,7 @@ class Task(_Task):
                Reference" section.
 
         :param auto_connect_arg_parser: Automatically connect an argparse object to the Task. Supported argument
-            parsers packages are: argparse, click, python-fire, jsonargparse.
+            parser packages are: argparse, click, python-fire, jsonargparse.
 
             The values are:
 
@@ -932,7 +932,7 @@ class Task(_Task):
         :param list tags: Filter based on the requested list of tags (strings) (Task must have at least one of the
             listed tags). To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
         :param bool allow_archived: Only applicable if *not* using specific ``task_id``,
-            If True (default) allow to return archived Tasks, if False filter out archived Tasks
+            If True (default), allow to return archived Tasks, if False filter out archived Tasks
         :param bool task_filter: Only applicable if *not* using specific ``task_id``,
             Pass additional query filters, on top of project/name. See details in Task.get_tasks.
 
@@ -984,7 +984,7 @@ class Task(_Task):
             If None is passed, returns all tasks within the project
         :param list tags: Filter based on the requested list of tags (strings) (Task must have all the listed tags)
             To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
-        :param bool allow_archived: If True (default) allow to return archived Tasks, if False filter out archived Tasks
+        :param bool allow_archived: If True (default), allow to return archived Tasks, if False filter out archived Tasks
         :param dict task_filter: filter and order Tasks. See service.tasks.GetAllRequest for details
             `parent`: (str) filter by parent task-id matching
             `search_text`: (str) free text search (in task fields comment/name/id)
@@ -1159,8 +1159,8 @@ class Task(_Task):
         Read-only dictionary of the Task's loaded/stored models.
 
         :return: A dictionary-like object with "input"/"output" keys and input/output properties, pointing to a
-            list-like object containing of Model objects. Each list-like object also acts as a dictionary, mapping
-            model name to a appropriate model instance.
+            list-like object containing Model objects. Each list-like object also acts as a dictionary, mapping
+            model name to an appropriate model instance.
 
             Get input/output models:
 
@@ -1371,7 +1371,7 @@ class Task(_Task):
           - ``status_message`` - Information about the status.
           - ``status_changed`` - The last status change date and time in ISO 8601 format.
           - ``last_update`` - The last time the Task was created, updated,
-                changed or events for this task were reported.
+                changed, or events for this task were reported.
           - ``execution.queue`` - The Id of the queue where the Task is enqueued. ``null`` indicates not enqueued.
 
         - ``updated`` - The number of Tasks updated (an integer or ``null``).
@@ -1693,7 +1693,7 @@ class Task(_Task):
         """
         Manually mark a Task as started (happens automatically)
 
-        :param bool force: If True the task status will be changed to `started` regardless of the current Task state.
+        :param bool force: If True, the task status will be changed to `started` regardless of the current Task state.
         """
         # UI won't let us see metrics if we're not started
         self.started(force=force)
@@ -1704,7 +1704,7 @@ class Task(_Task):
         """
         Manually mark a Task as stopped (also used in :meth:`_at_exit`)
 
-        :param bool force: If True the task status will be changed to `stopped` regardless of the current Task state.
+        :param bool force: If True, the task status will be changed to `stopped` regardless of the current Task state.
         :param str status_message: Optional, add status change message to the stop request.
             This message will be stored as status_message on the Task's info panel
         """
@@ -1825,7 +1825,7 @@ class Task(_Task):
         :param delete_artifacts_and_models: If True, artifacts and models would also be deleted (default True).
                                             If callback is provided, this argument is ignored.
         :param skip_models_used_by_other_tasks: If True, models used by other tasks would not be deleted (default True)
-        :param raise_on_error: If True an exception will be raised when encountering an error.
+        :param raise_on_error: If True, an exception will be raised when encountering an error.
                                If False an error would be printed and no exception will be raised.
         :param callback: An optional callback accepting a uri type (string) and a uri (string) that will be called
                          for each artifact and model. If provided, the delete_artifacts_and_models is ignored.
@@ -1943,7 +1943,7 @@ class Task(_Task):
             - ``False`` - Do not delete. (default)
 
         :param bool auto_pickle: If True (default) and the artifact_object is not one of the following types:
-            pathlib2.Path, dict, pandas.DataFrame, numpy.ndarray, PIL.Image, url (string), local_file (string)
+            pathlib2.Path, dict, pandas.DataFrame, numpy.ndarray, PIL.Image, url (string), local_file (string),
             the artifact_object will be pickled and uploaded as pickle file artifact (with file extension .pkl)
 
         :param Any preview: The artifact preview
@@ -1962,7 +1962,7 @@ class Task(_Task):
         - In case the ``serialization_function`` argument is set - any extension is supported
 
         :param Callable[Any, Union[bytes, bytearray]] serialization_function: A serialization function that takes one
-            parameter of any types which is the object to be serialized. The function should return
+            parameter of any type which is the object to be serialized. The function should return
             a `bytes` or `bytearray` object, which represents the serialized object. Note that the object will be
             immediately serialized using this function, thus other serialization methods will not be used
             (e.g. `pandas.DataFrame.to_csv`), even if possible. To deserialize this artifact when getting
@@ -2008,12 +2008,12 @@ class Task(_Task):
         """
         Return a dictionary with {'input': [], 'output': []} loaded/stored models of the current Task
         Input models are files loaded in the task, either manually or automatically logged
-        Output models are files stored in the task, either manually or automatically logged
+        Output models are files stored in the task, either manually or automatically logged.
         Automatically logged frameworks are for example: TensorFlow, Keras, PyTorch, ScikitLearn(joblib) etc.
 
         :return: A dictionary-like object with "input"/"output" keys and input/output properties, pointing to a
-            list-like object containing of Model objects. Each list-like object also acts as a dictionary, mapping
-            model name to a appropriate model instance.
+            list-like object containing Model objects. Each list-like object also acts as a dictionary, mapping
+            model name to an appropriate model instance.
 
             Example:
 
@@ -2931,7 +2931,7 @@ class Task(_Task):
         :param str files_host: The file server url. For example, ``host='http://localhost:8081'``
         :param str key: The user key (in the key/secret pair). For example, ``key='thisisakey123'``
         :param str secret: The user secret (in the key/secret pair). For example, ``secret='thisisseceret123'``
-        :param bool store_conf_file: If True store the current configuration into the ~/clearml.conf file.
+        :param bool store_conf_file: If True, store the current configuration into the ~/clearml.conf file.
             If the configuration file exists, no change will be made (outputs a warning).
             Not applicable when running remotely (i.e. clearml-agent).
         """
@@ -2984,7 +2984,7 @@ class Task(_Task):
 
         :param task_id: Task ID to simulate, notice that all configuration will be taken from the specified
             Task, regardless of the code initial values, just like it as if executed by ClearML agent
-        :param reset_task: If True target Task, is automatically cleared / reset.
+        :param reset_task: If True, target Task, is automatically cleared / reset.
         """
 
         # if we are already running remotely, do nothing

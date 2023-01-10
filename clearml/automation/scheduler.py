@@ -534,7 +534,7 @@ class TaskScheduler(BaseScheduler):
         if not provided, a name is randomly generated.
 
         When timespec parameters are specified exclusively, they define the time between task launches (see
-        `year` and `weekdays` exceptions). When multiple timespec parameter are specified, the parameter representing
+        `year` and `weekdays` exceptions). When multiple timespec parameters are specified, the parameter representing
         the longest duration defines the time between task launches, and the shorter timespec parameters define specific
         times.
 
@@ -579,7 +579,7 @@ class TaskScheduler(BaseScheduler):
         :param limit_execution_time: Limit the execution time (in hours) of the specific job.
         :param single_instance: If True, do not launch the Task job if the previous instance is still running
         (skip until the next scheduled time period). Default False.
-        :param recurring: If False only launch the Task once (default: True, repeat)
+        :param recurring: If False, only launch the Task once (default: True, repeat)
         :param execute_immediately: If True, schedule the Task to be executed immediately
         then recurring based on the timing schedule arguments. Default False.
         :param reuse_task: If True, re-enqueue the same Task (i.e. do not clone it) every time, default False.

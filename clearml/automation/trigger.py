@@ -426,7 +426,7 @@ class TriggerScheduler(BaseScheduler):
         :param trigger_required_tags: Trigger only on tasks with the following additional tags (must include all tags)
         :param trigger_on_status: Trigger on Task status change.
             expect list of status strings, e.g. ['failed', 'published']
-        :param trigger_exclude_dev_tasks: If True only trigger on Tasks executed by clearml-agent (and not manually)
+        :param trigger_exclude_dev_tasks: If True, only trigger on Tasks executed by clearml-agent (and not manually)
         :param trigger_on_metric: Trigger on metric/variant above/under threshold (metric=title, variant=series)
         :param trigger_on_variant: Trigger on metric/variant above/under threshold (metric=title, variant=series)
         :param trigger_on_threshold: Trigger on metric/variant above/under threshold (float number)

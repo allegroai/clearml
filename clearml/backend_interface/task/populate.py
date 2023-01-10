@@ -84,8 +84,8 @@ class CreateAndPopulate(object):
         :param base_task_id: Use a pre-existing task in the system, instead of a local repo/script.
             Essentially clones an existing task and overrides arguments/requirements.
         :param add_task_init_call: If True, a 'Task.init()' call is added to the script entry point in remote execution.
-        :param raise_on_missing_entries: If True raise ValueError on missing entries when populating
-        :param verbose: If True print verbose logging
+        :param raise_on_missing_entries: If True, raise ValueError on missing entries when populating
+        :param verbose: If True, print verbose logging
         """
         if repo and len(urlparse(repo).scheme) <= 1 and not re.compile(self._VCS_SSH_REGEX).match(repo):
             folder = repo
@@ -133,7 +133,7 @@ class CreateAndPopulate(object):
         """
         Create the new populated Task
 
-        :param dry_run: Optional, If True do not create an actual Task, instead return the Task definition as dict
+        :param dry_run: Optional, If True, do not create an actual Task, instead return the Task definition as dict
         :return: newly created Task object
         """
         local_entry_file = None
@@ -603,7 +603,7 @@ if __name__ == '__main__':
             examples: 's3://bucket/folder', 'https://server/' , 'gs://bucket/folder', 'azure://bucket', '/folder/'
         :param helper_functions: Optional, a list of helper functions to make available
             for the standalone function Task.
-        :param dry_run: If True do not create the Task, but return a dict of the Task's definitions
+        :param dry_run: If True, do not create the Task, but return a dict of the Task's definitions
         :param _sanitize_function: Sanitization function for the function string.
         :param _sanitize_helper_functions: Sanitization function for the helper function string.
         :return: Newly created Task object

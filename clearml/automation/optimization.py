@@ -607,7 +607,7 @@ class SearchStrategy(object):
         :param int top_k: The number of Tasks (experiments) to return.
         :param all_metrics: Default False, only return the objective metric on the metrics dictionary.
             If True, return all scalar metrics of the experiment
-        :param all_hyper_parameters: Default False. If True return all the hyper-parameters from all the sections.
+        :param all_hyper_parameters: Default False. If True, return all the hyper-parameters from all the sections.
         :param only_completed: return only completed Tasks. Default False.
 
         :return: A list of dictionaries ({task_id: '', hyper_parameters: {}, metrics: {}}), ordered by performance,
@@ -1339,7 +1339,7 @@ class HyperParameterOptimizer(object):
         Stop the HyperParameterOptimizer controller and the optimization thread.
 
         :param float timeout: Wait timeout for the optimization thread to exit (minutes).
-            The default is ``None``, indicating do not wait terminate immediately.
+            The default is ``None``, indicating do not wait to terminate immediately.
         :param wait_for_reporter: Wait for reporter to flush data.
         """
         if not self._thread or not self._stop_event or not self.optimizer:
@@ -1513,7 +1513,7 @@ class HyperParameterOptimizer(object):
         :param int top_k: The number of Tasks (experiments) to return.
         :param all_metrics: Default False, only return the objective metric on the metrics dictionary.
             If True, return all scalar metrics of the experiment
-        :param all_hyper_parameters: Default False. If True return all the hyper-parameters from all the sections.
+        :param all_hyper_parameters: Default False. If True, return all the hyper-parameters from all the sections.
         :param only_completed: return only completed Tasks. Default False.
 
         :return: A list of dictionaries ({task_id: '', hyper_parameters: {}, metrics: {}}), ordered by performance,

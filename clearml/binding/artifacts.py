@@ -219,8 +219,8 @@ class Artifact(object):
     def get_local_copy(self, extract_archive=True, raise_on_error=False, force_download=False):
         # type: (bool, bool, bool) -> str
         """
-        :param bool extract_archive: If True and artifact is of type 'archive' (compressed folder)
-            The returned path will be a temporary folder containing the archive content
+        :param bool extract_archive: If True and artifact is of type 'archive' (compressed folder),
+            the returned path will be a temporary folder containing the archive content
         :param bool raise_on_error: If True and the artifact could not be downloaded,
             raise ValueError, otherwise return None on failure and output log warning.
         :param bool force_download: download file from remote even if exists in local cache

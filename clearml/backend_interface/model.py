@@ -457,7 +457,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         :param child: Should the new model be a child of this model (default True)
         :param tags:  Optional tags for the cloned model
         :param task: Creating Task of the Model
-        :param ready:  If True set the true flag for the newly created model
+        :param ready:  If True, set the true flag for the newly created model
         :return: The new model's ID
         """
         data = self.data

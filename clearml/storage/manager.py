@@ -481,8 +481,9 @@ class StorageManager(object):
         if not obj:
             return None
         metadata = helper.get_object_metadata(obj)
-        if return_full_path and not metadata["name"].startswith(helper.base_url):
-            metadata["name"] = helper.base_url + ("/" if not helper.base_url.endswith("/") else "") + metadata["name"]
+        base_url = helper._resolve_base_url(remote_url)
+        if return_full_path and not metadata["name"].startswith(base_url):
+            metadata["name"] = base_url + ("/" if not base_url.endswith("/") else "") + metadata["name"]
         return metadata
 
     @classmethod

@@ -619,7 +619,7 @@ class StorageHelper(object):
             if isinstance(self._driver, _HttpDriver) and obj:
                 obj = self._driver._get_download_object(obj)  # noqa
                 size = int(obj.headers.get("Content-Length", 0))
-            elif isinstance(self._driver, _Boto3Driver) and obj:
+            elif isinstance(self._driver, _Boto3Driver) and obj and hasattr(obj, "content_length"):
                 # noinspection PyBroadException
                 try:
                     # To catch botocore exceptions
@@ -781,6 +781,7 @@ class StorageHelper(object):
             Listed relative to the base path.
         """
         if prefix:
+            prefix = self._canonize_url(dest_path)
             if prefix.startswith(self._base_url):
                 prefix = prefix[len(self._base_url):]
                 if self._base_url != "file://":

@@ -781,7 +781,7 @@ class StorageHelper(object):
             Listed relative to the base path.
         """
         if prefix:
-            prefix = self._canonize_url(dest_path)
+            prefix = self._canonize_url(prefix)
             if prefix.startswith(self._base_url):
                 prefix = prefix[len(self._base_url):]
                 if self._base_url != "file://":

@@ -449,7 +449,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def project(self):
         # type: () -> str
         """
-        Returns the current Task's project name.
+        Returns the current Task's project ID.
         """
         return self.data.project
 

@@ -255,7 +255,7 @@ class CreateAndPopulate(object):
             for line in reqs:
                 if line.strip().startswith('#'):
                     continue
-                package = reduce(lambda a, b: a.split(b)[0], "#;@=~<>", line).strip()
+                package = reduce(lambda a, b: a.split(b)[0], "#;@=~<>[", line).strip()
                 if package == 'clearml':
                     clearml_found = True
                     break

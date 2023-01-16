@@ -16,14 +16,17 @@
 ### ClearML
 <sup>*Formerly known as Allegro Trains*<sup>
 
-ClearML is a ML/DL development and production suite, it contains FOUR main modules:
+ClearML is a ML/DL development and production suite, it contains FIVE main modules:
 
 - [Experiment Manager](#clearml-experiment-manager) - Automagical experiment tracking, environments and results
 - [MLOps](https://github.com/allegroai/clearml-agent) - Orchestration, Automation & Pipelines solution for ML/DL jobs (K8s / Cloud / bare-metal)  
 - [Data-Management](https://github.com/allegroai/clearml/blob/master/docs/datasets.md) - Fully differentiable data management & version control solution on top of object-storage 
   (S3 / GS / Azure / NAS)  
--  **NEW**  :fire: [Model-Serving](https://github.com/allegroai/clearml-serving) :tada: - *cloud-ready* Scalable model serving solution! <br>:sparkles: **Deploy new model endpoints in under 5 minutes** :sparkles: <br> :muscle: includes optimized GPU serving support backed by Nvidia-Triton :mechanical_arm: <br> :bar_chart: **with out-of-the-box  Model Monitoring** :scream:
-
+- [Model-Serving](https://github.com/allegroai/clearml-serving) - *cloud-ready* Scalable model serving solution! 
+  - **Deploy new model endpoints in under 5 minutes** 
+  - Includes optimized GPU serving support backed by Nvidia-Triton 
+  - **with out-of-the-box  Model Monitoring** 
+- **NEW** :fire: [Reports](https://clear.ml/docs/latest/docs/webapp/webapp_reports) - Create and share rich MarkDown documents supporting embeddable online content 
   
 
 Instrumenting these components is the **ClearML-server**, see [Self-Hosting](https://clear.ml/docs/latest/docs/deploying_clearml/clearml_server) & [Free tier Hosting](https://app.clear.ml)  

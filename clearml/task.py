@@ -2477,10 +2477,6 @@ class Task(_Task):
             - ``True`` - Exit the process (exit(0)).
             - ``False`` - Do not exit the process.
 
-            .. warning::
-
-                If ``clone==False``, then ``exit_process`` must be ``True``.
-
         :return Task: return the task object of the newly generated remotely executing task
         """
         # do nothing, we are running remotely
@@ -2497,11 +2493,6 @@ class Task(_Task):
             enqueue_task = Task.clone(source_task=self) if clone else self
             Task.enqueue(task=enqueue_task, queue_name=queue_name)
             return
-
-        if not clone and not exit_process:
-            raise ValueError(
-                "clone==False and exit_process==False is not supported. "
-                "Task enqueuing itself must exit the process afterwards.")
 
         # make sure we analyze the process
         if self.status in (Task.TaskStatusEnum.in_progress,):

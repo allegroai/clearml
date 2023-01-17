@@ -326,10 +326,10 @@ class Task(_Task):
 
             The values are:
 
-            * ``True`` - Continue the last Task ID. Specified explicitly by reuse_last_task_id or implicitly with the same logic as reuse_last_task_id
-            * ``False`` - Overwrite the execution of previous Task  (default).
-            * A string - You can also specify a Task ID (string) to be continued. This is equivalent to `continue_last_task=True` and `reuse_last_task_id=a_task_id_string`.
-            * An integer - Specify initial iteration offset (override the auto automatic last_iteration_offset). Pass 0, to disable the automatic last_iteration_offset or specify a different initial offset. You can specify a Task ID to be used with `reuse_last_task_id='task_id_here'`
+            - ``True`` - Continue the last Task ID. Specified explicitly by reuse_last_task_id or implicitly with the same logic as reuse_last_task_id
+            - ``False`` - Overwrite the execution of previous Task  (default).
+            - A string - You can also specify a Task ID (string) to be continued. This is equivalent to `continue_last_task=True` and `reuse_last_task_id=a_task_id_string`.
+            - An integer - Specify initial iteration offset (override the auto automatic last_iteration_offset). Pass 0, to disable the automatic last_iteration_offset or specify a different initial offset. You can specify a Task ID to be used with `reuse_last_task_id='task_id_here'`
 
         :param str output_uri: The default location for output models and other artifacts.
             If True, the default files_server will be used for model storage.

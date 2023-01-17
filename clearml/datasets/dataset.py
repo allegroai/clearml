@@ -967,7 +967,7 @@ class Dataset(object):
         :param dataset_path: Only match files matching the dataset_path (including wildcards).
             Example: 'folder/sub/*.json'
         :param recursive: If True (default), matching dataset_path recursively
-        :param dataset_id: Filter list based on the dataset id containing the latest version of the file.
+        :param dataset_id: Filter list based on the dataset ID containing the latest version of the file.
             Default: None, do not filter files based on parent dataset.
 
         :return: List of files with relative path
@@ -1012,7 +1012,7 @@ class Dataset(object):
         """
         return a list of files removed when comparing to a specific dataset_id
 
-        :param dataset_id: dataset id (str) to compare against, if None is given compare against the parents datasets
+        :param dataset_id: dataset ID (str) to compare against, if None is given compare against the parents datasets
         :return: List of files with relative path
             (files might not be available locally until get_local_copy() is called)
         """
@@ -1033,7 +1033,7 @@ class Dataset(object):
         """
         return a list of files modified when comparing to a specific dataset_id
 
-        :param dataset_id: dataset id (str) to compare against, if None is given compare against the parents datasets
+        :param dataset_id: dataset ID (str) to compare against, if None is given compare against the parents datasets
         :return: List of files with relative path
             (files might not be available locally until get_local_copy() is called)
         """
@@ -1066,7 +1066,7 @@ class Dataset(object):
         """
         return a list of files added when comparing to a specific dataset_id
 
-        :param dataset_id: dataset id (str) to compare against, if None is given compare against the parents datasets
+        :param dataset_id: dataset ID (str) to compare against, if None is given compare against the parents datasets
         :return: List of files with relative path
             (files might not be available locally until get_local_copy() is called)
         """
@@ -1773,7 +1773,7 @@ class Dataset(object):
         If a set of versions are given it will squash the versions diff into a single version
 
         :param dataset_name: Target name for the newly generated squashed dataset
-        :param dataset_ids: List of dataset Ids (or objects) to squash. Notice order does matter.
+        :param dataset_ids: List of dataset IDs (or objects) to squash. Notice order does matter.
             The versions are merged from first to last.
         :param dataset_project_name_pairs: List of pairs (project_name, dataset_name) to squash.
             Notice order does matter. The versions are merged from first to last.
@@ -1831,7 +1831,7 @@ class Dataset(object):
         :param partial_name: Specify partial match to a dataset name
         :param tags: Specify user tags
         :param ids: List specific dataset based on IDs list
-        :param only_completed: If False return datasets that are still in progress (uploading/edited etc.)
+        :param only_completed: If False, return datasets that are still in progress (uploading/edited etc.)
         :param recursive_project_search: If True and the `dataset_project` argument is set,
             search inside subprojects as well.
             If False, don't search inside subprojects (except for the special `.datasets` subproject)

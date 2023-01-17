@@ -208,7 +208,7 @@ class BaseJob(object):
     def worker(self):
         # type: () -> Optional[str]
         """
-        Return the current worker id executing this Job. If job is pending, returns None
+        Return the current worker ID executing this Job. If job is pending, returns None
 
         :return: ID of the worker executing / executed the job, or None if job is still pending.
         """
@@ -469,7 +469,7 @@ class ClearmlJob(BaseJob):
         """
         Create a new Task based on a base_task_id with a different set of parameters
 
-        :param str base_task_id: base task id to clone from
+        :param str base_task_id: base task ID to clone from
         :param dict parameter_override: dictionary of parameters and values to set fo the cloned task
         :param dict task_overrides:  Task object specific overrides.
             for example {'script.version_num': None, 'script.branch': 'main'}

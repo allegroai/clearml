@@ -630,6 +630,7 @@ class Dataset(object):
         # set output_url
         if output_url:
             self._task.output_uri = output_url
+            self._task.get_logger().set_default_upload_destination(output_url)
 
         if not max_workers:
             max_workers = 1 if self._task.output_uri.startswith(tuple(cloud_driver_schemes)) else psutil.cpu_count()
@@ -1252,6 +1253,8 @@ class Dataset(object):
         if output_uri and not Task._offline_mode:
             # noinspection PyProtectedMember
             instance._task.output_uri = output_uri
+            # noinspection PyProtectedMember
+            instance._task.get_logger().set_default_upload_destination(output_uri)
         # noinspection PyProtectedMember
         instance._using_current_task = use_current_task
         # noinspection PyProtectedMember
@@ -2891,7 +2894,9 @@ class Dataset(object):
             if artifact is not None:
                 # noinspection PyBroadException
                 try:
-                    if isinstance(artifact, pd.DataFrame):
+                    # we do not use report_table if default_upload_destination is set because it will
+                    # not upload the sample to that destination, use report_media instead
+                    if isinstance(artifact, pd.DataFrame) and not self._task.get_logger().get_default_upload_destination():
                         self._task.get_logger().report_table(
                             "Tables", "summary", table_plot=artifact
                         )

@@ -1459,6 +1459,9 @@ class _Stream(object):
             if self._input_iterator:
                 try:
                     chunck = next(self._input_iterator)
+                    # make sure we always return bytes
+                    if isinstance(chunck, six.string_types):
+                        chunck = chunck.encode("utf-8")
                     return chunck
                 except StopIteration:
                     self.closed = True
@@ -1607,6 +1610,7 @@ class _Boto3Driver(_Driver):
 
     def upload_object_via_stream(self, iterator, container, object_name, callback=None, extra=None, **kwargs):
         import boto3.s3.transfer
+
         stream = _Stream(iterator)
         extra_args = {}
         try:
@@ -2077,7 +2081,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 client.upload_blob(
                     data, overwrite=True,
                     content_settings=content_settings,
-                    **self._get_max_connections_dict(max_connections)
+                    **self._get_max_connections_dict(max_connections, key="max_concurrency")
                 )
 
         def create_blob_from_path(
@@ -2093,11 +2097,12 @@ class _AzureBlobServiceStorageDriver(_Driver):
                     **self._get_max_connections_dict(max_connections)
                 )
             else:
-                self.create_blob_from_data(
-                    container_name, None, blob_name, open(path, "rb"),
-                    content_settings=content_settings,
-                    **self._get_max_connections_dict(max_connections)
-                )
+                with open(path, "rb") as f:
+                    self.create_blob_from_data(
+                        container_name, None, blob_name, f,
+                        content_settings=content_settings,
+                        max_connections=max_connections
+                    )
 
         def delete_blob(self, container_name, blob_name):
             if self.__legacy:
@@ -2154,7 +2159,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 client = self.__blob_service.get_blob_client(container_name, blob_name)
                 with open(path, "wb") as file:
                     return client.download_blob(
-                        **self._get_max_connections_dict(max_connections, "max_concurrency")
+                        **self._get_max_connections_dict(max_connections, key="max_concurrency")
                     ).download_to_stream(file)
 
         def is_legacy(self):

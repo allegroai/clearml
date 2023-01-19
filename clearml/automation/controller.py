@@ -1986,7 +1986,7 @@ class PipelineController(object):
             self._running_nodes.append(node.name)
 
             parsed_queue_name = self._parse_step_ref(node.queue)
-            return node.job.launch(parsed_queue_name or self._default_execution_queue)
+            return node.job.launch(queue_name=parsed_queue_name or self._default_execution_queue)
 
         return True
 

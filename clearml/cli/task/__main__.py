@@ -143,6 +143,8 @@ def cli():
             print('Warning: No queue was provided, leaving task in draft-mode.')
             exit(0)
 
+        # noinspection PyProtectedMember
+        create_populate.task._set_runtime_properties({"_CLEARML_TASK": True})
         Task.enqueue(create_populate.task, queue_name=args.queue)
         print('Task id={} sent for execution on queue {}'.format(create_populate.get_id(), args.queue))
         print('Execution log at: {}'.format(create_populate.task.get_output_log_web_page()))

@@ -152,12 +152,14 @@ class ExecutedTrigger(ExecutedJob):
 
 class TriggerScheduler(BaseScheduler):
     """
-    Trigger Task execution if an event happens in the system
+    Trigger Task execution if an event happens in the system.
+
     Examples:
-        New model is published/tagged,
-        New Dataset is created,
-        General Task failed,
-        Task metric below/above threshold, alert every X minutes
+
+    - New model is published/tagged,
+    - New Dataset is created,
+    - General Task failed,
+    - Task metric below/above threshold, alert every X minutes
     """
     _datasets_section = "datasets"
     _models_section = "models"
@@ -175,13 +177,13 @@ class TriggerScheduler(BaseScheduler):
         """
         Create a Task trigger service
 
-        :param pooling_frequency_minutes: Check for new events every X minutes (default 2)
+        :param pooling_frequency_minutes: Check for new events every X minutes (default 3)
         :param sync_frequency_minutes: Sync task scheduler configuration every X minutes.
-        Allow to change scheduler in runtime by editing the Task configuration object
+            Allow to change scheduler in runtime by editing the Task configuration object
         :param force_create_task_name: Optional, force creation of Task Scheduler service,
-        even if main Task.init already exists.
+            even if main Task.init already exists.
         :param force_create_task_project: Optional, force creation of Task Scheduler service,
-        even if main Task.init already exists.
+            even if main Task.init already exists.
         """
         super(TriggerScheduler, self).__init__(
             sync_frequency_minutes=sync_frequency_minutes,
@@ -223,10 +225,12 @@ class TriggerScheduler(BaseScheduler):
         Notice `task_overrides` can except reference to the trigger model ID:
         example: task_overrides={'Args/model_id': '${model.id}'}
         Notice if schedule_function is passed, use the following function interface:
-        ```py
-        def schedule_function(model_id):
-            pass
-        ```
+
+        .. code-block:: py
+
+           def schedule_function(model_id):
+               pass
+
 
         :param schedule_task_id: Task/task ID to be cloned and scheduled for execution
         :param schedule_queue: Queue name or ID to put the Task into (i.e. schedule)
@@ -244,12 +248,12 @@ class TriggerScheduler(BaseScheduler):
         :param add_tag: Add tag to the executed Task. Provide specific tag (str) or
             pass True (default) to use the trigger name as tag
         :param single_instance: If True, do not launch the Task job if the previous instance is still running
-        (skip until the next scheduled time period). Default False.
+            (skip until the next scheduled time period). Default False.
         :param reuse_task: If True, re-enqueue the same Task (i.e. do not clone it) every time, default False.
         :param task_parameters: Configuration parameters to the executed Task.
-        for example: {'Args/batch': '12'} Notice: not available when reuse_task=True
+            for example: {'Args/batch': '12'} Notice: not available when reuse_task=True
         :param task_overrides: Change task definition.
-        for example {'script.version_num': None, 'script.branch': 'main'} Notice: not available when reuse_task=True
+            for example {'script.version_num': None, 'script.branch': 'main'} Notice: not available when reuse_task=True
         :return: True if job is successfully added to the scheduling list
         """
         trigger = ModelTrigger(
@@ -295,16 +299,19 @@ class TriggerScheduler(BaseScheduler):
         # type: (...) -> None
         """
         Create a cron job alike scheduling for a pre existing Task or function.
-        Trigger the Task/function execution on changes in the dataset repository (notice this is not the hyper-datasets)
-        Notice it is recommended to give the trigger a descriptive unique name, if not provided a task ID is used.
+        Trigger the Task/function execution on changes in the dataset repository (notice this is not the hyper-datasets).
+        Notice, it is recommended to give the trigger a descriptive unique name. If not provided, a task ID is used.
 
         Notice `task_overrides` can except reference to the trigger model ID:
-        example: task_overrides={'Args/dataset_id': '${dataset.id}'}
+        example: task_overrides={'Args/dataset_id': '${dataset.id}'}.
+
         Notice if schedule_function is passed, use the following function interface:
-        ```py
-        def schedule_function(dataset_id):
-            pass
-        ```
+
+        .. code-block:: py
+
+           def schedule_function(dataset_id):
+               pass
+
 
         :param schedule_task_id: Task/task ID to be cloned and scheduled for execution
         :param schedule_queue: Queue name or ID to put the Task into (i.e. schedule)
@@ -323,12 +330,12 @@ class TriggerScheduler(BaseScheduler):
         :param add_tag: Add tag to the executed Task. Provide specific tag (str) or
             pass True (default) to use the trigger name as tag
         :param single_instance: If True, do not launch the Task job if the previous instance is still running
-        (skip until the next scheduled time period). Default False.
+            (skip until the next scheduled time period). Default False.
         :param reuse_task: If True, re-enqueue the same Task (i.e. do not clone it) every time, default False.
         :param task_parameters: Configuration parameters to the executed Task.
-        for example: {'Args/batch': '12'} Notice: not available when reuse_task=True/
+            For example: {'Args/batch': '12'} Notice: not available when reuse_task=True/
         :param task_overrides: Change task definition.
-        for example {'script.version_num': None, 'script.branch': 'main'} Notice: not available when reuse_task=True
+            For example {'script.version_num': None, 'script.branch': 'main'}. Notice: not available when reuse_task=True
         :return: True if job is successfully added to the scheduling list
         """
         if trigger_project:
@@ -409,10 +416,11 @@ class TriggerScheduler(BaseScheduler):
         Notice `task_overrides` can except reference to the trigger model ID:
         example: task_overrides={'Args/task_id': '${task.id}'}
         Notice if schedule_function is passed, use the following function interface:
-        ```py
-        def schedule_function(task_id):
-            pass
-        ```
+
+        .. code-block:: py
+
+           def schedule_function(task_id):
+               pass
 
         :param schedule_task_id: Task/task ID to be cloned and scheduled for execution
         :param schedule_queue: Queue name or ID to put the Task into (i.e. schedule)
@@ -424,9 +432,10 @@ class TriggerScheduler(BaseScheduler):
         :param trigger_name: Trigger only on tasks with name matching (regexp)
         :param trigger_on_tags: Trigger when all tags in the list are present
         :param trigger_required_tags: Trigger only on tasks with the following additional tags (must include all tags)
-        :param trigger_on_status: Trigger on Task status change.
-            expect list of status strings, e.g. ['failed', 'published']
-        :param trigger_exclude_dev_tasks: If True, only trigger on Tasks executed by clearml-agent (and not manually)
+        :param trigger_on_status: Trigger on Task status change. Expect list of status strings, e.g. ['failed', 'published'].
+            TaskStatusEnum: ["created", "in_progress", "stopped", "closed", "failed", "completed", "queued", "published",
+            "publishing", "unknown"]
+        :param trigger_exclude_dev_tasks: If True only trigger on Tasks executed by clearml-agent (and not manually)
         :param trigger_on_metric: Trigger on metric/variant above/under threshold (metric=title, variant=series)
         :param trigger_on_variant: Trigger on metric/variant above/under threshold (metric=title, variant=series)
         :param trigger_on_threshold: Trigger on metric/variant above/under threshold (float number)
@@ -436,12 +445,12 @@ class TriggerScheduler(BaseScheduler):
         :param add_tag: Add tag to the executed Task. Provide specific tag (str) or
             pass True (default) to use the trigger name as tag
         :param single_instance: If True, do not launch the Task job if the previous instance is still running
-        (skip until the next scheduled time period). Default False.
+            (skip until the next scheduled time period). Default False.
         :param reuse_task: If True, re-enqueue the same Task (i.e. do not clone it) every time, default False.
         :param task_parameters: Configuration parameters to the executed Task.
-        for example: {'Args/batch': '12'} Notice: not available when reuse_task=True/
+            for example: {'Args/batch': '12'} Notice: not available when reuse_task=True/
         :param task_overrides: Change task definition.
-        for example {'script.version_num': None, 'script.branch': 'main'} Notice: not available when reuse_task=True
+            for example {'script.version_num': None, 'script.branch': 'main'} Notice: not available when reuse_task=True
         :return: True if job is successfully added to the scheduling list
         """
         trigger = TaskTrigger(

@@ -327,6 +327,7 @@ class BaseModel(object):
         super(BaseModel, self).__init__()
         self._log = get_logger()
         self._task = None
+        self._reload_required = False
         self._set_task(task)
 
     def get_weights(self, raise_on_error=False):

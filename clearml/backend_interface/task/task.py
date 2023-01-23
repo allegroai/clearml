@@ -449,7 +449,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def project(self):
         # type: () -> str
         """
-        Returns the current Task's project name.
+        Returns the current Task's project ID.
         """
         return self.data.project
 
@@ -1228,9 +1228,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     def create_description():
                         if org_param and org_param.description:
                             return org_param.description
-                        created_description = ""
-                        if org_k in descriptions:
-                            created_description = descriptions[org_k]
+                        # don't use get(org_k, "") here in case org_k in descriptions and the value is None
+                        created_description = descriptions.get(org_k) or ""
                         if isinstance(v, Enum):
                             # append enum values to description
                             if created_description:

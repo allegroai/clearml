@@ -107,7 +107,12 @@ class _Driver(object):
     @classmethod
     def get_file_server_hosts(cls):
         if cls._file_server_hosts is None:
-            cls._file_server_hosts = [Session.get_files_server_host()] + (Session.legacy_file_servers or [])
+            hosts = [Session.get_files_server_host()] + (Session.legacy_file_servers or [])
+            for host in hosts[:]:
+                substituted = StorageHelper._apply_url_substitutions(host)
+                if substituted not in hosts:
+                    hosts.append(substituted)
+            cls._file_server_hosts = hosts
         return cls._file_server_hosts
 
 
@@ -619,13 +624,6 @@ class StorageHelper(object):
             if isinstance(self._driver, _HttpDriver) and obj:
                 obj = self._driver._get_download_object(obj)  # noqa
                 size = int(obj.headers.get("Content-Length", 0))
-            elif isinstance(self._driver, _Boto3Driver) and obj and hasattr(obj, "content_length"):
-                # noinspection PyBroadException
-                try:
-                    # To catch botocore exceptions
-                    size = obj.content_length  # noqa
-                except Exception:
-                    pass
             elif hasattr(obj, "size"):
                 size = obj.size
                 # Google storage has the option to reload the object to get the size
@@ -633,7 +631,12 @@ class StorageHelper(object):
                     obj.reload()
                     size = obj.size
             elif hasattr(obj, "content_length"):
-                size = obj.content_length
+                # noinspection PyBroadException
+                try:
+                    # To catch botocore exceptions
+                    size = obj.content_length  # noqa
+                except Exception:
+                    pass
         except (ValueError, AttributeError, KeyError):
             pass
         return size
@@ -1277,9 +1280,12 @@ class _HttpDriver(_Driver):
                 ],
                 config=config
             )
-            self.attach_auth_header = any(
-                (name.rstrip('/') == host.rstrip('/') or name.startswith(host.rstrip('/') + '/'))
-                for host in _HttpDriver.get_file_server_hosts()
+            self._file_server_hosts = set(_HttpDriver.get_file_server_hosts())
+
+        def _should_attach_auth_header(self):
+            return any(
+                (self.name.rstrip('/') == host.rstrip('/') or self.name.startswith(host.rstrip('/') + '/'))
+                for host in self._file_server_hosts
             )
 
         def get_headers(self, _):
@@ -1287,7 +1293,7 @@ class _HttpDriver(_Driver):
                 from ..backend_interface.base import InterfaceBase
                 self._default_backend_session = InterfaceBase._get_default_session()
 
-            if self.attach_auth_header:
+            if self._should_attach_auth_header():
                 return self._default_backend_session.add_auth_headers({})
 
     class _HttpSessionHandle(object):
@@ -1461,6 +1467,9 @@ class _Stream(object):
             if self._input_iterator:
                 try:
                     chunck = next(self._input_iterator)
+                    # make sure we always return bytes
+                    if isinstance(chunck, six.string_types):
+                        chunck = chunck.encode("utf-8")
                     return chunck
                 except StopIteration:
                     self.closed = True
@@ -1525,6 +1534,7 @@ class _Boto3Driver(_Driver):
     _pool_connections = deferred_config('aws.boto3.pool_connections', 512)
     _connect_timeout = deferred_config('aws.boto3.connect_timeout', 60)
     _read_timeout = deferred_config('aws.boto3.read_timeout', 60)
+    _signature_version = deferred_config('aws.boto3.signature_version', None)
 
     _stream_download_pool_connections = deferred_config('aws.boto3.stream_connections', 128)
     _stream_download_pool = None
@@ -1568,6 +1578,7 @@ class _Boto3Driver(_Driver):
                             int(_Boto3Driver._pool_connections)),
                         connect_timeout=int(_Boto3Driver._connect_timeout),
                         read_timeout=int(_Boto3Driver._read_timeout),
+                        signature_version=_Boto3Driver._signature_version,
                     )
                 }
                 if not cfg.use_credentials_chain:
@@ -1607,6 +1618,7 @@ class _Boto3Driver(_Driver):
 
     def upload_object_via_stream(self, iterator, container, object_name, callback=None, extra=None, **kwargs):
         import boto3.s3.transfer
+
         stream = _Stream(iterator)
         extra_args = {}
         try:
@@ -2077,7 +2089,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 client.upload_blob(
                     data, overwrite=True,
                     content_settings=content_settings,
-                    **self._get_max_connections_dict(max_connections)
+                    **self._get_max_connections_dict(max_connections, key="max_concurrency")
                 )
 
         def create_blob_from_path(
@@ -2093,11 +2105,12 @@ class _AzureBlobServiceStorageDriver(_Driver):
                     **self._get_max_connections_dict(max_connections)
                 )
             else:
-                self.create_blob_from_data(
-                    container_name, None, blob_name, open(path, "rb"),
-                    content_settings=content_settings,
-                    **self._get_max_connections_dict(max_connections)
-                )
+                with open(path, "rb") as f:
+                    self.create_blob_from_data(
+                        container_name, None, blob_name, f,
+                        content_settings=content_settings,
+                        max_connections=max_connections
+                    )
 
         def delete_blob(self, container_name, blob_name):
             if self.__legacy:
@@ -2154,7 +2167,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
                 client = self.__blob_service.get_blob_client(container_name, blob_name)
                 with open(path, "wb") as file:
                     return client.download_blob(
-                        **self._get_max_connections_dict(max_connections, "max_concurrency")
+                        **self._get_max_connections_dict(max_connections, key="max_concurrency")
                     ).download_to_stream(file)
 
         def is_legacy(self):

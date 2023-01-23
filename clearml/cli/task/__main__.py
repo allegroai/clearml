@@ -138,6 +138,9 @@ def cli():
         # update Task args
         create_populate.update_task_args(args.args)
 
+        # noinspection PyProtectedMember
+        create_populate.task._set_runtime_properties({"_CLEARML_TASK": True})
+
         print('New task created id={}'.format(create_populate.get_id()))
         if not args.queue:
             print('Warning: No queue was provided, leaving task in draft-mode.')

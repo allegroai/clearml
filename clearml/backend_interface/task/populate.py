@@ -255,7 +255,7 @@ class CreateAndPopulate(object):
             for line in reqs:
                 if line.strip().startswith('#'):
                     continue
-                package = reduce(lambda a, b: a.split(b)[0], "#;@=~<>", line).strip()
+                package = reduce(lambda a, b: a.split(b)[0], "#;@=~<>[", line).strip()
                 if package == 'clearml':
                     clearml_found = True
                     break
@@ -474,8 +474,11 @@ class CreateFromFunction(object):
     kwargs_section = "kwargs"
     return_section = "return"
     input_artifact_section = "kwargs_artifacts"
-    task_template = """from clearml import Task, TaskTypes
+    default_task_template_header = """from clearml import Task
+from clearml import TaskTypes
 from clearml.automation.controller import PipelineDecorator
+"""
+    task_template = """{header}
 from clearml.utilities.proxy_object import get_basic_type
 
 
@@ -509,7 +512,7 @@ if __name__ == '__main__':
         parameters = dict()
         parameters_types = dict()
         for name, artifact in zip(result_names, results):
-            if isinstance(artifact, (float, int, bool, str)):
+            if type(artifact) in (float, int, bool, str):
                 parameters[return_section + '/' + name] = artifact
                 parameters_types[return_section + '/' + name] = get_basic_type(artifact)
             else:
@@ -544,6 +547,7 @@ if __name__ == '__main__':
             output_uri=None,  # type: Optional[str]
             helper_functions=None,  # type: Optional[Sequence[Callable]]
             dry_run=False,  # type: bool
+            task_template_header=None,  # type: Optional[str]
             _sanitize_function=None,  # type: Optional[Callable[[str], str]]
             _sanitize_helper_functions=None,  # type: Optional[Callable[[str], str]]
     ):
@@ -604,6 +608,7 @@ if __name__ == '__main__':
         :param helper_functions: Optional, a list of helper functions to make available
             for the standalone function Task.
         :param dry_run: If True, do not create the Task, but return a dict of the Task's definitions
+        :param task_template_header: A string placed at the top of the task's code
         :param _sanitize_function: Sanitization function for the function string.
         :param _sanitize_helper_functions: Sanitization function for the helper function string.
         :return: Newly created Task object
@@ -670,6 +675,7 @@ if __name__ == '__main__':
                     if inspect_args.annotations[k] in supported_types}
 
         task_template = cls.task_template.format(
+            header=task_template_header or cls.default_task_template_header,
             auto_connect_frameworks=auto_connect_frameworks,
             auto_connect_arg_parser=auto_connect_arg_parser,
             kwargs_section=cls.kwargs_section,

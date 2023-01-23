@@ -107,7 +107,12 @@ class _Driver(object):
     @classmethod
     def get_file_server_hosts(cls):
         if cls._file_server_hosts is None:
-            cls._file_server_hosts = [Session.get_files_server_host()] + (Session.legacy_file_servers or [])
+            hosts = [Session.get_files_server_host()] + (Session.legacy_file_servers or [])
+            for host in hosts[:]:
+                substituted = StorageHelper._apply_url_substitutions(host)
+                if substituted not in hosts:
+                    hosts.append(substituted)
+            cls._file_server_hosts = hosts
         return cls._file_server_hosts
 
 
@@ -1273,9 +1278,12 @@ class _HttpDriver(_Driver):
                 ],
                 config=config
             )
-            self.attach_auth_header = any(
-                (name.rstrip('/') == host.rstrip('/') or name.startswith(host.rstrip('/') + '/'))
-                for host in _HttpDriver.get_file_server_hosts()
+            self._file_server_hosts = set(_HttpDriver.get_file_server_hosts())
+
+        def _should_attach_auth_header(self):
+            return any(
+                (self.name.rstrip('/') == host.rstrip('/') or self.name.startswith(host.rstrip('/') + '/'))
+                for host in self._file_server_hosts
             )
 
         def get_headers(self, _):
@@ -1283,7 +1291,7 @@ class _HttpDriver(_Driver):
                 from ..backend_interface.base import InterfaceBase
                 self._default_backend_session = InterfaceBase._get_default_session()
 
-            if self.attach_auth_header:
+            if self._should_attach_auth_header():
                 return self._default_backend_session.add_auth_headers({})
 
     class _HttpSessionHandle(object):

@@ -2030,30 +2030,53 @@ class Dataset(object):
         modified_files_size = 0
         removed_files_count = 0
         removed_files_size = 0
+
+        def update_changes(entries, parent_entries):
+            nonlocal total_size
+            nonlocal modified_files_count
+            nonlocal modified_files_size
+            nonlocal added_files_count
+            nonlocal added_files_size
+            nonlocal removed_files_count
+            nonlocal removed_files_size
+
+            for file in entries.values():
+                # noinspection PyBroadException
+                try:
+                    total_size += file.size
+                    if file.parent_dataset_id == self._id:
+                        if file.relative_path in parent_file_entries:
+                            modified_files_count += 1
+                            modified_files_size += file.size - parent_file_entries[file.relative_path].size
+                        else:
+                            added_files_count += 1
+                            added_files_size += file.size
+                except Exception:
+                    pass
+            for parent_entry_key, parent_entry_value in parent_entries.items():
+                # noinspection PyBroadException
+                try:
+                    if parent_entry_key not in entries:
+                        removed_files_count += 1
+                        removed_files_size -= parent_entry_value.size
+                except Exception:
+                    pass
+
         parent_datasets_ids = self._dependency_graph[self._id]
         parent_file_entries = dict()  # type: Dict[str, FileEntry]
+        parent_link_entries = dict()  # type: Dict[str, LinkEntry]
         for parent_dataset_id in parent_datasets_ids:
             if parent_dataset_id == self._id:
                 continue
             parent_dataset = self.get(parent_dataset_id)
             parent_file_entries.update(parent_dataset._dataset_file_entries)
+            parent_link_entries.update(parent_dataset._dataset_link_entries)
         # we have to do this after we update the parent_file_entries because we might
         # have duplicate file entries
-        for parent_file_entry_key, parent_file_entry_value in parent_file_entries.items():
-            if parent_file_entry_key not in self._dataset_file_entries:
-                removed_files_count += 1
-                removed_files_size -= parent_file_entry_value.size
-        for file in self._dataset_file_entries.values():
-            total_size += file.size
-            if file.parent_dataset_id == self._id:
-                if file.relative_path in parent_file_entries:
-                    modified_files_count += 1
-                    modified_files_size += file.size - parent_file_entries[file.relative_path].size
-                else:
-                    added_files_count += 1
-                    added_files_size += file.size
+        update_changes(self._dataset_file_entries, parent_file_entries)
+        update_changes(self._dataset_link_entries, parent_link_entries)
         state = dict(
-            file_count=len(self._dataset_file_entries),
+            file_count=len(self._dataset_file_entries) + len(self._dataset_link_entries),
             total_size=total_size,
             dataset_file_entries=[f.as_dict() for f in self._dataset_file_entries.values()],
             dataset_link_entries=[link.as_dict() for link in self._dataset_link_entries.values()],
@@ -2743,7 +2766,7 @@ class Dataset(object):
                 file_name = file.link
             dataset_details += "{}, {}, {}".format(
                 file_name,
-                file.size if file.size is not None and not hasattr(file, "link") else "",
+                file.size if file.size is not None else "",
                 file.hash if file.hash else "",
             )
             preview_index += 1

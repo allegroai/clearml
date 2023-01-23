@@ -619,13 +619,6 @@ class StorageHelper(object):
             if isinstance(self._driver, _HttpDriver) and obj:
                 obj = self._driver._get_download_object(obj)  # noqa
                 size = int(obj.headers.get("Content-Length", 0))
-            elif isinstance(self._driver, _Boto3Driver) and obj:
-                # noinspection PyBroadException
-                try:
-                    # To catch botocore exceptions
-                    size = obj.content_length  # noqa
-                except Exception:
-                    pass
             elif hasattr(obj, "size"):
                 size = obj.size
                 # Google storage has the option to reload the object to get the size
@@ -633,7 +626,12 @@ class StorageHelper(object):
                     obj.reload()
                     size = obj.size
             elif hasattr(obj, "content_length"):
-                size = obj.content_length
+                # noinspection PyBroadException
+                try:
+                    # To catch botocore exceptions
+                    size = obj.content_length  # noqa
+                except Exception:
+                    pass
         except (ValueError, AttributeError, KeyError):
             pass
         return size

@@ -63,6 +63,7 @@ class PipelineController(object):
     _retries = {}  # Node.name: int
     _retries_callbacks = {}  # Node.name: Callable[[PipelineController, PipelineController.Node, int], bool]  # noqa
     _final_failure = {}  # Node.name: bool
+    _task_template_header = CreateFromFunction.default_task_template_header
 
     valid_job_status = ["failed", "cached", "completed", "aborted", "queued", "running", "skipped", "pending"]
 
@@ -1170,6 +1171,7 @@ class PipelineController(object):
             output_uri=None,
             helper_functions=helper_functions,
             dry_run=True,
+            task_template_header=self._task_template_header
         )
         return task_definition
 
@@ -3199,7 +3201,7 @@ class PipelineDecorator(PipelineController):
             function, function_input_artifacts, function_kwargs, function_return,
             auto_connect_frameworks, auto_connect_arg_parser,
             packages, project_name, task_name, task_type, repo, branch, commit,
-            helper_functions,
+            helper_functions
     ):
         def sanitize(function_source):
             matched = re.match(r"[\s]*@[\w]*.component[\s\\]*\(", function_source)
@@ -3240,7 +3242,8 @@ class PipelineDecorator(PipelineController):
             output_uri=None,
             helper_functions=helper_functions,
             dry_run=True,
-            _sanitize_function=sanitize,
+            task_template_header=self._task_template_header,
+            _sanitize_function=sanitize
         )
         return task_definition
 

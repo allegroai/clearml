@@ -986,7 +986,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Set a new input model for the Task. The model must be "ready" (status is ``Published``) to be used as the
         Task's input model.
 
-        :param model_id: The Id of the model on the **ClearML Server** (backend). If ``model_name`` is not specified,
+        :param model_id: The ID of the model on the **ClearML Server** (backend). If ``model_name`` is not specified,
             then ``model_id`` must be specified.
         :param model_name: The model name in the artifactory. The model_name is used to locate an existing model
             in the **ClearML Server** (backend). If ``model_id`` is not specified,
@@ -1430,7 +1430,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param repo: Remote URL for the repository to use, OR path to local copy of the git repository
             Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'
         :param branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
-        :param commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
+        :param commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
         """
         if not repo:
             return
@@ -1636,6 +1636,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # type: (Optional[int]) -> ()
         """
         Set the default random seed for any new initialized tasks
+
         :param random_seed: If None or False, disable random seed initialization. If True, use the default random seed,
           otherwise use the provided int value for random seed initialization when initializing a new task.
         """
@@ -1750,7 +1751,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # type: (Optional[Union[str, Task]]) -> ()
         """
         Set the parent task for the Task.
-        :param parent: The parent task id (or parent Task object) for the Task. Set None for no parent.
+
+        :param parent: The parent task ID (or parent Task object) for the Task. Set None for no parent.
         :type parent: str or Task
         """
         if parent:

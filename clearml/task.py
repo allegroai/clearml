@@ -286,9 +286,7 @@ class Task(_Task):
             not exist, it is created. If ``project_name`` is ``None``, the repository name is used. (Optional)
         :param str task_name: The name of Task (experiment). If ``task_name`` is ``None``, the Python experiment
             script's file name is used. (Optional)
-        :param TaskTypes task_type: The task type.
-
-            Valid task types:
+        :param TaskTypes task_type: The task type. Valid task types:
 
             - ``TaskTypes.training`` (default)
             - ``TaskTypes.testing``
@@ -315,8 +313,7 @@ class Task(_Task):
 
             - ``True`` - Reuse the last  Task ID. (default)
             - ``False`` - Force a new Task (experiment).
-            - A string - You can also specify a Task ID (string) to be reused,
-                instead of the cached ID based on the project/name combination.
+            - A string - You can also specify a Task ID (string) to be reused, instead of the cached ID based on the project/name combination.
 
         :param bool continue_last_task: Continue the execution of a previously executed Task (experiment)
 
@@ -329,21 +326,16 @@ class Task(_Task):
 
             The values are:
 
-            - ``True`` - Continue the last Task ID.
-                specified explicitly by reuse_last_task_id or implicitly with the same logic as reuse_last_task_id
+            - ``True`` - Continue the last Task ID. Specified explicitly by reuse_last_task_id or implicitly with the same logic as reuse_last_task_id
             - ``False`` - Overwrite the execution of previous Task  (default).
-            - A string - You can also specify a Task ID (string) to be continued.
-                This is equivalent to `continue_last_task=True` and `reuse_last_task_id=a_task_id_string`.
-            - An integer - Specify initial iteration offset (override the auto automatic last_iteration_offset)
-                Pass 0, to disable the automatic last_iteration_offset or specify a different initial offset
-                You can specify a Task ID to be used with `reuse_last_task_id='task_id_here'`
+            - A string - You can also specify a Task ID (string) to be continued. This is equivalent to `continue_last_task=True` and `reuse_last_task_id=a_task_id_string`.
+            - An integer - Specify initial iteration offset (override the auto automatic last_iteration_offset). Pass 0, to disable the automatic last_iteration_offset or specify a different initial offset. You can specify a Task ID to be used with `reuse_last_task_id='task_id_here'`
 
         :param str output_uri: The default location for output models and other artifacts.
             If True, the default files_server will be used for model storage.
             In the default location, ClearML creates a subfolder for the output.
             The subfolder structure is the following:
             <output destination name> / <project name> / <task name>.<Task ID>
-
             The following are examples of ``output_uri`` values for the supported locations:
 
             - A shared folder: ``/mnt/share/folder``
@@ -398,11 +390,9 @@ class Task(_Task):
                 frameworks. The dictionary keys are frameworks and the values are booleans, other dictionaries used for
                 finer control or wildcard strings.
                 In case of wildcard strings, the local path of a model file has to match at least one wildcard to be
-                saved/loaded by ClearML. Example:
-                    {'pytorch' : '*.pt', 'tensorflow': ['*.h5', '*']}
+                saved/loaded by ClearML. Example: {'pytorch' : '*.pt', 'tensorflow': ['*.h5', '*']}
                 Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
-                Supported keys for finer control:
-                    {'tensorboard': {'report_hparams': bool}}  # whether to report TensorBoard hyperparameters
+                Supported keys for finer control: {'tensorboard': {'report_hparams': bool}}  # whether to report TensorBoard hyperparameters
 
             For example:
 
@@ -421,25 +411,21 @@ class Task(_Task):
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
             These plots appear in the **ClearML Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab,
-            with a title of **:resource monitor:**.
-
-            The values are:
+            with a title of **:resource monitor:**. The values are:
 
             - ``True`` - Automatically create resource monitoring plots. (default)
             - ``False`` - Do not automatically create.
             - Class Type - Create ResourceMonitor object of the specified class type.
 
-        :param auto_connect_streams: Control the automatic logging of stdout and stderr
-
-            The values are:
+        :param auto_connect_streams: Control the automatic logging of stdout and stderr. The values are:
 
             - ``True`` - Automatically connect (default)
             -  ``False`` - Do not automatically connect
             - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of stdout and
                 stderr. The dictionary keys are 'stdout' , 'stderr' and 'logging', the values are booleans.
                 Keys missing from the dictionary default to ``False``, and an empty dictionary defaults to ``False``.
-                Notice, the default behaviour is logging stdout/stderr the
-                `logging` module is logged as a by product of the stderr logging
+                Notice, the default behaviour is logging stdout/stderr. The `logging` module is logged as a by product
+                of the stderr logging
 
             For example:
 
@@ -454,18 +440,15 @@ class Task(_Task):
             If set to True, `Task.init` function returns immediately and all initialization / communication
             to the clearml-server is running in a background thread. The returned object is
             a full proxy to the regular Task object, hence everything will be working as expected.
-            Default behaviour can be controlled with:
-                `CLEARML_DEFERRED_TASK_INIT=1`
+            Default behaviour can be controlled with: ``CLEARML_DEFERRED_TASK_INIT=1``
 
             Notes:
 
             - Any access to the returned proxy `Task` object will essentially wait for the `Task.init`
                 to be completed. For example: `print(task.name)` will wait for `Task.init` to complete in the
                 background and then return the `name` property of the task original object
-            - Before `Task.init` completes in the background, auto-magic logging
-                (console/metric) might be missed
-            - If running via an agent, this argument is ignored,
-                and Task init is called synchronously (default)
+            - Before `Task.init` completes in the background, auto-magic logging (console/metric) might be missed
+            - If running via an agent, this argument is ignored, and Task init is called synchronously (default)
 
         :return: The main execution Task (Task context)
         :rtype: Task
@@ -833,7 +816,7 @@ class Task(_Task):
         :param repo: Remote URL for the repository to use, or path to local copy of the git repository
             Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'
         :param branch: Select specific repository branch/tag (implies the latest commit from the branch)
-        :param commit: Select specific commit id to use (default: latest commit,
+        :param commit: Select specific commit ID to use (default: latest commit,
             or when used with local repository matching the local commit id)
         :param script: Specify the entry point script for the remote execution. When used in tandem with
             remote git repository the script should be a relative path inside the repository,
@@ -894,7 +877,7 @@ class Task(_Task):
     ):
         # type: (...) -> TaskInstance
         """
-        Get a Task by Id, or project name / task name combination.
+        Get a Task by ID, or project name / task name combination.
 
         For example:
 
@@ -926,7 +909,7 @@ class Task(_Task):
             for x in range(10):
                 train_task.get_logger().report_scalar('title', 'series', value=x * 2, iteration=x)
 
-        :param str task_id: The Id (system UUID) of the experiment to get.
+        :param str task_id: The ID (system UUID) of the experiment to get.
             If specified, ``project_name`` and ``task_name`` are ignored.
         :param str project_name: The project name of the Task to get.
         :param str task_name: The name of the Task within ``project_name`` to get.
@@ -968,7 +951,7 @@ class Task(_Task):
             This function returns the most recent 500 tasks. If you wish to retrieve older tasks
             use ``Task.query_tasks()``
 
-        :param list(str) task_ids: The Ids (system UUID) of experiments to get.
+        :param list(str) task_ids: The IDs (system UUID) of experiments to get.
             If ``task_ids`` specified, then ``project_name`` and ``task_name`` are ignored.
         :param str project_name: The project name of the Tasks to get. To get the experiment
             in all projects, use the default value of ``None``. (Optional)
@@ -978,7 +961,7 @@ class Task(_Task):
             This method supports regular expressions for name matching. (Optional)
             To match an exact task name (i.e. not partial matching),
             add ^/$ at the beginning/end of the string, for example: "^exact_task_name_here$"
-        :param list(str) task_ids: list of unique task id string (if exists other parameters are ignored)
+        :param list(str) task_ids: list of unique task ID string (if exists other parameters are ignored)
         :param str project_name: project name (str) the task belongs to (use None for all projects)
         :param str task_name: task name (str) in within the selected project
             Return any partial match of task_name, regular expressions matching is also supported
@@ -986,28 +969,17 @@ class Task(_Task):
         :param list tags: Filter based on the requested list of tags (strings) (Task must have all the listed tags)
             To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
         :param bool allow_archived: If True (default), allow to return archived Tasks, if False filter out archived Tasks
-        :param dict task_filter: filter and order Tasks. See service.tasks.GetAllRequest for details
-            `parent`: (str) filter by parent task-id matching
-            `search_text`: (str) free text search (in task fields comment/name/id)
-            `status`: List[str] List of valid statuses
-                (options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed",
-                "failed", "completed", "unknown")
-            `type`: List[str] List of valid task type
-                (options are: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor',
-                'controller', 'optimizer', 'service', 'qc'. 'custom')
-            `user`: List[str] Filter based on Task's user owner, provide list of valid user Ids.
-            `order_by`: List[str] List of field names to order by. When search_text is used,
-                Use '-' prefix to specify descending order. Optional, recommended when using page
-                Example: order_by=['-last_update']
-            `_all_`: dict(fields=[], pattern='')  Match string `pattern` (regular expression)
-                appearing in All `fields`
-                dict(fields=['script.repository'], pattern='github.com/user')
-            `_any_`: dict(fields=[], pattern='')  Match string `pattern` (regular expression)
-                appearing in Any of the `fields`
-                dict(fields=['comment', 'name'], pattern='my comment')
-            Examples:
-                {'status': ['stopped'], 'order_by': ["-last_update"]}
-                {'order_by'=['-last_update'], '_all_'=dict(fields=['script.repository'], pattern='github.com/user'))
+        :param dict task_filter: filter and order Tasks. See service.tasks.GetAllRequest for details.
+
+            - ``parent`` - (str) filter by parent task-id matching
+            - ``search_text`` - (str) free text search (in task fields comment/name/id)
+            - ``status`` - List[str] List of valid statuses. Options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed", "failed", "completed", "unknown"
+            - ``type`` - List[str] List of valid task type. Options are: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc'. 'custom'
+            - ``user`` - List[str] Filter based on Task's user owner, provide list of valid user IDs.
+            - ``order_by`` - List[str] List of field names to order by. When ``search_text`` is used. Use '-' prefix to specify descending order. Optional, recommended when using page. Example: ``order_by=['-last_update']``
+            - ``_all_`` - dict(fields=[], pattern='')  Match string `pattern` (regular expression) appearing in All `fields`. Example: dict(fields=['script.repository'], pattern='github.com/user')
+            - ``_any_`` - dict(fields=[], pattern='')  Match string `pattern` (regular expression) appearing in Any of the `fields`. Example: dict(fields=['comment', 'name'], pattern='my comment')
+            - Examples - ``{'status': ['stopped'], 'order_by': ["-last_update"]}`` , ``{'order_by'=['-last_update'], '_all_'=dict(fields=['script.repository'], pattern='github.com/user'))``
 
         :return: The Tasks specified by the parameter combinations (see the parameters).
         :rtype: List[Task]
@@ -1048,31 +1020,20 @@ class Task(_Task):
             To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
         :param list additional_return_fields: Optional, if not provided return a list of Task IDs.
             If provided return dict per Task with the additional requested fields.
-            Example: returned_fields=['last_updated', 'user', 'script.repository'] will return a list of dict:
-                [{'id': 'task_id', 'last_update': datetime.datetime(),
-                  'user': 'user_id', 'script.repository': 'https://github.com/user/'}, ]
-        :param dict task_filter: filter and order Tasks. See service.tasks.GetAllRequest for details
-            `parent`: (str) filter by parent task-id matching
-            `search_text`: (str) free text search (in task fields comment/name/id)
-            `status`: List[str] List of valid statuses
-                (options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed",
-                "failed", "completed", "unknown")
-            `type`: List[str] List of valid task type
-                (options are: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor',
-                'controller', 'optimizer', 'service', 'qc'. 'custom')
-            `user`: List[str] Filter based on Task's user owner, provide list of valid user Ids.
-            `order_by`: List[str] List of field names to order by. When search_text is used,
-                Use '-' prefix to specify descending order. Optional, recommended when using page
-                Example: order_by=['-last_update']
-            `_all_`: dict(fields=[], pattern='')  Match string `pattern` (regular expression)
-                appearing in All `fields`
-                dict(fields=['script.repository'], pattern='github.com/user')
-            `_any_`: dict(fields=[], pattern='')  Match string `pattern` (regular expression)
-                appearing in Any of the `fields`
-                dict(fields=['comment', 'name'], pattern='my comment')
-            Examples:
-                {'status': ['stopped'], 'order_by': ["-last_update"]}
-                {'order_by'=['-last_update'], '_all_'=dict(fields=['script.repository'], pattern='github.com/user'))
+            Example: ``returned_fields=['last_updated', 'user', 'script.repository']`` will return a list of dict:
+            ``[{'id': 'task_id', 'last_update': datetime.datetime(), 'user': 'user_id', 'script.repository': 'https://github.com/user/'}, ]``
+        :param dict task_filter: filter and order Tasks. See service.tasks.GetAllRequest for details.
+
+            - ``parent`` - (str) filter by parent task-id matching
+            - ``search_text`` - (str) free text search (in task fields comment/name/id)
+            - ``status`` - List[str] List of valid statuses. Options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed", "failed", "completed", "unknown"
+            - ``type`` - List[str] List of valid task type. Ooptions are: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc'. 'custom'
+            - ``user`` - List[str] Filter based on Task's user owner, provide list of valid user IDs.
+            - `order_by` - List[str] List of field names to order by. When search_text is used. Use '-' prefix to specify descending order. Optional, recommended when using page. Example: ``order_by=['-last_update']``
+            - ``_all_`` - dict(fields=[], pattern='')  Match string ``pattern`` (regular expression) appearing in All `fields`. ``dict(fields=['script.repository'], pattern='github.com/user')``
+            - ``_any_`` - dict(fields=[], pattern='')  Match string `pattern` (regular expression) appearing in Any of the `fields`. `dict(fields=['comment', 'name'], pattern='my comment')`
+            - Examples: ``{'status': ['stopped'], 'order_by': ["-last_update"]}``, ``{'order_by'=['-last_update'], '_all_'=dict(fields=['script.repository'], pattern='github.com/user')}``
+
         :return: The Tasks specified by the parameter combinations (see the parameters).
         """
         if tags:
@@ -1218,13 +1179,13 @@ class Task(_Task):
         :param str source_task: The Task to clone. Specify a Task object or a  Task ID. (Optional)
         :param str name: The name of the new cloned Task. (Optional)
         :param str comment: A comment / description for the new cloned Task. (Optional)
-        :param str parent: The Id of the parent Task of the new Task.
+        :param str parent: The ID of the parent Task of the new Task.
 
             - If ``parent`` is not specified, then ``parent`` is set to ``source_task.parent``.
             - If ``parent`` is not specified and ``source_task.parent`` is not available, then
               ``parent`` set to ``source_task``.
 
-        :param str project: The Id of the project in which to create the new Task.
+        :param str project: The ID of the project in which to create the new Task.
             If ``None``, the new task inherits the original Task's project. (Optional)
 
         :return: The new cloned Task (experiment).
@@ -1261,7 +1222,7 @@ class Task(_Task):
 
         :param Task/str task: The Task to enqueue. Specify a Task object or  Task ID.
         :param str queue_name: The name of the queue. If not specified, then ``queue_id`` must be specified.
-        :param str queue_id: The Id of the queue. If not specified, then ``queue_name`` must be specified.
+        :param str queue_id: The ID of the queue. If not specified, then ``queue_name`` must be specified.
 
         :return: An enqueue JSON response.
 
@@ -1288,9 +1249,8 @@ class Task(_Task):
               - ``status_reason`` - The reason for the last status change.
               - ``status_message`` - Information about the status.
               - ``status_changed`` - The last status change date and time (ISO 8601 format).
-              - ``last_update`` - The last Task update time, including Task creation, update, change, or events for
-                this task (ISO 8601 format).
-              - ``execution.queue`` - The Id of the queue where the Task is enqueued. ``null`` indicates not enqueued.
+              - ``last_update`` - The last Task update time, including Task creation, update, change, or events for this task (ISO 8601 format).
+              - ``execution.queue`` - The ID of the queue where the Task is enqueued. ``null`` indicates not enqueued.
 
         """
         assert isinstance(task, (six.string_types, Task))
@@ -1322,7 +1282,7 @@ class Task(_Task):
         Get the number of tasks enqueued in a given queue.
 
         :param queue_name: The name of the queue. If not specified, then ``queue_id`` must be specified
-        :param queue_id: The id of the queue. If not specified, then ``queue_name`` must be specified
+        :param queue_id: The ID of the queue. If not specified, then ``queue_name`` must be specified
 
         :return: The number of tasks enqueued in the given queue
         """
@@ -1373,7 +1333,7 @@ class Task(_Task):
           - ``status_changed`` - The last status change date and time in ISO 8601 format.
           - ``last_update`` - The last time the Task was created, updated,
                 changed, or events for this task were reported.
-          - ``execution.queue`` - The Id of the queue where the Task is enqueued. ``null`` indicates not enqueued.
+          - ``execution.queue`` - The ID of the queue where the Task is enqueued. ``null`` indicates not enqueued.
 
         - ``updated`` - The number of Tasks updated (an integer or ``null``).
 
@@ -1924,9 +1884,8 @@ class Task(_Task):
           creates and uploads a ZIP file.
         - dict - ClearML stores a dictionary as ``.json`` (or see ``extension_name``) file and uploads it.
         - pandas.DataFrame - ClearML stores a pandas.DataFrame as ``.csv.gz`` (compressed CSV)
-            (or see ``extension_name``) file and uploads it.
-        - numpy.ndarray - ClearML stores a numpy.ndarray as ``.npz`` (or see ``extension_name``)
-            file and uploads it.
+          (or see ``extension_name``) file and uploads it.
+        - numpy.ndarray - ClearML stores a numpy.ndarray as ``.npz`` (or see ``extension_name``) file and uploads it.
         - PIL.Image - ClearML stores a PIL.Image as ``.png`` (or see ``extension_name``) file and uploads it.
         - Any - If called with auto_pickle=True, the object will be pickled and uploaded.
 
@@ -1955,12 +1914,13 @@ class Task(_Task):
         :param str extension_name: File extension which indicates the format the artifact should be stored as.
             The following are supported, depending on the artifact type
             (default value applies when extension_name is None):
-        - Any - ``.pkl`` if passed supersedes any other serialization type, and always pickles the object
-        - dict - ``.json``, ``.yaml`` (default ``.json``)
-        - pandas.DataFrame - ``.csv.gz``, ``.parquet``, ``.feather``, ``.pickle`` (default ``.csv.gz``)
-        - numpy.ndarray - ``.npz``, ``.csv.gz`` (default ``.npz``)
-        - PIL.Image - whatever extensions PIL supports (default ``.png``)
-        - In case the ``serialization_function`` argument is set - any extension is supported
+
+            - Any - ``.pkl`` if passed supersedes any other serialization type, and always pickles the object
+            - dict - ``.json``, ``.yaml`` (default ``.json``)
+            - pandas.DataFrame - ``.csv.gz``, ``.parquet``, ``.feather``, ``.pickle`` (default ``.csv.gz``)
+            - numpy.ndarray - ``.npz``, ``.csv.gz`` (default ``.npz``)
+            - PIL.Image - whatever extensions PIL supports (default ``.png``)
+            - In case the ``serialization_function`` argument is set - any extension is supported
 
         :param Callable[Any, Union[bytes, bytearray]] serialization_function: A serialization function that takes one
             parameter of any type which is the object to be serialized. The function should return
@@ -2197,6 +2157,7 @@ class Task(_Task):
         """
         Get user properties for this task.
         Returns a dictionary mapping user property name to user property details dict.
+
         :param value_only: If True, returned user property details will be a string representing the property value.
         """
         if not Session.check_min_api_version("2.9"):
@@ -2223,6 +2184,9 @@ class Task(_Task):
         name / value / description / type
 
         Examples:
+
+        .. code-block:: py
+
             task.set_user_properties(backbone='great', stable=True)
             task.set_user_properties(backbone={"type": int, "description": "network type", "value": "great"}, )
             task.set_user_properties(
@@ -2231,6 +2195,7 @@ class Task(_Task):
             )
 
         :param iterables: Properties iterables, each can be:
+
             * A dictionary of string key (name) to either a string value (value) a dict (property details). If the value
                 is a dict, it must contain a "value" field. For example:
 
@@ -2241,6 +2206,7 @@ class Task(_Task):
                         "another_property_name": {"description": "This is user property", "value": "another value"},
                         "yet_another_property_name": "some value"
                     }
+
 
             * An iterable of dicts (each representing property details). Each dict must contain a "name" field and a
                 "value" field. For example:
@@ -2266,14 +2232,14 @@ class Task(_Task):
 
             .. code-block:: javascript
 
-            {
-                "property_name": "string as property value",
-                "another_property_name": {
-                    "type": "string",
-                    "description": "This is user property",
-                    "value": "another value"
+                {
+                    "property_name": "string as property value",
+                    "another_property_name": {
+                        "type": "string",
+                        "description": "This is user property",
+                        "value": "another value"
+                    }
                 }
-            }
 
         """
         if not Session.check_min_api_version("2.9"):
@@ -2293,13 +2259,18 @@ class Task(_Task):
         Get task's script details.
 
         Returns a dictionary containing the script details.
+
         :return: Dictionary with script properties e.g.
-                {
+
+        .. code-block:: javascript
+
+           {
                 'working_dir': 'examples/reporting',
                 'entry_point': 'artifacts.py',
                 'branch': 'master',
                 'repository': 'https://github.com/allegroai/clearml.git'
-                }
+           }
+
         """
         script = self.data.script
         return {
@@ -2323,14 +2294,19 @@ class Task(_Task):
         Set task's script.
 
         Examples:
-            task.set_script(repository='https://github.com/allegroai/clearml.git,
-                            branch='main',
-                            working_dir='examples/reporting',
-                            entry_point='artifacts.py')
+
+        .. code-block:: py
+
+            task.set_script(
+                repository='https://github.com/allegroai/clearml.git,
+                branch='main',
+                working_dir='examples/reporting',
+                entry_point='artifacts.py'
+            )
 
         :param repository: Optional, URL of remote repository. use empty string ("") to clear repository entry.
         :param branch: Optional, Select specific repository branch / tag. use empty string ("") to clear branch entry.
-        :param commit: Optional, set specific git commit id. use empty string ("") to clear commit id entry.
+        :param commit: Optional, set specific git commit id. use empty string ("") to clear commit ID entry.
         :param diff: Optional, set "git diff" section. use empty string ("") to clear git-diff entry.
         :param working_dir: Optional, Working directory to launch the script from.
         :param entry_point: Optional, Path to execute within the repository.
@@ -2358,9 +2334,10 @@ class Task(_Task):
     def delete_user_properties(self, *iterables):
         # type: (Iterable[Union[dict, Iterable[str, str]]]) -> bool
         """
-        Delete hyper-parameters for this task.
+        Delete hyperparameters for this task.
+
         :param iterables: Hyper parameter key iterables. Each an iterable whose possible values each represent
-        a hyper-parameter entry to delete, value formats are:
+            a hyperparameter entry to delete, value formats are:
 
             * A dictionary containing a 'section' and 'name' fields
             * An iterable (e.g. tuple, list etc.) whose first two items denote 'section' and 'name'
@@ -2430,7 +2407,7 @@ class Task(_Task):
         :param repo: Remote URL for the repository to use, OR path to local copy of the git repository
             Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'
         :param branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
-        :param commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
+        :param commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
         """
         if running_remotely():
             return

@@ -538,7 +538,7 @@ class Dataset(object):
         return removed
 
     def sync_folder(self, local_path, dataset_path=None, verbose=False):
-        # type: (Union[Path, _Path, str], Union[Path, _Path, str], bool) -> (int, int)
+        # type: (Union[Path, _Path, str], Union[Path, _Path, str], bool) -> (int, int, int)
         """
         Synchronize the dataset with a local folder. The dataset is synchronized from the
         relative_base_folder (default: dataset root)  and deeper with the specified local path.

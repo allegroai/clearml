@@ -2144,8 +2144,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return ret_projects
 
     @classmethod
-    def get_project_id(cls, project_name):
-        # type: (str) -> Optional[str]
+    def get_project_id(cls, project_name, search_hidden=True):
+        # type: (str, bool) -> Optional[str]
         """
         Return a project's unique ID (str).
         If more than one project matched the project_name, return the last updated project
@@ -2155,9 +2155,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         assert project_name
         assert isinstance(project_name, str)
+        extra = {"search_hidden": search_hidden} if Session.check_min_api_version("2.20") else {}
         res = cls._send(
             cls._get_default_session(),
-            projects.GetAllRequest(order_by=['last_update'], name=exact_match_regex(project_name)),
+            projects.GetAllRequest(
+                order_by=['last_update'],
+                name=exact_match_regex(project_name),
+                **extra
+            ),
             raise_on_errors=False)
         if res and res.response and res.response.projects:
             return [projects.Project(**p.to_dict()).id for p in res.response.projects][0]

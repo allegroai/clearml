@@ -9,7 +9,7 @@ To leverage Hyper-Datasets power, users define Dataviews, which are sophisticate
 ![Dataview in the UI](../../docs/screenshots/hpd.png)
 ## Examples Overview ##
 - Hyperdataset registration into ClearML Enterprise
-- Hypderdataset usage examples, retrieving frames using the Dataview Class and connecting to pytorch dataloader
+- Hypderdataset usage examples, retrieving frames using the DataView Class and connecting to pytorch dataloader
 
 ## Further Resources ##
 

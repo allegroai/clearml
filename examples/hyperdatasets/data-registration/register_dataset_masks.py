@@ -1,5 +1,5 @@
 """
-How to register data with masks and metadata from a json file.
+How to register data with masks from a json file.
 Create a list of masks for each image and add to a DatasetVersion.
 Define DatasetVersion-level mask-label mapping, which maps RGB values from the mask to class labels.
 

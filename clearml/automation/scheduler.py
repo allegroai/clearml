@@ -491,11 +491,11 @@ class TaskScheduler(BaseScheduler):
         Create a Task scheduler service
 
         :param sync_frequency_minutes: Sync task scheduler configuration every X minutes.
-        Allow to change scheduler in runtime by editing the Task configuration object
+            Allow to change scheduler in runtime by editing the Task configuration object
         :param force_create_task_name: Optional, force creation of Task Scheduler service,
-        even if main Task.init already exists.
+            even if main Task.init already exists.
         :param force_create_task_project: Optional, force creation of Task Scheduler service,
-        even if main Task.init already exists.
+            even if main Task.init already exists.
         """
         super(TaskScheduler, self).__init__(
             sync_frequency_minutes=sync_frequency_minutes,
@@ -539,6 +539,7 @@ class TaskScheduler(BaseScheduler):
         times.
 
         Examples:
+
         Launch every 15 minutes
             add_task(schedule_task_id='1235', queue='default', minute=15)
         Launch every 1 hour
@@ -578,15 +579,15 @@ class TaskScheduler(BaseScheduler):
             value <= 100
         :param limit_execution_time: Limit the execution time (in hours) of the specific job.
         :param single_instance: If True, do not launch the Task job if the previous instance is still running
-        (skip until the next scheduled time period). Default False.
+            (skip until the next scheduled time period). Default False.
         :param recurring: If False, only launch the Task once (default: True, repeat)
         :param execute_immediately: If True, schedule the Task to be executed immediately
-        then recurring based on the timing schedule arguments. Default False.
+            then recurring based on the timing schedule arguments. Default False.
         :param reuse_task: If True, re-enqueue the same Task (i.e. do not clone it) every time, default False.
         :param task_parameters: Configuration parameters to the executed Task.
-        for example: {'Args/batch': '12'} Notice: not available when reuse_task=True
+            for example: {'Args/batch': '12'} Notice: not available when reuse_task=True
         :param task_overrides: Change task definition.
-        for example {'script.version_num': None, 'script.branch': 'main'} Notice: not available when reuse_task=True
+            for example {'script.version_num': None, 'script.branch': 'main'} Notice: not available when reuse_task=True
 
         :return: True if job is successfully added to the scheduling list
         """

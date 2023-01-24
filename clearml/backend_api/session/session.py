@@ -139,6 +139,8 @@ class Session(TokenManager):
             "auth.token_expiration_threshold_sec", 60
         )
 
+        req_token_expiration_sec = self.config.get("api.auth.req_token_expiration_sec", None)
+
         self._verbose = verbose if verbose is not None else ENV_VERBOSE.get()
         self._logger = logger
         if self._verbose and not self._logger:
@@ -165,7 +167,9 @@ class Session(TokenManager):
 
         # init the token manager
         super(Session, self).__init__(
-            token_expiration_threshold_sec=token_expiration_threshold_sec, **kwargs
+            token_expiration_threshold_sec=token_expiration_threshold_sec,
+            req_token_expiration_sec=req_token_expiration_sec,
+            **kwargs
         )
 
         host = host or self.get_api_server_host(config=self.config)

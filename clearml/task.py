@@ -791,7 +791,8 @@ class Task(_Task):
         # monitoring are: Resource monitoring and Dev Worker monitoring classes
         BackgroundMonitor.start_all(task=task)
 
-        task.set_progress(0)
+        # noinspection PyProtectedMember
+        task._set_startup_info()
         return task
 
     @classmethod
@@ -3075,6 +3076,12 @@ class Task(_Task):
         config_text = self._get_model_config_text()
         # noinspection PyProtectedMember
         return OutputModel._text_to_config_dict(config_text)
+
+    def _set_startup_info(self):
+        # type: () -> ()
+        self._set_runtime_properties(
+            runtime_properties={"CLEARML VERSION": self.session.client, "CLI": sys.argv[0], "progress": "0"}
+        )
 
     @classmethod
     def _reset_current_task_obj(cls):

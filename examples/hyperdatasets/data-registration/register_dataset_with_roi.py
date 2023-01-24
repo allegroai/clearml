@@ -6,8 +6,8 @@ Notice: This is a custom parser for a specific dataset. Each dataset requires a 
 
 You can run this example from this dir with:
 
-python registration_with_roi_and_meta.py
---path data/sample_ds --ext jpg --ds_name my_uploaded_dataset --version_name my_version
+python register_dataset_with_roi.py
+--ext jpg --ds_name my_uploaded_dataset --version_name my_version
 """
 
 import glob

@@ -1867,7 +1867,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Return The task status without refreshing the entire Task object (only the status property)
 
         TaskStatusEnum: ["created", "in_progress", "stopped", "closed", "failed", "completed",
-                         "queued", "published", "publishing", "unknown"]
+        "queued", "published", "publishing", "unknown"]
 
         :return: str: Task status as string (TaskStatusEnum)
         """

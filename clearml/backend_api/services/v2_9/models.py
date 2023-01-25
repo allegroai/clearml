@@ -2111,7 +2111,7 @@ class MakePrivateRequest(Request):
     """
     Convert public models to private
 
-    :param ids: Ids of the models to convert. Only the models originated by the
+    :param ids: IDs of the models to convert. Only the models originated by the
         company can be converted
     :type ids: Sequence[str]
     """
@@ -2199,7 +2199,7 @@ class MakePublicRequest(Request):
     """
     Convert company models to public
 
-    :param ids: Ids of the models to convert
+    :param ids: IDs of the models to convert
     :type ids: Sequence[str]
     """
 

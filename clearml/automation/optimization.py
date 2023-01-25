@@ -62,7 +62,7 @@ class Objective(object):
         """
         Return a specific task scalar value based on the objective settings (title/series).
 
-        :param str task_id: The Task id to retrieve scalar from (or ``ClearMLJob`` object).
+        :param str task_id: The Task ID to retrieve scalar from (or ``ClearMLJob`` object).
 
         :return: The scalar value.
         """
@@ -167,7 +167,7 @@ class Objective(object):
         Return a normalized task scalar value based on the objective settings (title/series).
         I.e. objective is always to maximize the returned value
 
-        :param str task_id: The Task id to retrieve scalar from.
+        :param str task_id: The Task ID to retrieve scalar from.
 
         :return: Normalized scalar value.
         """

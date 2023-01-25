@@ -145,7 +145,7 @@ class BaseModel(object):
     def id(self):
         # type: () -> str
         """
-        The Id (system UUID) of the model.
+        The ID (system UUID) of the model.
 
         :return: The model ID.
         """
@@ -175,9 +175,9 @@ class BaseModel(object):
     def project(self):
         # type: () -> str
         """
-        project id of the model.
+        project ID of the model.
 
-        :return: project id (str).
+        :return: project ID (str).
         """
         data = self._get_model_data()
         return data.project
@@ -327,6 +327,7 @@ class BaseModel(object):
         super(BaseModel, self).__init__()
         self._log = get_logger()
         self._task = None
+        self._reload_required = False
         self._set_task(task)
 
     def get_weights(self, raise_on_error=False):
@@ -573,7 +574,7 @@ class Model(BaseModel):
 
         Notice, we can override the input model when running remotely
 
-        :param model_id: id (string)
+        :param model_id: ID (string)
         """
         super(Model, self).__init__()
         self._base_model_id = model_id
@@ -1051,7 +1052,7 @@ class InputModel(Model):
         Load a model from the Model artifactory,
         based on model_id (uuid) or a model name/projects/tags combination.
 
-        :param model_id: The ClearML Id (system UUID) of the input model whose metadata the **ClearML Server**
+        :param model_id: The ClearML ID (system UUID) of the input model whose metadata the **ClearML Server**
             (backend) stores. If provided all other arguments are ignored
         :param name: Model name to search and load
         :param project: Model project name to search model in
@@ -1079,7 +1080,7 @@ class InputModel(Model):
 
         - Imported models (InputModel objects created using the :meth:`Logger.import_model` method).
         - Models whose metadata is already in the ClearML platform, meaning the InputModel object is instantiated
-          from the ``InputModel`` class specifying the model's ClearML Id as an argument.
+          from the ``InputModel`` class specifying the model's ClearML ID as an argument.
         - Models whose origin is not ClearML that are used to create an InputModel object. For example,
           models created using TensorFlow models.
 
@@ -1290,7 +1291,7 @@ class OutputModel(BaseModel):
         :param str comment: A comment / description for the model. (Optional)
         :param framework: The framework of the model or a Framework object. (Optional)
         :type framework: str or Framework object
-        :param base_model_id: optional, model id to be reused
+        :param base_model_id: optional, model ID to be reused
         """
         if not task:
             from .task import Task

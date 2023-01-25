@@ -630,6 +630,7 @@ class Dataset(object):
         # set output_url
         if output_url:
             self._task.output_uri = output_url
+            self._task.get_logger().set_default_upload_destination(output_url)
 
         if not max_workers:
             max_workers = 1 if self._task.output_uri.startswith(tuple(cloud_driver_schemes)) else psutil.cpu_count()
@@ -967,7 +968,7 @@ class Dataset(object):
         :param dataset_path: Only match files matching the dataset_path (including wildcards).
             Example: 'folder/sub/*.json'
         :param recursive: If True (default), matching dataset_path recursively
-        :param dataset_id: Filter list based on the dataset id containing the latest version of the file.
+        :param dataset_id: Filter list based on the dataset ID containing the latest version of the file.
             Default: None, do not filter files based on parent dataset.
 
         :return: List of files with relative path
@@ -1012,7 +1013,7 @@ class Dataset(object):
         """
         return a list of files removed when comparing to a specific dataset_id
 
-        :param dataset_id: dataset id (str) to compare against, if None is given compare against the parents datasets
+        :param dataset_id: dataset ID (str) to compare against, if None is given compare against the parents datasets
         :return: List of files with relative path
             (files might not be available locally until get_local_copy() is called)
         """
@@ -1033,7 +1034,7 @@ class Dataset(object):
         """
         return a list of files modified when comparing to a specific dataset_id
 
-        :param dataset_id: dataset id (str) to compare against, if None is given compare against the parents datasets
+        :param dataset_id: dataset ID (str) to compare against, if None is given compare against the parents datasets
         :return: List of files with relative path
             (files might not be available locally until get_local_copy() is called)
         """
@@ -1066,7 +1067,7 @@ class Dataset(object):
         """
         return a list of files added when comparing to a specific dataset_id
 
-        :param dataset_id: dataset id (str) to compare against, if None is given compare against the parents datasets
+        :param dataset_id: dataset ID (str) to compare against, if None is given compare against the parents datasets
         :return: List of files with relative path
             (files might not be available locally until get_local_copy() is called)
         """
@@ -1252,6 +1253,8 @@ class Dataset(object):
         if output_uri and not Task._offline_mode:
             # noinspection PyProtectedMember
             instance._task.output_uri = output_uri
+            # noinspection PyProtectedMember
+            instance._task.get_logger().set_default_upload_destination(output_uri)
         # noinspection PyProtectedMember
         instance._using_current_task = use_current_task
         # noinspection PyProtectedMember
@@ -1773,7 +1776,7 @@ class Dataset(object):
         If a set of versions are given it will squash the versions diff into a single version
 
         :param dataset_name: Target name for the newly generated squashed dataset
-        :param dataset_ids: List of dataset Ids (or objects) to squash. Notice order does matter.
+        :param dataset_ids: List of dataset IDs (or objects) to squash. Notice order does matter.
             The versions are merged from first to last.
         :param dataset_project_name_pairs: List of pairs (project_name, dataset_name) to squash.
             Notice order does matter. The versions are merged from first to last.
@@ -1831,7 +1834,7 @@ class Dataset(object):
         :param partial_name: Specify partial match to a dataset name
         :param tags: Specify user tags
         :param ids: List specific dataset based on IDs list
-        :param only_completed: If False return datasets that are still in progress (uploading/edited etc.)
+        :param only_completed: If False, return datasets that are still in progress (uploading/edited etc.)
         :param recursive_project_search: If True and the `dataset_project` argument is set,
             search inside subprojects as well.
             If False, don't search inside subprojects (except for the special `.datasets` subproject)
@@ -2027,30 +2030,53 @@ class Dataset(object):
         modified_files_size = 0
         removed_files_count = 0
         removed_files_size = 0
+
+        def update_changes(entries, parent_entries):
+            nonlocal total_size
+            nonlocal modified_files_count
+            nonlocal modified_files_size
+            nonlocal added_files_count
+            nonlocal added_files_size
+            nonlocal removed_files_count
+            nonlocal removed_files_size
+
+            for file in entries.values():
+                # noinspection PyBroadException
+                try:
+                    total_size += file.size
+                    if file.parent_dataset_id == self._id:
+                        if file.relative_path in parent_file_entries:
+                            modified_files_count += 1
+                            modified_files_size += file.size - parent_file_entries[file.relative_path].size
+                        else:
+                            added_files_count += 1
+                            added_files_size += file.size
+                except Exception:
+                    pass
+            for parent_entry_key, parent_entry_value in parent_entries.items():
+                # noinspection PyBroadException
+                try:
+                    if parent_entry_key not in entries:
+                        removed_files_count += 1
+                        removed_files_size -= parent_entry_value.size
+                except Exception:
+                    pass
+
         parent_datasets_ids = self._dependency_graph[self._id]
         parent_file_entries = dict()  # type: Dict[str, FileEntry]
+        parent_link_entries = dict()  # type: Dict[str, LinkEntry]
         for parent_dataset_id in parent_datasets_ids:
             if parent_dataset_id == self._id:
                 continue
             parent_dataset = self.get(parent_dataset_id)
             parent_file_entries.update(parent_dataset._dataset_file_entries)
+            parent_link_entries.update(parent_dataset._dataset_link_entries)
         # we have to do this after we update the parent_file_entries because we might
         # have duplicate file entries
-        for parent_file_entry_key, parent_file_entry_value in parent_file_entries.items():
-            if parent_file_entry_key not in self._dataset_file_entries:
-                removed_files_count += 1
-                removed_files_size -= parent_file_entry_value.size
-        for file in self._dataset_file_entries.values():
-            total_size += file.size
-            if file.parent_dataset_id == self._id:
-                if file.relative_path in parent_file_entries:
-                    modified_files_count += 1
-                    modified_files_size += file.size - parent_file_entries[file.relative_path].size
-                else:
-                    added_files_count += 1
-                    added_files_size += file.size
+        update_changes(self._dataset_file_entries, parent_file_entries)
+        update_changes(self._dataset_link_entries, parent_link_entries)
         state = dict(
-            file_count=len(self._dataset_file_entries),
+            file_count=len(self._dataset_file_entries) + len(self._dataset_link_entries),
             total_size=total_size,
             dataset_file_entries=[f.as_dict() for f in self._dataset_file_entries.values()],
             dataset_link_entries=[link.as_dict() for link in self._dataset_link_entries.values()],
@@ -2740,7 +2766,7 @@ class Dataset(object):
                 file_name = file.link
             dataset_details += "{}, {}, {}".format(
                 file_name,
-                file.size if file.size is not None and not hasattr(file, "link") else "",
+                file.size if file.size is not None else "",
                 file.hash if file.hash else "",
             )
             preview_index += 1
@@ -2891,7 +2917,9 @@ class Dataset(object):
             if artifact is not None:
                 # noinspection PyBroadException
                 try:
-                    if isinstance(artifact, pd.DataFrame):
+                    # we do not use report_table if default_upload_destination is set because it will
+                    # not upload the sample to that destination, use report_media instead
+                    if isinstance(artifact, pd.DataFrame) and not self._task.get_logger().get_default_upload_destination():
                         self._task.get_logger().report_table(
                             "Tables", "summary", table_plot=artifact
                         )

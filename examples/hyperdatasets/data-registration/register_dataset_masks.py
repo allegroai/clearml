@@ -1,13 +1,14 @@
 """
-How to register data with ROIs and metadata from a json file.
-Create a list of ROI's for each image in the metadata format required by a frame.
+How to register data with masks from a json file.
+Create a list of masks for each image and add to a DatasetVersion.
+Define DatasetVersion-level mask-label mapping, which maps RGB values from the mask to class labels.
 
 Notice: This is a custom parser for a specific dataset. Each dataset requires a different parser.
 
 You can run this example from this dir with:
 
-python registration_with_roi_and_meta.py
---path data/sample_ds --ext jpg --ds_name my_uploaded_dataset --version_name my_version
+python register_dataset_masks.py
+--ext jpg --ds_name my_uploaded_dataset --version_name my_version
 """
 
 import glob

@@ -202,7 +202,7 @@ class PipelineController(object):
             Example local repo copy: './repo' -> will automatically store the remote
             repo url and commit ID based on the locally cloned copy
         :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
-        :param repo_commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
+        :param repo_commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
         """
         self._nodes = {}
         self._running_nodes = []
@@ -627,7 +627,7 @@ class PipelineController(object):
             Example local repo copy: './repo' -> will automatically store the remote
             repo url and commit ID based on the locally cloned copy
         :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
-        :param repo_commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
+        :param repo_commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
         :param helper_functions: Optional, a list of helper functions to make available
             for the standalone function Task.
         :param docker: Select the docker image to be executed in by the remote session
@@ -1716,7 +1716,7 @@ class PipelineController(object):
             Example local repo copy: './repo' -> will automatically store the remote
             repo url and commit ID based on the locally cloned copy
         :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
-        :param repo_commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
+        :param repo_commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
         :param helper_functions: Optional, a list of helper functions to make available
             for the standalone function Task.
         :param docker: Select the docker image to be executed in by the remote session
@@ -2963,7 +2963,7 @@ class PipelineDecorator(PipelineController):
             Example local repo copy: './repo' -> will automatically store the remote
             repo url and commit ID based on the locally cloned copy
         :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
-        :param repo_commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
+        :param repo_commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
         """
         super(PipelineDecorator, self).__init__(
             name=name,
@@ -3358,7 +3358,7 @@ class PipelineDecorator(PipelineController):
             Example local repo copy: './repo' -> will automatically store the remote
             repo url and commit ID based on the locally cloned copy
         :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
-        :param repo_commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
+        :param repo_commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
         :param helper_functions: Optional, a list of helper functions to make available
             for the standalone pipeline step function Task. By default the pipeline step function has
             no access to any of the other functions, by specifying additional functions here, the remote pipeline step
@@ -3747,7 +3747,7 @@ class PipelineDecorator(PipelineController):
             Example local repo copy: './repo' -> will automatically store the remote
             repo url and commit ID based on the locally cloned copy
         :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
-        :param repo_commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
+        :param repo_commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
         """
         def decorator_wrap(func):
 

@@ -138,7 +138,7 @@ class Script(NonStrictDataModel):
     :type repository: str
     :param tag: Repository tag
     :type tag: str
-    :param branch: Repository branch id If not provided and tag not provided, default repository branch is used.
+    :param branch: Repository branch ID If not provided and tag not provided, default repository branch is used.
     :type branch: str
     :param version_num: Version (changeset) number. Optional (default is head version) Unused if tag is provided.
     :type version_num: str
@@ -3925,7 +3925,7 @@ class CreateRequest(Request):
     :type type: TaskTypeEnum
     :param comment: Free text comment
     :type comment: str
-    :param parent: Parent task id Must be a completed task.
+    :param parent: Parent task ID Must be a completed task.
     :type parent: str
     :param project: Project ID of the project to which this task is assigned Must
         exist[ab]

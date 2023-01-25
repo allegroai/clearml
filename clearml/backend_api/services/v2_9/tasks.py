@@ -7112,7 +7112,7 @@ class MakePrivateRequest(Request):
     """
     Convert public tasks to private
 
-    :param ids: Ids of the tasks to convert. Only the tasks originated by the
+    :param ids: IDs of the tasks to convert. Only the tasks originated by the
         company can be converted
     :type ids: Sequence[str]
     """

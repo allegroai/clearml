@@ -1454,8 +1454,8 @@ class OutputModel(BaseModel):
             is the ``weights_filename`` value. (Optional)
         :param bool auto_delete_file: Delete the temporary file after uploading (Optional)
 
-            - ``True`` - Delete (Default)
-            - ``False`` - Do not delete
+          - ``True`` - Delete (Default)
+          - ``False`` - Do not delete
 
         :param str register_uri: The URI of an already uploaded weights file. The URI must be valid. Specify
             ``register_uri`` or ``weights_filename``, but not both.

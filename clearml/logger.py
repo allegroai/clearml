@@ -480,13 +480,11 @@ class Logger(object):
         :param str yaxis: The y-axis title. (Optional)
         :param list(str) labels: Labels per point in the data assigned to the ``scatter`` parameter. The labels must be
             in the same order as the data.
-        :param str mode: The type of scatter plot.
+        :param str mode: The type of scatter plot. The values are:
 
-            The values are:
-
-            - ``lines``
-            - ``markers``
-            - ``lines+markers``
+          - ``lines``
+          - ``markers``
+          - ``lines+markers``
 
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
@@ -544,28 +542,24 @@ class Logger(object):
         :param str zaxis: The z-axis title. (Optional)
         :param list(str) labels: Labels per point in the data assigned to the ``scatter`` parameter. The labels must be
             in the same order as the data.
-        :param str mode: The type of scatter plot.
+        :param str mode: The type of scatter plot. The values are:
 
-            The values are:
+          - ``lines``
+          - ``markers``
+          - ``lines+markers``
 
-            - ``lines``
-            - ``markers``
-            - ``lines+markers``
+          For example:
 
-        For example:
+          .. code-block:: py
 
-        .. code-block:: py
+             scatter3d = np.random.randint(10, size=(10, 3))
+             logger.report_scatter3d(title="example_scatter_3d", series="series_xyz", iteration=1, scatter=scatter3d,
+                  xaxis="title x", yaxis="title y", zaxis="title z")
 
-           scatter3d = np.random.randint(10, size=(10, 3))
-           logger.report_scatter3d(title="example_scatter_3d", series="series_xyz", iteration=1, scatter=scatter3d,
-                xaxis="title x", yaxis="title y", zaxis="title z")
+        :param bool fill: Fill the area under the curve. The values are:
 
-        :param bool fill: Fill the area under the curve
-
-            The values are:
-
-            - ``True`` - Fill
-            - ``False`` - Do not fill (default)
+          - ``True`` - Fill
+          - ``False`` - Do not fill (default)
 
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
@@ -819,19 +813,17 @@ class Logger(object):
         :param local_path: A path to an image file.
         :param url: A URL for the location of a pre-uploaded image.
         :param image: Image data (RGB).
-        :param matrix: Deperacted, Image data (RGB).
+        :param matrix: Deprecated, Image data (RGB).
 
             .. note::
                The ``matrix`` parameter is deprecated. Use the ``image`` parameters.
         :param max_image_history: The maximum number of images to store per metric/variant combination.
             For an unlimited number, use a negative value. The default value is set in global configuration
             (default=``5``).
-        :param delete_after_upload: After the upload, delete the local copy of the image
+        :param delete_after_upload: After the upload, delete the local copy of the image. The values are:
 
-            The values are:
-
-            - ``True`` - Delete after upload.
-            - ``False`` - Do not delete after upload. (default)
+          - ``True`` - Delete after upload.
+          - ``False`` - Do not delete after upload. (default)
         """
         mutually_exclusive(
             UsageError, _check_none=True,
@@ -1128,7 +1120,7 @@ class Logger(object):
         `report_image`, `report_media` etc. without specifying `max_history`
 
         :param max_history: Number of samples (files) to store on a unique set of title/series being reported
-            with different iteration counter. This is used to make sure users do not end up exploding storage
+            with different iteration counters. This is used to make sure users do not end up exploding storage
             on server storage side.
 
             For example the following code sample will store the last 5 images even though
@@ -1148,10 +1140,10 @@ class Logger(object):
         # type: () -> int
         """
         Return the default max debug sample history when reporting media/debug samples.
-        If value was not set specifically, the functions returns the configuration file default value.
+        If value was not set specifically, the function returns the configuration file default value.
 
         :return: default number of samples (files) to store on a unique set of title/series being reported
-            with different iteration counter. This is used to make sure users do not end up exploding storage
+            with different iteration counters. This is used to make sure users do not end up exploding storage
             on server storage side.
         """
         if self._default_max_sample_history is not None:

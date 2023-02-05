@@ -698,9 +698,9 @@ class StorageHelper(object):
 
         return folder_uri
 
-    def upload_from_stream(self, stream, dest_path, extra=None, retries=1):
-        dest_path = self._canonize_url(dest_path)
-        object_name = self._normalize_object_name(dest_path)
+    def upload_from_stream(self, stream, dest_path, extra=None, retries=1, return_canonized=True):
+        canonized_dest_path = self._canonize_url(dest_path)
+        object_name = self._normalize_object_name(canonized_dest_path)
         extra = extra.copy() if extra else {}
         extra.update(self._extra)
         last_ex = None
@@ -726,38 +726,47 @@ class StorageHelper(object):
         if last_ex:
             raise last_ex
 
+        result_dest_path = canonized_dest_path if return_canonized else dest_path
+
         if self.scheme in _HttpDriver.schemes:
             # quote link
-            dest_path = quote_url(dest_path)
+            result_dest_path = quote_url(result_dest_path)
 
-        return dest_path
+        return result_dest_path
 
-    def upload(self, src_path, dest_path=None, extra=None, async_enable=False, cb=None, retries=3):
+    def upload(
+        self, src_path, dest_path=None, extra=None, async_enable=False, cb=None, retries=3, return_canonized=True
+    ):
         if not dest_path:
             dest_path = os.path.basename(src_path)
 
-        dest_path = self._canonize_url(dest_path)
+        canonized_dest_path = self._canonize_url(dest_path)
         dest_path = dest_path.replace('\\', '/')
+        canonized_dest_path = canonized_dest_path.replace('\\', '/')
+
+        result_path = canonized_dest_path if return_canonized else dest_path
 
         if cb and self.scheme in _HttpDriver.schemes:
             # store original callback
             a_cb = cb
 
             # quote link
-            def callback(a_path):
-                return a_cb(quote_url(a_path) if a_path else a_path)
+            def callback(result):
+                return a_cb(quote_url(result_path) if result else result)
             # replace callback with wrapper
             cb = callback
 
         if async_enable:
-            data = self._UploadData(src_path=src_path, dest_path=dest_path, extra=extra, callback=cb, retries=retries)
+            data = self._UploadData(
+                src_path=src_path, dest_path=canonized_dest_path, extra=extra, callback=cb, retries=retries
+            )
             StorageHelper._initialize_upload_pool()
             return StorageHelper._upload_pool.apply_async(self._do_async_upload, args=(data,))
         else:
-            res = self._do_upload(src_path, dest_path, extra, cb, verbose=False, retries=retries)
+            res = self._do_upload(src_path, canonized_dest_path, extra, cb, verbose=False, retries=retries)
             if res:
-                res = quote_url(res)
-            return res
+                result_path = quote_url(result_path)
+            return result_path
 
     def list(self, prefix=None, with_metadata=False):
         """

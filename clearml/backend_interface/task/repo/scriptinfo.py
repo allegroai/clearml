@@ -649,7 +649,8 @@ class ScriptInfo(object):
                                       data={'_xsrf': cookies['_xsrf'], 'password': password})
                     cookies.update(r.cookies)
 
-                auth_token = server_info.get('token') or os.getenv('JUPYTERHUB_API_TOKEN') or ''
+                # get api token from ENV - if not defined then from server info
+                auth_token = os.getenv('JUPYTERHUB_API_TOKEN') or server_info.get('token') or ''
                 try:
                     r = requests.get(
                         url=server_info['url'] + 'api/sessions', cookies=cookies,

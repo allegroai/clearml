@@ -38,6 +38,10 @@ class PatchClick:
 
     @classmethod
     def args(cls):
+        # ignore None keys
+        if len(cls._args) > 0:
+            cls._args = {k: v for k, v in cls._args.items() if k is not None}
+            
         # remove prefix and main command
         if cls._num_commands == 1:
             cmd = sorted(cls._args.keys())[0]

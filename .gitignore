@@ -16,3 +16,4 @@ dist/
 examples/runs/
 examples/*_data
 examples/frameworks/data
+venv/

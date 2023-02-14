@@ -604,15 +604,17 @@ class StorageHelper(object):
             None if the file could not be found or an error occurred.
         """
         obj = self.get_object(remote_url, silence_errors=silence_errors)
-        return self._get_object_size_bytes(obj)
+        return self._get_object_size_bytes(obj, silence_errors)
 
-    def _get_object_size_bytes(self, obj):
+    def _get_object_size_bytes(self, obj, silence_errors=False):
         # type: (object) -> [int, None]
         """
         Auxiliary function for `get_object_size_bytes`.
         Get size of the remote object in bytes.
 
         :param object obj: The remote object
+        :param bool silence_errors: Silence errors that might occur
+            when fetching the size of the file. Default: False
 
         :return: The size of the object in bytes.
             None if an error occurred.
@@ -628,17 +630,27 @@ class StorageHelper(object):
                 size = obj.size
                 # Google storage has the option to reload the object to get the size
                 if size is None and hasattr(obj, "reload"):
-                    obj.reload()
-                    size = obj.size
+                    # noinspection PyBroadException
+                    try:
+                        # To catch google.api_core exceptions
+                        obj.reload()
+                        size = obj.size
+                    except Exception as e:
+                        if not silence_errors:
+                            self.log.warning("Failed obtaining object size on reload: {}('{}')".format(
+                                e.__class__.__name__, str(e)))
             elif hasattr(obj, "content_length"):
                 # noinspection PyBroadException
                 try:
                     # To catch botocore exceptions
                     size = obj.content_length  # noqa
-                except Exception:
-                    pass
-        except (ValueError, AttributeError, KeyError):
-            pass
+                except Exception as e:
+                    if not silence_errors:
+                        self.log.warning("Failed obtaining content_length while getting object size: {}('{}')".format(
+                            e.__class__.__name__, str(e)))
+        except Exception as e:
+            if not silence_errors:
+                self.log.warning("Failed getting object size: {}('{}')".format(e.__class__.__name__, str(e)))
         return size
 
     def get_object_metadata(self, obj):
@@ -1627,7 +1639,6 @@ class _Boto3Driver(_Driver):
 
     def upload_object_via_stream(self, iterator, container, object_name, callback=None, extra=None, **kwargs):
         import boto3.s3.transfer
-
         stream = _Stream(iterator)
         extra_args = {}
         try:

@@ -341,7 +341,7 @@ class StorageManager(object):
             None if the file could not be found or an error occurred.
         """
         helper = StorageHelper.get(remote_url)
-        return helper.get_object_size_bytes(remote_url)
+        return helper.get_object_size_bytes(remote_url, silence_errors)
 
     @classmethod
     def download_folder(

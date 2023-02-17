@@ -8,16 +8,15 @@ from functools import partial
 from io import BytesIO
 from mimetypes import guess_extension
 from tempfile import mkstemp
-from typing import Any, Union
 
 import numpy as np
 import six
 from PIL import Image
 
-from ...debugging.log import LoggerRoot
 from ..frameworks import _patched_call, WeightsFileHandler, _Empty
 from ..import_bind import PostImportHookPatching
 from ...config import running_remotely
+from ...debugging.log import LoggerRoot
 from ...model import InputModel, OutputModel, Framework
 
 try:
@@ -398,11 +397,12 @@ class EventTrainsWriter(object):
                 with open(fd, "wb") as f:
                     f.write(imdata)
                 return temp_file
+            image = np.asarray(im)
             output.close()
             if height is not None and height > 0 and width is not None and width > 0:
-                val = np.array(im).reshape((height, width, -1)).astype(np.uint8)
+                val = image.reshape((height, width, -1)).astype(np.uint8)
             else:
-                val = np.array(im).astype(np.uint8)
+                val = image.astype(np.uint8)
             if val.ndim == 3 and val.shape[2] == 3:
                 if self._visualization_mode == 'BGR':
                     val = val[:, :, [2, 1, 0]]

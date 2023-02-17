@@ -674,10 +674,20 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def mark_completed(self, ignore_errors=True, status_message=None, force=False):
         # type: (bool, Optional[str], bool) -> ()
         """
-        Manually mark a Task as completed. This will close the running process and will change the Task's status
-        to Completed (Use this function to close and change status of remotely executed tasks).
-        To simply change the Task's status to completed, use task.close()
+        Use this function to close and change status of remotely executed tasks.
+        
+        Closes the current Task, changes its status to "Completed", and terminates the running Python process.
+        This is in contrast to :meth:`Task.close`, which does the first two steps, but does not terminate the running Python process.
 
+        For example, in
+        ```
+        task.mark_completed()
+        from time import sleep
+        sleep(30)
+        print('This text will not be printed!')
+        ```
+        the text will not be printed, because the Python process is immediately terminated.
+        
         :param bool ignore_errors: If True default), ignore any errors raised
         :param bool force: If True, the task status will be changed to `stopped` regardless of the current Task state.
         :param str status_message: Optional, add status change message to the stop request.

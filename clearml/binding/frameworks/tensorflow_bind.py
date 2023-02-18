@@ -8,15 +8,16 @@ from functools import partial
 from io import BytesIO
 from mimetypes import guess_extension
 from tempfile import mkstemp
+from typing import Any, Union
 
 import numpy as np
 import six
 from PIL import Image
 
+from ...debugging.log import LoggerRoot
 from ..frameworks import _patched_call, WeightsFileHandler, _Empty
 from ..import_bind import PostImportHookPatching
 from ...config import running_remotely
-from ...debugging.log import LoggerRoot
 from ...model import InputModel, OutputModel, Framework
 
 try:

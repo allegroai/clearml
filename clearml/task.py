@@ -1726,12 +1726,12 @@ class Task(_Task):
         """
         Closes the current Task and changes its status to "Completed".
         Enables you to manually shutdown the task.
-        It does not terminate the current Python process, in contrast to :meth:`Task.mark_completed`.
+        This method does not terminate the current Python process, in contrast to :meth:`Task.mark_completed`.
         
         After having :meth:`Task.close`d a task, the respective object cannot be used anymore and
         methods like :meth:`Task.connect` or :meth:`Task.connect_configuration` will throw a `ValueError`.
-        However, you can "get the task back" by using methods like :meth:`Task.get_task`.
-
+        In order to obtain an object representing the task again, use methods like :meth:`Task.get_task`.
+        
         .. warning::
            Only call :meth:`Task.close` if you are certain the Task is not needed.
         """

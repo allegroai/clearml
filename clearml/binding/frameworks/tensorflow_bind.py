@@ -398,11 +398,12 @@ class EventTrainsWriter(object):
                 with open(fd, "wb") as f:
                     f.write(imdata)
                 return temp_file
+            image = np.asarray(im)
             output.close()
             if height is not None and height > 0 and width is not None and width > 0:
-                val = np.array(im).reshape((height, width, -1)).astype(np.uint8)
+                val = image.reshape((height, width, -1)).astype(np.uint8)
             else:
-                val = np.array(im).astype(np.uint8)
+                val = image.astype(np.uint8)
             if val.ndim == 3 and val.shape[2] == 3:
                 if self._visualization_mode == 'BGR':
                     val = val[:, :, [2, 1, 0]]

@@ -674,15 +674,23 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def mark_completed(self, ignore_errors=True, status_message=None, force=False):
         # type: (bool, Optional[str], bool) -> ()
         """
-        Use this function to close and change status of remotely executed tasks.
-        
-        Closes the current Task, changes its status to "Completed", and terminates the running Python process.
-        This is in contrast to :meth:`Task.close`, which does the first two steps, but does not terminate the running Python process.
+        Use this method to close and change status of (remotely!) executed tasks.
 
+        This method closes the task it is a member of,
+        changes its status to "Completed", and
+        terminates the Python process that created the task.
+        This is in contrast to :meth:`Task.close`, which does the first two steps, but does not terminate any Python process.
+
+        Let's say that process A created the task and process B has a handle on the task, e.g., with :meth:`Task.get_task`.
+        Then, if we call :meth:`Task.mark_completed`, the process A is terminated, but process B is not.
+
+        However, if :meth:`Task.mark_completed` was called from the same process in which the task was created,
+        then - effectively - the process terminates itself.
         For example, in
 
         .. code-block:: py
 
+            task = Task.init(...)
             task.mark_completed()
             from time import sleep
             sleep(30)

@@ -680,12 +680,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         This is in contrast to :meth:`Task.close`, which does the first two steps, but does not terminate the running Python process.
 
         For example, in
-        ```
-        task.mark_completed()
-        from time import sleep
-        sleep(30)
-        print('This text will not be printed!')
-        ```
+
+        .. code-block:: py
+
+            task.mark_completed()
+            from time import sleep
+            sleep(30)
+            print('This text will not be printed!')
+
         the text will not be printed, because the Python process is immediately terminated.
         
         :param bool ignore_errors: If True default), ignore any errors raised

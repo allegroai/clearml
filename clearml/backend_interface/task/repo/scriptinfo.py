@@ -948,7 +948,7 @@ class ScriptInfo(object):
             # make sure diff is not too big:
             if len(diff) > cls.max_diff_size_bytes:
                 messages.append(
-                    "======> WARNING! Git diff to large to store "
+                    "======> WARNING! Git diff too large to store "
                     "({}kb), skipping uncommitted changes <======".format(len(diff)//1024))
                 auxiliary_git_diff = diff
                 diff = '# WARNING! git diff too large to store, clear this section to execute without it.\n' \

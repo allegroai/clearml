@@ -781,7 +781,7 @@ class StorageHelper(object):
         if async_enable:
             data = self._UploadData(
                 src_path=src_path,
-                dest_path=canonized_dest_path,
+                dest_path=dest_path,
                 canonized_dest_path=canonized_dest_path,
                 extra=extra,
                 callback=cb,

@@ -90,6 +90,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             dest_path=dest_path,
             async_enable=async_enable,
             cb=partial(self._upload_callback, cb=cb),
+            return_canonized=False
         )
         if async_enable:
             def msg(num_results):

@@ -651,7 +651,6 @@ class Logger(object):
 
         # if task was not started, we have to start it
         self._start_task_if_needed()
-        self._touch_title_series(title, series)
         # noinspection PyProtectedMember
         return self._task._reporter.report_value_matrix(
             title=title,

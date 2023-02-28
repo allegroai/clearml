@@ -2917,12 +2917,15 @@ class Dataset(object):
             if artifact is not None:
                 # noinspection PyBroadException
                 try:
-                    # we do not use report_table if default_upload_destination is set because it will
-                    # not upload the sample to that destination, use report_media instead
-                    if isinstance(artifact, pd.DataFrame) and not self._task.get_logger().get_default_upload_destination():
-                        self._task.get_logger().report_table(
-                            "Tables", "summary", table_plot=artifact
-                        )
+                    # we only use report_table if default_upload_destination is not set
+                    # (it is the same as the file server)
+                    # because it will not upload the sample to that destination.
+                    # use report_media instead to not leak data
+                    if (
+                        isinstance(artifact, pd.DataFrame)
+                        and self._task.get_logger().get_default_upload_destination() == Session.get_files_server_host()
+                    ):
+                        self._task.get_logger().report_table("Tables", "summary", table_plot=artifact)
                     else:
                         self._task.get_logger().report_media(
                             "Tables", file_name, stream=artifact.to_csv(index=False), file_extension=".txt"

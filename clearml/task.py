@@ -1018,6 +1018,10 @@ class Task(_Task):
             If None is passed, returns all tasks within the project
         :param list tags: Filter based on the requested list of tags (strings) (Task must have all the listed tags)
             To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
+            To include All tags (instead of the default Or) use "__$all" before the tags, example:
+            ["__$all", "best", "experiment", "ever"]
+            To combine All tags and exclude a list of tags use "__$not" before the excluded tags, example:
+            ["__$all", "best", "experiment", "ever", "__$not", "internal", "test"]
         :param list additional_return_fields: Optional, if not provided return a list of Task IDs.
             If provided return dict per Task with the additional requested fields.
             Example: ``returned_fields=['last_updated', 'user', 'script.repository']`` will return a list of dict:

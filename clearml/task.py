@@ -1518,7 +1518,7 @@ class Task(_Task):
                 else:
                     self._set_model_config(config_dict=configuration)
                 if isinstance(configuration_, dict):
-                    configuration_ = ProxyDictPostWrite(self, _update_config_dict, **configuration_)
+                    configuration_ = ProxyDictPostWrite(self, _update_config_dict, configuration_)
                 return configuration_
 
             if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):

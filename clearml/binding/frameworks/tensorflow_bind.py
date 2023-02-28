@@ -388,6 +388,7 @@ class EventTrainsWriter(object):
                 imdata = base64.b64decode(img_str)
             output = BytesIO(imdata)
             im = Image.open(output)
+            image = np.asarray(im)
             # if this is a GIF store as is
             if getattr(im, 'is_animated', None):
                 output.close()
@@ -398,7 +399,6 @@ class EventTrainsWriter(object):
                 with open(fd, "wb") as f:
                     f.write(imdata)
                 return temp_file
-            image = np.asarray(im)
             output.close()
             if height is not None and height > 0 and width is not None and width > 0:
                 val = image.reshape((height, width, -1)).astype(np.uint8)
@@ -731,8 +731,8 @@ class EventTrainsWriter(object):
                 step -= EventTrainsWriter._current_task.get_initial_iteration()
             # there can be a few metrics getting reported again, so the step can be negative
             # for the first few reports
-            if step <= 0:
-                return
+            if step < 0:
+                step = 0
             self._max_step = max(self._max_step, step)
             if value_dicts is None:
                 LoggerRoot.get_base_logger(TensorflowBinding).debug("Summary arrived without 'value'")

@@ -74,6 +74,7 @@ from .binding.hydra_bind import PatchHydra
 from .binding.click_bind import PatchClick
 from .binding.fire_bind import PatchFire
 from .binding.jsonargs_bind import PatchJsonArgParse
+from .binding.gradio_bind import PatchGradio
 from .binding.frameworks import WeightsFileHandler
 from .config import (
     config, DEV_TASK_NO_REUSE, get_is_master_node, DEBUG_SIMULATE_REMOTE_TASK, DEV_DEFAULT_OUTPUT_URI,
@@ -402,7 +403,7 @@ class Task(_Task):
                    'matplotlib': True, 'tensorflow': ['*.hdf5, 'something_else*], 'tensorboard': True,
                    'pytorch': ['*.pt'], 'xgboost': True, 'scikit': True, 'fastai': True,
                    'lightgbm': True, 'hydra': True, 'detect_repository': True, 'tfdefines': True,
-                   'joblib': True, 'megengine': True, 'catboost': True
+                   'joblib': True, 'megengine': True, 'catboost': True, 'gradio': True
                }
 
             .. code-block:: py
@@ -689,6 +690,8 @@ class Task(_Task):
                     PatchFastai.update_current_task(task)
                 if should_connect("lightgbm"):
                     PatchLIGHTgbmModelIO.update_current_task(task)
+                if should_connect("gradio"):
+                    PatchGradio.update_current_task(task)
 
                 cls.__add_model_wildcards(auto_connect_frameworks)
 

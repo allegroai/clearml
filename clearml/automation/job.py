@@ -28,6 +28,7 @@ class BaseJob(object):
     _job_hash_description = 'job_hash={}'
     _job_hash_property = 'pipeline_job_hash'
     _hashing_callback = None
+    _last_batch_status_update_ts = 0
 
     def __init__(self):
         # type: () -> ()
@@ -173,6 +174,36 @@ class BaseJob(object):
         :return: The status message of the corresponding task as a string
         """
         return str(self.task.data.status_message)
+
+    @classmethod
+    def update_status_batch(cls, jobs):
+        # type: (Sequence[BaseJob]) -> ()
+        """
+        Update the status of jobs, in batch_size
+
+        :param jobs: The jobs to update the status of
+        """
+        have_job_with_no_status = False
+        id_map = {}
+        for job in jobs:
+            if not job.task:
+                continue
+            id_map[job.task.id] = job
+            # noinspection PyProtectedMember
+            if not job._last_status:
+                have_job_with_no_status = True
+        if not id_map or (time() - cls._last_batch_status_update_ts < 1 and not have_job_with_no_status):
+            return
+        batch_status = Task._get_status(list(id_map.keys()))
+        last_batch_update_ts = time()
+        cls._last_batch_status_update_ts = last_batch_update_ts
+        for status in batch_status:
+            if not status.status or not status.id:
+                continue
+            # noinspection PyProtectedMember
+            id_map[status.id]._last_status = status.status
+            # noinspection PyProtectedMember
+            id_map[status.id]._last_status_ts = last_batch_update_ts
 
     def wait(self, timeout=None, pool_period=30., aborted_nonresponsive_as_running=False):
         # type: (Optional[float], float, bool) -> bool

@@ -901,6 +901,10 @@ def browser_login(clearml_server=None):
     # if we have working local configuration, nothing to do
     try:
         Session()
+        # make sure we set environment variables to point to our api/app/files hosts
+        ENV_WEB_HOST.set(Session.get_app_server_host())
+        ENV_HOST.set(Session.get_api_server_host())
+        ENV_FILES_HOST.set(Session.get_files_server_host())
         return
     except:  # noqa
         pass
@@ -999,6 +1003,10 @@ def browser_login(clearml_server=None):
         ENV_AUTH_TOKEN.set(token)
 
     if token or (ENV_ACCESS_KEY.get() and ENV_SECRET_KEY.get()):
+        # make sure we set environment variables to point to our api/app/files hosts
+        ENV_WEB_HOST.set(Session.get_app_server_host())
+        ENV_HOST.set(Session.get_api_server_host())
+        ENV_FILES_HOST.set(Session.get_files_server_host())
         # verify token
         Session()
         # success

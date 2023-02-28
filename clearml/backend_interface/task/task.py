@@ -14,6 +14,7 @@ from operator import itemgetter
 from tempfile import gettempdir
 from threading import Thread
 from typing import Optional, Any, Sequence, Callable, Mapping, Union, List, Set, Dict
+from collections import namedtuple
 from uuid import uuid4
 
 from pathlib2 import Path
@@ -1881,7 +1882,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         :return: str: Task status as string (TaskStatusEnum)
         """
-        status, status_message = self._get_status()
+        status, status_message, _ = self._get_status([self.id])[0]
         if self._data:
             self._data.status = status
             self._data.status_message = str(status_message)
@@ -2276,19 +2277,21 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self._files_server = Session.get_files_server_host()
         return self._files_server
 
-    def _get_status(self):
-        # type: () -> (Optional[str], Optional[str])
-        if self._offline_mode:
-            return tasks.TaskStatusEnum.created, 'offline'
+    @classmethod
+    def _get_status(cls, ids):
+        # type: (List[str]) -> List[namedtuple[Optional[str], Optional[str], Optional[str]]]
+        if cls._offline_mode:
+            return [(tasks.TaskStatusEnum.created, "offline") for _ in ids]
+        Status = namedtuple("Status", ["status", "status_message", "id"])
 
         # noinspection PyBroadException
         try:
-            all_tasks = self.send(
-                tasks.GetAllRequest(id=[self.id], only_fields=['status', 'status_message']),
+            all_tasks = cls._get_default_session().send(
+                tasks.GetAllRequest(id=ids, only_fields=["status", "status_message", "id"]),
             ).response.tasks
-            return all_tasks[0].status, all_tasks[0].status_message
+            return [Status(task.status, task.status_message, task.id) for task in all_tasks]
         except Exception:
-            return None, None
+            return [Status(None, None, None) for _ in ids]
 
     def _get_last_update(self):
         # type: () -> (Optional[datetime])

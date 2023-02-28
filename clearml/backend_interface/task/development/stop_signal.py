@@ -30,7 +30,7 @@ class TaskStopSignal(object):
         try:
             # we use internal status read, so we do not need to constantly pull the entire task object,
             # it might be large, and we want to also avoid the edit lock on it.
-            status, message = self.task._get_status()
+            status, message, _ = self.task._get_status([self.task.id])[0]
             # if we did not get a proper status, return and recheck later
             if status is None and message is None:
                 return None

@@ -179,6 +179,10 @@ class StorageHelper(object):
         @property
         def dest_path(self):
             return self._dest_path
+        
+        @property
+        def canonized_dest_path(self):
+            return self._canonized_dest_path
 
         @property
         def extra(self):
@@ -191,13 +195,19 @@ class StorageHelper(object):
         @property
         def retries(self):
             return self._retries
-
-        def __init__(self, src_path, dest_path, extra, callback, retries):
+        
+        @property
+        def return_canonized(self):
+            return self._return_canonized
+        
+        def __init__(self, src_path, dest_path, canonized_dest_path, extra, callback, retries, return_canonized):
             self._src_path = src_path
             self._dest_path = dest_path
+            self._canonized_dest_path = canonized_dest_path
             self._extra = extra
             self._callback = callback
             self._retries = retries
+            self._return_canonized = return_canonized
 
         def __str__(self):
             return "src=%s" % self.src_path
@@ -770,12 +780,26 @@ class StorageHelper(object):
 
         if async_enable:
             data = self._UploadData(
-                src_path=src_path, dest_path=canonized_dest_path, extra=extra, callback=cb, retries=retries
+                src_path=src_path,
+                dest_path=dest_path,
+                canonized_dest_path=canonized_dest_path,
+                extra=extra,
+                callback=cb,
+                retries=retries,
+                return_canonized=return_canonized
             )
             StorageHelper._initialize_upload_pool()
             return StorageHelper._upload_pool.apply_async(self._do_async_upload, args=(data,))
         else:
-            res = self._do_upload(src_path, canonized_dest_path, extra, cb, verbose=False, retries=retries)
+            res = self._do_upload(
+                src_path=src_path,
+                dest_path=dest_path,
+                canonized_dest_path=canonized_dest_path,
+                extra=extra,
+                cb=cb,
+                verbose=False,
+                retries=retries,
+                return_canonized=return_canonized)
             if res:
                 result_path = quote_url(result_path)
             return result_path
@@ -1006,6 +1030,7 @@ class StorageHelper(object):
             self._log.error("Could not download file : %s, err:%s " % (remote_path, str(e)))
 
     def delete(self, path):
+        path = self._canonize_url(path)
         return self._driver.delete_object(self.get_object(path))
 
     def check_write_permissions(self, dest_path=None):
@@ -1152,8 +1177,8 @@ class StorageHelper(object):
 
     def _do_async_upload(self, data):
         assert isinstance(data, self._UploadData)
-        return self._do_upload(data.src_path, data.dest_path, extra=data.extra, cb=data.callback,
-                               verbose=True, retries=data.retries)
+        return self._do_upload(data.src_path, data.dest_path, data.canonized_dest_path, extra=data.extra, cb=data.callback,
+                               verbose=True, retries=data.retries, return_canonized=data.return_canonized)
 
     def _upload_from_file(self, local_path, dest_path, extra=None):
         if not hasattr(self._driver, 'upload_object'):
@@ -1172,8 +1197,8 @@ class StorageHelper(object):
                 extra=extra)
         return res
 
-    def _do_upload(self, src_path, dest_path, extra=None, cb=None, verbose=False, retries=1):
-        object_name = self._normalize_object_name(dest_path)
+    def _do_upload(self, src_path, dest_path, canonized_dest_path, extra=None, cb=None, verbose=False, retries=1, return_canonized=False):
+        object_name = self._normalize_object_name(canonized_dest_path)
         if cb:
             try:
                 cb(None)
@@ -1191,7 +1216,7 @@ class StorageHelper(object):
         last_ex = None
         for i in range(max(1, int(retries))):
             try:
-                if not self._upload_from_file(local_path=src_path, dest_path=dest_path, extra=extra):
+                if not self._upload_from_file(local_path=src_path, dest_path=canonized_dest_path, extra=extra):
                     # retry if failed
                     last_ex = ValueError("Upload failed")
                     continue
@@ -1213,11 +1238,11 @@ class StorageHelper(object):
             self._log.debug("Finished upload: %s => %s" % (src_path, object_name))
         if cb:
             try:
-                cb(dest_path)
+                cb(canonized_dest_path if return_canonized else dest_path)
             except Exception as e:
                 self._log.warning("Exception on upload callback: %s" % str(e))
 
-        return dest_path
+        return canonized_dest_path if return_canonized else dest_path
 
     def get_object(self, path, silence_errors=False):
         # type: (str, bool) -> object

@@ -194,16 +194,17 @@ class BaseJob(object):
                 have_job_with_no_status = True
         if not id_map or (time() - cls._last_batch_status_update_ts < 1 and not have_job_with_no_status):
             return
-        batch_status = Task._get_status(list(id_map.keys()))
+        # noinspection PyProtectedMember
+        batch_status = Task._get_tasks_status(list(id_map.keys()))
         last_batch_update_ts = time()
         cls._last_batch_status_update_ts = last_batch_update_ts
-        for status in batch_status:
-            if not status.status or not status.id:
+        for status, message, task_id in batch_status:
+            if not status or not task_id:
                 continue
             # noinspection PyProtectedMember
-            id_map[status.id]._last_status = status.status
+            id_map[task_id]._last_status = status
             # noinspection PyProtectedMember
-            id_map[status.id]._last_status_ts = last_batch_update_ts
+            id_map[task_id]._last_status_ts = last_batch_update_ts
 
     def wait(self, timeout=None, pool_period=30., aborted_nonresponsive_as_running=False):
         # type: (Optional[float], float, bool) -> bool

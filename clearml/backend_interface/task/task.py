@@ -14,7 +14,6 @@ from operator import itemgetter
 from tempfile import gettempdir
 from threading import Thread
 from typing import Optional, Any, Sequence, Callable, Mapping, Union, List, Set, Dict
-from collections import namedtuple
 from uuid import uuid4
 
 from pathlib2 import Path
@@ -1882,10 +1881,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         :return: str: Task status as string (TaskStatusEnum)
         """
-        status, status_message, _ = self._get_status([self.id])[0]
-        if self._data:
-            self._data.status = status
-            self._data.status_message = str(status_message)
+        status, status_message = self.get_status_message()
 
         return str(status)
 
@@ -2277,21 +2273,55 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self._files_server = Session.get_files_server_host()
         return self._files_server
 
+    def get_status_message(self):
+        # type: () -> (Optional[str], Optional[str])
+        """
+        Return The task status without refreshing the entire Task object (only the status property)
+        Return also the last message coupled with the status change
+
+        Task Status options: ["created", "in_progress", "stopped", "closed", "failed", "completed",
+        "queued", "published", "publishing", "unknown"]
+        Message: is a string
+
+        :return: (Task status as string, last message)
+        """
+        status, status_message, _ = self._get_tasks_status([self.id])[0]
+        if self._data and status:
+            self._data.status = status
+            self._data.status_message = status_message
+
+        return status, status_message
+
+    def _get_status(self):
+        # type: () -> (Optional[str], Optional[str])
+        """
+        retrieve Task status & message, But do not update the Task local status
+        this is important if we want to query in the background without breaking Tasks consistency
+
+        backwards compatibility,
+        :return: (status enum as string or None, str or None)
+        """
+        status, status_message, _ = self._get_tasks_status([self.id])[0]
+        return status, status_message
+
     @classmethod
-    def _get_status(cls, ids):
-        # type: (List[str]) -> List[namedtuple[Optional[str], Optional[str], Optional[str]]]
+    def _get_tasks_status(cls, ids):
+        # type: (List[str]) -> List[(Optional[str], Optional[str], Optional[str])]
+        """
+        :param ids: task IDs (str) to query
+        :return: list of tuples (status, status_message, task_id)
+        """
         if cls._offline_mode:
-            return [(tasks.TaskStatusEnum.created, "offline") for _ in ids]
-        Status = namedtuple("Status", ["status", "status_message", "id"])
+            return [(tasks.TaskStatusEnum.created, "offline", i) for i in ids]
 
         # noinspection PyBroadException
         try:
             all_tasks = cls._get_default_session().send(
                 tasks.GetAllRequest(id=ids, only_fields=["status", "status_message", "id"]),
             ).response.tasks
-            return [Status(task.status, task.status_message, task.id) for task in all_tasks]
+            return [(task.status, task.status_message, task.id) for task in all_tasks]
         except Exception:
-            return [Status(None, None, None) for _ in ids]
+            return [(None, None, None) for _ in ids]
 
     def _get_last_update(self):
         # type: () -> (Optional[datetime])

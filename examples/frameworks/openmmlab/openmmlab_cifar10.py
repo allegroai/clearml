@@ -79,7 +79,8 @@ if __name__ == '__main__':
                 type='ClearMLLoggerHook',
                 init_kwargs=dict(
                     project_name='examples',
-                    task_name='OpenMMLab cifar10'
+                    task_name='OpenMMLab cifar10',
+                    output_uri=True
                 )
             ),
         ]

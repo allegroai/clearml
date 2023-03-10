@@ -412,16 +412,18 @@ def _search_path(path):
                         git_url = '{vcs}+{url}@{commit}#egg={package}'.format(
                             vcs=direct_json['vcs_info']['vcs'], url=direct_json['url'],
                             commit=direct_json['vcs_info']['commit_id'], package=pkg_name)
-                        # Bugfix: package name should be the URL link, because we need it unique
-                        # mapping[pkg_name] = ('-e', git_url)
+                        # If subdirectory is present, append this to the git_url
                         if 'subdirectory' in direct_json:
                             git_url = '{git_url}&subdirectory={subdirectory}'.format(
                                 git_url=git_url, subdirectory=direct_json['subdirectory'])
+                        # Bugfix: package name should be the URL link, because we need it unique
+                        # mapping[pkg_name] = ('-e', git_url)
                         pkg_name, version = '-e {}'.format(git_url), ''
                     elif 'url' in direct_json:
                         url_link = direct_json.get('url', '').strip().lower()
                         if url_link and not url_link.startswith('file://'):
                             git_url = direct_json['url']
+                            # If subdirectory is present, append this to the git_url
                             if 'subdirectory' in direct_json:
                                 git_url = '{git_url}#subdirectory={subdirectory}'.format(
                                     git_url=direct_json['url'], subdirectory=direct_json['subdirectory'])

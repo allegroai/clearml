@@ -409,9 +409,10 @@ def _search_path(path):
                         direct_json = json.load(f)
 
                     if 'vcs_info' in direct_json:
+                        vcs_info = direct_json['vcs_info']
                         git_url = '{vcs}+{url}@{commit}#egg={package}'.format(
-                            vcs=direct_json['vcs_info']['vcs'], url=direct_json['url'],
-                            commit=direct_json['vcs_info']['commit_id'], package=pkg_name)
+                            vcs=vcs_info['vcs'], url=direct_json['url'],
+                            commit=vcs_info['commit_id'], package=pkg_name)
                         # If subdirectory is present, append this to the git_url
                         if 'subdirectory' in direct_json:
                             git_url = '{git_url}&subdirectory={subdirectory}'.format(

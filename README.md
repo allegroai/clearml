@@ -43,19 +43,19 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
 <table>
 <tbody>
   <tr>
-    <td><a href="https://github.com/ainoam/clearml/blob/master/docs/tutorials/Getting_Started_1_Experiment_Management.ipynb"><b>Step 1</b></a> - Experiment Management</td>
+    <td><a href="https://github.com/allegroai/clearml/blob/master/docs/tutorials/Getting_Started_1_Experiment_Management.ipynb"><b>Step 1</b></a> - Experiment Management</td>
     <td><a target="_blank" href="https://colab.research.google.com/github/allegroai/clearml/blob/master/docs/tutorials/Getting_Started_1_Experiment_Management.ipynb">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a></td>
   </tr>
   <tr>
-    <td><a href="https://github.com/ainoam/clearml/blob/master/docs/tutorials/Getting_Started_2_Setting_Up_Agent.ipynb"><b>Step 2</b></a> - Remote Execution Agent Setup</td>
+    <td><a href="https://github.com/allegroai/clearml/blob/master/docs/tutorials/Getting_Started_2_Setting_Up_Agent.ipynb"><b>Step 2</b></a> - Remote Execution Agent Setup</td>
     <td><a target="_blank" href="https://colab.research.google.com/github/allegroai/clearml/blob/master/docs/tutorials/Getting_Started_2_Setting_Up_Agent.ipynb">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a></td>
   </tr>
   <tr>
-    <td><a href="https://github.com/ainoam/clearml/blob/master/docs/tutorials/Getting_Started_3_Remote_Execution.ipynb"><b>Step 3</b></a> - Remotely Execute Tasks</td>
+    <td><a href="https://github.com/allegroai/clearml/blob/master/docs/tutorials/Getting_Started_3_Remote_Execution.ipynb"><b>Step 3</b></a> - Remotely Execute Tasks</td>
     <td><a target="_blank" href="https://colab.research.google.com/github/allegroai/clearml/blob/master/docs/tutorials/Getting_Started_3_Remote_Execution.ipynb">
   <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
 </a></td>

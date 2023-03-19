@@ -149,7 +149,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param log_to_backend: If True, all calls to the task's log will be logged to the backend using the API.
             This value can be overridden using the environment variable TRAINS_LOG_TASK_TO_BACKEND.
         :type log_to_backend: bool
-        :param force_create: If True, a new task will always be created (task_id, if provided, will be ignored)
+        :param force_create: If True a new task will always be created (task_id, if provided, will be ignored)
         :type force_create: bool
         """
         SingletonLock.instantiate()
@@ -275,12 +275,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 )
 
             # add ide info into task runtime_properties
-            if result.script and result.script.get("ide"):
-                # noinspection PyBroadException
-                try:
-                    self._set_runtime_properties(runtime_properties={"ide": result.script["ide"]})
-                except Exception as ex:
-                    self.log.info("Failed logging ide information: {}".format(ex))
+            # noinspection PyBroadException
+            try:
+                self._set_runtime_properties(runtime_properties={"ide": result.script["ide"]})
+            except Exception as ex:
+                self.log.info("Failed logging ide information: {}".format(ex))
 
             # store original entry point
             entry_point = result.script.get('entry_point') if result.script else None
@@ -449,7 +448,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def project(self):
         # type: () -> str
         """
-        Returns the current Task's project ID.
+        Returns the current Task's project name.
         """
         return self.data.project
 
@@ -638,7 +637,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         Reset the task. Task will be reloaded following a successful reset.
 
-        :param set_started_on_success: If True, automatically set Task status to started after resetting it.
+        :param set_started_on_success: If True automatically set Task status to started after resetting it.
         :param force: If not true, call fails if the task status is 'completed'
         """
         self.send(tasks.ResetRequest(task=self.id, force=force))
@@ -674,32 +673,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def mark_completed(self, ignore_errors=True, status_message=None, force=False):
         # type: (bool, Optional[str], bool) -> ()
         """
-        Use this method to close and change status of (remotely!) executed tasks.
+        Manually mark a Task as completed. This will close the running process and will change the Task's status
+        to Completed (Use this function to close and change status of remotely executed tasks).
+        To simply change the Task's status to completed, use task.close()
 
-        This method closes the task it is a member of,
-        changes its status to "Completed", and
-        terminates the Python process that created the task.
-        This is in contrast to :meth:`Task.close`, which does the first two steps, but does not terminate any Python process.
-
-        Let's say that process A created the task and process B has a handle on the task, e.g., with :meth:`Task.get_task`.
-        Then, if we call :meth:`Task.mark_completed`, the process A is terminated, but process B is not.
-
-        However, if :meth:`Task.mark_completed` was called from the same process in which the task was created,
-        then - effectively - the process terminates itself.
-        For example, in
-
-        .. code-block:: py
-
-            task = Task.init(...)
-            task.mark_completed()
-            from time import sleep
-            sleep(30)
-            print('This text will not be printed!')
-
-        the text will not be printed, because the Python process is immediately terminated.
-        
-        :param bool ignore_errors: If True default), ignore any errors raised
-        :param bool force: If True, the task status will be changed to `stopped` regardless of the current Task state.
+        :param bool ignore_errors: If True (default), ignore any errors raised
+        :param bool force: If True the task status will be changed to `stopped` regardless of the current Task state.
         :param str status_message: Optional, add status change message to the stop request.
             This message will be stored as status_message on the Task's info panel
         """
@@ -757,8 +736,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param delete_artifacts_and_models: If True, artifacts and models would also be deleted (default True).
                                             If callback is provided, this argument is ignored.
         :param skip_models_used_by_other_tasks: If True, models used by other tasks would not be deleted (default True)
-        :param raise_on_error: If True, an exception will be raised when encountering an error.
-                               If False, an error would be printed and no exception will be raised.
+        :param raise_on_error: If True an exception will be raised when encountering an error.
+                               If False an error would be printed and no exception will be raised.
         :param callback: An optional callback accepting a uri type (string) and a uri (string) that will be called
                          for each artifact and model. If provided, the delete_artifacts_and_models is ignored.
                          Return True to indicate the artifact/model should be deleted or False otherwise.
@@ -937,7 +916,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         Update the Task's output model weights file. First, ClearML uploads the file to the preconfigured output
         destination (see the Task's ``output.destination`` property or call the ``setup_upload`` method),
-        then ClearML updates the model object associated with the Task. The API call uses the URI
+        then ClearML updates the model object associated with the Task an API call. The API call uses with the URI
         of the uploaded file, and other values provided by additional arguments.
 
         Notice: A local model file will be uploaded to the task's `output_uri` destination,
@@ -1006,7 +985,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Set a new input model for the Task. The model must be "ready" (status is ``Published``) to be used as the
         Task's input model.
 
-        :param model_id: The ID of the model on the **ClearML Server** (backend). If ``model_name`` is not specified,
+        :param model_id: The Id of the model on the **ClearML Server** (backend). If ``model_name`` is not specified,
             then ``model_id`` must be specified.
         :param model_name: The model name in the artifactory. The model_name is used to locate an existing model
             in the **ClearML Server** (backend). If ``model_id`` is not specified,
@@ -1080,7 +1059,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Notice the returned parameter dict is flat:
         i.e. {'Args/param': 'value'} is the argument "param" from section "Args"
 
-        :param backwards_compatibility: If True (default), parameters without section name
+        :param backwards_compatibility: If True (default) parameters without section name
             (API version < 2.9, clearml-server < 0.16) will be at dict root level.
             If False, parameters without section name, will be nested under "Args/" key.
         :param cast: If True, cast the parameter to the original type. Default False,
@@ -1248,8 +1227,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     def create_description():
                         if org_param and org_param.description:
                             return org_param.description
-                        # don't use get(org_k, "") here in case org_k in descriptions and the value is None
-                        created_description = descriptions.get(org_k) or ""
+                        created_description = ""
+                        if org_k in descriptions:
+                            created_description = descriptions[org_k]
                         if isinstance(v, Enum):
                             # append enum values to description
                             if created_description:
@@ -1450,7 +1430,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param repo: Remote URL for the repository to use, OR path to local copy of the git repository
             Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'
         :param branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
-        :param commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
+        :param commit: Optional, specify the repository commit id (Ignored, if local repo path is used)
         """
         if not repo:
             return
@@ -1533,7 +1513,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         :param list artifact_names: list of artifact names
         :param bool raise_on_errors: if True, do not suppress connectivity related exceptions
-        :param bool delete_from_storage: If True, try to delete the actual
+        :param bool delete_from_storage: If True try to delete the actual
         file from the external storage (e.g. S3, GS, Azure, File Server etc.)
 
         :return: True if successful
@@ -1547,7 +1527,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         :param list artifact_names: list of artifact names
         :param bool raise_on_errors: if True, do not suppress connectivity related exceptions
-        :param bool delete_from_storage: If True, try to delete the actual
+        :param bool delete_from_storage: If True try to delete the actual
         file from the external storage (e.g. S3, GS, Azure, File Server etc.)
 
         :return: True if successful
@@ -1656,7 +1636,6 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # type: (Optional[int]) -> ()
         """
         Set the default random seed for any new initialized tasks
-
         :param random_seed: If None or False, disable random seed initialization. If True, use the default random seed,
           otherwise use the provided int value for random seed initialization when initializing a new task.
         """
@@ -1771,8 +1750,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # type: (Optional[Union[str, Task]]) -> ()
         """
         Set the parent task for the Task.
-
-        :param parent: The parent task ID (or parent Task object) for the Task. Set None for no parent.
+        :param parent: The parent task id (or parent Task object) for the Task. Set None for no parent.
         :type parent: str or Task
         """
         if parent:
@@ -1830,7 +1808,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         Archive the Task or remove it from the archived folder.
 
-        :param archive: If True, archive the Task. If False, make sure it is removed from the archived folder
+        :param archive: If True archive the Task, If False make sure it is removed from the archived folder
         """
         with self._edit_lock:
             system_tags = list(set(self.get_system_tags()) | {self.archived_tag}) \
@@ -1842,7 +1820,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         Return the Archive state of the Task
 
-        :return: If True, the Task is archived, otherwise it is not.
+        :return: If True the Task is archived, otherwise it is not.
         """
         return self.archived_tag in self.get_system_tags()
 
@@ -1887,11 +1865,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Return The task status without refreshing the entire Task object (only the status property)
 
         TaskStatusEnum: ["created", "in_progress", "stopped", "closed", "failed", "completed",
-        "queued", "published", "publishing", "unknown"]
+                         "queued", "published", "publishing", "unknown"]
 
         :return: str: Task status as string (TaskStatusEnum)
         """
-        status, status_message = self.get_status_message()
+        status, status_message = self._get_status()
+        if self._data:
+            self._data.status = status
+            self._data.status_message = str(status_message)
 
         return str(status)
 
@@ -2085,7 +2066,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def get_reported_single_values(self):
         # type: () -> Dict[str, float]
         """
-        Get all reported single values as a dictionary, where the keys are the names of the values
+        Get all repoted single values as a dictionary, where the keys are the names of the values
         and the values of the dictionary are the actual reported values.
 
         :return: A dict containing the reported values
@@ -2093,7 +2074,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not Session.check_min_api_version("2.20"):
             raise ValueError(
                 "Current 'clearml-server' does not support getting reported single values. "
-                "Please upgrade to the latest version"
+                "Please upgrade to the lastest version"
             )
         res = self.send(events.GetTaskSingleValueMetricsRequest(tasks=[self.id]))
         res = res.wait()
@@ -2161,8 +2142,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return ret_projects
 
     @classmethod
-    def get_project_id(cls, project_name, search_hidden=True):
-        # type: (str, bool) -> Optional[str]
+    def get_project_id(cls, project_name):
+        # type: (str) -> Optional[str]
         """
         Return a project's unique ID (str).
         If more than one project matched the project_name, return the last updated project
@@ -2172,14 +2153,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         assert project_name
         assert isinstance(project_name, str)
-        extra = {"search_hidden": search_hidden} if Session.check_min_api_version("2.20") else {}
         res = cls._send(
             cls._get_default_session(),
-            projects.GetAllRequest(
-                order_by=['last_update'],
-                name=exact_match_regex(project_name),
-                **extra
-            ),
+            projects.GetAllRequest(order_by=['last_update'], name=exact_match_regex(project_name)),
             raise_on_errors=False)
         if res and res.response and res.response.projects:
             return [projects.Project(**p.to_dict()).id for p in res.response.projects][0]
@@ -2283,55 +2259,19 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             self._files_server = Session.get_files_server_host()
         return self._files_server
 
-    def get_status_message(self):
-        # type: () -> (Optional[str], Optional[str])
-        """
-        Return The task status without refreshing the entire Task object (only the status property)
-        Return also the last message coupled with the status change
-
-        Task Status options: ["created", "in_progress", "stopped", "closed", "failed", "completed",
-        "queued", "published", "publishing", "unknown"]
-        Message: is a string
-
-        :return: (Task status as string, last message)
-        """
-        status, status_message, _ = self._get_tasks_status([self.id])[0]
-        if self._data and status:
-            self._data.status = status
-            self._data.status_message = status_message
-
-        return status, status_message
-
     def _get_status(self):
         # type: () -> (Optional[str], Optional[str])
-        """
-        retrieve Task status & message, But do not update the Task local status
-        this is important if we want to query in the background without breaking Tasks consistency
-
-        backwards compatibility,
-        :return: (status enum as string or None, str or None)
-        """
-        status, status_message, _ = self._get_tasks_status([self.id])[0]
-        return status, status_message
-
-    @classmethod
-    def _get_tasks_status(cls, ids):
-        # type: (List[str]) -> List[(Optional[str], Optional[str], Optional[str])]
-        """
-        :param ids: task IDs (str) to query
-        :return: list of tuples (status, status_message, task_id)
-        """
-        if cls._offline_mode:
-            return [(tasks.TaskStatusEnum.created, "offline", i) for i in ids]
+        if self._offline_mode:
+            return tasks.TaskStatusEnum.created, 'offline'
 
         # noinspection PyBroadException
         try:
-            all_tasks = cls._get_default_session().send(
-                tasks.GetAllRequest(id=ids, only_fields=["status", "status_message", "id"]),
+            all_tasks = self.send(
+                tasks.GetAllRequest(id=[self.id], only_fields=['status', 'status_message']),
             ).response.tasks
-            return [(task.status, task.status_message, task.id) for task in all_tasks]
+            return all_tasks[0].status, all_tasks[0].status_message
         except Exception:
-            return [(None, None, None) for _ in ids]
+            return None, None
 
     def _get_last_update(self):
         # type: () -> (Optional[datetime])

@@ -8,7 +8,7 @@ from time import time
 from typing import List, Optional, Union
 from zipfile import ZipFile
 from six.moves.urllib.parse import urlparse
-
+from tqdm import tqdm
 from pathlib2 import Path
 
 from .cache import CacheManager
@@ -41,7 +41,7 @@ class StorageManager(object):
 
         :param str remote_url: remote url link (string)
         :param str cache_context: Optional caching context identifier (string), default context 'global'
-        :param bool extract_archive: if True, returned path will be a cached folder containing the archive's content,
+        :param bool extract_archive: if True returned path will be a cached folder containing the archive's content,
             currently only zip files are supported.
         :param str name: name of the target file
         :param bool force_download: download file from remote even if exists in local cache
@@ -61,7 +61,7 @@ class StorageManager(object):
         cls, local_file, remote_url, wait_for_upload=True, retries=None
     ):  # type: (str, str, bool, Optional[int]) -> str
         """
-        Upload a local file to a remote location. remote url is the final destination of the uploaded file.
+        Upload a local file to a remote location. remote url is the finale destination of the uploaded file.
 
         Examples:
 
@@ -268,7 +268,7 @@ class StorageManager(object):
 
     @classmethod
     def download_file(
-        cls, remote_url, local_folder=None, overwrite=False, skip_zero_size_check=False, silence_errors=False
+        cls, remote_url,local_folder=None, overwrite=False, skip_zero_size_check=False, silence_errors=False
     ):
         # type: (str, Optional[str], bool, bool, bool) -> Optional[str]
         """
@@ -284,9 +284,9 @@ class StorageManager(object):
             be created under the target local_folder. Supports S3/GS/Azure and shared filesystem.
             Example: 's3://bucket/data/'
         :param bool overwrite: If False, and target files exist do not download.
-            If True, always download the remote files. Default False.
-        :param bool skip_zero_size_check: If True, no error will be raised for files with zero bytes size.
-        :param bool silence_errors: If True, silence errors that might pop up when trying to download
+            If True always download the remote files. Default False.
+        :param bool skip_zero_size_check: If True no error will be raised for files with zero bytes size.
+        :param bool silence_errors: If True, silence errors that might pop up when trying to downlaod
             files stored remotely. Default False
 
         :return: Path to downloaded file or None on error
@@ -296,13 +296,19 @@ class StorageManager(object):
         local_path = os.path.join(
             str(Path(local_folder).absolute()), str(Path(urlparse(remote_url).path)).lstrip(os.path.sep)
         )
+
+        
         helper = StorageHelper.get(remote_url)
+        # else:
+        #     helper = StorageHelper.get(remote_url)
+
         return helper.download_to_file(
             remote_url,
             local_path,
             overwrite_existing=overwrite,
             skip_zero_size_check=skip_zero_size_check,
             silence_errors=silence_errors,
+            # mode=mode
         )
 
     @classmethod
@@ -341,7 +347,7 @@ class StorageManager(object):
             None if the file could not be found or an error occurred.
         """
         helper = StorageHelper.get(remote_url)
-        return helper.get_object_size_bytes(remote_url, silence_errors)
+        return helper.get_object_size_bytes(remote_url)
 
     @classmethod
     def download_folder(
@@ -352,6 +358,7 @@ class StorageManager(object):
         overwrite=False,
         skip_zero_size_check=False,
         silence_errors=False,
+        
     ):
         # type: (str, Optional[str], Optional[str], bool, bool, bool) -> Optional[str]
         """
@@ -372,9 +379,9 @@ class StorageManager(object):
         :param match_wildcard: If specified only download files matching the `match_wildcard`
             Example: `*.json`
         :param bool overwrite: If False, and target files exist do not download.
-            If True, always download the remote files. Default False.
-        :param bool skip_zero_size_check: If True, no error will be raised for files with zero bytes size.
-        :param bool silence_errors: If True, silence errors that might pop up when trying to download
+            If True always download the remote files. Default False.
+        :param bool skip_zero_size_check: If True no error will be raised for files with zero bytes size.
+        :param bool silence_errors: If True, silence errors that might pop up when trying to downlaod
             files stored remotely. Default False
 
         :return: Target local folder
@@ -411,10 +418,11 @@ class StorageManager(object):
                             "overwrite": overwrite,
                             "skip_zero_size_check": skip_zero_size_check,
                             "silence_errors": silence_errors,
+                            
                         },
                     )
                 )
-            for res in results:
+            for res in tqdm(results):
                 res.wait()
         if not results and not silence_errors:
             LoggerRoot.get_base_logger().warning("Did not download any files matching {}".format(remote_url))
@@ -466,7 +474,7 @@ class StorageManager(object):
     def get_metadata(cls, remote_url, return_full_path=False):
         # type: (str, bool) -> Optional[dict]
         """
-        Get the metadata of the remote object.
+        Get the metadata of the a remote object.
         The metadata is a dict containing the following keys: `name`, `size`.
 
         :param str remote_url: Source remote storage location, tree structure of `remote_url` will
@@ -481,9 +489,8 @@ class StorageManager(object):
         if not obj:
             return None
         metadata = helper.get_object_metadata(obj)
-        base_url = helper._resolve_base_url(remote_url)
-        if return_full_path and not metadata["name"].startswith(base_url):
-            metadata["name"] = base_url + ("/" if not base_url.endswith("/") else "") + metadata["name"]
+        if return_full_path and not metadata["name"].startswith(helper.base_url):
+            metadata["name"] = helper.base_url + ("/" if not helper.base_url.endswith("/") else "") + metadata["name"]
         return metadata
 
     @classmethod

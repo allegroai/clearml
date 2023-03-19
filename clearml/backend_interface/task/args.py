@@ -10,7 +10,6 @@ from typing import Tuple, Type, Union
 
 from ...backend_api import Session
 from ...binding.args import call_original_argparser
-from ...utilities.proxy_object import get_type_from_basic_type_str
 
 
 class _Arguments(object):
@@ -518,7 +517,7 @@ class _Arguments(object):
                 v_type = type(v)
             elif parameters_type.get(k):
                 v_type_str = parameters_type.get(k)
-                v_type = get_type_from_basic_type_str(v_type_str)
+                v_type = next((t for t in (bool, int, float, str, list, tuple) if t.__name__ == v_type_str), str)
             else:
                 # this will be type(None), we deal with it later
                 v_type = type(v)
@@ -599,7 +598,7 @@ class _Arguments(object):
         # type: (bool) -> Union[Type, Tuple[str]]
         """
         Return the basic types supported by Argument casting
-        :param as_str: if True, return string cast of the types
+        :param as_str: if True return string cast of the types
         :return: List of type objects supported for auto casting (serializing to string)
         """
         supported_types = (int, float, bool, str, list, tuple, Enum)

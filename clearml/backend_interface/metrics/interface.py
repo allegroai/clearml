@@ -167,9 +167,9 @@ class Metrics(InterfaceBase):
                     storage = self._get_storage(upload_uri)
                     retries = getattr(e, 'retries', None) or self._file_upload_retries
                     if isinstance(e.stream, Path):
-                        url = storage.upload(e.stream.as_posix(), e.url, retries=retries, return_canonized=False)
+                        url = storage.upload(e.stream.as_posix(), e.url, retries=retries)
                     else:
-                        url = storage.upload_from_stream(e.stream, e.url, retries=retries, return_canonized=False)
+                        url = storage.upload_from_stream(e.stream, e.url, retries=retries)
                     e.event.update(url=url)
                 except Exception as exp:
                     self._get_logger().warning("Failed uploading to {} ({})".format(

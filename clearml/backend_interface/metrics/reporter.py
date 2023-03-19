@@ -657,7 +657,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type ytitle: str
         :param mode: 'lines' / 'markers' / 'lines+markers'
         :type mode: str
-        :param reverse_xaxis: If True, X axis will be displayed from high to low (reversed)
+        :param reverse_xaxis: If true X axis will be displayed from high to low (reversed)
         :type reverse_xaxis: bool
         :param comment: comment underneath the title
         :type comment: str
@@ -814,7 +814,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param str ytitle: optional y-axis title
         :param xlabels: optional label per column of the matrix
         :param ylabels: optional label per row of the matrix
-        :param bool yaxis_reversed: If False, 0,0 is at the bottom left corner. If True, 0,0 is at the top left corner
+        :param bool yaxis_reversed: If False 0,0 is at the bottom left corner. If True 0,0 is at the Top left corner
         :param comment: comment underneath the title
         :param layout_config: optional dictionary for layout configuration, passed directly to plotly
         :type layout_config: dict or None

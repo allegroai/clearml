@@ -429,6 +429,7 @@ class Config(object):
             secret=self.get("sdk.aws.s3.secret", None),
             region=self.get("sdk.aws.s3.region", None),
             use_credentials_chain=self.get("sdk.aws.s3.use_credentials_chain", None),
+            endpoint_url=self.get("sdk.aws.s3.endpoint_url",None),
             multipart=True,
             bucket=bucket,
             host=host,

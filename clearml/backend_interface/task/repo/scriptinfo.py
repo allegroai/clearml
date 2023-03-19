@@ -649,8 +649,7 @@ class ScriptInfo(object):
                                       data={'_xsrf': cookies['_xsrf'], 'password': password})
                     cookies.update(r.cookies)
 
-                # get api token from ENV - if not defined then from server info
-                auth_token = os.getenv('JUPYTERHUB_API_TOKEN') or server_info.get('token') or ''
+                auth_token = server_info.get('token') or os.getenv('JUPYTERHUB_API_TOKEN') or ''
                 try:
                     r = requests.get(
                         url=server_info['url'] + 'api/sessions', cookies=cookies,
@@ -874,10 +873,6 @@ class ScriptInfo(object):
             scripts_path = [Path(cls._absolute_path(os.path.normpath(f), cwd)) for f in filepaths if f]
             scripts_path = [f for f in scripts_path if f.exists()]
             if not scripts_path:
-                for f in (filepaths or []):
-                    if f and f.endswith("/<stdin>"):
-                        raise ScriptInfoError("python console detected")
-
                 raise ScriptInfoError(
                     "Script file {} could not be found".format(filepaths)
                 )
@@ -948,7 +943,7 @@ class ScriptInfo(object):
             # make sure diff is not too big:
             if len(diff) > cls.max_diff_size_bytes:
                 messages.append(
-                    "======> WARNING! Git diff too large to store "
+                    "======> WARNING! Git diff to large to store "
                     "({}kb), skipping uncommitted changes <======".format(len(diff)//1024))
                 auxiliary_git_diff = diff
                 diff = '# WARNING! git diff too large to store, clear this section to execute without it.\n' \
@@ -1061,8 +1056,6 @@ class ScriptInfo(object):
 
     @classmethod
     def detect_running_module(cls, script_dict):
-        if not script_dict:
-            return script_dict
         # noinspection PyBroadException
         try:
             # If this is jupyter, do not try to detect the running module, we know what we have.

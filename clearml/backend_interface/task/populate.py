@@ -84,8 +84,8 @@ class CreateAndPopulate(object):
         :param base_task_id: Use a pre-existing task in the system, instead of a local repo/script.
             Essentially clones an existing task and overrides arguments/requirements.
         :param add_task_init_call: If True, a 'Task.init()' call is added to the script entry point in remote execution.
-        :param raise_on_missing_entries: If True, raise ValueError on missing entries when populating
-        :param verbose: If True, print verbose logging
+        :param raise_on_missing_entries: If True raise ValueError on missing entries when populating
+        :param verbose: If True print verbose logging
         """
         if repo and len(urlparse(repo).scheme) <= 1 and not re.compile(self._VCS_SSH_REGEX).match(repo):
             folder = repo
@@ -133,7 +133,7 @@ class CreateAndPopulate(object):
         """
         Create the new populated Task
 
-        :param dry_run: Optional, If True, do not create an actual Task, instead return the Task definition as dict
+        :param dry_run: Optional, If True do not create an actual Task, instead return the Task definition as dict
         :return: newly created Task object
         """
         local_entry_file = None
@@ -255,7 +255,7 @@ class CreateAndPopulate(object):
             for line in reqs:
                 if line.strip().startswith('#'):
                     continue
-                package = reduce(lambda a, b: a.split(b)[0], "#;@=~<>[", line).strip()
+                package = reduce(lambda a, b: a.split(b)[0], "#;@=~<>", line).strip()
                 if package == 'clearml':
                     clearml_found = True
                     break
@@ -474,11 +474,8 @@ class CreateFromFunction(object):
     kwargs_section = "kwargs"
     return_section = "return"
     input_artifact_section = "kwargs_artifacts"
-    default_task_template_header = """from clearml import Task
-from clearml import TaskTypes
+    task_template = """from clearml import Task, TaskTypes
 from clearml.automation.controller import PipelineDecorator
-"""
-    task_template = """{header}
 from clearml.utilities.proxy_object import get_basic_type
 
 
@@ -512,7 +509,7 @@ if __name__ == '__main__':
         parameters = dict()
         parameters_types = dict()
         for name, artifact in zip(result_names, results):
-            if type(artifact) in (float, int, bool, str):
+            if isinstance(artifact, (float, int, bool, str)):
                 parameters[return_section + '/' + name] = artifact
                 parameters_types[return_section + '/' + name] = get_basic_type(artifact)
             else:
@@ -547,7 +544,6 @@ if __name__ == '__main__':
             output_uri=None,  # type: Optional[str]
             helper_functions=None,  # type: Optional[Sequence[Callable]]
             dry_run=False,  # type: bool
-            task_template_header=None,  # type: Optional[str]
             _sanitize_function=None,  # type: Optional[Callable[[str], str]]
             _sanitize_helper_functions=None,  # type: Optional[Callable[[str], str]]
     ):
@@ -607,8 +603,7 @@ if __name__ == '__main__':
             examples: 's3://bucket/folder', 'https://server/' , 'gs://bucket/folder', 'azure://bucket', '/folder/'
         :param helper_functions: Optional, a list of helper functions to make available
             for the standalone function Task.
-        :param dry_run: If True, do not create the Task, but return a dict of the Task's definitions
-        :param task_template_header: A string placed at the top of the task's code
+        :param dry_run: If True do not create the Task, but return a dict of the Task's definitions
         :param _sanitize_function: Sanitization function for the function string.
         :param _sanitize_helper_functions: Sanitization function for the helper function string.
         :return: Newly created Task object
@@ -675,7 +670,6 @@ if __name__ == '__main__':
                     if inspect_args.annotations[k] in supported_types}
 
         task_template = cls.task_template.format(
-            header=task_template_header or cls.default_task_template_header,
             auto_connect_frameworks=auto_connect_frameworks,
             auto_connect_arg_parser=auto_connect_arg_parser,
             kwargs_section=cls.kwargs_section,

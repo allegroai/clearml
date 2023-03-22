@@ -29,6 +29,7 @@ from .defs import (
     ENV_ENABLE_FILES_CONFIG_SECTION,
     ENV_API_EXTRA_RETRY_CODES,
     ENV_API_DEFAULT_REQ_METHOD,
+    ENV_FORCE_MAX_API_VERSION,
     MissingConfigError
 )
 from .request import Request, BatchRequest  # noqa: F401
@@ -85,7 +86,7 @@ class Session(TokenManager):
     default_files = "https://files.clear.ml"
     default_key = ""  # "EGRTCO8JMSIGI6S39GTP43NFWXDQOW"
     default_secret = ""  # "x!XTov_G-#vspE*Y(h$Anm&DIc5Ou-F)jsl$PdOyj5wG1&E!Z8"
-    force_max_api_version = None
+    force_max_api_version = ENV_FORCE_MAX_API_VERSION.get()
 
     legacy_file_servers = ["https://files.community.clear.ml"]
 

@@ -704,12 +704,24 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             This message will be stored as status_message on the Task's info panel
         """
         if hasattr(tasks, 'CompletedRequest') and callable(tasks.CompletedRequest):
-            return self.send(
-                tasks.CompletedRequest(
-                    self.id, status_reason='completed', status_message=status_message, force=force,
-                    publish=True if self._get_runtime_properties().get("_publish_on_complete") else False),
-                ignore_errors=ignore_errors
-            )
+            if Session.check_min_api_version('2.20'):
+                return self.send(
+                    tasks.CompletedRequest(
+                        self.id, status_reason='completed', status_message=status_message, force=force,
+                        publish=True if self._get_runtime_properties().get("_publish_on_complete") else False),
+                    ignore_errors=ignore_errors
+                )
+            else:
+                resp = self.send(
+                    tasks.CompletedRequest(
+                        self.id, status_reason='completed', status_message=status_message, force=force),
+                    ignore_errors=ignore_errors)
+                if self._get_runtime_properties().get("_publish_on_complete"):
+                    self.send(
+                        tasks.PublishRequest(
+                            self.id, status_reason='completed', status_message=status_message, force=force),
+                        ignore_errors=ignore_errors)
+                return resp
         return self.send(
             tasks.StoppedRequest(self.id, status_reason='completed', status_message=status_message, force=force),
             ignore_errors=ignore_errors

@@ -753,7 +753,11 @@ if __name__ == '__main__':
         # type: (str) -> str
         try:
             import ast
-            from ...utilities.lowlevel.astor_unparse import unparse
+            try:
+                # available in Python3.9+
+                from ast import unparse
+            except ImportError:
+                from ...utilities.lowlevel.astor_unparse import unparse
         except ImportError:
             return function_source
 

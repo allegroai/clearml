@@ -1316,16 +1316,17 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             __parameters_types={name: value_type}
         )
 
-    def get_parameter(self, name, default=None):
-        # type: (str, Any) -> Any
+    def get_parameter(self, name, default=None, cast=False):
+        # type: (str, Any, bool) -> Any
         """
         Get a value for a parameter.
 
         :param name: Parameter name
         :param default: Default value
+        :param cast: If value is found, cast to original type. If False, return string.
         :return: The Parameter value (or default value if parameter is not defined).
         """
-        params = self.get_parameters()
+        params = self.get_parameters(cast=cast)
         return params.get(name, default)
 
     def delete_parameter(self, name):

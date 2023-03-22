@@ -945,6 +945,9 @@ class ScriptInfo(object):
                 diff = cls._get_script_code(script_path.as_posix()) \
                     if not plugin or not repo_info.commit else repo_info.diff
 
+            if VCS_DIFF.exists():
+                diff = VCS_DIFF.get() or ""
+
             # make sure diff is not too big:
             if len(diff) > cls.max_diff_size_bytes:
                 messages.append(

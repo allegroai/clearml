@@ -36,3 +36,12 @@ VCS_WORK_DIR = EnvEntry("CLEARML_VCS_WORK_DIR")
 VCS_ENTRY_POINT = EnvEntry("CLEARML_VCS_ENTRY_POINT")
 VCS_STATUS = EnvEntry("CLEARML_VCS_STATUS", "TRAINS_VCS_STATUS", converter=base64_to_text)
 VCS_DIFF = EnvEntry("CLEARML_VCS_DIFF", "TRAINS_VCS_DIFF", converter=base64_to_text)
+"""
+Handles repository or script diff
+
+Environment variable primarily for internal use. Expects a base64 encoded string.
+If explicitly set to an empty string, will not log the diff, shown in the UI under "Uncommitted Changes".
+
+.. note::
+    Overriding CLEARML_VCS_DIFF will void the possibility of executing a Task remotely.
+"""

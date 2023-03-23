@@ -3465,8 +3465,30 @@ class Task(_Task):
             config_dict.clear()
             config_dict.update(nested_from_flat_dictionary(nested_dict, a_flat_dict))
 
+        def _check_keys(dict_, warning_sent=False):
+            if warning_sent:
+                return
+
+            for k, v in dict_.items():
+                if warning_sent:
+                    return
+
+                if not isinstance(k, str):
+                    getLogger().warning(
+                        "Unsupported key of type '{}' found when connecting dictionary. It will be converted to str".format(
+                            type(k)
+                        )
+                    )
+                    warning_sent = True
+
+                if isinstance(v, dict):
+                    _check_keys(v, warning_sent)
+
         if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):
             self._arguments.copy_from_dict(flatten_dictionary(dictionary), prefix=name)
+            _check_keys(dictionary)
+            flat_dict = {str(k): v for k, v in flatten_dictionary(dictionary).items()}
+            self._arguments.copy_from_dict(flat_dict, prefix=name)
             dictionary = ProxyDictPostWrite(self, _update_args_dict, **dictionary)
         else:
             flat_dict = flatten_dictionary(dictionary)

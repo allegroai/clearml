@@ -905,6 +905,44 @@ class PipelineController(object):
         self._task.close()
         self._task.reset()
 
+    def connect_configuration(self, configuration, name=None, description=None):
+        # type: (Union[Mapping, list, Path, str], Optional[str], Optional[str]) -> Union[dict, Path, str]
+        """
+        Connect a configuration dictionary or configuration file (pathlib.Path / str) to a the PipelineController object.
+        This method should be called before reading the configuration file.
+
+        For example, a local file:
+
+        .. code-block:: py
+
+           config_file = pipe.connect_configuration(config_file)
+           my_params = json.load(open(config_file,'rt'))
+
+        A parameter dictionary/list:
+
+        .. code-block:: py
+
+           my_params = pipe.connect_configuration(my_params)
+
+        :param configuration: The configuration. This is usually the configuration used in the model training process.
+            Specify one of the following:
+
+            - A dictionary/list - A dictionary containing the configuration. ClearML stores the configuration in
+              the **ClearML Server** (backend), in a HOCON format (JSON-like format) which is editable.
+            - A ``pathlib2.Path`` string - A path to the configuration file. ClearML stores the content of the file.
+              A local path must be relative path. When executing a pipeline remotely in a worker, the contents brought
+              from the **ClearML Server** (backend) overwrites the contents of the file.
+
+        :param str name: Configuration section name. default: 'General'
+            Allowing users to store multiple configuration dicts/files
+
+        :param str description: Configuration section description (text). default: None
+
+        :return: If a dictionary is specified, then a dictionary is returned. If pathlib2.Path / string is
+            specified, then a path to a local configuration file is returned. Configuration object.
+        """
+        return self._task.connect_configuration(configuration, name=name, description=description)
+
     @classmethod
     def get_logger(cls):
         # type: () -> Logger

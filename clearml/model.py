@@ -2,6 +2,7 @@ import abc
 import os
 import tarfile
 import zipfile
+import shutil
 from tempfile import mkdtemp, mkstemp
 
 import six
@@ -1166,6 +1167,7 @@ class OutputModel(BaseModel):
     """
 
     _default_output_uri = None
+    _offline_folder = "models"
 
     @property
     def published(self):
@@ -1324,6 +1326,7 @@ class OutputModel(BaseModel):
         self._base_model = None
         self._base_model_id = None
         self._task_connect_name = None
+        self._label_enumeration = label_enumeration
         # noinspection PyProtectedMember
         self._floating_data = create_dummy_model(
             design=_Model._wrap_design(config_text),
@@ -1503,6 +1506,17 @@ class OutputModel(BaseModel):
         # only upload if we are connected to a task
         if not self._task:
             raise Exception('Missing a task for this model')
+
+        if self._task.is_offline() and (weights_filename is None or not Path(weights_filename).is_dir()):
+            return self._update_weights_offline(
+                weights_filename=weights_filename,
+                upload_uri=upload_uri,
+                target_filename=target_filename,
+                register_uri=register_uri,
+                iteration=iteration,
+                update_comment=update_comment,
+                is_package=is_package,
+            )
 
         if weights_filename is not None:
             # Check if weights_filename is a folder, is package upload
@@ -1770,6 +1784,59 @@ class OutputModel(BaseModel):
             https://demofiles.demo.clear.ml, s3://bucket/, gs://bucket/, azure://bucket/, file:///mnt/shared/nfs
         """
         cls._default_output_uri = str(output_uri) if output_uri else None
+
+    def _update_weights_offline(
+        self,
+        weights_filename=None,  # type: Optional[str]
+        upload_uri=None,  # type: Optional[str]
+        target_filename=None,  # type: Optional[str]
+        register_uri=None,  # type: Optional[str]
+        iteration=None,  # type: Optional[int]
+        update_comment=True,  # type: bool
+        is_package=False,  # type: bool
+    ):
+        # type: (...) -> str
+        if (not weights_filename and not register_uri) or (weights_filename and register_uri):
+            raise ValueError(
+                "Model update must have either local weights file to upload, "
+                "or pre-uploaded register_uri, never both"
+            )
+        if not self._task:
+            raise Exception("Missing a task for this model")
+
+        weights_filename_offline = None
+        if weights_filename:
+            weights_filename_offline = (
+                self._task.get_offline_mode_folder() / self._offline_folder / Path(weights_filename).name
+            ).as_posix()
+            os.makedirs(os.path.dirname(weights_filename_offline), exist_ok=True)
+            shutil.copyfile(weights_filename, weights_filename_offline)
+
+        # noinspection PyProtectedMember
+        self._task._offline_output_models.append(
+            dict(
+                init=dict(
+                    config_text=self.config_text,
+                    config_dict=self.config_dict,
+                    label_enumeration=self._label_enumeration,
+                    name=self.name,
+                    tags=self.tags,
+                    comment=self.comment,
+                    framework=self.framework
+                ),
+                weights=dict(
+                    weights_filename=weights_filename_offline,
+                    upload_uri=upload_uri,
+                    target_filename=target_filename,
+                    register_uri=register_uri,
+                    iteration=iteration,
+                    update_comment=update_comment,
+                    is_package=is_package
+                ),
+                output_uri=self._get_base_model().upload_storage_uri or self._default_output_uri
+            )
+        )
+        return weights_filename_offline or register_uri
 
     def _get_force_base_model(self, model_name=None, task_model_entry=None):
         if self._base_model:

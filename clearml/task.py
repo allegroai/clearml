@@ -2930,6 +2930,11 @@ class Task(_Task):
                     StorageManager.upload_file(local_file=local_file.as_posix(), remote_url=artifact.uri)
             # noinspection PyProtectedMember
             task_holding_reports._edit(execution=current_task.data.execution)
+        for output_model in export_data.get("offline_output_models", []):
+            model = OutputModel(task=current_task, **output_model["init"])
+            if output_model.get("output_uri"):
+                model.set_upload_destination(output_model.get("output_uri"))
+            model.update_weights(auto_delete_file=False, **output_model["weights"])
         # logs
         TaskHandler.report_offline_session(task_holding_reports, session_folder, iteration_offset=iteration_offset)
         # metrics
@@ -3833,6 +3838,9 @@ class Task(_Task):
         if self._offline_mode and not is_sub_process:
             # noinspection PyBroadException
             try:
+                # make sure the state of the offline data is saved
+                self._edit()
+
                 # create zip file
                 offline_folder = self.get_offline_mode_folder()
                 zip_file = offline_folder.as_posix() + '.zip'

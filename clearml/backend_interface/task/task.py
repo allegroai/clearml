@@ -152,6 +152,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param force_create: If True, a new task will always be created (task_id, if provided, will be ignored)
         :type force_create: bool
         """
+        self._offline_output_models = []
         SingletonLock.instantiate()
         task_id = self._resolve_task_id(task_id, log=log) if not force_create else None
         self.__edit_lock = None
@@ -2459,6 +2460,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     export_data = self.data.to_dict()
                     export_data["project_name"] = self.get_project_name()
                     export_data["offline_folder"] = self.get_offline_mode_folder().as_posix()
+                    export_data["offline_output_models"] = self._offline_output_models
                     json.dump(export_data, f, ensure_ascii=True, sort_keys=True)
                 return None
 

@@ -1410,7 +1410,9 @@ class Dataset(object):
         force=False,  # bool
         dataset_version=None,  # Optional[str]
         entire_dataset=False,  # bool
-        shallow_search=False  # bool
+        shallow_search=False,  # bool
+        delete_files=True,  # bool
+        delete_external_files=False  # bool
     ):
         # type: (...) -> ()
         """
@@ -1426,6 +1428,9 @@ class Dataset(object):
         :param entire_dataset: If True, delete all datasets that match the given `dataset_project`,
             `dataset_name`, `dataset_version`. Note that `force` has to be True if this parameter is True
         :param shallow_search: If True, search only the first 500 results (first page)
+        :param delete_files: Delete all local files in the dataset (from the ClearML file server), as well as
+            all artifacts related to the dataset.
+        :param delete_external_files: Delete all external files in the dataset (from their external storage)
         """
         if not any([dataset_id, dataset_project, dataset_name]):
             raise ValueError("Dataset deletion criteria not met. Didn't provide id/name/project correctly.")
@@ -1446,28 +1451,26 @@ class Dataset(object):
                 action="delete",
             )
         except Exception as e:
-            LoggerRoot.get_base_logger().warning("Error: {}".format(str(e)))
+            LoggerRoot.get_base_logger().warning("Failed deleting dataset: {}".format(str(e)))
             return
-        client = APIClient()
         for dataset_id in dataset_ids:
-            task = Task.get_task(task_id=dataset_id)
-            if str(task.task_type) != str(Task.TaskTypes.data_processing) or cls.__tag not in (
-                task.get_system_tags() or []
-            ):
-                LoggerRoot.get_base_logger().warning("Task id={} is not of type Dataset".format(dataset_id))
+            try:
+                dataset = Dataset.get(dataset_id=dataset_id)
+            except Exception as e:
+                LoggerRoot.get_base_logger().warning("Could not get dataset with ID {}: {}".format(dataset_id, str(e)))
                 continue
-            for artifact in task.artifacts.values():
-                h = StorageHelper.get(artifact.url)
-                # noinspection PyBroadException
-                try:
-                    h.delete(artifact.url)
-                except Exception as ex:
-                    LoggerRoot.get_base_logger().warning(
-                        "Failed deleting remote file '{}': {}".format(artifact.url, ex)
-                    )
-            # this force is different than the force passed in Dataset.delete
-            # it indicated that we want delete a non-draft task
-            client.tasks.delete(task=dataset_id, force=True)
+            # noinspection PyProtectedMember
+            dataset._task.delete(delete_artifacts_and_models=delete_files)
+            if delete_external_files:
+                for external_file in dataset.link_entries:
+                    if external_file.parent_dataset_id == dataset_id:
+                        try:
+                            helper = StorageHelper.get(external_file.link)
+                            helper.delete(external_file.link)
+                        except Exception as ex:
+                            LoggerRoot.get_base_logger().warning(
+                                "Failed deleting remote file '{}': {}".format(external_file.link, ex)
+                            )
 
     @classmethod
     def rename(

@@ -1471,7 +1471,10 @@ class _HttpDriver(_Driver):
     def exists_file(self, container_name, object_name):
         # noinspection PyBroadException
         try:
-            return requests.head(container_name + object_name, allow_redirects=True).ok
+            container = self.get_container(container_name)
+            url = container_name + object_name
+
+            return container.session.head(url, allow_redirects=True, headers=container.get_headers(url)).ok
         except Exception:
             return False
 

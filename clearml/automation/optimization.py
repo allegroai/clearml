@@ -1880,7 +1880,13 @@ class HyperParameterOptimizer(object):
                     except (ValueError, TypeError):
                         values = list(range(len(col[1:])))
                         ticks = col[1:]
+                        unique_ticks = list(set(ticks))
                         d = dict(label=col[0], values=values, tickvals=values, ticktext=ticks)
+                        if len(ticks) != len(unique_ticks):  # Mapping duplicate ticktext
+                            ticktext = {key: i for i, key in enumerate(unique_ticks)}
+                            d["values"] = [ticktext[tick] for tick in ticks]
+                            d["tickvals"] = list(range(len(ticktext)))
+                            d["ticktext"] = list(sorted(ticktext, key=ticktext.get))
                     pcc_dims.append(d)
                 # report parallel coordinates
                 plotly_pcc = dict(

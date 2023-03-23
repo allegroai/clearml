@@ -145,7 +145,7 @@ class PipelineController(object):
             packages=None,  # type: Optional[Union[str, Sequence[str]]]
             repo=None,  # type: Optional[str]
             repo_branch=None,  # type: Optional[str]
-            repo_commit=None  # type: Optional[str]
+            repo_commit=None,  # type: Optional[str]
             artifact_serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
             artifact_deserialization_function=None  # type: Optional[Callable[[bytes], Any]]
     ):

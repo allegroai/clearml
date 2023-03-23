@@ -8,7 +8,6 @@ import threading
 import time
 from argparse import ArgumentParser
 from logging import getLogger
-from operator import attrgetter
 from tempfile import mkstemp, mkdtemp
 from zipfile import ZipFile, ZIP_DEFLATED
 
@@ -2180,7 +2179,7 @@ class Task(_Task):
         section = "properties"
 
         params = self._hyper_params_manager.get_hyper_params(
-            sections=[section], projector=attrgetter("value") if value_only else None
+            sections=[section], projector=(lambda x: x.get("value")) if value_only else None
         )
 
         return dict(params.get(section, {}))

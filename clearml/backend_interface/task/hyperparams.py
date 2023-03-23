@@ -42,7 +42,6 @@ class HyperParams(object):
                                 selector and not selector(item)
                             ):
                                 continue
-                            item = item if not projector else projector(item)
                             if return_obj:
                                 item = tasks.ParamsItem()
                             hyperparams[item.get("section")][item.get("name")] = (

@@ -291,11 +291,20 @@ class StorageManager(object):
 
         :return: Path to downloaded file or None on error
         """
+
+        def remove_prefix_from_str(target_str, prefix_to_be_removed):
+            # type: (str, str) -> str
+            if target_str.startswith(prefix_to_be_removed):
+                return target_str[len(prefix_to_be_removed):]
+            return target_str
+
+        longest_configured_url = StorageHelper._resolve_base_url(remote_url)  # noqa
+        bucket_path = remove_prefix_from_str(remote_url[len(longest_configured_url):], "/")
+
         if not local_folder:
             local_folder = CacheManager.get_cache_manager().get_cache_folder()
-        local_path = os.path.join(
-            str(Path(local_folder).absolute()), str(Path(urlparse(remote_url).path)).lstrip(os.path.sep)
-        )
+        local_path = str(Path(local_folder).expanduser().absolute() / bucket_path)
+
         helper = StorageHelper.get(remote_url)
         return helper.download_to_file(
             remote_url,

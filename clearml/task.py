@@ -1401,27 +1401,31 @@ class Task(_Task):
         # type: (Any, Optional[str]) -> Any
         """
         Connect an object to a Task object. This connects an experiment component (part of an experiment) to the
-        experiment. For example, connect hyperparameters or models.
+        experiment. For example, an experiment component can be a valid object containing some hyperparameters, or a :class:`Model`.
 
-        :param object mutable: The experiment component to connect. The object can be any object Task supports
-            integrating, including:
+        :param object mutable: The experiment component to connect. The object must be one of the following types:
 
             - argparse - An argparse object for parameters.
             - dict - A dictionary for parameters.
             - TaskParameters - A TaskParameters object.
-            - Model - A model object for initial model warmup, or for model update/snapshot uploading.
-            - Class type - A Class type, storing all class properties (excluding '_' prefix properties)
-            - Object - A class instance, storing all instance properties (excluding '_' prefix properties)
+            - :class:`Model` - A model object for initial model warmup, or for model update/snapshot uploading. In practice the model should be either :class:`InputModel` or :class:`OutputModel`.
+            - type - A Class type, storing all class properties (excluding '_' prefixed properties).
+            - object - A class instance, storing all instance properties (excluding '_' prefixed properties).
+
+            .. note::
+                When :meth:`Task.connect` receives a dict, it supports only keys of type `str`
 
         :param str name: A section name associated with the connected object, if 'name' is None defaults to 'General'
-            Currently only supported for `dict` / `TaskParameter` objects
-            Examples:
-            name='General' will put the connected dictionary under the General section in the hyper-parameters
-            name='Train' will put the connected dictionary under the Train section in the hyper-parameters
+            Currently, `name` is only supported for `dict` and `TaskParameter` objects, and should be omitted for the other supported types. (Optional)
 
-        :return: The result returned when connecting the object, if supported.
+            For example, by setting `name='General'` the connected dictionary will be under the General section in the hyper-parameters section.
+            While by setting `name='Train'` the connected dictionary will be under the Train section in the hyper-parameters section.
 
-        :raise: Raise an exception on unsupported objects.
+        :return: It will return the same object that was passed as the `mutable` argument to the method, except if the type of the object is dict.
+                 For dicts the :meth:`Task.connect` will return the dict decorated as a `ProxyDictPostWrite`.
+                 This is done to allow propagating the updates from the connected object.
+
+        :raise: Raises an exception if passed an unsupported object.
         """
         # dispatching by match order
         dispatch = (

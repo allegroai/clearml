@@ -388,13 +388,14 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             return False
         return bool(self.data.ready)
 
-    def download_model_weights(self, raise_on_error=False):
+    def download_model_weights(self, raise_on_error=False, force_download=False):
         """
         Download the model weights into a local file in our cache
 
         :param bool raise_on_error: If True and the artifact could not be downloaded,
             raise ValueError, otherwise return None on failure and output log warning.
-
+        :param bool force_download: If True, the base artifact will be downloaded,
+            even if the artifact is already cached.
         :return: a local path to a downloaded copy of the model
         """
         uri = self.data.uri
@@ -404,12 +405,12 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         # check if we already downloaded the file
         downloaded_models = [k for k, (i, u) in Model._local_model_to_id_uri.items() if i == self.id and u == uri]
         for dl_file in downloaded_models:
-            if Path(dl_file).exists():
+            if Path(dl_file).exists() and not force_download:
                 return dl_file
             # remove non existing model file
             Model._local_model_to_id_uri.pop(dl_file, None)
 
-        local_download = StorageManager.get_local_copy(uri, extract_archive=False)
+        local_download = StorageManager.get_local_copy(uri, extract_archive=False, force_download=force_download)
 
         # save local model, so we can later query what was the original one
         if local_download is not None:

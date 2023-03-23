@@ -11,9 +11,14 @@ build/
 dist/
 *.egg-info
 .env
+venv/
+.venv/
 
 # example data
 examples/runs/
 examples/*_data
 examples/frameworks/data
-venv/
+
+# vscode
+.workspace/
+.vscode/

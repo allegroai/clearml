@@ -330,21 +330,26 @@ class BaseModel(object):
         self._reload_required = False
         self._set_task(task)
 
-    def get_weights(self, raise_on_error=False):
-        # type: (bool) -> str
+    def get_weights(self, raise_on_error=False, force_download=False):
+        # type: (bool, bool) -> str
         """
         Download the base model and return the locally stored filename.
 
         :param bool raise_on_error: If True, and the artifact could not be downloaded,
             raise ValueError, otherwise return None on failure and output log warning.
 
+        :param bool force_download: If True, the base model will be downloaded,
+            even if the base model is already cached.
+
         :return: The locally stored file.
         """
         # download model (synchronously) and return local file
-        return self._get_base_model().download_model_weights(raise_on_error=raise_on_error)
+        return self._get_base_model().download_model_weights(raise_on_error=raise_on_error, force_download=force_download)
 
-    def get_weights_package(self, return_path=False, raise_on_error=False):
-        # type: (bool, bool) -> Optional[Union[str, List[Path]]]
+    def get_weights_package(
+        self, return_path=False, raise_on_error=False, force_download=False
+    ):
+        # type: (bool, bool, bool) -> Optional[Union[str, List[Path]]]
         """
         Download the base model package into a temporary directory (extract the files), or return a list of the
         locally stored filenames.
@@ -356,7 +361,8 @@ class BaseModel(object):
 
         :param bool raise_on_error: If True, and the artifact could not be downloaded,
             raise ValueError, otherwise return None on failure and output log warning.
-
+        :param bool force_download: If True, the base artifact will be downloaded,
+            even if the artifact is already cached.
         :return: The model weights, or a list of the locally stored filenames.
             if raise_on_error=False, returns None on error.
         """
@@ -365,7 +371,7 @@ class BaseModel(object):
             raise ValueError('Model is not packaged')
 
         # download packaged model
-        packed_file = self.get_weights(raise_on_error=raise_on_error)
+        packed_file = self.get_weights(raise_on_error=raise_on_error, force_download=force_download)
 
         if not packed_file:
             if raise_on_error:
@@ -580,8 +586,10 @@ class Model(BaseModel):
         self._base_model_id = model_id
         self._base_model = None
 
-    def get_local_copy(self, extract_archive=True, raise_on_error=False):
-        # type: (bool, bool) -> str
+    def get_local_copy(
+        self, extract_archive=True, raise_on_error=False, force_download=False
+    ):
+        # type: (bool, bool, bool) -> str
         """
         Retrieve a valid link to the model file(s).
         If the model URL is a file system link, it will be returned directly.
@@ -592,12 +600,20 @@ class Model(BaseModel):
             The returned path will be a temporary folder containing the archive content
         :param bool raise_on_error: If True, and the artifact could not be downloaded,
             raise ValueError, otherwise return None on failure and output log warning.
+        :param bool force_download: If True, the artifact will be downloaded,
+            even if the model artifact is already cached.
 
         :return: A local path to the model (or a downloaded copy of it).
         """
         if extract_archive and self._is_package():
-            return self.get_weights_package(return_path=True, raise_on_error=raise_on_error)
-        return self.get_weights(raise_on_error=raise_on_error)
+            return self.get_weights_package(
+                return_path=True,
+                raise_on_error=raise_on_error,
+                force_download=force_download,
+            )
+        return self.get_weights(
+            raise_on_error=raise_on_error, force_download=force_download
+        )
 
     def _get_base_model(self):
         if self._base_model:

@@ -37,7 +37,7 @@ import six
 from pathlib2 import Path
 
 from .backend_config.defs import get_active_config_file, get_config_file
-from .backend_api.services import tasks, projects
+from .backend_api.services import tasks, projects, events
 from .backend_api.session.session import (
     Session, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_HOST, ENV_WEB_HOST, ENV_FILES_HOST, )
 from .backend_api.session.defs import ENV_DEFERRED_TASK_INIT, ENV_IGNORE_MISSING_CONFIG, MissingConfigError
@@ -1458,9 +1458,6 @@ class Task(_Task):
         Connect a configuration dictionary or configuration file (pathlib.Path / str) to a Task object.
         This method should be called before reading the configuration file.
 
-        Later, when creating an output model, the model will include the contents of the configuration dictionary
-        or file.
-
         For example, a local file:
 
         .. code-block:: py
@@ -1979,6 +1976,69 @@ class Task(_Task):
         if exception_to_raise:
             raise exception_to_raise
         return False
+
+    def get_debug_samples(self, title, series, n_last_iterations=None):
+        # type: (str, str, Optional[int]) -> List[dict]
+        """
+        :param str title: Debug sample's title, also called metric in the UI
+        :param str series: Debug sample's series,
+            corresponding to debug sample's file name in the UI, also known as variant
+        :param int n_last_iterations: How many debug samples iterations to fetch in reverse chronological order.
+            Leave empty to get all debug samples.
+        :raise: TypeError if `n_last_iterations` is explicitly set to anything other than a positive integer value
+        :return: A list of `dict`s, each dictionary containing the debug sample's URL and other metadata.
+            The URLs can be passed to :meth:`StorageManager.get_local_copy` to fetch local copies of debug samples.
+        """
+        from .config.defs import MAX_SERIES_PER_METRIC
+
+        if not n_last_iterations:
+            n_last_iterations = MAX_SERIES_PER_METRIC.get()
+
+        if isinstance(n_last_iterations, int) and n_last_iterations >= 0:
+            samples = self._get_debug_samples(
+                title=title, series=series, n_last_iterations=n_last_iterations
+            )
+        else:
+            raise TypeError(
+                "Parameter n_last_iterations is expected to be a positive integer value,"
+                " but instead got n_last_iterations={}".format(n_last_iterations)
+            )
+
+        return samples
+
+    def _send_debug_image_request(self, title, series, n_last_iterations, scroll_id=None):
+        return Task._send(
+            Task._get_default_session(),
+            events.DebugImagesRequest(
+                [{"task": self.id, "metric": title, "variants": [series]}],
+                iters=n_last_iterations,
+                scroll_id=scroll_id,
+            ),
+        )
+
+    def _get_debug_samples(self, title, series, n_last_iterations=None):
+        response = self._send_debug_image_request(title, series, n_last_iterations)
+        debug_samples = []
+        while True:
+            scroll_id = response.response.scroll_id
+            for metric_resp in response.response.metrics:
+                iterations_events = [iteration["events"] for iteration in metric_resp.iterations]  # type: List[List[dict]]
+                flattened_events = (event
+                                    for single_iter_events in iterations_events
+                                    for event in single_iter_events)
+                debug_samples.extend(flattened_events)
+
+            response = self._send_debug_image_request(
+                title, series, n_last_iterations, scroll_id=scroll_id
+            )
+
+            if (len(debug_samples) == n_last_iterations
+                or all(
+                    len(metric_resp.iterations) == 0
+                    for metric_resp in response.response.metrics)):
+                break
+
+        return debug_samples
 
     def get_models(self):
         # type: () -> Mapping[str, Sequence[Model]]

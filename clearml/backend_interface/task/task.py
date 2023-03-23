@@ -171,6 +171,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         self._initial_iteration_offset = 0
         self._reload_skip_flag = False
         self._calling_filename = None
+        self._offline_dir = None
 
         if not task_id:
             # generate a new task
@@ -2583,9 +2584,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Return the folder where all the task outputs and logs are stored in the offline session.
         :return: Path object, local folder, later to be used with `report_offline_session()`
         """
+        if self._offline_dir:
+            return self._offline_dir
         if not self._offline_mode:
             return None
-        return get_offline_dir(task_id=self.task_id)
+        self._offline_dir = get_offline_dir(task_id=self.task_id)
+        return self._offline_dir
 
     @classmethod
     def _clone_task(
@@ -2886,30 +2890,6 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         is_subprocess = PROC_MASTER_ID_ENV_VAR.get() and \
             PROC_MASTER_ID_ENV_VAR.get().split(':')[0] != str(os.getpid())
         return is_subprocess
-
-    @classmethod
-    def set_offline(cls, offline_mode=False):
-        # type: (bool) -> None
-        """
-        Set offline mode, where all data and logs are stored into local folder, for later transmission
-
-        :param offline_mode: If True, offline-mode is turned on, and no communication to the backend is enabled.
-        :return:
-        """
-        if not running_remotely():
-            ENV_OFFLINE_MODE.set(offline_mode)
-            InterfaceBase._offline_mode = bool(offline_mode)
-            Session._offline_mode = bool(offline_mode)
-
-    @classmethod
-    def is_offline(cls):
-        # type: () -> bool
-        """
-        Return offline-mode state, If in offline-mode, no communication to the backend is enabled.
-
-        :return: boolean offline-mode state
-        """
-        return cls._offline_mode
 
     @classmethod
     def _get_task_status(cls, task_id):

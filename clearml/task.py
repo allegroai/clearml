@@ -40,9 +40,10 @@ from .backend_config.defs import get_active_config_file, get_config_file
 from .backend_api.services import tasks, projects, events
 from .backend_api.session.session import (
     Session, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_HOST, ENV_WEB_HOST, ENV_FILES_HOST, )
-from .backend_api.session.defs import ENV_DEFERRED_TASK_INIT, ENV_IGNORE_MISSING_CONFIG, MissingConfigError
+from .backend_api.session.defs import ENV_DEFERRED_TASK_INIT, ENV_IGNORE_MISSING_CONFIG, ENV_OFFLINE_MODE, MissingConfigError
 from .backend_interface.metrics import Metrics
 from .backend_interface.model import Model as BackendModel
+from .backend_interface.base import InterfaceBase
 from .backend_interface.task import Task as _Task
 from .backend_interface.task.log import TaskHandler
 from .backend_interface.task.development.worker import DevWorker
@@ -844,6 +845,8 @@ class Task(_Task):
         :return: The newly created Task (experiment)
         :rtype: Task
         """
+        if cls.is_offline():
+            raise UsageError("Creating task in offline mode. Use 'Task.init' instead.")
         if not project_name and not base_task_id:
             if not cls.__main_task:
                 raise ValueError("Please provide project_name, no global task context found "
@@ -2866,6 +2869,72 @@ class Task(_Task):
                 target_task = Task.get_task(task_id=target_task.id)
 
         return target_task
+
+    @classmethod
+    def set_offline(cls, offline_mode=False):
+        # type: (bool) -> None
+        """
+        Set offline mode, where all data and logs are stored into local folder, for later transmission
+
+        .. note::
+
+            `Task.set_offline` can't move the same task from offline to online, nor can it be applied before `Task.create`.
+            See below an example of **incorect** usage of `Task.set_offline`:
+
+            .. code-block:: py
+
+                from clearml import Task
+                Task.set_offline(True)
+                task = Task.create(project_name='DEBUG', task_name="offline")
+                # ^^^ an error or warning is emitted, telling us that `Task.set_offline(True)`
+                #     is supported only for `Task.init`
+                Task.set_offline(False)
+                # ^^^ an error or warning is emitted, telling us that running `Task.set_offline(False)`
+                #     while the current task is not closed is not something we support
+                data = task.export_task()
+                imported_task = Task.import_task(task_data=data)
+
+            The correct way to use `Task.set_offline` can be seen in the following example:
+
+            .. code-block:: py
+
+                from clearml import Task
+                Task.set_offline(True)
+                task = Task.init(project_name='DEBUG', task_name="offline")
+                task.upload_artifact("large_artifact", "test_strign")
+                task.close()
+                Task.set_offline(False)
+                imported_task = Task.import_offline_session(task.get_offline_mode_folder())
+
+        :param offline_mode: If True, offline-mode is turned on, and no communication to the backend is enabled.
+
+        :return:
+        """
+        if running_remotely() or bool(offline_mode) == InterfaceBase._offline_mode:
+            return
+        if (
+            cls.current_task()
+            and cls.current_task().status != cls.TaskStatusEnum.closed
+            and not offline_mode
+        ):
+            raise UsageError(
+                "Switching from offline mode to online mode, but the current task has not been closed. Use `Task.close` to close it."
+            )
+        ENV_OFFLINE_MODE.set(offline_mode)
+        InterfaceBase._offline_mode = bool(offline_mode)
+        Session._offline_mode = bool(offline_mode)
+        if not offline_mode:
+            # noinspection PyProtectedMember
+            Session._make_all_sessions_go_online()
+
+    @classmethod
+    def is_offline(cls):
+        # type: () -> bool
+        """
+        Return offline-mode state, If in offline-mode, no communication to the backend is enabled.
+        :return: boolean offline-mode state
+        """
+        return cls._offline_mode
 
     @classmethod
     def import_offline_session(cls, session_folder_zip, previous_task_id=None, iteration_offset=0):

@@ -306,6 +306,7 @@ class Logger(object):
             csv=None,  # type: Optional[str]
             url=None,  # type: Optional[str]
             extra_layout=None,  # type: Optional[dict]
+            extra_data=None,  # type: Optional[dict]
     ):
         """
         For explicit report, report a table plot.
@@ -337,7 +338,27 @@ class Logger(object):
         :param url: A URL to the location of csv file.
         :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
             See full details on the supported configuration: https://plotly.com/javascript/reference/layout/
-            example: extra_layout={'height': 600}
+            For example:
+
+            .. code block:: py
+            logger.report_table(
+                title='table example',
+                series='pandas DataFrame',
+                iteration=0,
+                table_plot=df,
+                extra_layout={'height': 600})
+
+        :param extra_data: optional dictionary for data configuration, like column width, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/table/
+            For example:
+
+            .. code block:: py
+            logger.report_table(
+                title='table example',
+                series='pandas DataFrame',
+                iteration=0,
+                table_plot=df,
+                extra_data={'columnwidth': [2., 1., 1., 1.]})
         """
         mutually_exclusive(
             UsageError, _check_none=True,
@@ -373,6 +394,7 @@ class Logger(object):
             table=reporter_table,
             iteration=iteration or 0,
             layout_config=extra_layout,
+            data_config=extra_data,
         )
 
     def report_line_plot(

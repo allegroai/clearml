@@ -482,7 +482,7 @@ def plotly_scatter3d_layout_dict(title="Scatter", xaxis_title="X", yaxis_title="
     return plotly_object
 
 
-def create_plotly_table(table_plot, title, series, layout_config=None):
+def create_plotly_table(table_plot, title, series, layout_config=None, data_config=None):
     """
     Create a basic Plotly table json style to be sent
 
@@ -492,6 +492,7 @@ def create_plotly_table(table_plot, title, series, layout_config=None):
     :param series: Series (AKA variant)
     :type series: str
     :param layout_config: additional configuration layout
+    :param data_config: additional configuration for the data
     :return: dict with plotly data.
     """
     is_list = isinstance(table_plot, (list, tuple))
@@ -544,5 +545,8 @@ def create_plotly_table(table_plot, title, series, layout_config=None):
     }
     if layout_config:
         ret["layout"] = merge_dicts(ret["layout"], layout_config)
+
+    if data_config and len(ret["data"]) == 1:
+        ret["data"][0] = merge_dicts(ret["data"][0], data_config)
 
     return ret

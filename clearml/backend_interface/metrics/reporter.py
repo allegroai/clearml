@@ -615,7 +615,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             nan_as_null=False,
         )
 
-    def report_table(self, title, series, table, iteration, layout_config=None):
+    def report_table(self, title, series, table, iteration, layout_config=None, data_config=None):
         """
         Report a table plot.
 
@@ -629,8 +629,10 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :type iteration: int
         :param layout_config: optional dictionary for layout configuration, passed directly to plotly
         :type layout_config: dict or None
+        :param data_config: optional dictionary for data configuration, like column width, passed directly to plotly
+        :type data_config: dict or None
         """
-        table_output = create_plotly_table(table, title, series, layout_config=layout_config)
+        table_output = create_plotly_table(table, title, series, layout_config=layout_config, data_config=data_config)
         return self.report_plot(
             title=self._normalize_name(title),
             series=self._normalize_name(series),

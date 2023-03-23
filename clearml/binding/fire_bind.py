@@ -235,6 +235,9 @@ class PatchFire:
     def __get_all_groups_and_commands(component, context):
         groups = []
         commands = {}
+        # skip modules
+        if inspect.ismodule(component):
+            return groups, commands
         component_trace_result = PatchFire.__safe_Fire(component, [], PatchFire.__default_args, context)
         group_args = [[]]
         while len(group_args) > 0:
@@ -256,7 +259,8 @@ class PatchFire:
     @staticmethod
     def __get_groups_and_commands_for_args(component, args_, parsed_flag_args, context, name=None):
         component_trace = PatchFire.__safe_Fire(component, args_, parsed_flag_args, context, name=name)
-        groups, commands, _, _ = fire.helptext._GetActionsGroupedByKind(component_trace, verbose=False)  # noqa
+        # set verbose to True or else we might miss some commands
+        groups, commands, _, _ = fire.helptext._GetActionsGroupedByKind(component_trace, verbose=True)  # noqa
         groups = [(name, member) for name, member in groups.GetItems()]
         commands = [(name, member) for name, member in commands.GetItems()]
         return groups, commands

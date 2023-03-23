@@ -139,6 +139,7 @@ class PatchXGBoostModelIO(PatchBaseModelIO):
             """
             Log evaluation result at each iteration.
             """
+            _scalar_index_counter = 0
 
             def __init__(self, task, period=1):
                 self.period = period
@@ -146,6 +147,8 @@ class PatchXGBoostModelIO(PatchBaseModelIO):
                 self._last_eval = None
                 self._last_eval_epoch = None
                 self._logger = task.get_logger()
+                self._scalar_index = ClearMLCallback._scalar_index_counter
+                ClearMLCallback._scalar_index_counter += 1
                 super(ClearMLCallback, self).__init__()
 
             def after_iteration(self, model, epoch, evals_log):
@@ -173,6 +176,8 @@ class PatchXGBoostModelIO(PatchBaseModelIO):
 
             def _report_eval_log(self, epoch, eval_log):
                 for data, metric in eval_log.items():
+                    if self._scalar_index != 0:
+                        data = "{} - {}".format(data, self._scalar_index)
                     for metric_name, log in metric.items():
                         value = log[-1]
 

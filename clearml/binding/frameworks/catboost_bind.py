@@ -112,13 +112,19 @@ class PatchCatBoostModelIO(PatchBaseModelIO):
     @staticmethod
     def _generate_training_callback_class():
         class ClearMLCallback:
+            _scalar_index_counter = 0
+
             def __init__(self, task):
                 self._logger = task.get_logger()
+                self._scalar_index = ClearMLCallback._scalar_index_counter
+                ClearMLCallback._scalar_index_counter += 1
 
             def after_iteration(self, info):
                 info = vars(info)
                 iteration = info.get("iteration")
                 for title, metric in (info.get("metrics") or {}).items():
+                    if self._scalar_index != 0:
+                        title = "{} - {}".format(title, self._scalar_index)
                     for series, log in metric.items():
                         value = log[-1]
                         self._logger.report_scalar(title=title, series=series, value=value, iteration=iteration)

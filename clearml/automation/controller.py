@@ -146,6 +146,8 @@ class PipelineController(object):
             repo=None,  # type: Optional[str]
             repo_branch=None,  # type: Optional[str]
             repo_commit=None  # type: Optional[str]
+            artifact_serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
+            artifact_deserialization_function=None  # type: Optional[Callable[[bytes], Any]]
     ):
         # type: (...) -> None
         """
@@ -204,6 +206,28 @@ class PipelineController(object):
             repo url and commit ID based on the locally cloned copy
         :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
         :param repo_commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
+        :param artifact_serialization_function: A serialization function that takes one
+            parameter of any type which is the object to be serialized. The function should return
+            a `bytes` or `bytearray` object, which represents the serialized object. All parameter/return
+            artifacts uploaded by the pipeline will be serialized using this function.
+            All relevant imports must be done in this function. For example:
+
+            .. code-block:: py
+
+                def serialize(obj):
+                    import dill
+                    return dill.dumps(obj)
+
+        :param artifact_deserialization_function: A deserialization function that takes one parameter of type `bytes`,
+            which represents the serialized object. This function should return the deserialized object.
+            All parameter/return artifacts fetched by the pipeline will be deserialized using this function.
+            All relevant imports must be done in this function. For example:
+
+            .. code-block:: py
+
+                def deserialize(bytes_):
+                    import dill
+                    return dill.loads(bytes_)
         """
         self._nodes = {}
         self._running_nodes = []
@@ -236,6 +260,8 @@ class PipelineController(object):
         self._mock_execution = False  # used for nested pipelines (eager execution)
         self._pipeline_as_sub_project = bool(Session.check_min_api_server_version("2.17"))
         self._last_progress_update_time = 0
+        self._artifact_serialization_function = artifact_serialization_function
+        self._artifact_deserialization_function = artifact_deserialization_function
         if not self._task:
             task_name = name or project or '{}'.format(datetime.now())
             if self._pipeline_as_sub_project:
@@ -990,6 +1016,7 @@ class PipelineController(object):
         auto_pickle=True,  # type: bool
         preview=None,  # type: Any
         wait_on_upload=False,  # type: bool
+        serialization_function=None  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
     ):
         # type: (...) -> bool
         """
@@ -1032,6 +1059,13 @@ class PipelineController(object):
         :param bool wait_on_upload: Whether the upload should be synchronous, forcing the upload to complete
             before continuing.
 
+        :param Callable[Any, Union[bytes, bytearray]] serialization_function: A serialization function that takes one
+            parameter of any type which is the object to be serialized. The function should return
+            a `bytes` or `bytearray` object, which represents the serialized object. Note that the object will be
+            immediately serialized using this function, thus other serialization methods will not be used
+            (e.g. `pandas.DataFrame.to_csv`), even if possible. To deserialize this artifact when getting
+            it using the `Artifact.get` method, use its `deserialization_function` argument.
+
         :return: The status of the upload.
 
         - ``True`` - Upload succeeded.
@@ -1041,8 +1075,15 @@ class PipelineController(object):
         """
         task = cls._get_pipeline_task()
         return task.upload_artifact(
-            name=name, artifact_object=artifact_object, metadata=metadata, delete_after_upload=delete_after_upload,
-            auto_pickle=auto_pickle, preview=preview, wait_on_upload=wait_on_upload)
+            name=name,
+            artifact_object=artifact_object,
+            metadata=metadata,
+            delete_after_upload=delete_after_upload,
+            auto_pickle=auto_pickle,
+            preview=preview,
+            wait_on_upload=wait_on_upload,
+            serialization_function=serialization_function
+        )
 
     def stop(self, timeout=None, mark_failed=False, mark_aborted=False):
         # type: (Optional[float], bool, bool) -> ()
@@ -1236,7 +1277,9 @@ class PipelineController(object):
             output_uri=None,
             helper_functions=helper_functions,
             dry_run=True,
-            task_template_header=self._task_template_header
+            task_template_header=self._task_template_header,
+            artifact_serialization_function=self._artifact_serialization_function,
+            artifact_deserialization_function=self._artifact_deserialization_function
         )
         return task_definition
 
@@ -3021,7 +3064,9 @@ class PipelineDecorator(PipelineController):
             packages=None,  # type: Optional[Union[str, Sequence[str]]]
             repo=None,  # type: Optional[str]
             repo_branch=None,  # type: Optional[str]
-            repo_commit=None  # type: Optional[str]
+            repo_commit=None,  # type: Optional[str]
+            artifact_serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
+            artifact_deserialization_function=None  # type: Optional[Callable[[bytes], Any]]
     ):
         # type: (...) -> ()
         """
@@ -3076,6 +3121,28 @@ class PipelineDecorator(PipelineController):
             repo url and commit ID based on the locally cloned copy
         :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
         :param repo_commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
+        :param artifact_serialization_function: A serialization function that takes one
+            parameter of any type which is the object to be serialized. The function should return
+            a `bytes` or `bytearray` object, which represents the serialized object. All parameter/return
+            artifacts uploaded by the pipeline will be serialized using this function.
+            All relevant imports must be done in this function. For example:
+
+            .. code-block:: py
+
+                def serialize(obj):
+                    import dill
+                    return dill.dumps(obj)
+
+        :param artifact_deserialization_function: A deserialization function that takes one parameter of type `bytes`,
+            which represents the serialized object. This function should return the deserialized object.
+            All parameter/return artifacts fetched by the pipeline will be deserialized using this function.
+            All relevant imports must be done in this function. For example:
+
+            .. code-block:: py
+
+                def deserialize(bytes_):
+                    import dill
+                    return dill.loads(bytes_)
         """
         super(PipelineDecorator, self).__init__(
             name=name,
@@ -3093,7 +3160,9 @@ class PipelineDecorator(PipelineController):
             packages=packages,
             repo=repo,
             repo_branch=repo_branch,
-            repo_commit=repo_commit
+            repo_commit=repo_commit,
+            artifact_serialization_function=artifact_serialization_function,
+            artifact_deserialization_function=artifact_deserialization_function
         )
 
         # if we are in eager execution, make sure parent class knows it
@@ -3356,7 +3425,9 @@ class PipelineDecorator(PipelineController):
             helper_functions=helper_functions,
             dry_run=True,
             task_template_header=self._task_template_header,
-            _sanitize_function=sanitize
+            _sanitize_function=sanitize,
+            artifact_serialization_function=self._artifact_serialization_function,
+            artifact_deserialization_function=self._artifact_deserialization_function
         )
         return task_definition
 
@@ -3785,7 +3856,9 @@ class PipelineDecorator(PipelineController):
 
                     task = Task.get_task(_node.job.task_id())
                     if return_name in task.artifacts:
-                        return task.artifacts[return_name].get()
+                        return task.artifacts[return_name].get(
+                            deserialization_function=cls._singleton._artifact_deserialization_function
+                        )
                     return task.get_parameters(cast=True)[CreateFromFunction.return_section + "/" + return_name]
 
                 return_w = [LazyEvalWrapper(
@@ -3828,7 +3901,9 @@ class PipelineDecorator(PipelineController):
             packages=None,  # type: Optional[Union[str, Sequence[str]]]
             repo=None,  # type: Optional[str]
             repo_branch=None,  # type: Optional[str]
-            repo_commit=None  # type: Optional[str]
+            repo_commit=None,  # type: Optional[str]
+            artifact_serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
+            artifact_deserialization_function=None  # type: Optional[Callable[[bytes], Any]]
     ):
         # type: (...) -> Callable
         """
@@ -3912,6 +3987,28 @@ class PipelineDecorator(PipelineController):
             repo url and commit ID based on the locally cloned copy
         :param repo_branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
         :param repo_commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
+        :param artifact_serialization_function: A serialization function that takes one
+            parameter of any type which is the object to be serialized. The function should return
+            a `bytes` or `bytearray` object, which represents the serialized object. All parameter/return
+            artifacts uploaded by the pipeline will be serialized using this function.
+            All relevant imports must be done in this function. For example:
+
+            .. code-block:: py
+
+                def serialize(obj):
+                    import dill
+                    return dill.dumps(obj)
+
+        :param artifact_deserialization_function: A deserialization function that takes one parameter of type `bytes`,
+            which represents the serialized object. This function should return the deserialized object.
+            All parameter/return artifacts fetched by the pipeline will be deserialized using this function.
+            All relevant imports must be done in this function. For example:
+
+            .. code-block:: py
+
+                def deserialize(bytes_):
+                    import dill
+                    return dill.loads(bytes_)
         """
         def decorator_wrap(func):
 
@@ -3955,7 +4052,9 @@ class PipelineDecorator(PipelineController):
                         packages=packages,
                         repo=repo,
                         repo_branch=repo_branch,
-                        repo_commit=repo_commit
+                        repo_commit=repo_commit,
+                        artifact_serialization_function=artifact_serialization_function,
+                        artifact_deserialization_function=artifact_deserialization_function
                     )
                     ret_val = func(**pipeline_kwargs)
                     LazyEvalWrapper.trigger_all_remote_references()
@@ -4004,7 +4103,9 @@ class PipelineDecorator(PipelineController):
                     packages=packages,
                     repo=repo,
                     repo_branch=repo_branch,
-                    repo_commit=repo_commit
+                    repo_commit=repo_commit,
+                    artifact_serialization_function=artifact_serialization_function,
+                    artifact_deserialization_function=artifact_deserialization_function
                 )
 
                 a_pipeline._args_map = args_map or {}

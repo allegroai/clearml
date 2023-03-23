@@ -807,6 +807,8 @@ class Dataset(object):
         Attach a user-defined metadata to the dataset. Check `Task.upload_artifact` for supported types.
         If type is Optionally make it visible as a table in the UI.
         """
+        if metadata_name.startswith(self.__data_entry_name_prefix):
+            raise ValueError("metadata_name can not start with '{}'".format(self.__data_entry_name_prefix))
         self._task.upload_artifact(name=metadata_name, artifact_object=metadata)
         if ui_visible:
             if pd and isinstance(metadata, pd.DataFrame):

@@ -491,7 +491,7 @@ class BackgroundMonitor(object):
     _at_exit = False
     _instances = {}  # type: Dict[int, List[BackgroundMonitor]]
 
-    def __init__(self, task, wait_period):
+    def __init__(self, task, wait_period, for_model=False):
         self._event = ForkEvent()
         self._done_ev = ForkEvent()
         self._start_ev = ForkEvent()
@@ -499,7 +499,7 @@ class BackgroundMonitor(object):
         self._thread = None
         self._thread_pid = None
         self._wait_timeout = wait_period
-        self._subprocess = None if task.is_main_task() else False
+        self._subprocess = None if not for_model and task.is_main_task() else False
         self._task_id = task.id
         self._task_obj_id = id(task.id)
 

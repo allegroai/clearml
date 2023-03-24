@@ -89,7 +89,13 @@ class CompoundRequest(Request):
         return item
 
     def to_dict(self):
-        return self._get_item().to_dict()
+        dict_ = self._get_item().to_dict()
+        dict_properties = super(Request, self).to_dict()
+        if self._item_prop_name in dict_properties:
+            del dict_properties[self._item_prop_name]
+        dict_.update(dict_properties)
+
+        return dict_
 
     def validate(self):
         return self._get_item().validate(self._schema)

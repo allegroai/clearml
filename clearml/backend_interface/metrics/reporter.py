@@ -33,9 +33,8 @@ except ImportError:
 class BackgroundReportService(BackgroundMonitor, AsyncManagerMixin):
     __daemon_live_check_timeout = 10.0
 
-    def __init__(self, task, async_enable, metrics, flush_frequency, flush_threshold):
-        super(BackgroundReportService, self).__init__(
-            task=task, wait_period=flush_frequency)
+    def __init__(self, task, async_enable, metrics, flush_frequency, flush_threshold, for_model=False):
+        super(BackgroundReportService, self).__init__(task=task, wait_period=flush_frequency, for_model=for_model)
         self._flush_threshold = flush_threshold
         self._flush_event = ForkEvent()
         self._empty_state_event = ForkEvent()
@@ -250,7 +249,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         reporter.flush()
     """
 
-    def __init__(self, metrics, task, async_enable=False):
+    def __init__(self, metrics, task, async_enable=False, for_model=False):
         """
         Create a reporter
         :param metrics: A Metrics manager instance that handles actual reporting, uploads etc.
@@ -269,10 +268,12 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._async_enable = async_enable
         self._flush_frequency = 5.0
         self._max_iteration = 0
+        self._for_model = for_model
         flush_threshold = config.get("development.worker.report_event_flush_threshold", 100)
         self._report_service = BackgroundReportService(
             task=task, async_enable=async_enable, metrics=metrics,
-            flush_frequency=self._flush_frequency, flush_threshold=flush_threshold)
+            flush_frequency=self._flush_frequency,
+            flush_threshold=flush_threshold, for_model=for_model)
         self._report_service.start()
 
     def _set_storage_uri(self, value):

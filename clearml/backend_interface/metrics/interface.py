@@ -47,7 +47,7 @@ class Metrics(InterfaceBase):
         finally:
             self._storage_lock.release()
 
-    def __init__(self, session, task, storage_uri, storage_uri_suffix='metrics', iteration_offset=0, log=None):
+    def __init__(self, session, task, storage_uri, storage_uri_suffix='metrics', iteration_offset=0, log=None, for_model=False):
         super(Metrics, self).__init__(session, log=log)
         self._task_id = task.id
         self._task_iteration_offset = iteration_offset
@@ -56,6 +56,7 @@ class Metrics(InterfaceBase):
         self._file_related_event_time = None
         self._file_upload_time = None
         self._offline_log_filename = None
+        self._for_model = for_model
         if self._offline_mode:
             offline_folder = Path(task.get_offline_mode_folder())
             offline_folder.mkdir(parents=True, exist_ok=True)
@@ -213,7 +214,10 @@ class Metrics(InterfaceBase):
 
         if good_events:
             _events = [ev.get_api_event() for ev in good_events]
-            batched_requests = [api_events.AddRequest(event=ev) for ev in _events if ev]
+            additional_kwargs = {}
+            if Session.check_min_api_version("2.23"):
+                additional_kwargs["model_event"] = self._for_model
+            batched_requests = [api_events.AddRequest(event=ev, **additional_kwargs) for ev in _events if ev]
             if batched_requests:
                 if self._offline_mode:
                     with open(self._offline_log_filename.as_posix(), 'at') as f:

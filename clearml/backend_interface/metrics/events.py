@@ -77,7 +77,7 @@ class MetricsEventAdapter(object):
     def variant(self):
         return self._variant
 
-    def __init__(self, metric, variant, iter=None, timestamp=None, task=None, gen_timestamp_if_none=True):
+    def __init__(self, metric, variant, iter=None, timestamp=None, task=None, gen_timestamp_if_none=True, , model_event=None):
         if not timestamp and gen_timestamp_if_none:
             timestamp = int(time.time() * 1000)
         self._metric = metric
@@ -85,6 +85,7 @@ class MetricsEventAdapter(object):
         self._iter = iter
         self._timestamp = timestamp
         self._task = task
+        self._model_event = model_event
 
         # Try creating an event just to trigger validation
         _ = self.get_api_event()
@@ -119,6 +120,8 @@ class MetricsEventAdapter(object):
         )
         if self._iter is not None:
             res.update(iter=self._iter)
+        if self._model_event is not None:
+            res.update(model_event=self._model_event)
         return res
 
     @classmethod

@@ -6,7 +6,14 @@ import shutil
 from tempfile import mkdtemp, mkstemp
 
 import six
-from typing import List, Dict, Union, Optional, Mapping, TYPE_CHECKING, Sequence, Any
+import math
+from typing import List, Dict, Union, Optional, Mapping, TYPE_CHECKING, Sequence, Any, Tuple
+import numpy as np
+
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 
 from .backend_api import Session
 from .backend_api.services import models, projects
@@ -14,11 +21,13 @@ from pathlib2 import Path
 
 from .utilities.config import config_dict_to_text, text_to_config_dict
 from .utilities.proxy_object import cast_basic_type
+from .utilities.plotly_reporter import SeriesInfo
 
 from .backend_interface.util import (
     validate_dict, get_single_result, mutually_exclusive, exact_match_regex,
     get_or_create_project, )
 from .debugging.log import get_logger
+from .errors import UsageError
 from .storage.cache import CacheManager
 from .storage.helper import StorageHelper
 from .storage.util import get_common_path
@@ -26,6 +35,7 @@ from .utilities.enum import Options
 from .backend_interface import Task as _Task
 from .backend_interface.model import create_dummy_model, Model as _Model
 from .backend_interface.session import SendError
+from .backend_interface.metrics import Reporter, Metrics
 from .config import running_remotely, get_cache_dir
 
 
@@ -329,6 +339,7 @@ class BaseModel(object):
         self._log = get_logger()
         self._task = None
         self._reload_required = False
+        self._reporter = None
         self._set_task(task)
 
     def get_weights(self, raise_on_error=False, force_download=False):
@@ -400,6 +411,616 @@ class BaseModel(object):
         target_files = list(Path(target_folder).glob('*'))
         return target_files
 
+    def report_scalar(self, title, series, value, iteration):
+        # type: (str, str, float, int) -> None
+        """
+        For explicit reporting, plot a scalar series.
+
+        :param str title: The title (metric) of the plot. Plot more than one scalar series on the same plot by using
+            the same ``title`` for each call to this method.
+        :param str series: The series name (variant) of the reported scalar.
+        :param float value: The value to plot per iteration.
+        :param int iteration: The reported iteration / step (x-axis of the reported time series)
+        """
+        self._init_reporter()
+        return self._reporter.report_scalar(title=title, series=series, value=float(value), iter=iteration)
+
+    def report_single_value(self, name, value):
+        # type: (str, float) -> None
+        """
+        Reports a single value metric (for example, total experiment accuracy or mAP)
+
+        :param name: Metric's name
+        :param value: Metric's value
+        """
+        self._init_reporter()
+        return self._reporter.report_scalar(title="Summary", series=name, value=float(value), iter=-2**31)
+
+    def report_histogram(
+            self,
+            title,  # type: str
+            series,  # type: str
+            values,  # type: Sequence[Union[int, float]]
+            iteration=None,  # type: Optional[int]
+            labels=None,  # type: Optional[List[str]]
+            xlabels=None,  # type: Optional[List[str]]
+            xaxis=None,  # type: Optional[str]
+            yaxis=None,  # type: Optional[str]
+            mode=None,  # type: Optional[str]
+            data_args=None,  # type: Optional[dict]
+            extra_layout=None  # type: Optional[dict]
+    ):
+        """
+        For explicit reporting, plot a (default grouped) histogram.
+        Notice this function will not calculate the histogram,
+        it assumes the histogram was already calculated in `values`
+
+        For example:
+
+        .. code-block:: py
+
+           vector_series = np.random.randint(10, size=10).reshape(2,5)
+           model.report_histogram(title='histogram example', series='histogram series',
+                values=vector_series, iteration=0, labels=['A','B'], xaxis='X axis label', yaxis='Y axis label')
+
+        :param title: The title (metric) of the plot.
+        :param series: The series name (variant) of the reported histogram.
+        :param values: The series values. A list of floats, or an N-dimensional Numpy array containing
+            data for each histogram bar.
+        :param iteration: The reported iteration / step. Each ``iteration`` creates another plot.
+        :param labels: Labels for each bar group, creating a plot legend labeling each series. (Optional)
+        :param xlabels: Labels per entry in each bucket in the histogram (vector), creating a set of labels
+            for each histogram bar on the x-axis. (Optional)
+        :param xaxis: The x-axis title. (Optional)
+        :param yaxis: The y-axis title. (Optional)
+        :param mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
+        :param data_args: optional dictionary for data configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/bar/
+            example: data_args={'orientation': 'h', 'marker': {'color': 'blue'}}
+        :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/bar/
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+        """
+        self._init_reporter()
+
+        if not isinstance(values, np.ndarray):
+            values = np.array(values)
+
+        return self._reporter.report_histogram(
+            title=title,
+            series=series,
+            histogram=values,
+            iter=iteration or 0,
+            labels=labels,
+            xlabels=xlabels,
+            xtitle=xaxis,
+            ytitle=yaxis,
+            mode=mode or "group",
+            data_args=data_args,
+            layout_config=extra_layout
+        )
+
+    def report_vector(
+            self,
+            title,  # type: str
+            series,  # type: str
+            values,  # type: Sequence[Union[int, float]]
+            iteration=None,  # type: Optional[int]
+            labels=None,  # type: Optional[List[str]]
+            xlabels=None,  # type: Optional[List[str]]
+            xaxis=None,  # type: Optional[str]
+            yaxis=None,  # type: Optional[str]
+            mode=None,  # type: Optional[str]
+            extra_layout=None  # type: Optional[dict]
+    ):
+        """
+        For explicit reporting, plot a vector as (default stacked) histogram.
+
+        For example:
+
+        .. code-block:: py
+
+           vector_series = np.random.randint(10, size=10).reshape(2,5)
+           model.report_vector(title='vector example', series='vector series', values=vector_series, iteration=0,
+                labels=['A','B'], xaxis='X axis label', yaxis='Y axis label')
+
+        :param title: The title (metric) of the plot.
+        :param series: The series name (variant) of the reported histogram.
+        :param values: The series values. A list of floats, or an N-dimensional Numpy array containing
+            data for each histogram bar.
+        :param iteration: The reported iteration / step. Each ``iteration`` creates another plot.
+        :param labels: Labels for each bar group, creating a plot legend labeling each series. (Optional)
+        :param xlabels: Labels per entry in each bucket in the histogram (vector), creating a set of labels
+            for each histogram bar on the x-axis. (Optional)
+        :param xaxis: The x-axis title. (Optional)
+        :param yaxis: The y-axis title. (Optional)
+        :param mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
+        :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/layout/
+            example: extra_layout={'showlegend': False, 'plot_bgcolor': 'yellow'}
+        """
+        self._init_reporter()
+        return self.report_histogram(
+            title,
+            series,
+            values,
+            iteration or 0,
+            labels=labels,
+            xlabels=xlabels,
+            xaxis=xaxis,
+            yaxis=yaxis,
+            mode=mode,
+            extra_layout=extra_layout,
+        )
+
+    def report_table(
+            self,
+            title,  # type: str
+            series,  # type: str
+            iteration=None,  # type: Optional[int]
+            table_plot=None,  # type: Optional[pd.DataFrame, Sequence[Sequence]]
+            csv=None,  # type: Optional[str]
+            url=None,  # type: Optional[str]
+            extra_layout=None  # type: Optional[dict]
+    ):
+        """
+        For explicit report, report a table plot.
+
+        One and only one of the following parameters must be provided.
+
+        - ``table_plot`` - Pandas DataFrame or Table as list of rows (list)
+        - ``csv`` - CSV file
+        - ``url`` - URL to CSV file
+
+        For example:
+
+        .. code-block:: py
+
+           df = pd.DataFrame({'num_legs': [2, 4, 8, 0],
+                   'num_wings': [2, 0, 0, 0],
+                   'num_specimen_seen': [10, 2, 1, 8]},
+                   index=['falcon', 'dog', 'spider', 'fish'])
+
+           model.report_table(title='table example',series='pandas DataFrame',iteration=0,table_plot=df)
+
+        :param title: The title (metric) of the table.
+        :param series: The series name (variant) of the reported table.
+        :param iteration: The reported iteration / step.
+        :param table_plot: The output table plot object
+        :param csv: path to local csv file
+        :param url: A URL to the location of csv file.
+        :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/layout/
+            example: extra_layout={'height': 600}
+        """
+        mutually_exclusive(
+            UsageError, _check_none=True,
+            table_plot=table_plot, csv=csv, url=url
+        )
+        table = table_plot
+        if url or csv:
+            if not pd:
+                raise UsageError(
+                    "pandas is required in order to support reporting tables using CSV or a URL, "
+                    "please install the pandas python package"
+                )
+            if url:
+                table = pd.read_csv(url, index_col=[0])
+            elif csv:
+                table = pd.read_csv(csv, index_col=[0])
+
+        def replace(dst, *srcs):
+            for src in srcs:
+                reporter_table.replace(src, dst, inplace=True)
+
+        if isinstance(table, (list, tuple)):
+            reporter_table = table
+        else:
+            reporter_table = table.fillna(str(np.nan))
+            replace("NaN", np.nan, math.nan if six.PY3 else float("nan"))
+            replace("Inf", np.inf, math.inf if six.PY3 else float("inf"))
+            replace("-Inf", -np.inf, np.NINF, -math.inf if six.PY3 else -float("inf"))
+        self._init_reporter()
+        return self._reporter.report_table(
+            title=title,
+            series=series,
+            table=reporter_table,
+            iteration=iteration or 0,
+            layout_config=extra_layout
+        )
+
+    def report_line_plot(
+            self,
+            title,  # type: str
+            series,  # type: Sequence[SeriesInfo]
+            xaxis,  # type: str
+            yaxis,  # type: str
+            mode="lines",  # type: str
+            iteration=None,  # type: Optional[int]
+            reverse_xaxis=False,  # type: bool
+            comment=None,  # type: Optional[str]
+            extra_layout=None  # type: Optional[dict]
+    ):
+        """
+        For explicit reporting, plot one or more series as lines.
+
+        :param str title: The title (metric) of the plot.
+        :param list series: All the series data, one list element for each line in the plot.
+        :param int iteration: The reported iteration / step.
+        :param str xaxis: The x-axis title. (Optional)
+        :param str yaxis: The y-axis title. (Optional)
+        :param str mode: The type of line plot.
+
+            The values are:
+
+            - ``lines`` (default)
+            - ``markers``
+            - ``lines+markers``
+
+        :param bool reverse_xaxis: Reverse the x-axis
+
+            The values are:
+
+            - ``True`` - The x-axis is high to low  (reversed).
+            - ``False`` - The x-axis is low to high  (not reversed). (default)
+
+        :param str comment: A comment displayed with the plot, underneath the title.
+        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/scatter/
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+        """
+        self._init_reporter()
+
+        # noinspection PyArgumentList
+        series = [SeriesInfo(**s) if isinstance(s, dict) else s for s in series]
+
+        return self._reporter.report_line_plot(
+            title=title,
+            series=series,
+            iter=iteration or 0,
+            xtitle=xaxis,
+            ytitle=yaxis,
+            mode=mode,
+            reverse_xaxis=reverse_xaxis,
+            comment=comment,
+            layout_config=extra_layout
+        )
+
+    def report_scatter2d(
+            self,
+            title,  # type: str
+            series,  # type: str
+            scatter,  # type: Union[Sequence[Tuple[float, float]], np.ndarray]
+            iteration=None,  # type: Optional[int]
+            xaxis=None,  # type: Optional[str]
+            yaxis=None,  # type: Optional[str]
+            labels=None,  # type: Optional[List[str]]
+            mode="line",  # type: str
+            comment=None,  # type: Optional[str]
+            extra_layout=None,  # type: Optional[dict]
+    ):
+        """
+        For explicit reporting, report a 2d scatter plot.
+
+        For example:
+
+        .. code-block:: py
+
+           scatter2d = np.hstack((np.atleast_2d(np.arange(0, 10)).T, np.random.randint(10, size=(10, 1))))
+           model.report_scatter2d(title="example_scatter", series="series", iteration=0, scatter=scatter2d,
+                xaxis="title x", yaxis="title y")
+
+        Plot multiple 2D scatter series on the same plot by passing the same ``title`` and ``iteration`` values
+        to this method:
+
+        .. code-block:: py
+
+           scatter2d_1 = np.hstack((np.atleast_2d(np.arange(0, 10)).T, np.random.randint(10, size=(10, 1))))
+           model.report_scatter2d(title="example_scatter", series="series_1", iteration=1, scatter=scatter2d_1,
+                xaxis="title x", yaxis="title y")
+
+           scatter2d_2 = np.hstack((np.atleast_2d(np.arange(0, 10)).T, np.random.randint(10, size=(10, 1))))
+           model.report_scatter2d("example_scatter", "series_2", iteration=1, scatter=scatter2d_2,
+                xaxis="title x", yaxis="title y")
+
+        :param str title: The title (metric) of the plot.
+        :param str series: The series name (variant) of the reported scatter plot.
+        :param list scatter: The scatter data. numpy.ndarray or list of (pairs of x,y) scatter:
+        :param int iteration: The reported iteration / step.
+        :param str xaxis: The x-axis title. (Optional)
+        :param str yaxis: The y-axis title. (Optional)
+        :param list(str) labels: Labels per point in the data assigned to the ``scatter`` parameter. The labels must be
+            in the same order as the data.
+        :param str mode: The type of scatter plot. The values are:
+
+          - ``lines``
+          - ``markers``
+          - ``lines+markers``
+
+        :param str comment: A comment displayed with the plot, underneath the title.
+        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/scatter/
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+        """
+        self._init_reporter()
+
+        if not isinstance(scatter, np.ndarray):
+            if not isinstance(scatter, list):
+                scatter = list(scatter)
+            scatter = np.array(scatter)
+
+        return self._reporter.report_2d_scatter(
+            title=title,
+            series=series,
+            data=scatter,
+            iter=iteration or 0,
+            mode=mode,
+            xtitle=xaxis,
+            ytitle=yaxis,
+            labels=labels,
+            comment=comment,
+            layout_config=extra_layout,
+        )
+
+    def report_scatter3d(
+            self,
+            title,  # type: str
+            series,  # type: str
+            scatter,  # type: Union[Sequence[Tuple[float, float, float]], np.ndarray]
+            iteration=None,  # type: Optional[int]
+            xaxis=None,  # type: Optional[str]
+            yaxis=None,  # type: Optional[str]
+            zaxis=None,  # type: Optional[str]
+            labels=None,  # type: Optional[List[str]]
+            mode="markers",  # type: str
+            fill=False,  # type: bool
+            comment=None,  # type: Optional[str]
+            extra_layout=None  # type: Optional[dict]
+    ):
+        """
+        For explicit reporting, plot a 3d scatter graph (with markers).
+
+        :param str title: The title (metric) of the plot.
+        :param str series: The series name (variant) of the reported scatter plot.
+        :param Union[numpy.ndarray, list] scatter: The scatter data.
+            list of (pairs of x,y,z), list of series [[(x1,y1,z1)...]], or numpy.ndarray
+        :param int iteration: The reported iteration / step.
+        :param str xaxis: The x-axis title. (Optional)
+        :param str yaxis: The y-axis title. (Optional)
+        :param str zaxis: The z-axis title. (Optional)
+        :param list(str) labels: Labels per point in the data assigned to the ``scatter`` parameter. The labels must be
+            in the same order as the data.
+        :param str mode: The type of scatter plot. The values are:
+
+          - ``lines``
+          - ``markers``
+          - ``lines+markers``
+
+          For example:
+
+          .. code-block:: py
+
+             scatter3d = np.random.randint(10, size=(10, 3))
+             model.report_scatter3d(title="example_scatter_3d", series="series_xyz", iteration=1, scatter=scatter3d,
+                  xaxis="title x", yaxis="title y", zaxis="title z")
+
+        :param bool fill: Fill the area under the curve. The values are:
+
+          - ``True`` - Fill
+          - ``False`` - Do not fill (default)
+
+        :param str comment: A comment displayed with the plot, underneath the title.
+        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/scatter3d/
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+        """
+        self._init_reporter()
+
+        # check if multiple series
+        multi_series = (
+            isinstance(scatter, list)
+            and (
+                isinstance(scatter[0], np.ndarray)
+                or (
+                    scatter[0]
+                    and isinstance(scatter[0], list)
+                    and isinstance(scatter[0][0], list)
+                )
+            )
+        )
+
+        if not multi_series:
+            if not isinstance(scatter, np.ndarray):
+                if not isinstance(scatter, list):
+                    scatter = list(scatter)
+                scatter = np.array(scatter)
+            try:
+                scatter = scatter.astype(np.float32)
+            except ValueError:
+                pass
+
+        return self._reporter.report_3d_scatter(
+            title=title,
+            series=series,
+            data=scatter,
+            iter=iteration or 0,
+            labels=labels,
+            mode=mode,
+            fill=fill,
+            comment=comment,
+            xtitle=xaxis,
+            ytitle=yaxis,
+            ztitle=zaxis,
+            layout_config=extra_layout
+        )
+
+    def report_confusion_matrix(
+            self,
+            title,  # type: str
+            series,  # type: str
+            matrix,  # type: np.ndarray
+            iteration=None,  # type: Optional[int]
+            xaxis=None,  # type: Optional[str]
+            yaxis=None,  # type: Optional[str]
+            xlabels=None,  # type: Optional[List[str]]
+            ylabels=None,  # type: Optional[List[str]]
+            yaxis_reversed=False,  # type: bool
+            comment=None,  # type: Optional[str]
+            extra_layout=None  # type: Optional[dict]
+    ):
+        """
+        For explicit reporting, plot a heat-map matrix.
+
+        For example:
+
+        .. code-block:: py
+
+           confusion = np.random.randint(10, size=(10, 10))
+           model.report_confusion_matrix("example confusion matrix", "ignored", iteration=1, matrix=confusion,
+                xaxis="title X", yaxis="title Y")
+
+        :param str title: The title (metric) of the plot.
+        :param str series: The series name (variant) of the reported confusion matrix.
+        :param numpy.ndarray matrix: A heat-map matrix (example: confusion matrix)
+        :param int iteration: The reported iteration / step.
+        :param str xaxis: The x-axis title. (Optional)
+        :param str yaxis: The y-axis title. (Optional)
+        :param list(str) xlabels: Labels for each column of the matrix. (Optional)
+        :param list(str) ylabels: Labels for each row of the matrix. (Optional)
+        :param bool yaxis_reversed: If False 0,0 is at the bottom left corner. If True, 0,0 is at the top left corner
+        :param str comment: A comment displayed with the plot, underneath the title.
+        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/heatmap/
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+        """
+        self._init_reporter()
+
+        if not isinstance(matrix, np.ndarray):
+            matrix = np.array(matrix)
+
+        return self._reporter.report_value_matrix(
+            title=title,
+            series=series,
+            data=matrix.astype(np.float32),
+            iter=iteration or 0,
+            xtitle=xaxis,
+            ytitle=yaxis,
+            xlabels=xlabels,
+            ylabels=ylabels,
+            yaxis_reversed=yaxis_reversed,
+            comment=comment,
+            layout_config=extra_layout
+        )
+
+    def report_matrix(
+            self,
+            title,  # type: str
+            series,  # type: str
+            matrix,  # type: np.ndarray
+            iteration=None,  # type: Optional[int]
+            xaxis=None,  # type: Optional[str]
+            yaxis=None,  # type: Optional[str]
+            xlabels=None,  # type: Optional[List[str]]
+            ylabels=None,  # type: Optional[List[str]]
+            yaxis_reversed=False,  # type: bool
+            extra_layout=None  # type: Optional[dict]
+    ):
+        """
+        For explicit reporting, plot a confusion matrix.
+
+        .. note::
+            This method is the same as :meth:`Model.report_confusion_matrix`.
+
+        :param str title: The title (metric) of the plot.
+        :param str series: The series name (variant) of the reported confusion matrix.
+        :param numpy.ndarray matrix: A heat-map matrix (example: confusion matrix)
+        :param int iteration: The reported iteration / step.
+        :param str xaxis: The x-axis title. (Optional)
+        :param str yaxis: The y-axis title. (Optional)
+        :param list(str) xlabels: Labels for each column of the matrix. (Optional)
+        :param list(str) ylabels: Labels for each row of the matrix. (Optional)
+        :param bool yaxis_reversed: If False, 0,0 is at the bottom left corner. If True, 0,0 is at the top left corner
+        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/heatmap/
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+        """
+        self._init_reporter()
+        return self.report_confusion_matrix(
+            title,
+            series,
+            matrix,
+            iteration or 0,
+            xaxis=xaxis,
+            yaxis=yaxis,
+            xlabels=xlabels,
+            ylabels=ylabels,
+            yaxis_reversed=yaxis_reversed,
+            extra_layout=extra_layout
+        )
+
+    def report_surface(
+            self,
+            title,  # type: str
+            series,  # type: str
+            matrix,  # type: np.ndarray
+            iteration=None,  # type: Optional[int]
+            xaxis=None,  # type: Optional[str]
+            yaxis=None,  # type: Optional[str]
+            zaxis=None,  # type: Optional[str]
+            xlabels=None,  # type: Optional[List[str]]
+            ylabels=None,  # type: Optional[List[str]]
+            camera=None,  # type: Optional[Sequence[float]]
+            comment=None,  # type: Optional[str]
+            extra_layout=None  # type: Optional[dict]
+    ):
+        """
+        For explicit reporting, report a 3d surface plot.
+
+        .. note::
+           This method plots the same data as :meth:`Model.report_confusion_matrix`, but presents the
+           data as a surface diagram not a confusion matrix.
+
+        .. code-block:: py
+
+           surface_matrix = np.random.randint(10, size=(10, 10))
+           model.report_surface("example surface", "series", iteration=0, matrix=surface_matrix,
+                xaxis="title X", yaxis="title Y", zaxis="title Z")
+
+        :param str title: The title (metric) of the plot.
+        :param str series: The series name (variant) of the reported surface.
+        :param numpy.ndarray matrix: A heat-map matrix (example: confusion matrix)
+        :param int iteration: The reported iteration / step.
+        :param str xaxis: The x-axis title. (Optional)
+        :param str yaxis: The y-axis title. (Optional)
+        :param str zaxis: The z-axis title. (Optional)
+        :param list(str) xlabels: Labels for each column of the matrix. (Optional)
+        :param list(str) ylabels: Labels for each row of the matrix. (Optional)
+        :param list(float) camera: X,Y,Z coordinates indicating the camera position. The default value is ``(1,1,1)``.
+        :param str comment: A comment displayed with the plot, underneath the title.
+        :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
+            See full details on the supported configuration: https://plotly.com/javascript/reference/surface/
+            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+        """
+        self._init_reporter()
+
+        if not isinstance(matrix, np.ndarray):
+            matrix = np.array(matrix)
+
+        return self._reporter.report_value_surface(
+            title=title,
+            series=series,
+            data=matrix.astype(np.float32),
+            iter=iteration or 0,
+            xlabels=xlabels,
+            ylabels=ylabels,
+            xtitle=xaxis,
+            ytitle=yaxis,
+            ztitle=zaxis,
+            camera=camera,
+            comment=comment,
+            layout_config=extra_layout
+        )
+
     def publish(self):
         # type: () -> ()
         """
@@ -409,6 +1030,19 @@ class BaseModel(object):
 
         if not self.published:
             self._get_base_model().publish()
+
+    def _init_reporter(self):
+        if self._reporter:
+            return
+
+        metrics_manager = Metrics(
+            session=_Model._get_default_session(),
+            storage_uri=None,
+            task=self,  # this is fine, the ID of the model will be fetched here
+            for_model=True
+        )
+
+        self._reporter = Reporter(metrics=metrics_manager, task=self, for_model=True)
 
     def _running_remotely(self):
         # type: () -> ()

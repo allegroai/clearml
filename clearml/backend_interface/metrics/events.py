@@ -77,7 +77,7 @@ class MetricsEventAdapter(object):
     def variant(self):
         return self._variant
 
-    def __init__(self, metric, variant, iter=None, timestamp=None, task=None, gen_timestamp_if_none=True, , model_event=None):
+    def __init__(self, metric, variant, iter=None, timestamp=None, task=None, gen_timestamp_if_none=True, model_event=None):
         if not timestamp and gen_timestamp_if_none:
             timestamp = int(time.time() * 1000)
         self._metric = metric

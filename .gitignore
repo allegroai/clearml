@@ -11,8 +11,8 @@ build/
 dist/
 *.egg-info
 .env
-venv/
 .venv/
+venv/
 
 # example data
 examples/runs/

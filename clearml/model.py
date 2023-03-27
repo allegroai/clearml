@@ -24,8 +24,12 @@ from .utilities.proxy_object import cast_basic_type
 from .utilities.plotly_reporter import SeriesInfo
 
 from .backend_interface.util import (
-    validate_dict, get_single_result, mutually_exclusive, exact_match_regex,
-    get_or_create_project, )
+    validate_dict,
+    get_single_result,
+    mutually_exclusive,
+    exact_match_regex,
+    get_or_create_project,
+)
 from .debugging.log import get_logger
 from .errors import UsageError
 from .storage.cache import CacheManager
@@ -35,8 +39,8 @@ from .utilities.enum import Options
 from .backend_interface import Task as _Task
 from .backend_interface.model import create_dummy_model, Model as _Model
 from .backend_interface.session import SendError
-from .backend_interface.metrics import Reporter, Metrics
 from .config import running_remotely, get_cache_dir
+from .backend_interface.metrics import Reporter, Metrics
 
 
 if TYPE_CHECKING:
@@ -47,58 +51,66 @@ class Framework(Options):
     """
     Optional frameworks for output model
     """
-    tensorflow = 'TensorFlow'
-    tensorflowjs = 'TensorFlow_js'
-    tensorflowlite = 'TensorFlow_Lite'
-    pytorch = 'PyTorch'
-    torchscript = 'TorchScript'
-    caffe = 'Caffe'
-    caffe2 = 'Caffe2'
-    onnx = 'ONNX'
-    keras = 'Keras'
-    mknet = 'MXNet'
-    cntk = 'CNTK'
-    torch = 'Torch'
-    darknet = 'Darknet'
-    paddlepaddle = 'PaddlePaddle'
-    scikitlearn = 'ScikitLearn'
-    xgboost = 'XGBoost'
-    lightgbm = 'LightGBM'
-    parquet = 'Parquet'
-    megengine = 'MegEngine'
-    catboost = 'CatBoost'
-    tensorrt = 'TensorRT'
-    openvino = 'OpenVINO'
+
+    tensorflow = "TensorFlow"
+    tensorflowjs = "TensorFlow_js"
+    tensorflowlite = "TensorFlow_Lite"
+    pytorch = "PyTorch"
+    torchscript = "TorchScript"
+    caffe = "Caffe"
+    caffe2 = "Caffe2"
+    onnx = "ONNX"
+    keras = "Keras"
+    mknet = "MXNet"
+    cntk = "CNTK"
+    torch = "Torch"
+    darknet = "Darknet"
+    paddlepaddle = "PaddlePaddle"
+    scikitlearn = "ScikitLearn"
+    xgboost = "XGBoost"
+    lightgbm = "LightGBM"
+    parquet = "Parquet"
+    megengine = "MegEngine"
+    catboost = "CatBoost"
+    tensorrt = "TensorRT"
+    openvino = "OpenVINO"
 
     __file_extensions_mapping = {
-        '.pb': (tensorflow, tensorflowjs, onnx, ),
-        '.meta': (tensorflow, ),
-        '.pbtxt': (tensorflow, onnx, ),
-        '.zip': (tensorflow, ),
-        '.tgz': (tensorflow, ),
-        '.tar.gz': (tensorflow, ),
-        'model.json': (tensorflowjs, ),
-        '.tflite': (tensorflowlite, ),
-        '.pth': (pytorch, ),
-        '.pt': (pytorch, ),
-        '.caffemodel': (caffe, ),
-        '.prototxt': (caffe, ),
-        'predict_net.pb': (caffe2, ),
-        'predict_net.pbtxt': (caffe2, ),
-        '.onnx': (onnx, ),
-        '.h5': (keras, ),
-        '.hdf5': (keras, ),
-        '.keras': (keras, ),
-        '.model': (mknet, cntk, xgboost),
-        '-symbol.json': (mknet, ),
-        '.cntk': (cntk, ),
-        '.t7': (torch, ),
-        '.cfg': (darknet, ),
-        '__model__': (paddlepaddle, ),
-        '.pkl': (scikitlearn, keras, xgboost, megengine),
-        '.parquet': (parquet, ),
-        '.cbm': (catboost, ),
-        '.plan': (tensorrt,),
+        ".pb": (
+            tensorflow,
+            tensorflowjs,
+            onnx,
+        ),
+        ".meta": (tensorflow,),
+        ".pbtxt": (
+            tensorflow,
+            onnx,
+        ),
+        ".zip": (tensorflow,),
+        ".tgz": (tensorflow,),
+        ".tar.gz": (tensorflow,),
+        "model.json": (tensorflowjs,),
+        ".tflite": (tensorflowlite,),
+        ".pth": (pytorch,),
+        ".pt": (pytorch,),
+        ".caffemodel": (caffe,),
+        ".prototxt": (caffe,),
+        "predict_net.pb": (caffe2,),
+        "predict_net.pbtxt": (caffe2,),
+        ".onnx": (onnx,),
+        ".h5": (keras,),
+        ".hdf5": (keras,),
+        ".keras": (keras,),
+        ".model": (mknet, cntk, xgboost),
+        "-symbol.json": (mknet,),
+        ".cntk": (cntk,),
+        ".t7": (torch,),
+        ".cfg": (darknet,),
+        "__model__": (paddlepaddle,),
+        ".pkl": (scikitlearn, keras, xgboost, megengine),
+        ".parquet": (parquet,),
+        ".cbm": (catboost,),
+        ".plan": (tensorrt,),
     }
 
     __parent_mapping = {
@@ -112,7 +124,7 @@ class Framework(Options):
         "xgboost": (xgboost,),
         "lightgbm": (lightgbm,),
         "catboost": (catboost,),
-        "joblib": (scikitlearn, xgboost)
+        "joblib": (scikitlearn, xgboost),
     }
 
     @classmethod
@@ -140,9 +152,14 @@ class Framework(Options):
         # If no framework, try finding first framework matching the extension, otherwise (or if no match) try matching
         # the given extension to the given framework. If no match return an empty extension
         return (
-            (not framework and find_framework_by_ext(lambda frameworks_: frameworks_[0]))
-            or find_framework_by_ext(lambda frameworks_: framework if framework in frameworks_ else None)
-            or (framework, filename.split('.')[-1] if '.' in filename else '')
+            (
+                not framework
+                and find_framework_by_ext(lambda frameworks_: frameworks_[0])
+            )
+            or find_framework_by_ext(
+                lambda frameworks_: framework if framework in frameworks_ else None
+            )
+            or (framework, filename.split(".")[-1] if "." in filename else "")
         )
 
 
@@ -256,7 +273,7 @@ class BaseModel(object):
         :return: The list of tags.
         """
         data = self._get_model_data()
-        return data.system_tags if Session.check_min_api_version('2.3') else data.tags
+        return data.system_tags if Session.check_min_api_version("2.3") else data.tags
 
     @system_tags.setter
     def system_tags(self, value):
@@ -356,7 +373,9 @@ class BaseModel(object):
         :return: The locally stored file.
         """
         # download model (synchronously) and return local file
-        return self._get_base_model().download_model_weights(raise_on_error=raise_on_error, force_download=force_download)
+        return self._get_base_model().download_model_weights(
+            raise_on_error=raise_on_error, force_download=force_download
+        )
 
     def get_weights_package(
         self, return_path=False, raise_on_error=False, force_download=False
@@ -373,27 +392,35 @@ class BaseModel(object):
 
         :param bool raise_on_error: If True, and the artifact could not be downloaded,
             raise ValueError, otherwise return None on failure and output log warning.
+
         :param bool force_download: If True, the base artifact will be downloaded,
             even if the artifact is already cached.
+
         :return: The model weights, or a list of the locally stored filenames.
             if raise_on_error=False, returns None on error.
         """
         # check if model was packaged
         if not self._is_package():
-            raise ValueError('Model is not packaged')
+            raise ValueError("Model is not packaged")
 
         # download packaged model
-        packed_file = self.get_weights(raise_on_error=raise_on_error, force_download=force_download)
+        packed_file = self.get_weights(
+            raise_on_error=raise_on_error, force_download=force_download
+        )
 
         if not packed_file:
             if raise_on_error:
-                raise ValueError('Model package \'{}\' could not be downloaded'.format(self.url))
+                raise ValueError(
+                    "Model package '{}' could not be downloaded".format(self.url)
+                )
             return None
 
         # unpack
-        target_folder = mkdtemp(prefix='model_package_')
+        target_folder = mkdtemp(prefix="model_package_")
         if not target_folder:
-            raise ValueError('cannot create temporary directory for packed weight files')
+            raise ValueError(
+                "cannot create temporary directory for packed weight files"
+            )
 
         for func in (zipfile.ZipFile, tarfile.open):
             try:
@@ -403,12 +430,14 @@ class BaseModel(object):
             except (zipfile.BadZipfile, tarfile.ReadError):
                 pass
         else:
-            raise ValueError('cannot extract files from packaged model at %s', packed_file)
+            raise ValueError(
+                "cannot extract files from packaged model at %s", packed_file
+            )
 
         if return_path:
             return target_folder
 
-        target_files = list(Path(target_folder).glob('*'))
+        target_files = list(Path(target_folder).glob("*"))
         return target_files
 
     def report_scalar(self, title, series, value, iteration):
@@ -1034,14 +1063,12 @@ class BaseModel(object):
     def _init_reporter(self):
         if self._reporter:
             return
-
         metrics_manager = Metrics(
             session=_Model._get_default_session(),
             storage_uri=None,
             task=self,  # this is fine, the ID of the model will be fetched here
             for_model=True
         )
-
         self._reporter = Reporter(metrics=metrics_manager, task=self, for_model=True)
 
     def _running_remotely(self):
@@ -1051,7 +1078,7 @@ class BaseModel(object):
     def _set_task(self, value):
         # type: (_Task) -> ()
         if value is not None and not isinstance(value, _Task):
-            raise ValueError('task argument must be of Task type')
+            raise ValueError("task argument must be of Task type")
         self._task = value
 
     @abc.abstractmethod
@@ -1073,7 +1100,9 @@ class BaseModel(object):
     @staticmethod
     def _config_dict_to_text(config):
         if not isinstance(config, six.string_types) and not isinstance(config, dict):
-            raise ValueError("Model configuration only supports dictionary or string objects")
+            raise ValueError(
+                "Model configuration only supports dictionary or string objects"
+            )
         return config_dict_to_text(config)
 
     @staticmethod
@@ -1084,7 +1113,11 @@ class BaseModel(object):
 
     @staticmethod
     def _resolve_config(config_text=None, config_dict=None):
-        mutually_exclusive(config_text=config_text, config_dict=config_dict, _require_at_least_one=False)
+        mutually_exclusive(
+            config_text=config_text,
+            config_dict=config_dict,
+            _require_at_least_one=False,
+        )
         if config_dict:
             return InputModel._config_dict_to_text(config_dict)
 
@@ -1105,13 +1138,25 @@ class BaseModel(object):
             _Model._get_default_session()
             .send(
                 models.AddOrUpdateMetadataRequest(
-                    metadata=[{
-                        "key": str(key),
-                        "value": str(value),
-                        "type": str(v_type)
-                        if str(v_type) in ('float', 'int', 'bool', 'str', 'basestring', 'list', 'tuple', 'dict') else
-                        str(None)
-                    }],
+                    metadata=[
+                        {
+                            "key": str(key),
+                            "value": str(value),
+                            "type": str(v_type)
+                            if str(v_type)
+                            in (
+                                "float",
+                                "int",
+                                "bool",
+                                "str",
+                                "basestring",
+                                "list",
+                                "tuple",
+                                "dict",
+                            )
+                            else str(None),
+                        }
+                    ],
                     model=self.id,
                     replace_metadata=False,
                 )
@@ -1171,7 +1216,9 @@ class BaseModel(object):
         result = {}
         metadata = self.get_all_metadata()
         for key, metadata_entry in metadata.items():
-            result[key] = cast_basic_type(metadata_entry.get("value"), metadata_entry.get("type"))
+            result[key] = cast_basic_type(
+                metadata_entry.get("value"), metadata_entry.get("type")
+            )
         return result
 
     def set_all_metadata(self, metadata, replace=True):
@@ -1186,11 +1233,20 @@ class BaseModel(object):
         :return: True if the metadata was set and False otherwise
         """
         metadata_array = [
-            {"key": str(k), "value": str(v_t.get("value")), "type": str(v_t.get("type"))} for k, v_t in metadata.items()
+            {
+                "key": str(k),
+                "value": str(v_t.get("value")),
+                "type": str(v_t.get("type")),
+            }
+            for k, v_t in metadata.items()
         ]
         self._reload_required = (
             _Model._get_default_session()
-            .send(models.AddOrUpdateMetadataRequest(metadata=metadata_array, model=self.id, replace_metadata=replace))
+            .send(
+                models.AddOrUpdateMetadataRequest(
+                    metadata=metadata_array, model=self.id, replace_metadata=replace
+                )
+            )
             .ok()
         )
         return self._reload_required
@@ -1256,7 +1312,7 @@ class Model(BaseModel):
 
         if not self._base_model_id:
             # this shouldn't actually happen
-            raise Exception('Missing model ID, cannot create an empty model')
+            raise Exception("Missing model ID, cannot create an empty model")
         self._base_model = _Model(
             upload_storage_uri=None,
             cache_dir=get_cache_dir(),
@@ -1269,14 +1325,14 @@ class Model(BaseModel):
 
     @classmethod
     def query_models(
-            cls,
-            project_name=None,  # type: Optional[str]
-            model_name=None,  # type: Optional[str]
-            tags=None,  # type: Optional[Sequence[str]]
-            only_published=False,  # type: bool
-            include_archived=False,  # type: bool
-            max_results=None,  # type: Optional[int]
-            metadata=None  # type: Optional[Dict[str, str]]
+        cls,
+        project_name=None,  # type: Optional[str]
+        model_name=None,  # type: Optional[str]
+        tags=None,  # type: Optional[Sequence[str]]
+        only_published=False,  # type: bool
+        include_archived=False,  # type: bool
+        max_results=None,  # type: Optional[int]
+        metadata=None,  # type: Optional[Dict[str, str]]
     ):
         # type: (...) -> List[Model]
         """
@@ -1302,16 +1358,20 @@ class Model(BaseModel):
             res = _Model._get_default_session().send(
                 projects.GetAllRequest(
                     name=exact_match_regex(project_name),
-                    only_fields=['id', 'name', 'last_update']
+                    only_fields=["id", "name", "last_update"],
                 )
             )
-            project = get_single_result(entity='project', query=project_name, results=res.response.projects)
+            project = get_single_result(
+                entity="project", query=project_name, results=res.response.projects
+            )
         else:
             project = None
 
-        only_fields = ['id', 'created', 'system_tags']
+        only_fields = ["id", "created", "system_tags"]
 
-        extra_fields = {"metadata.{}.value".format(k): v for k, v in (metadata or {}).items()}
+        extra_fields = {
+            "metadata.{}.value".format(k): v for k, v in (metadata or {}).items()
+        }
 
         models_fetched = []
 
@@ -1323,12 +1383,16 @@ class Model(BaseModel):
             res = _Model._get_default_session().send(
                 models.GetAllRequest(
                     project=[project.id] if project else None,
-                    name=exact_match_regex(model_name) if model_name is not None else None,
+                    name=exact_match_regex(model_name)
+                    if model_name is not None
+                    else None,
                     only_fields=only_fields,
                     tags=tags or None,
-                    system_tags=["-" + cls._archived_tag] if not include_archived else None,
+                    system_tags=["-" + cls._archived_tag]
+                    if not include_archived
+                    else None,
                     ready=True if only_published else None,
-                    order_by=['-created'],
+                    order_by=["-created"],
                     page=page,
                     page_size=page_size if results_left > page_size else results_left,
                     _allow_extra_fields_=True,
@@ -1352,7 +1416,9 @@ class Model(BaseModel):
         return self._base_model_id if self._base_model_id else super(Model, self).id
 
     @classmethod
-    def remove(cls, model, delete_weights_file=True, force=False, raise_on_errors=False):
+    def remove(
+        cls, model, delete_weights_file=True, force=False, raise_on_errors=False
+    ):
         # type: (Union[str, Model], bool, bool, bool) -> bool
         """
         Remove a model from the model repository.
@@ -1384,11 +1450,17 @@ class Model(BaseModel):
             response = res.wait()
             if not response.ok():
                 if raise_on_errors:
-                    raise ValueError("Could not remove model id={}: {}".format(model.id, response.meta))
+                    raise ValueError(
+                        "Could not remove model id={}: {}".format(
+                            model.id, response.meta
+                        )
+                    )
                 return False
         except SendError as ex:
             if raise_on_errors:
-                raise ValueError("Could not remove model id={}: {}".format(model.id, ex))
+                raise ValueError(
+                    "Could not remove model id={}: {}".format(model.id, ex)
+                )
             return False
         except ValueError:
             if raise_on_errors:
@@ -1396,7 +1468,9 @@ class Model(BaseModel):
             return False
         except Exception as ex:
             if raise_on_errors:
-                raise ValueError("Could not remove model id={}: {}".format(model.id, ex))
+                raise ValueError(
+                    "Could not remove model id={}: {}".format(model.id, ex)
+                )
             return False
 
         if not delete_weights_file:
@@ -1406,12 +1480,19 @@ class Model(BaseModel):
         try:
             if not helper.delete(weights_url):
                 if raise_on_errors:
-                    raise ValueError("Could not remove model id={} weights file: {}".format(model.id, weights_url))
+                    raise ValueError(
+                        "Could not remove model id={} weights file: {}".format(
+                            model.id, weights_url
+                        )
+                    )
                 return False
         except Exception as ex:
             if raise_on_errors:
-                raise ValueError("Could not remove model id={} weights file \'{}\': {}".format(
-                    model.id, weights_url, ex))
+                raise ValueError(
+                    "Could not remove model id={} weights file '{}': {}".format(
+                        model.id, weights_url, ex
+                    )
+                )
             return False
 
         return True
@@ -1510,29 +1591,36 @@ class InputModel(Model):
 
         :return: The imported model or existing model (see above).
         """
-        config_text = cls._resolve_config(config_text=config_text, config_dict=config_dict)
+        config_text = cls._resolve_config(
+            config_text=config_text, config_dict=config_dict
+        )
         weights_url = StorageHelper.conform_url(weights_url)
         if not weights_url:
             raise ValueError("Please provide a valid weights_url parameter")
         # convert local to file to remote one
         weights_url = CacheManager.get_remote_url(weights_url)
 
-        extra = {'system_tags': ["-" + cls._archived_tag]} \
-            if Session.check_min_api_version('2.3') else {'tags': ["-" + cls._archived_tag]}
+        extra = (
+            {"system_tags": ["-" + cls._archived_tag]}
+            if Session.check_min_api_version("2.3")
+            else {"tags": ["-" + cls._archived_tag]}
+        )
         # noinspection PyProtectedMember
-        result = _Model._get_default_session().send(models.GetAllRequest(
-            uri=[weights_url],
-            only_fields=["id", "name", "created"],
-            **extra
-        ))
+        result = _Model._get_default_session().send(
+            models.GetAllRequest(
+                uri=[weights_url], only_fields=["id", "name", "created"], **extra
+            )
+        )
 
         if result.response.models:
             logger = get_logger()
 
-            logger.debug('A model with uri "{}" already exists. Selecting it'.format(weights_url))
+            logger.debug(
+                'A model with uri "{}" already exists. Selecting it'.format(weights_url)
+            )
 
             model = get_single_result(
-                entity='model',
+                entity="model",
                 query=weights_url,
                 results=result.response.models,
                 log=logger,
@@ -1549,11 +1637,14 @@ class InputModel(Model):
         )
 
         from .task import Task
+
         task = Task.current_task()
         if task:
-            comment = 'Imported by task id: {}'.format(task.id) + ('\n' + comment if comment else '')
+            comment = "Imported by task id: {}".format(task.id) + (
+                "\n" + comment if comment else ""
+            )
             project_id = task.project
-            name = name or 'Imported by {}'.format(task.name or '')
+            name = name or "Imported by {}".format(task.name or "")
             # do not register the Task, because we do not want it listed after as "output model",
             # the Task never actually created the Model
             task_id = None
@@ -1564,14 +1655,13 @@ class InputModel(Model):
         if project:
             project_id = get_or_create_project(
                 session=task.session if task else Task._get_default_session(),
-                project_name=project
+                project_name=project,
             )
 
         if not framework:
             # noinspection PyProtectedMember
             framework, file_ext = Framework._get_file_ext(
-                framework=framework,
-                filename=weights_url
+                framework=framework, filename=weights_url
             )
 
         base_model.update(
@@ -1632,24 +1722,27 @@ class InputModel(Model):
 
         if not load_archived:
             # noinspection PyTypeChecker
-            extra = {'system_tags': ["-" + _Task.archived_tag]} \
-                if Session.check_min_api_version('2.3') else {'tags': ["-" + cls._archived_tag]}
+            extra = (
+                {"system_tags": ["-" + _Task.archived_tag]}
+                if Session.check_min_api_version("2.3")
+                else {"tags": ["-" + cls._archived_tag]}
+            )
         else:
             extra = {}
 
         # noinspection PyProtectedMember
-        result = _Model._get_default_session().send(models.GetAllRequest(
-            uri=[weights_url],
-            only_fields=["id", "name", "created"],
-            **extra
-        ))
+        result = _Model._get_default_session().send(
+            models.GetAllRequest(
+                uri=[weights_url], only_fields=["id", "name", "created"], **extra
+            )
+        )
 
         if not result or not result.response or not result.response.models:
             return None
 
         logger = get_logger()
         model = get_single_result(
-            entity='model',
+            entity="model",
             query=weights_url,
             results=result.response.models,
             log=logger,
@@ -1697,7 +1790,9 @@ class InputModel(Model):
         m._data.labels = label_enumeration
         return this_model
 
-    def __init__(self, model_id=None, name=None, project=None, tags=None, only_published=False):
+    def __init__(
+        self, model_id=None, name=None, project=None, tags=None, only_published=False
+    ):
         # type: (Optional[str], Optional[str], Optional[str], Optional[Sequence[str]], bool) -> None
         """
         Load a model from the Model artifactory,
@@ -1712,10 +1807,17 @@ class InputModel(Model):
         """
         if not model_id:
             found_models = self.query_models(
-                project_name=project, model_name=name, tags=tags, only_published=only_published)
+                project_name=project,
+                model_name=name,
+                tags=tags,
+                only_published=only_published,
+            )
             if not found_models:
-                raise ValueError("Could not locate model with project={} name={} tags={} published={}".format(
-                    project, name, tags, only_published))
+                raise ValueError(
+                    "Could not locate model with project={} name={} tags={} published={}".format(
+                        project, name, tags, only_published
+                    )
+                )
             model_id = found_models[0].id
         super(InputModel, self).__init__(model_id)
 
@@ -1799,7 +1901,6 @@ class OutputModel(BaseModel):
        When executing a Task (experiment) remotely in a worker, you can modify the model configuration and / or model's
        label enumeration using the **ClearML Web-App**.
     """
-
     _default_output_uri = None
     _offline_folder = "models"
 
@@ -1947,13 +2048,18 @@ class OutputModel(BaseModel):
         """
         if not task:
             from .task import Task
+
             task = Task.current_task()
             if not task:
-                raise ValueError("task object was not provided, and no current task was found")
+                raise ValueError(
+                    "task object was not provided, and no current task was found"
+                )
 
         super(OutputModel, self).__init__(task=task)
 
-        config_text = self._resolve_config(config_text=config_text, config_dict=config_dict)
+        config_text = self._resolve_config(
+            config_text=config_text, config_dict=config_dict
+        )
 
         self._model_local_filename = None
         self._last_uploaded_url = None
@@ -1967,8 +2073,10 @@ class OutputModel(BaseModel):
             labels=label_enumeration or task.get_labels_enumeration(),
             name=name or self._task.name,
             tags=tags,
-            comment='{} by task id: {}'.format('Created' if not base_model_id else 'Overwritten', task.id) +
-                    ('\n' + comment if comment else ''),
+            comment="{} by task id: {}".format(
+                "Created" if not base_model_id else "Overwritten", task.id
+            )
+            + ("\n" + comment if comment else ""),
             framework=framework,
             upload_storage_uri=task.output_uri,
         )
@@ -1986,13 +2094,18 @@ class OutputModel(BaseModel):
                 task_id=self._task.id,
                 project_id=self._task.project,
                 name=self._floating_data.name or self._task.name,
-                comment=('{}\n{}'.format(_base_model.comment, self._floating_data.comment)
-                         if (_base_model.comment and self._floating_data.comment and
-                             self._floating_data.comment not in _base_model.comment)
-                         else (_base_model.comment or self._floating_data.comment)),
+                comment=(
+                    "{}\n{}".format(_base_model.comment, self._floating_data.comment)
+                    if (
+                        _base_model.comment
+                        and self._floating_data.comment
+                        and self._floating_data.comment not in _base_model.comment
+                    )
+                    else (_base_model.comment or self._floating_data.comment)
+                ),
                 tags=self._floating_data.tags,
                 framework=self._floating_data.framework,
-                upload_storage_uri=self._floating_data.upload_storage_uri
+                upload_storage_uri=self._floating_data.upload_storage_uri,
             )
             self._base_model = _base_model
             self._floating_data = None
@@ -2017,7 +2130,9 @@ class OutputModel(BaseModel):
             Use examples would be GANs or model ensemble
         """
         if self._task != task:
-            raise ValueError('Can only connect preexisting model to task, but this is a fresh model')
+            raise ValueError(
+                "Can only connect preexisting model to task, but this is a fresh model"
+            )
 
         if name:
             self._task_connect_name = name
@@ -2030,14 +2145,22 @@ class OutputModel(BaseModel):
         if not self._task._get_model_config_text():
             # noinspection PyProtectedMember
             task._set_model_config(
-                config_text=model.model_design if hasattr(model, "model_design") else model.design.get("design", "")
+                config_text=model.model_design
+                if hasattr(model, "model_design")
+                else model.design.get("design", "")
             )
         if not self._task.get_labels_enumeration():
-            task.set_model_label_enumeration(model.data.labels if hasattr(model, "data") else model.labels)
+            task.set_model_label_enumeration(
+                model.data.labels if hasattr(model, "data") else model.labels
+            )
 
         if self._base_model:
             self._base_model.update_for_task(
-                task_id=self._task.id, model_id=self.id, type_="output", name=self._task_connect_name)
+                task_id=self._task.id,
+                model_id=self.id,
+                type_="output",
+                name=self._task_connect_name,
+            )
 
     def set_upload_destination(self, uri):
         # type: (str) -> None
@@ -2076,7 +2199,9 @@ class OutputModel(BaseModel):
         try:
             uri = storage.verify_upload(folder_uri=uri)
         except Exception:
-            raise ValueError("Could not set destination uri to: %s [Check write permissions]" % uri)
+            raise ValueError(
+                "Could not set destination uri to: %s [Check write permissions]" % uri
+            )
 
         # store default uri
         self._get_base_model().upload_storage_uri = uri
@@ -2127,19 +2252,23 @@ class OutputModel(BaseModel):
                 if filename:
                     os.remove(filename)
             except OSError:
-                self._log.debug('Failed removing temporary file %s' % filename)
+                self._log.debug("Failed removing temporary file %s" % filename)
 
         # test if we can update the model
         if self.id and self.published:
-            raise ValueError('Model is published and cannot be changed')
+            raise ValueError("Model is published and cannot be changed")
 
-        if (not weights_filename and not register_uri) or (weights_filename and register_uri):
-            raise ValueError('Model update must have either local weights file to upload, '
-                             'or pre-uploaded register_uri, never both')
+        if (not weights_filename and not register_uri) or (
+            weights_filename and register_uri
+        ):
+            raise ValueError(
+                "Model update must have either local weights file to upload, "
+                "or pre-uploaded register_uri, never both"
+            )
 
         # only upload if we are connected to a task
         if not self._task:
-            raise Exception('Missing a task for this model')
+            raise Exception("Missing a task for this model")
 
         if self._task.is_offline() and (weights_filename is None or not Path(weights_filename).is_dir()):
             return self._update_weights_offline(
@@ -2160,7 +2289,8 @@ class OutputModel(BaseModel):
                     upload_uri=upload_uri,
                     target_filename=target_filename or Path(weights_filename).name,
                     auto_delete_file=auto_delete_file,
-                    iteration=iteration)
+                    iteration=iteration,
+                )
 
             # make sure we delete the previous file, if it exists
             if self._model_local_filename != weights_filename:
@@ -2171,17 +2301,21 @@ class OutputModel(BaseModel):
 
         # make sure the created model is updated:
         out_model_file_name = target_filename or weights_filename or register_uri
-        name = Path(out_model_file_name).stem if out_model_file_name else (self._task_connect_name or "Output Model")
+        name = (
+            Path(out_model_file_name).stem
+            if out_model_file_name
+            else (self._task_connect_name or "Output Model")
+        )
         model = self._get_force_base_model(task_model_entry=name)
         if not model:
-            raise ValueError('Failed creating internal output model')
+            raise ValueError("Failed creating internal output model")
 
         # select the correct file extension based on the framework,
         # or update the framework based on the file extension
         # noinspection PyProtectedMember
         framework, file_ext = Framework._get_file_ext(
             framework=self._get_model_data().framework,
-            filename=target_filename or weights_filename or register_uri
+            filename=target_filename or weights_filename or register_uri,
         )
 
         if weights_filename:
@@ -2195,25 +2329,36 @@ class OutputModel(BaseModel):
 
         # let us know the iteration number, we put it in the comment section for now.
         if update_comment:
-            comment = self.comment or ''
-            iteration_msg = 'snapshot {} stored'.format(weights_filename or register_uri)
-            if not comment.startswith('\n'):
-                comment = '\n' + comment
+            comment = self.comment or ""
+            iteration_msg = "snapshot {} stored".format(
+                weights_filename or register_uri
+            )
+            if not comment.startswith("\n"):
+                comment = "\n" + comment
             comment = iteration_msg + comment
         else:
             comment = None
 
         # if we have no output destination, just register the local model file
-        if weights_filename and not self.upload_storage_uri and not self._task.storage_uri:
+        if (
+            weights_filename
+            and not self.upload_storage_uri
+            and not self._task.storage_uri
+        ):
             register_uri = weights_filename
             weights_filename = None
             auto_delete_file = False
-            self._log.info('No output storage destination defined, registering local model %s' % register_uri)
+            self._log.info(
+                "No output storage destination defined, registering local model %s"
+                % register_uri
+            )
 
         # start the upload
         if weights_filename:
             if not model.upload_storage_uri:
-                self.set_upload_destination(self.upload_storage_uri or self._task.storage_uri)
+                self.set_upload_destination(
+                    self.upload_storage_uri or self._task.storage_uri
+                )
 
             output_uri = model.update_and_upload(
                 model_file=weights_filename,
@@ -2227,7 +2372,12 @@ class OutputModel(BaseModel):
             )
         elif register_uri:
             register_uri = StorageHelper.conform_url(register_uri)
-            output_uri = model.update(uri=register_uri, task_id=self._task.id, framework=framework, comment=comment)
+            output_uri = model.update(
+                uri=register_uri,
+                task_id=self._task.id,
+                framework=framework,
+                comment=comment,
+            )
         else:
             output_uri = None
 
@@ -2245,7 +2395,7 @@ class OutputModel(BaseModel):
         upload_uri=None,  # type: Optional[str]
         target_filename=None,  # type: Optional[str]
         auto_delete_file=True,  # type: bool
-        iteration=None  # type: Optional[int]
+        iteration=None,  # type: Optional[int]
     ):
         # type: (...) -> str
         """
@@ -2274,52 +2424,70 @@ class OutputModel(BaseModel):
         :return: The uploaded URI for the weights package.
         """
         # create list of files
-        if (not weights_filenames and not weights_path) or (weights_filenames and weights_path):
-            raise ValueError('Model update weights package should get either '
-                             'directory path to pack or a list of files')
+        if (not weights_filenames and not weights_path) or (
+            weights_filenames and weights_path
+        ):
+            raise ValueError(
+                "Model update weights package should get either "
+                "directory path to pack or a list of files"
+            )
 
         if not weights_filenames:
-            weights_filenames = list(map(six.text_type, Path(weights_path).rglob('*')))
+            weights_filenames = list(map(six.text_type, Path(weights_path).rglob("*")))
         elif weights_filenames and len(weights_filenames) > 1:
             weights_path = get_common_path(weights_filenames)
 
         # create packed model from all the files
-        fd, zip_file = mkstemp(prefix='model_package.', suffix='.zip')
+        fd, zip_file = mkstemp(prefix="model_package.", suffix=".zip")
         try:
-            with zipfile.ZipFile(zip_file, 'w', allowZip64=True, compression=zipfile.ZIP_STORED) as zf:
+            with zipfile.ZipFile(
+                zip_file, "w", allowZip64=True, compression=zipfile.ZIP_STORED
+            ) as zf:
                 for filename in weights_filenames:
-                    relative_file_name = Path(filename).name if not weights_path else \
-                        Path(filename).absolute().relative_to(Path(weights_path).absolute()).as_posix()
+                    relative_file_name = (
+                        Path(filename).name
+                        if not weights_path
+                        else Path(filename)
+                        .absolute()
+                        .relative_to(Path(weights_path).absolute())
+                        .as_posix()
+                    )
                     zf.write(filename, arcname=relative_file_name)
         finally:
             os.close(fd)
 
         # now we can delete the files (or path if provided)
         if auto_delete_file:
+
             def safe_remove(path, is_dir=False):
                 try:
                     (os.rmdir if is_dir else os.remove)(path)
                 except OSError:
-                    self._log.info('Failed removing temporary {}'.format(path))
+                    self._log.info("Failed removing temporary {}".format(path))
 
             for filename in weights_filenames:
                 safe_remove(filename)
             if weights_path:
                 safe_remove(weights_path, is_dir=True)
 
-        if target_filename and not target_filename.lower().endswith('.zip'):
-            target_filename += '.zip'
+        if target_filename and not target_filename.lower().endswith(".zip"):
+            target_filename += ".zip"
 
         # and now we should upload the file, always delete the temporary zip file
-        comment = self.comment or ''
-        iteration_msg = 'snapshot {} stored'.format(str(weights_filenames))
-        if not comment.startswith('\n'):
-            comment = '\n' + comment
+        comment = self.comment or ""
+        iteration_msg = "snapshot {} stored".format(str(weights_filenames))
+        if not comment.startswith("\n"):
+            comment = "\n" + comment
         comment = iteration_msg + comment
         self.comment = comment
-        uploaded_uri = self.update_weights(weights_filename=zip_file, auto_delete_file=True, upload_uri=upload_uri,
-                                           target_filename=target_filename or 'model_package.zip',
-                                           iteration=iteration, update_comment=False)
+        uploaded_uri = self.update_weights(
+            weights_filename=zip_file,
+            auto_delete_file=True,
+            upload_uri=upload_uri,
+            target_filename=target_filename or "model_package.zip",
+            iteration=iteration,
+            update_comment=False,
+        )
         # set the model tag (by now we should have a model object) so we know we have packaged file
         self._set_package_tag()
         return uploaded_uri
@@ -2344,7 +2512,9 @@ class OutputModel(BaseModel):
         if not self._validate_update():
             return False
 
-        config_text = self._resolve_config(config_text=config_text, config_dict=config_dict)
+        config_text = self._resolve_config(
+            config_text=config_text, config_dict=config_dict
+        )
 
         if self._task and not self._task.get_model_config_text():
             self._task.set_model_config(config_text=config_text)
@@ -2378,7 +2548,12 @@ class OutputModel(BaseModel):
 
         :return:
         """
-        validate_dict(labels, key_types=six.string_types, value_types=six.integer_types, desc='label enumeration')
+        validate_dict(
+            labels,
+            key_types=six.string_types,
+            value_types=six.integer_types,
+            desc="label enumeration",
+        )
 
         if not self._validate_update():
             return
@@ -2437,7 +2612,6 @@ class OutputModel(BaseModel):
             )
         if not self._task:
             raise Exception("Missing a task for this model")
-
         weights_filename_offline = None
         if weights_filename:
             weights_filename_offline = (
@@ -2445,7 +2619,6 @@ class OutputModel(BaseModel):
             ).as_posix()
             os.makedirs(os.path.dirname(weights_filename_offline), exist_ok=True)
             shutil.copyfile(weights_filename, weights_filename_offline)
-
         # noinspection PyProtectedMember
         self._task._offline_output_models.append(
             dict(
@@ -2484,7 +2657,11 @@ class OutputModel(BaseModel):
         # noinspection PyProtectedMember
         config_text = self._task._get_model_config_text()
         model_name = model_name or self._floating_data.name or self._task.name
-        task_model_entry = task_model_entry or self._task_connect_name or Path(self._get_model_data().uri).stem
+        task_model_entry = (
+            task_model_entry
+            or self._task_connect_name
+            or Path(self._get_model_data().uri).stem
+        )
         parent = self._task.input_models_id.get(task_model_entry)
         self._base_model.update(
             labels=self._floating_data.labels or labels,
@@ -2496,7 +2673,7 @@ class OutputModel(BaseModel):
             comment=self._floating_data.comment,
             tags=self._floating_data.tags,
             framework=self._floating_data.framework,
-            upload_storage_uri=self._floating_data.upload_storage_uri
+            upload_storage_uri=self._floating_data.upload_storage_uri,
         )
 
         # remove model floating change set, by now they should have matched the task.
@@ -2504,12 +2681,22 @@ class OutputModel(BaseModel):
 
         # now we have to update the creator task so it points to us
         if str(self._task.status) not in (
-                str(self._task.TaskStatusEnum.created), str(self._task.TaskStatusEnum.in_progress)):
-            self._log.warning('Could not update last created model in Task {}, '
-                              'Task status \'{}\' cannot be updated'.format(self._task.id, self._task.status))
+            str(self._task.TaskStatusEnum.created),
+            str(self._task.TaskStatusEnum.in_progress),
+        ):
+            self._log.warning(
+                "Could not update last created model in Task {}, "
+                "Task status '{}' cannot be updated".format(
+                    self._task.id, self._task.status
+                )
+            )
         else:
             self._base_model.update_for_task(
-                task_id=self._task.id, model_id=self.id, type_="output", name=task_model_entry)
+                task_id=self._task.id,
+                model_id=self.id,
+                type_="output",
+                name=task_model_entry,
+            )
 
         return self._base_model
 
@@ -2526,7 +2713,7 @@ class OutputModel(BaseModel):
     def _validate_update(self):
         # test if we can update the model
         if self.id and self.published:
-            raise ValueError('Model is published and cannot be changed')
+            raise ValueError("Model is published and cannot be changed")
 
         return True
 

@@ -40,7 +40,9 @@ for a very long time for a non-responding or mis-configured server
 """
 ENV_API_EXTRA_RETRY_CODES = EnvEntry("CLEARML_API_EXTRA_RETRY_CODES")
 
+
 ENV_FORCE_MAX_API_VERSION = EnvEntry("CLEARML_FORCE_MAX_API_VERSION", type=str)
+
 
 class MissingConfigError(ValueError):
     def __init__(self, message=None):

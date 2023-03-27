@@ -255,10 +255,14 @@ class ScriptRequirements(object):
 
     @staticmethod
     def _remove_package_versions(installed_pkgs, package_names_to_remove_version):
-        installed_pkgs = {k: (v[0], None if str(k) in package_names_to_remove_version else v[1])
-                          for k, v in installed_pkgs.items()}
+        def _internal(_installed_pkgs):
+            return {
+                k: (v[0], None if str(k) in package_names_to_remove_version else v[1])
+                if not isinstance(v, dict) else _internal(v)
+                for k, v in _installed_pkgs.items()
+            }
 
-        return installed_pkgs
+        return _internal(installed_pkgs)
 
 
 class _JupyterObserver(object):
@@ -781,6 +785,7 @@ class ScriptInfo(object):
         try:
             # we expect to find boto3 in the sagemaker env
             import boto3
+
             with open(cls._sagemaker_metadata_path) as f:
                 notebook_data = json.load(f)
             client = boto3.client("sagemaker")
@@ -799,7 +804,6 @@ class ScriptInfo(object):
                     return jupyter_session.get("path", ""), jupyter_session.get("name", "")
         except Exception as e:
             cls._get_logger().warning("Failed finding Notebook in SageMaker environment. Error is: '{}'".format(e))
-
         return None, None
 
     @classmethod

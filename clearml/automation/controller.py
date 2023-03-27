@@ -218,7 +218,6 @@ class PipelineController(object):
                 def serialize(obj):
                     import dill
                     return dill.dumps(obj)
-
         :param artifact_deserialization_function: A deserialization function that takes one parameter of type `bytes`,
             which represents the serialized object. This function should return the deserialized object.
             All parameter/return artifacts fetched by the pipeline will be deserialized using this function.
@@ -1157,6 +1156,7 @@ class PipelineController(object):
         # type: (bool, str) -> bool
         """
         Evaluate whether or not the pipeline is successful
+
         :param fail_on_step_fail: If True (default), evaluate the pipeline steps' status to assess if the pipeline
             is successful. If False, only evaluate the controller
         :param fail_condition: Must be one of the following: 'all' (default), 'failed' or 'aborted'. If 'failed', this
@@ -1175,18 +1175,14 @@ class PipelineController(object):
             success_status = [Task.TaskStatusEnum.completed, Task.TaskStatusEnum.failed]
         else:
             raise UsageError("fail_condition needs to be one of the following: 'all', 'failed', 'aborted'")
-
         if self._task.status not in success_status:
             return False
-
         if not fail_on_step_fail:
             return True
-
         self._update_nodes_status()
         for node in self._nodes.values():
             if node.status not in success_status:
                 return False
-
         return True
 
     def elapsed(self):

@@ -134,6 +134,7 @@ class Session(TokenManager):
         **kwargs
     ):
         self.__class__._sessions_weakrefs.append(weakref.ref(self))
+
         self._verbose = verbose if verbose is not None else ENV_VERBOSE.get()
         self._logger = logger
         if self._verbose and not self._logger:
@@ -147,7 +148,6 @@ class Session(TokenManager):
         self.__init_host = host
         self.__init_http_retries_config = http_retries_config
         self.__token_manager_kwargs = kwargs
-
         if config is not None:
             self.config = config
         else:
@@ -162,21 +162,21 @@ class Session(TokenManager):
 
         self._ssl_error_count_verbosity = self.config.get(
             "api.ssl_error_count_verbosity", self._ssl_error_count_verbosity)
-        self.__host = self.__init_host or self.get_api_server_host(config=self.config)
 
+        self.__host = self.__init_host or self.get_api_server_host(config=self.config)
         if not self.__host:
             raise ValueError("ClearML host was not set, check your configuration file or environment variable")
-
         self.__host = self.__host.strip("/")
         self.__http_retries_config = self.__init_http_retries_config or self.config.get(
             "api.http.retries", ConfigTree()).as_plain_ordered_dict()
+
         self.__http_retries_config["status_forcelist"] = self._get_retry_codes()
         self.__http_retries_config["config"] = self.config
         self.__http_session = get_http_session_with_retry(**self.__http_retries_config)
         self.__http_session.write_timeout = self._write_session_timeout
         self.__http_session.request_size_threshold = self._write_session_data_size
-        self.__max_req_size = self.config.get("api.http.max_req_size", None)
 
+        self.__max_req_size = self.config.get("api.http.max_req_size", None)
         if not self.__max_req_size:
             raise ValueError("missing max request size")
 
@@ -186,7 +186,6 @@ class Session(TokenManager):
         req_token_expiration_sec = self.config.get("api.auth.req_token_expiration_sec", None)
         self.__auth_token = None
         self._update_default_api_method()
-
         if ENV_AUTH_TOKEN.get():
             self.__access_key = self.__secret_key = None
             self.__auth_token = ENV_AUTH_TOKEN.get()
@@ -203,9 +202,11 @@ class Session(TokenManager):
 
         if not self.secret_key and not self.access_key and not self.__auth_token:
             raise MissingConfigError()
+
         super(Session, self).__init__(
             **self.__token_manager_kwargs,
-            req_token_expiration_sec=req_token_expiration_sec,
+            token_expiration_threshold_sec=token_expiration_threshold_sec,
+            req_token_expiration_sec=req_token_expiration_sec
         )
         self.refresh_token()
 
@@ -633,6 +634,7 @@ class Session(TokenManager):
 
         return call_result
 
+    @classmethod
     def _make_all_sessions_go_online(cls):
         for active_session in cls._get_all_active_sessions():
             # noinspection PyProtectedMember
@@ -647,7 +649,6 @@ class Session(TokenManager):
             if session:
                 active_sessions.append(session)
                 new_sessions_weakrefs.append(session_weakref)
-
         cls._sessions_weakrefs = session_weakref
         return active_sessions
 

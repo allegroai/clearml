@@ -2,7 +2,6 @@
 auth service
 
 This service provides authentication management and authorization
-
 validation for the entire system.
 """
 import six

@@ -699,8 +699,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             print('This text will not be printed!')
 
         the text will not be printed, because the Python process is immediately terminated.
-        
-        :param bool ignore_errors: If True default), ignore any errors raised
+
+        :param bool ignore_errors: If True (default), ignore any errors raised
         :param bool force: If True, the task status will be changed to `stopped` regardless of the current Task state.
         :param str status_message: Optional, add status change message to the stop request.
             This message will be stored as status_message on the Task's info panel
@@ -718,11 +718,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     tasks.CompletedRequest(
                         self.id, status_reason='completed', status_message=status_message, force=force),
                     ignore_errors=ignore_errors)
+
                 if self._get_runtime_properties().get("_publish_on_complete"):
                     self.send(
                         tasks.PublishRequest(
                             self.id, status_reason='completed', status_message=status_message, force=force),
                         ignore_errors=ignore_errors)
+
                 return resp
         return self.send(
             tasks.StoppedRequest(self.id, status_reason='completed', status_message=status_message, force=force),
@@ -2387,7 +2389,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return True
 
     def _get_runtime_properties(self):
-        # type: () -> Mapping[str, str]
+        # type: () -> Dict[str, str]
         if not Session.check_min_api_version('2.13'):
             return dict()
         return dict(**self.data.runtime) if self.data.runtime else dict()

@@ -1742,7 +1742,7 @@ class Task(_Task):
         After having :meth:`Task.close` -d a task, the respective object cannot be used anymore and
         methods like :meth:`Task.connect` or :meth:`Task.connect_configuration` will throw a `ValueError`.
         In order to obtain an object representing the task again, use methods like :meth:`Task.get_task`.
-        
+
         .. warning::
            Only call :meth:`Task.close` if you are certain the Task is not needed.
         """
@@ -1988,7 +1988,9 @@ class Task(_Task):
             corresponding to debug sample's file name in the UI, also known as variant
         :param int n_last_iterations: How many debug samples iterations to fetch in reverse chronological order.
             Leave empty to get all debug samples.
+
         :raise: TypeError if `n_last_iterations` is explicitly set to anything other than a positive integer value
+
         :return: A list of `dict`s, each dictionary containing the debug sample's URL and other metadata.
             The URLs can be passed to :meth:`StorageManager.get_local_copy` to fetch local copies of debug samples.
         """
@@ -2021,11 +2023,14 @@ class Task(_Task):
 
     def _get_debug_samples(self, title, series, n_last_iterations=None):
         response = self._send_debug_image_request(title, series, n_last_iterations)
+
         debug_samples = []
+
         while True:
-            scroll_id = response.response.scroll_id
-            for metric_resp in response.response.metrics:
-                iterations_events = [iteration["events"] for iteration in metric_resp.iterations]  # type: List[List[dict]]
+            scroll_id = response.response_data.get("scroll_id", None)
+
+            for metric_resp in response.response_data.get("metrics", []):
+                iterations_events = [iteration["events"] for iteration in metric_resp.get("iterations", [])]  # type: List[List[dict]]
                 flattened_events = (event
                                     for single_iter_events in iterations_events
                                     for event in single_iter_events)
@@ -2037,8 +2042,8 @@ class Task(_Task):
 
             if (len(debug_samples) == n_last_iterations
                 or all(
-                    len(metric_resp.iterations) == 0
-                    for metric_resp in response.response.metrics)):
+                    len(metric_resp.get("iterations", [])) == 0
+                    for metric_resp in response.response_data.get("metrics", []))):
                 break
 
         return debug_samples
@@ -2877,13 +2882,11 @@ class Task(_Task):
         Set offline mode, where all data and logs are stored into local folder, for later transmission
 
         .. note::
-
             `Task.set_offline` can't move the same task from offline to online, nor can it be applied before `Task.create`.
             See below an example of **incorect** usage of `Task.set_offline`:
-
             .. code-block:: py
-
                 from clearml import Task
+
                 Task.set_offline(True)
                 task = Task.create(project_name='DEBUG', task_name="offline")
                 # ^^^ an error or warning is emitted, telling us that `Task.set_offline(True)`
@@ -2891,23 +2894,25 @@ class Task(_Task):
                 Task.set_offline(False)
                 # ^^^ an error or warning is emitted, telling us that running `Task.set_offline(False)`
                 #     while the current task is not closed is not something we support
+
                 data = task.export_task()
+
                 imported_task = Task.import_task(task_data=data)
 
             The correct way to use `Task.set_offline` can be seen in the following example:
 
             .. code-block:: py
-
                 from clearml import Task
+
                 Task.set_offline(True)
                 task = Task.init(project_name='DEBUG', task_name="offline")
                 task.upload_artifact("large_artifact", "test_strign")
                 task.close()
                 Task.set_offline(False)
+
                 imported_task = Task.import_offline_session(task.get_offline_mode_folder())
 
         :param offline_mode: If True, offline-mode is turned on, and no communication to the backend is enabled.
-
         :return:
         """
         if running_remotely() or bool(offline_mode) == InterfaceBase._offline_mode:
@@ -2932,6 +2937,7 @@ class Task(_Task):
         # type: () -> bool
         """
         Return offline-mode state, If in offline-mode, no communication to the backend is enabled.
+
         :return: boolean offline-mode state
         """
         return cls._offline_mode
@@ -3542,11 +3548,9 @@ class Task(_Task):
         def _check_keys(dict_, warning_sent=False):
             if warning_sent:
                 return
-
             for k, v in dict_.items():
                 if warning_sent:
                     return
-
                 if not isinstance(k, str):
                     getLogger().warning(
                         "Unsupported key of type '{}' found when connecting dictionary. It will be converted to str".format(
@@ -3554,12 +3558,10 @@ class Task(_Task):
                         )
                     )
                     warning_sent = True
-
                 if isinstance(v, dict):
                     _check_keys(v, warning_sent)
 
         if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):
-            self._arguments.copy_from_dict(flatten_dictionary(dictionary), prefix=name)
             _check_keys(dictionary)
             flat_dict = {str(k): v for k, v in flatten_dictionary(dictionary).items()}
             self._arguments.copy_from_dict(flat_dict, prefix=name)
@@ -3909,7 +3911,6 @@ class Task(_Task):
             try:
                 # make sure the state of the offline data is saved
                 self._edit()
-
                 # create zip file
                 offline_folder = self.get_offline_mode_folder()
                 zip_file = offline_folder.as_posix() + '.zip'

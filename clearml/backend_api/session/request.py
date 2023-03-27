@@ -94,7 +94,6 @@ class CompoundRequest(Request):
         if self._item_prop_name in dict_properties:
             del dict_properties[self._item_prop_name]
         dict_.update(dict_properties)
-
         return dict_
 
     def validate(self):

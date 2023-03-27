@@ -139,7 +139,7 @@ class TaskTrigger(BaseTrigger):
             raise ValueError("You must provide metric/variant/threshold")
         valid_status = [str(s) for s in Task.TaskStatusEnum]
         if self.on_status and not all(s in valid_status for s in self.on_status):
-            raise ValueError("You on_status contains invalid status value: {}".format(self.on_status))
+            raise ValueError("Your on_status contains invalid status value: {}".format(self.on_status))
         valid_signs = ['min', 'minimum', 'max', 'maximum']
         if self.value_sign and self.value_sign not in valid_signs:
             raise ValueError("Invalid value_sign `{}`, valid options are: {}".format(self.value_sign, valid_signs))

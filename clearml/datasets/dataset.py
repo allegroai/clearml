@@ -17,7 +17,6 @@ from attr import attrs, attrib
 from pathlib2 import Path
 
 from .. import Task, StorageManager, Logger
-from ..backend_api.session.client import APIClient
 from ..backend_api import Session
 from ..backend_interface.task.development.worker import DevWorker
 from ..backend_interface.util import mutually_exclusive, exact_match_regex, get_or_create_project, rename_project

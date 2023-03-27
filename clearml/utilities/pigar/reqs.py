@@ -320,6 +320,9 @@ def is_std_or_local_lib(name):
                 return True
             return False
         mpath = module_info.origin
+        # this is a subpackage
+        if not mpath and module_info.loader is not None:
+            return False
         # this is std
         if mpath == 'built-in':
             mpath = None
@@ -443,7 +446,16 @@ def _search_path(path):
                 continue
             with open(top_level, 'r') as f:
                 for line in f:
-                    mapping[line.strip()] = (pkg_name, version)
+                    top_package = line.strip()
+                    # NOTICE: this is a namespace package
+                    if top_package and mapping_pkg_name.startswith("{}_".format(top_package)):
+                        top = mapping.get(top_package, dict())
+                        if not isinstance(top, dict):
+                            top = {top_package: top}
+                        top[mapping_pkg_name] = (pkg_name, version)
+                        mapping[top_package] = top
+                    else:
+                        mapping[top_package] = (pkg_name, version)
 
         # Install from local and available in GitHub.
         elif fnmatch.fnmatch(file, '*-link'):

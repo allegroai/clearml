@@ -831,6 +831,10 @@ class ScriptInfo(object):
         repo_root = Path(repo_root).absolute()
         script_path = Path(script_path)
 
+        if os.name == "nt" and repo_root[0] == "/":  # Windows and path repo_root has following form /c/...
+            drive = repo_root[1]
+            repo_root = repo_root.replace(f"/{drive}/", f"{drive}:/")
+
         try:
             # Use os.path.relpath as it calculates up dir movements (../)
             entry_point = os.path.relpath(

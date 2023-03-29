@@ -1948,7 +1948,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param int max_samples: Maximum samples per series to return. Default is 0 returning all scalars.
             With sample limit, average scalar values inside sampling window.
         :param str x_axis: scalar x_axis, possible values:
-            'iter': iteration (default), 'timestamp': absolute time as epoch milliseconds, 'iso_time': absolute time
+            'iter': iteration (default), 'timestamp': timestamp as milliseconds since epoch, 'iso_time': absolute time
         :return: dict: Nested scalar graphs: dict[title(str), dict[series(str), dict[axis(str), list(float)]]]
         """
         if x_axis not in ('iter', 'timestamp', 'iso_time'):

@@ -8218,11 +8218,11 @@ class GetAllRequest(Request):
             },
             "status_changed": {
                 "description": (
-                    "List of status changed constraint strings (utcformat, epoch) with an optional prefix modifier "
+                    "List of status changed constraint strings, or a single string (utcformat, epoch) with an optional prefix modifier "
                     "(>, >=, <, <=)"
                 ),
                 "items": {"pattern": "^(>=|>|<=|<)?.*$", "type": "string"},
-                "type": ["array", "null"],
+                "type": ["string", "array", "null"],
             },
             "system_tags": {
                 "description": "List of task system tags. Use '-' prefix to exclude system tags",
@@ -8502,9 +8502,11 @@ class GetAllRequest(Request):
             self._property_status_changed = None
             return
 
-        self.assert_isinstance(value, "status_changed", (list, tuple))
+        self.assert_isinstance(value, "status_changed", (str, list, tuple))
 
-        self.assert_isinstance(value, "status_changed", six.string_types, is_array=True)
+        if not isinstance(value, six.string_types):
+            self.assert_isinstance(value, "status_changed", six.string_types, is_array=True)
+
         self._property_status_changed = value
 
     @schema_property("search_text")

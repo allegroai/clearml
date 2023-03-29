@@ -1342,8 +1342,12 @@ class Model(BaseModel):
 
         :param project_name: Optional, filter based project name string, if not given query models from all projects
         :param model_name: Optional Model name as shown in the model artifactory
-        :param tags: Optional filter models based on list of tags, example: ['production', 'verified', '-qa']
-            Notice use '-' prefix to filter out tags.
+        :param tags: Filter based on the requested list of tags (strings)
+            To exclude a tag add "-" prefix to the tag. Example: ['production', 'verified', '-qa']
+            To include All tags (instead of the default Any behaviour) use "__$all" as the first string, example:
+            ["__$all", "best", "model", "ever"]
+            To combine All tags and exclude a list of tags use "__$not" before the excluded tags, example:
+            ["__$all", "best", "model", "ever", "__$not", "internal", "test"]
         :param only_published: If True, only return published models.
         :param include_archived: If True, return archived models.
         :param max_results: Optional return the last X models,

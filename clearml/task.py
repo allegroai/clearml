@@ -1021,9 +1021,9 @@ class Task(_Task):
         :param str task_name: task name (str) in within the selected project
             Return any partial match of task_name, regular expressions matching is also supported
             If None is passed, returns all tasks within the project
-        :param list tags: Filter based on the requested list of tags (strings) (Task must have all the listed tags)
+        :param list tags: Filter based on the requested list of tags (strings)
             To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
-            To include All tags (instead of the default Or) use "__$all" before the tags, example:
+            To include All tags (instead of the default All behaviour) use "__$all" as the first string, example:
             ["__$all", "best", "experiment", "ever"]
             To combine All tags and exclude a list of tags use "__$not" before the excluded tags, example:
             ["__$all", "best", "experiment", "ever", "__$not", "internal", "test"]

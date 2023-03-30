@@ -2242,11 +2242,11 @@ class GetAllRequest(Request):
             },
             "last_update": {
                 "description": (
-                    "List of last_update constraint strings (utcformat, epoch) with an optional prefix "
+                    "List of last_update constraint strings, or a single string (utcformat, epoch) with an optional prefix "
                     "modifier (>, >=, <, <=)"
                 ),
                 "items": {"pattern": "^(>=|>|<=|<)?.*$", "type": "string"},
-                "type": ["array", "null"],
+                "type": ["string", "array", "null"],
             },
             "name": {
                 "description": "Get only models whose name matches this pattern (python regular expression syntax)",
@@ -2621,9 +2621,11 @@ class GetAllRequest(Request):
             self._property_last_update = None
             return
 
-        self.assert_isinstance(value, "last_update", (list, tuple))
+        self.assert_isinstance(value, "last_update", (str, list, tuple))
 
-        self.assert_isinstance(value, "last_update", six.string_types, is_array=True)
+        if not isinstance(value, six.string_types):
+            self.assert_isinstance(value, "last_update", six.string_types, is_array=True)
+
         self._property_last_update = value
 
     @schema_property("_all_")

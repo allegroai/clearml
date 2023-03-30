@@ -30,6 +30,14 @@ class GenerateReqs(object):
     def extract_reqs(self, module_callback=None, entry_point_filename=None):
         """Extract requirements from project."""
 
+        def _internal_create_req(_version, _pkg_name, _name, _modules):
+            if _name not in _modules:
+                _modules.add(_name, _name, 0)
+            if not _version and _pkg_name and _pkg_name.startswith('-e '):
+                return ('{} @ {}'.format(_name, _pkg_name.replace('-e ', '', 1)), _version, _modules[_name])
+            else:
+                return (_pkg_name, _version, _modules[_name])
+
         reqs = ReqsModules()
         guess = ReqsModules()
         local = ReqsModules()
@@ -80,14 +88,11 @@ class GenerateReqs(object):
         for name in candidates:
             logger.info('Checking module: %s', name)
             if name in self._installed_pkgs:
-                pkg_name, version = self._installed_pkgs[name]
-                if name not in modules:
-                    modules.add(name, name, 0)
-                if not version and pkg_name and pkg_name.startswith('-e '):
-                    reqs.add('{} @ {}'.format(name, pkg_name.replace('-e ', '', 1)), version, modules[name])
-                else:
-                    reqs.add(pkg_name, version, modules[name])
-                reqs_module_name.append(name)
+                pkginfo = self._installed_pkgs[name]
+                for pkg, (pkg_name, version) in ({"": pkginfo} if not isinstance(pkginfo, dict) else pkginfo).items():
+                    _name = pkg or name
+                    reqs.add(*_internal_create_req(version, pkg_name, _name, modules))
+                    reqs_module_name.append(_name)
             elif name in modules:
                 guess.add(name, 0, modules[name])
 

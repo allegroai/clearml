@@ -359,6 +359,7 @@ class Logger(object):
                 iteration=0,
                 table_plot=df,
                 extra_data={'columnwidth': [2., 1., 1., 1.]})
+
         """
         mutually_exclusive(
             UsageError, _check_none=True,

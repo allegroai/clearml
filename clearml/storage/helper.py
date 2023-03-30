@@ -179,7 +179,7 @@ class StorageHelper(object):
         @property
         def dest_path(self):
             return self._dest_path
-        
+
         @property
         def canonized_dest_path(self):
             return self._canonized_dest_path
@@ -195,11 +195,11 @@ class StorageHelper(object):
         @property
         def retries(self):
             return self._retries
-        
+
         @property
         def return_canonized(self):
             return self._return_canonized
-        
+
         def __init__(self, src_path, dest_path, canonized_dest_path, extra, callback, retries, return_canonized):
             self._src_path = src_path
             self._dest_path = dest_path
@@ -792,14 +792,14 @@ class StorageHelper(object):
             return StorageHelper._upload_pool.apply_async(self._do_async_upload, args=(data,))
         else:
             res = self._do_upload(
-                src_path=src_path,
-                dest_path=dest_path,
-                canonized_dest_path=canonized_dest_path,
-                extra=extra,
-                cb=cb,
-                verbose=False,
-                retries=retries,
-                return_canonized=return_canonized)
+                    src_path=src_path,
+                    dest_path=dest_path,
+                    canonized_dest_path=canonized_dest_path,
+                    extra=extra,
+                    cb=cb,
+                    verbose=False,
+                    retries=retries,
+                    return_canonized=return_canonized)
             if res:
                 result_path = quote_url(result_path)
             return result_path
@@ -1177,8 +1177,7 @@ class StorageHelper(object):
 
     def _do_async_upload(self, data):
         assert isinstance(data, self._UploadData)
-        return self._do_upload(data.src_path, data.dest_path, data.canonized_dest_path, extra=data.extra, cb=data.callback,
-                               verbose=True, retries=data.retries, return_canonized=data.return_canonized)
+        return self._do_upload(data.src_path, data.dest_path, data.canonized_dest_path, extra=data.extra, cb=data.callback, verbose=True, retries=data.retries, return_canonized=data.return_canonized)
 
     def _upload_from_file(self, local_path, dest_path, extra=None):
         if not hasattr(self._driver, 'upload_object'):
@@ -1473,7 +1472,6 @@ class _HttpDriver(_Driver):
         try:
             container = self.get_container(container_name)
             url = container_name + object_name
-
             return container.session.head(url, allow_redirects=True, headers=container.get_headers(url)).ok
         except Exception:
             return False

@@ -699,8 +699,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             print('This text will not be printed!')
 
         the text will not be printed, because the Python process is immediately terminated.
-        
-        :param bool ignore_errors: If True default), ignore any errors raised
+
+        :param bool ignore_errors: If True (default), ignore any errors raised
         :param bool force: If True, the task status will be changed to `stopped` regardless of the current Task state.
         :param str status_message: Optional, add status change message to the stop request.
             This message will be stored as status_message on the Task's info panel
@@ -718,11 +718,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                     tasks.CompletedRequest(
                         self.id, status_reason='completed', status_message=status_message, force=force),
                     ignore_errors=ignore_errors)
+
                 if self._get_runtime_properties().get("_publish_on_complete"):
                     self.send(
                         tasks.PublishRequest(
                             self.id, status_reason='completed', status_message=status_message, force=force),
                         ignore_errors=ignore_errors)
+
                 return resp
         return self.send(
             tasks.StoppedRequest(self.id, status_reason='completed', status_message=status_message, force=force),
@@ -1318,16 +1320,17 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             __parameters_types={name: value_type}
         )
 
-    def get_parameter(self, name, default=None):
-        # type: (str, Any) -> Any
+    def get_parameter(self, name, default=None, cast=False):
+        # type: (str, Any, bool) -> Any
         """
         Get a value for a parameter.
 
         :param name: Parameter name
         :param default: Default value
+        :param cast: If value is found, cast to original type. If False, return string.
         :return: The Parameter value (or default value if parameter is not defined).
         """
-        params = self.get_parameters()
+        params = self.get_parameters(cast=cast)
         return params.get(name, default)
 
     def delete_parameter(self, name):
@@ -1950,7 +1953,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param int max_samples: Maximum samples per series to return. Default is 0 returning all scalars.
             With sample limit, average scalar values inside sampling window.
         :param str x_axis: scalar x_axis, possible values:
-            'iter': iteration (default), 'timestamp': seconds from start, 'iso_time': absolute time
+            'iter': iteration (default), 'timestamp': timestamp as milliseconds since epoch, 'iso_time': absolute time
         :return: dict: Nested scalar graphs: dict[title(str), dict[series(str), dict[axis(str), list(float)]]]
         """
         if x_axis not in ('iter', 'timestamp', 'iso_time'):
@@ -2387,7 +2390,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return True
 
     def _get_runtime_properties(self):
-        # type: () -> Mapping[str, str]
+        # type: () -> Dict[str, str]
         if not Session.check_min_api_version('2.13'):
             return dict()
         return dict(**self.data.runtime) if self.data.runtime else dict()

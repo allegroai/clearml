@@ -1,5 +1,4 @@
 import fnmatch
-import os
 import shutil
 import tarfile
 from multiprocessing.pool import ThreadPool
@@ -7,7 +6,6 @@ from random import random
 from time import time
 from typing import List, Optional, Union
 from zipfile import ZipFile
-from six.moves.urllib.parse import urlparse
 
 from pathlib2 import Path
 
@@ -304,8 +302,8 @@ class StorageManager(object):
         if not local_folder:
             local_folder = CacheManager.get_cache_manager().get_cache_folder()
         local_path = str(Path(local_folder).expanduser().absolute() / bucket_path)
-
         helper = StorageHelper.get(remote_url)
+
         return helper.download_to_file(
             remote_url,
             local_path,

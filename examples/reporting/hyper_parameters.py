@@ -17,6 +17,7 @@ from enum import Enum
 from clearml import Task
 from clearml.task_parameters import TaskParameters, param, percent_param
 
+
 # Connecting ClearML with the current process,
 # from here on everything is logged automatically
 task = Task.init(project_name='FirstTrial', task_name='first_trial')
@@ -42,7 +43,6 @@ class StringEnumClass(Enum):
 class IntEnumClass(Enum):
     C = 1
     D = 2
-
 
 parameters = {
     'list': [1, 2, 3],

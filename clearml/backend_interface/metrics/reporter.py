@@ -271,9 +271,13 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         self._for_model = for_model
         flush_threshold = config.get("development.worker.report_event_flush_threshold", 100)
         self._report_service = BackgroundReportService(
-            task=task, async_enable=async_enable, metrics=metrics,
+            task=task,
+            async_enable=async_enable,
+            metrics=metrics,
             flush_frequency=self._flush_frequency,
-            flush_threshold=flush_threshold, for_model=for_model)
+            flush_threshold=flush_threshold,
+            for_model=for_model,
+        )
         self._report_service.start()
 
     def _set_storage_uri(self, value):
@@ -355,8 +359,12 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param iter: Iteration number
         :type iter: int
         """
-        ev = ScalarEvent(metric=self._normalize_name(title), variant=self._normalize_name(series), value=value,
-                         iter=iter)
+        ev = ScalarEvent(
+            metric=self._normalize_name(title),
+            variant=self._normalize_name(series),
+            value=value,
+            iter=iter
+        )
         self._report(ev)
 
     def report_vector(self, title, series, values, iter):
@@ -457,8 +465,12 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         elif not isinstance(plot, six.string_types):
             raise ValueError('Plot should be a string or a dict')
 
-        ev = PlotEvent(metric=self._normalize_name(title), variant=self._normalize_name(series),
-                       plot_str=plot, iter=iter)
+        ev = PlotEvent(
+            metric=self._normalize_name(title),
+            variant=self._normalize_name(series),
+            plot_str=plot,
+            iter=iter
+        )
         self._report(ev)
 
     def report_image(self, title, series, src, iter):

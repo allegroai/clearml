@@ -652,7 +652,6 @@ if __name__ == '__main__':
         function_source, function_name = CreateFromFunction.__extract_function_information(
             a_function, sanitize_function=_sanitize_function
         )
-
         # add helper functions on top.
         for f in (helper_functions or []):
             helper_function_source, _ = CreateFromFunction.__extract_function_information(
@@ -665,7 +664,6 @@ if __name__ == '__main__':
             if artifact_serialization_function
             else ("", "None")
         )
-
         artifact_deserialization_function_source, artifact_deserialization_function_name = (
             CreateFromFunction.__extract_function_information(artifact_deserialization_function)
             if artifact_deserialization_function
@@ -833,7 +831,5 @@ if __name__ == '__main__':
         function_source = inspect.getsource(function)
         if sanitize_function:
             function_source = sanitize_function(function_source)
-
         function_source = CreateFromFunction.__sanitize_remove_type_hints(function_source)
-
         return function_source, function_name

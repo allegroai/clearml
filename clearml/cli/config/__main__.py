@@ -93,7 +93,7 @@ def main():
             # Take the credentials in raw form or from api section
             credentials = get_parsed_field(parsed, ["credentials"])
             api_server = get_parsed_field(parsed, ["api_server", "host"])
-            web_server = get_parsed_field(parsed, ["web_server"])
+            web_server = get_parsed_field(parsed, ["web_server"])  # TODO: if previous fails, this will fail too
             files_server = get_parsed_field(parsed, ["files_server"])
     except Exception:
         credentials = credentials or None
@@ -153,7 +153,7 @@ def main():
 
     print('\nClearML Hosts configuration:\nWeb App: {}\nAPI: {}\nFile Store: {}\n'.format(
         web_host, api_host, files_host))
-    
+
     if len(set([web_host, api_host, files_host])) != 3:
         raise ValueError("All three server URLs should be distinct")
 

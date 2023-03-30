@@ -12,7 +12,7 @@ from ..storage import StorageManager
 from ..storage.helper import StorageHelper
 from ..utilities.async_manager import AsyncManagerMixin
 
-ModelPackage = namedtuple('ModelPackage', 'weights design')
+ModelPackage = namedtuple("ModelPackage", "weights design")
 
 
 class ModelDoesNotExistError(Exception):
@@ -22,12 +22,12 @@ class ModelDoesNotExistError(Exception):
 class _StorageUriMixin(object):
     @property
     def upload_storage_uri(self):
-        """ A URI into which models are uploaded """
+        """A URI into which models are uploaded"""
         return self._upload_storage_uri
 
     @upload_storage_uri.setter
     def upload_storage_uri(self, value):
-        self._upload_storage_uri = value.rstrip('/') if value else None
+        self._upload_storage_uri = value.rstrip("/") if value else None
 
 
 def create_dummy_model(upload_storage_uri=None, *args, **kwargs):
@@ -44,9 +44,9 @@ def create_dummy_model(upload_storage_uri=None, *args, **kwargs):
 
 
 class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
-    """ Manager for backend model objects """
+    """Manager for backend model objects"""
 
-    _EMPTY_MODEL_ID = 'empty'
+    _EMPTY_MODEL_ID = "empty"
 
     _local_model_to_id_uri = {}
 
@@ -54,8 +54,15 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
     def model_id(self):
         return self.id
 
-    def __init__(self, upload_storage_uri, cache_dir, model_id=None,
-                 upload_storage_suffix='models', session=None, log=None):
+    def __init__(
+        self,
+        upload_storage_uri,
+        cache_dir,
+        model_id=None,
+        upload_storage_suffix="models",
+        session=None,
+        log=None
+    ):
         super(Model, self).__init__(id=model_id, session=session, log=log)
         self._upload_storage_suffix = upload_storage_suffix
         if model_id == self._EMPTY_MODEL_ID:
@@ -71,7 +78,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         self.reload()
 
     def _reload(self):
-        """ Reload the model object """
+        """Reload the model object"""
         if self._offline_mode:
             return models.Model()
 
@@ -80,11 +87,19 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         res = self.send(models.GetByIdRequest(model=self.id))
         return res.response.model
 
-    def _upload_model(self, model_file, async_enable=False, target_filename=None, cb=None):
+    def _upload_model(
+        self, model_file, async_enable=False, target_filename=None, cb=None
+    ):
         if not self.upload_storage_uri:
-            raise ValueError('Model has no storage URI defined (nowhere to upload to)')
+            raise ValueError("Model has no storage URI defined (nowhere to upload to)")
         target_filename = target_filename or Path(model_file).name
-        dest_path = '/'.join((self.upload_storage_uri, self._upload_storage_suffix or '.', target_filename))
+        dest_path = "/".join(
+            (
+                self.upload_storage_uri,
+                self._upload_storage_suffix or ".",
+                target_filename,
+            )
+        )
         result = StorageHelper.get(dest_path).upload(
             src_path=model_file,
             dest_path=dest_path,
@@ -93,19 +108,23 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             return_canonized=False
         )
         if async_enable:
+
             def msg(num_results):
-                self.log.info("Waiting for previous model to upload (%d pending, %s)" % (num_results, dest_path))
+                self.log.info(
+                    "Waiting for previous model to upload (%d pending, %s)"
+                    % (num_results, dest_path)
+                )
 
             self._add_async_result(result, wait_on_max_results=2, wait_cb=msg)
         return dest_path
 
     def _upload_callback(self, res, cb=None):
         if res is None:
-            self.log.debug('Starting model upload')
+            self.log.debug("Starting model upload")
         elif res is False:
-            self.log.info('Failed model upload')
+            self.log.info("Failed model upload")
         else:
-            self.log.info('Completed model upload to {}'.format(res))
+            self.log.info("Completed model upload to {}".format(res))
         if cb:
             cb(res)
 
@@ -126,12 +145,12 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         :return: A proper design dictionary according to design parameter.
         """
         if isinstance(design, dict):
-            if 'design' not in design:
-                raise ValueError('design dictionary must have \'design\' key in it')
+            if "design" not in design:
+                raise ValueError("design dictionary must have 'design' key in it")
 
             return design
 
-        return {'design': design if design else ''}
+        return {"design": design if design else ""}
 
     @staticmethod
     def _unwrap_design(design):
@@ -153,23 +172,40 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         :return: The design string according to design parameter.
         """
         if not design:
-            return ''
+            return ""
 
         if isinstance(design, six.string_types):
             return design
 
         if isinstance(design, dict):
-            if 'design' in design:
-                return design['design']
+            if "design" in design:
+                return design["design"]
 
             return list(design.values())[0]
 
-        raise ValueError('design must be a string or a dictionary with at least one value')
+        raise ValueError(
+            "design must be a string or a dictionary with at least one value"
+        )
 
-    def update(self, model_file=None, design=None, labels=None, name=None, comment=None, tags=None,
-               task_id=None, project_id=None, parent_id=None, uri=None, framework=None,
-               upload_storage_uri=None, target_filename=None, iteration=None, system_tags=None):
-        """ Update model weights file and various model properties """
+    def update(
+        self,
+        model_file=None,
+        design=None,
+        labels=None,
+        name=None,
+        comment=None,
+        tags=None,
+        task_id=None,
+        project_id=None,
+        parent_id=None,
+        uri=None,
+        framework=None,
+        upload_storage_uri=None,
+        target_filename=None,
+        iteration=None,
+        system_tags=None
+    ):
+        """Update model weights file and various model properties"""
 
         if self.id is None:
             if upload_storage_uri:
@@ -182,7 +218,11 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             Model._local_model_to_id_uri[str(model_file)] = (self.model_id, uri)
 
         # upload model file if needed and get uri
-        uri = uri or (self._upload_model(model_file, target_filename=target_filename) if model_file else self.data.uri)
+        uri = uri or (
+            self._upload_model(model_file, target_filename=target_filename)
+            if model_file
+            else self.data.uri
+        )
         # update fields
         design = self._wrap_design(design) if design else self.data.design
         name = name or self.data.name
@@ -192,7 +232,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         project = project_id or self.data.project
         parent = parent_id or self.data.parent
         tags = tags or self.data.tags
-        if Session.check_min_api_version('2.3'):
+        if Session.check_min_api_version("2.3"):
             system_tags = system_tags or self.data.system_tags
 
         self._edit(
@@ -210,59 +250,121 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             system_tags=system_tags,
         )
 
-    def edit(self, design=None, labels=None, name=None, comment=None, tags=None,
-             uri=None, framework=None, iteration=None, system_tags=None):
-        return self._edit(design=design, labels=labels, name=name, comment=comment, tags=tags,
-                          uri=uri, framework=framework, iteration=iteration, system_tags=system_tags)
+    def edit(
+        self,
+        design=None,
+        labels=None,
+        name=None,
+        comment=None,
+        tags=None,
+        uri=None,
+        framework=None,
+        iteration=None,
+        system_tags=None
+    ):
+        return self._edit(
+            design=design,
+            labels=labels,
+            name=name,
+            comment=comment,
+            tags=tags,
+            uri=uri,
+            framework=framework,
+            iteration=iteration,
+            system_tags=system_tags,
+        )
 
-    def _edit(self, design=None, labels=None, name=None, comment=None, tags=None,
-              uri=None, framework=None, iteration=None, system_tags=None, **extra):
+    def _edit(
+        self,
+        design=None,
+        labels=None,
+        name=None,
+        comment=None,
+        tags=None,
+        uri=None,
+        framework=None,
+        iteration=None,
+        system_tags=None,
+        **extra
+    ):
         def offline_store(**kwargs):
             for k, v in kwargs.items():
                 setattr(self.data, k, v or getattr(self.data, k, None))
             return
-        if self._offline_mode:
-            return offline_store(design=design, labels=labels, name=name, comment=comment, tags=tags,
-                                 uri=uri, framework=framework, iteration=iteration, **extra)
 
-        if Session.check_min_api_version('2.3'):
+        if self._offline_mode:
+            return offline_store(
+                design=design,
+                labels=labels,
+                name=name,
+                comment=comment,
+                tags=tags,
+                uri=uri,
+                framework=framework,
+                iteration=iteration,
+                **extra
+            )
+
+        if Session.check_min_api_version("2.3"):
             if tags is not None:
-                extra.update({'tags': tags})
+                extra.update({"tags": tags})
             if system_tags is not None:
-                extra.update({'system_tags': system_tags})
+                extra.update({"system_tags": system_tags})
         elif tags is not None or system_tags is not None:
             if tags and system_tags:
                 system_tags = system_tags[:]
                 system_tags += [t for t in tags if t not in system_tags]
-            extra.update({'system_tags': system_tags or tags or self.data.system_tags})
+            extra.update({"system_tags": system_tags or tags or self.data.system_tags})
 
-        self.send(models.EditRequest(
-            model=self.id,
-            uri=uri,
-            name=name,
-            comment=comment,
-            labels=labels,
-            design=self._wrap_design(design) if design else None,
-            framework=framework,
-            iteration=iteration,
-            **extra
-        ))
+        self.send(
+            models.EditRequest(
+                model=self.id,
+                uri=uri,
+                name=name,
+                comment=comment,
+                labels=labels,
+                design=self._wrap_design(design) if design else None,
+                framework=framework,
+                iteration=iteration,
+                **extra
+            )
+        )
         self.reload()
 
-    def update_and_upload(self, model_file, design=None, labels=None, name=None, comment=None,
-                          tags=None, task_id=None, project_id=None, parent_id=None, framework=None, async_enable=False,
-                          target_filename=None, cb=None, iteration=None):
-        """ Update the given model for a given task ID """
+    def update_and_upload(
+        self,
+        model_file,
+        design=None,
+        labels=None,
+        name=None,
+        comment=None,
+        tags=None,
+        task_id=None,
+        project_id=None,
+        parent_id=None,
+        framework=None,
+        async_enable=False,
+        target_filename=None,
+        cb=None,
+        iteration=None
+    ):
+        """Update the given model for a given task ID"""
         if async_enable:
+
             def callback(uploaded_uri):
                 if uploaded_uri is None:
                     return
 
                 # If not successful, mark model as failed_uploading
                 if uploaded_uri is False:
-                    uploaded_uri = '{}/failed_uploading'.format(self._upload_storage_uri)
+                    uploaded_uri = "{}/failed_uploading".format(
+                        self._upload_storage_uri
+                    )
 
-                Model._local_model_to_id_uri[str(model_file)] = (self.model_id, uploaded_uri)
+                Model._local_model_to_id_uri[str(model_file)] = (
+                    self.model_id,
+                    uploaded_uri,
+                )
 
                 self.update(
                     uri=uploaded_uri,
@@ -281,11 +383,17 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
                 if cb:
                     cb(model_file)
 
-            uri = self._upload_model(model_file, async_enable=async_enable, target_filename=target_filename,
-                                     cb=callback)
+            uri = self._upload_model(
+                model_file,
+                async_enable=async_enable,
+                target_filename=target_filename,
+                cb=callback,
+            )
             return uri
         else:
-            uri = self._upload_model(model_file, async_enable=async_enable, target_filename=target_filename)
+            uri = self._upload_model(
+                model_file, async_enable=async_enable, target_filename=target_filename
+            )
             Model._local_model_to_id_uri[str(model_file)] = (self.model_id, uri)
             self.update(
                 uri=uri,
@@ -302,7 +410,9 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
 
             return uri
 
-    def update_for_task(self, task_id, name=None, model_id=None, type_="output", iteration=None):
+    def update_for_task(
+        self, task_id, name=None, model_id=None, type_="output", iteration=None
+    ):
         if Session.check_min_api_version("2.13"):
             req = tasks.AddOrUpdateModelRequest(
                 task=task_id, name=name, type=type_, model=model_id, iteration=iteration
@@ -314,7 +424,9 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             # backwards compatibility, None
             req = None
         else:
-            raise ValueError("Type '{}' unsupported (use either 'input' or 'output')".format(type_))
+            raise ValueError(
+                "Type '{}' unsupported (use either 'input' or 'output')".format(type_)
+            )
 
         if req:
             self.send(req)
@@ -323,7 +435,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
 
     @property
     def model_design(self):
-        """ Get the model design. For now, this is stored as a single key in the design dict. """
+        """Get the model design. For now, this is stored as a single key in the design dict."""
         try:
             return self._unwrap_design(self.data.design)
         except ValueError:
@@ -364,7 +476,11 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
 
     @property
     def tags(self):
-        return self.data.system_tags if hasattr(self.data, 'system_tags') else self.data.tags
+        return (
+            self.data.system_tags
+            if hasattr(self.data, "system_tags")
+            else self.data.tags
+        )
 
     @property
     def task(self):
@@ -394,8 +510,10 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
 
         :param bool raise_on_error: If True and the artifact could not be downloaded,
             raise ValueError, otherwise return None on failure and output log warning.
+
         :param bool force_download: If True, the base artifact will be downloaded,
             even if the artifact is already cached.
+
         :return: a local path to a downloaded copy of the model
         """
         uri = self.data.uri
@@ -403,21 +521,29 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             return None
 
         # check if we already downloaded the file
-        downloaded_models = [k for k, (i, u) in Model._local_model_to_id_uri.items() if i == self.id and u == uri]
+        downloaded_models = [
+            k
+            for k, (i, u) in Model._local_model_to_id_uri.items()
+            if i == self.id and u == uri
+        ]
         for dl_file in downloaded_models:
             if Path(dl_file).exists() and not force_download:
                 return dl_file
             # remove non existing model file
             Model._local_model_to_id_uri.pop(dl_file, None)
 
-        local_download = StorageManager.get_local_copy(uri, extract_archive=False, force_download=force_download)
+        local_download = StorageManager.get_local_copy(
+            uri, extract_archive=False, force_download=force_download
+        )
 
         # save local model, so we can later query what was the original one
         if local_download is not None:
             Model._local_model_to_id_uri[str(local_download)] = (self.model_id, uri)
         elif raise_on_error:
-            raise ValueError("Could not retrieve a local copy of model weights {}, "
-                             "failed downloading {}".format(self.model_id, uri))
+            raise ValueError(
+                "Could not retrieve a local copy of model weights {}, "
+                "failed downloading {}".format(self.model_id, uri)
+            )
 
         return local_download
 
@@ -426,9 +552,9 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         return self._cache_dir
 
     def save_model_design_file(self):
-        """ Download model description file into a local file in our cache_dir """
+        """Download model description file into a local file in our cache_dir"""
         design = self.model_design
-        filename = self.data.name + '.txt'
+        filename = self.data.name + ".txt"
         p = Path(self.cache_dir) / filename
         # we always write the original model design to file, to prevent any mishaps
         # if p.is_file():
@@ -438,11 +564,13 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         return str(p)
 
     def get_model_package(self):
-        """ Get a named tuple containing the model's weights and design """
-        return ModelPackage(weights=self.download_model_weights(), design=self.save_model_design_file())
+        """Get a named tuple containing the model's weights and design"""
+        return ModelPackage(
+            weights=self.download_model_weights(), design=self.save_model_design_file()
+        )
 
     def get_model_design(self):
-        """ Get model description (text) """
+        """Get model description (text)"""
         return self.model_design
 
     @classmethod
@@ -465,8 +593,11 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         data = self.data
         assert isinstance(data, models.Model)
         parent = self.id if child else None
-        extra = {'system_tags': tags or data.system_tags} \
-            if Session.check_min_api_version('2.3') else {'tags': tags or data.tags}
+        extra = (
+            {"system_tags": tags or data.system_tags}
+            if Session.check_min_api_version("2.3")
+            else {"tags": tags or data.tags}
+        )
         req = models.CreateRequest(
             uri=data.uri,
             name=name,
@@ -485,8 +616,8 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
 
     def _create_empty_model(self, upload_storage_uri=None, project_id=None):
         upload_storage_uri = upload_storage_uri or self.upload_storage_uri
-        name = make_message('Anonymous model %(time)s')
-        uri = '{}/uploading_file'.format(upload_storage_uri or 'file://')
+        name = make_message("Anonymous model %(time)s")
+        uri = "{}/uploading_file".format(upload_storage_uri or "file://")
         req = models.CreateRequest(uri=uri, name=name, labels={}, project=project_id)
         res = self.send(req)
         if not res:

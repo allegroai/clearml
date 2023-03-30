@@ -7,6 +7,7 @@ from time import time
 
 from pathlib2 import Path
 
+from ...backend_api import Session
 from ...backend_api.services import events as api_events
 from ..base import InterfaceBase
 from ...config import config, deferred_config

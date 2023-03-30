@@ -180,14 +180,15 @@ class PipelineController(object):
         :param add_run_number: If True (default), add the run number of the pipeline to the pipeline name.
             Example, the second time we launch the pipeline "best pipeline", we rename it to "best pipeline #2"
         :param retry_on_failure: Integer (number of retries) or Callback function that returns True to allow a retry
-            - Integer: In case of node failure, retry the node the number of times indicated by this parameter.
-            - Callable: A function called on node failure. Takes as parameters:
-                the PipelineController instance, the PipelineController.Node that failed and an int
-                representing the number of previous retries for the node that failed
-                The function must return a `bool`: True if the node should be retried and False otherwise.
-                If True, the node will be re-queued and the number of retries left will be decremented by 1.
-                By default, if this callback is not specified, the function will be retried the number of
-                times indicated by `retry_on_failure`.
+
+          - Integer: In case of node failure, retry the node the number of times indicated by this parameter.
+          - Callable: A function called on node failure. Takes as parameters:
+              the PipelineController instance, the PipelineController.Node that failed and an int
+              representing the number of previous retries for the node that failed.
+              The function must return ``True`` if the node should be retried and ``False`` otherwise.
+              If True, the node will be re-queued and the number of retries left will be decremented by 1.
+              By default, if this callback is not specified, the function will be retried the number of
+              times indicated by `retry_on_failure`.
 
                 .. code-block:: py
 
@@ -391,18 +392,14 @@ class PipelineController(object):
             The current step in the pipeline will be sent for execution only after all the parent nodes
             have been executed successfully.
         :param parameter_override: Optional parameter overriding dictionary.
-            The dict values can reference a previously executed step using the following form '${step_name}'
-            Examples:
-            - Artifact access
-                parameter_override={'Args/input_file': '${<step_name>.artifacts.<artifact_name>.url}' }
-            - Model access (last model used)
-                parameter_override={'Args/input_file': '${<step_name>.models.output.-1.url}' }
-            - Parameter access
-                parameter_override={'Args/input_file': '${<step_name>.parameters.Args/input_file}' }
-            - Pipeline Task argument (see `Pipeline.add_parameter`)
-                parameter_override={'Args/input_file': '${pipeline.<pipeline_parameter>}' }
-            - Task ID
-                parameter_override={'Args/input_file': '${stage3.id}' }
+            The dict values can reference a previously executed step using the following form '${step_name}'. Examples:
+
+          - Artifact access ``parameter_override={'Args/input_file': '${<step_name>.artifacts.<artifact_name>.url}' }``
+          - Model access (last model used) ``parameter_override={'Args/input_file': '${<step_name>.models.output.-1.url}' }``
+          - Parameter access ``parameter_override={'Args/input_file': '${<step_name>.parameters.Args/input_file}' }``
+          - Pipeline Task argument (see `Pipeline.add_parameter`) ``parameter_override={'Args/input_file': '${pipeline.<pipeline_parameter>}' }``
+          - Task ID ``parameter_override={'Args/input_file': '${stage3.id}' }``
+
         :param configuration_overrides: Optional, override Task configuration objects.
             Expected dictionary of configuration object name and configuration object content.
             Examples:
@@ -410,19 +407,13 @@ class PipelineController(object):
                 {'General': 'configuration file content'}
                 {'OmegaConf': YAML.dumps(full_hydra_dict)}
         :param task_overrides: Optional task section overriding dictionary.
-            The dict values can reference a previously executed step using the following form '${step_name}'
-            Examples:
-            - get the latest commit from a specific branch
-                task_overrides={'script.version_num': '', 'script.branch': 'main'}
-            - match git repository branch to a previous step
-                task_overrides={'script.branch': '${stage1.script.branch}', 'script.version_num': ''}
-            - change container image
-                task_overrides={'container.image': 'nvidia/cuda:11.6.0-devel-ubuntu20.04',
-                                'container.arguments': '--ipc=host'}
-            - match container image to a previous step
-                task_overrides={'container.image': '${stage1.container.image}'}
-            - reset requirements (the agent will use the "requirements.txt" inside the repo)
-                task_overrides={'script.requirements.pip': ""}
+            The dict values can reference a previously executed step using the following form '${step_name}'. Examples:
+
+          - get the latest commit from a specific branch ``task_overrides={'script.version_num': '', 'script.branch': 'main'}``
+          - match git repository branch to a previous step ``task_overrides={'script.branch': '${stage1.script.branch}', 'script.version_num': ''}``
+          - change container image ``task_overrides={'container.image': 'nvidia/cuda:11.6.0-devel-ubuntu20.04', 'container.arguments': '--ipc=host'}``
+          - match container image to a previous step ``task_overrides={'container.image': '${stage1.container.image}'}``
+          - reset requirements (the agent will use the "requirements.txt" inside the repo) ``task_overrides={'script.requirements.pip': ""}``
         :param execution_queue: Optional, the queue to use for executing this specific step.
             If not provided, the task will be sent to the default execution queue, as defined on the class
         :param monitor_metrics: Optional, log the step's metrics on the pipeline Task.
@@ -497,14 +488,15 @@ class PipelineController(object):
         :param base_task_factory: Optional, instead of providing a pre-existing Task,
             provide a Callable function to create the Task (returns Task object)
         :param retry_on_failure: Integer (number of retries) or Callback function that returns True to allow a retry
-            - Integer: In case of node failure, retry the node the number of times indicated by this parameter.
-            - Callable: A function called on node failure. Takes as parameters:
-                the PipelineController instance, the PipelineController.Node that failed and an int
-                representing the number of previous retries for the node that failed
-                The function must return a `bool`: True if the node should be retried and False otherwise.
-                If True, the node will be re-queued and the number of retries left will be decremented by 1.
-                By default, if this callback is not specified, the function will be retried the number of
-                times indicated by `retry_on_failure`.
+
+          - Integer: In case of node failure, retry the node the number of times indicated by this parameter.
+          - Callable: A function called on node failure. Takes as parameters:
+              the PipelineController instance, the PipelineController.Node that failed and an int
+              representing the number of previous retries for the node that failed.
+              The function must return ``True`` if the node should be retried and ``False`` otherwise.
+              If True, the node will be re-queued and the number of retries left will be decremented by 1.
+              By default, if this callback is not specified, the function will be retried the number of
+              times indicated by `retry_on_failure`.
 
                 .. code-block:: py
 
@@ -759,16 +751,16 @@ class PipelineController(object):
             was already executed. If it was found, use it instead of launching a new Task.
             Default: False, a new cloned copy of base_task is always used.
             Notice: If the git repo reference does not have a specific commit ID, the Task will never be used.
-
         :param retry_on_failure: Integer (number of retries) or Callback function that returns True to allow a retry
-            - Integer: In case of node failure, retry the node the number of times indicated by this parameter.
-            - Callable: A function called on node failure. Takes as parameters:
-                the PipelineController instance, the PipelineController.Node that failed and an int
-                representing the number of previous retries for the node that failed
-                The function must return a `bool`: True if the node should be retried and False otherwise.
-                If True, the node will be re-queued and the number of retries left will be decremented by 1.
-                By default, if this callback is not specified, the function will be retried the number of
-                times indicated by `retry_on_failure`.
+
+          - Integer: In case of node failure, retry the node the number of times indicated by this parameter.
+          - Callable: A function called on node failure. Takes as parameters:
+              the PipelineController instance, the PipelineController.Node that failed and an int
+              representing the number of previous retries for the node that failed.
+              The function must return ``True`` if the node should be retried and ``False`` otherwise.
+              If True, the node will be re-queued and the number of retries left will be decremented by 1.
+              By default, if this callback is not specified, the function will be retried the number of
+              times indicated by `retry_on_failure`.
 
                 .. code-block:: py
 
@@ -972,9 +964,9 @@ class PipelineController(object):
         :param configuration: The configuration. This is usually the configuration used in the model training process.
             Specify one of the following:
 
-            - A dictionary/list - A dictionary containing the configuration. ClearML stores the configuration in
+          - A dictionary/list - A dictionary containing the configuration. ClearML stores the configuration in
               the **ClearML Server** (backend), in a HOCON format (JSON-like format) which is editable.
-            - A ``pathlib2.Path`` string - A path to the configuration file. ClearML stores the content of the file.
+          - A ``pathlib2.Path`` string - A path to the configuration file. ClearML stores the content of the file.
               A local path must be relative path. When executing a pipeline remotely in a worker, the contents brought
               from the **ClearML Server** (backend) overwrites the contents of the file.
 
@@ -1174,7 +1166,7 @@ class PipelineController(object):
     def is_successful(self, fail_on_step_fail=True, fail_condition="all"):
         # type: (bool, str) -> bool
         """
-        Evaluate whether or not the pipeline is successful
+        Evaluate whether the pipeline is successful.
 
         :param fail_on_step_fail: If True (default), evaluate the pipeline steps' status to assess if the pipeline
             is successful. If False, only evaluate the controller
@@ -3087,14 +3079,15 @@ class PipelineDecorator(PipelineController):
         :param add_run_number: If True (default), add the run number of the pipeline to the pipeline name.
             Example, the second time we launch the pipeline "best pipeline", we rename it to "best pipeline #2"
         :param retry_on_failure: Integer (number of retries) or Callback function that returns True to allow a retry
-            - Integer: In case of node failure, retry the node the number of times indicated by this parameter.
-            - Callable: A function called on node failure. Takes as parameters:
-                the PipelineController instance, the PipelineController.Node that failed and an int
-                representing the number of previous retries for the node that failed
-                The function must return a `bool`: True if the node should be retried and False otherwise.
-                If True, the node will be re-queued and the number of retries left will be decremented by 1.
-                By default, if this callback is not specified, the function will be retried the number of
-                times indicated by `retry_on_failure`.
+
+          - Integer: In case of node failure, retry the node the number of times indicated by this parameter.
+          - Callable: A function called on node failure. Takes as parameters:
+              the PipelineController instance, the PipelineController.Node that failed and an int
+              representing the number of previous retries for the node that failed.
+              The function must return ``True`` if the node should be retried and ``False`` otherwise.
+              If True, the node will be re-queued and the number of retries left will be decremented by 1.
+              By default, if this callback is not specified, the function will be retried the number of
+              times indicated by `retry_on_failure`.
 
                 .. code-block:: py
 
@@ -3947,22 +3940,25 @@ class PipelineDecorator(PipelineController):
                     pass
 
             Parameters would be stored as:
-              - paramA: sectionA/paramA
-              - paramB: sectionB/paramB
-              - paramC: sectionB/paramC
-              - paramD: Args/paramD
+
+          - paramA: sectionA/paramA
+          - paramB: sectionB/paramB
+          - paramC: sectionB/paramC
+          - paramD: Args/paramD
+
         :param start_controller_locally: If True, start the controller on the local machine. The steps will run
             remotely if `PipelineDecorator.run_locally` or `PipelineDecorator.debug_pipeline` are not called.
             Default: False
         :param retry_on_failure: Integer (number of retries) or Callback function that returns True to allow a retry
-            - Integer: In case of node failure, retry the node the number of times indicated by this parameter.
-            - Callable: A function called on node failure. Takes as parameters:
-                the PipelineController instance, the PipelineController.Node that failed and an int
-                representing the number of previous retries for the node that failed
-                The function must return a `bool`: True if the node should be retried and False otherwise.
-                If True, the node will be re-queued and the number of retries left will be decremented by 1.
-                By default, if this callback is not specified, the function will be retried the number of
-                times indicated by `retry_on_failure`.
+
+          - Integer: In case of node failure, retry the node the number of times indicated by this parameter.
+          - Callable: A function called on node failure. Takes as parameters:
+              the PipelineController instance, the PipelineController.Node that failed and an int
+              representing the number of previous retries for the node that failed.
+              The function must return ``True`` if the node should be retried and ``False`` otherwise.
+              If True, the node will be re-queued and the number of retries left will be decremented by 1.
+              By default, if this callback is not specified, the function will be retried the number of
+              times indicated by `retry_on_failure`.
 
                 .. code-block:: py
 

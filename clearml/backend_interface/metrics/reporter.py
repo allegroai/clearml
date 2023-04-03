@@ -1,3 +1,4 @@
+import atexit
 import datetime
 import json
 import logging
@@ -278,6 +279,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             flush_threshold=flush_threshold,
             for_model=for_model,
         )
+        atexit.register(self._handle_program_exit)
         self._report_service.start()
 
     def _set_storage_uri(self, value):
@@ -309,21 +311,36 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
             self._max_iteration = max(self._max_iteration, ev_iteration + self._metrics.get_iteration_offset())
         self._report_service.add_event(ev)
 
+    def _handle_program_exit(self):
+        try:
+            self.flush()
+            self.wait_for_events()
+            self.stop()
+        except Exception as e:
+            logging.getLogger("clearml.reporter").warning(
+                "Exception encountered cleaning up the reporter: {}".format(e)
+            )
+
     def flush(self):
         """
         Flush cached reports to backend.
         """
-        if self._report_service:
-            self._report_service.flush()
+        # we copy this value for thread safety
+        report_service = self._report_service
+        if report_service:
+            report_service.flush()
 
     def wait_for_events(self, timeout=None):
-        if self._report_service:
-            return self._report_service.wait_for_events(timeout=timeout)
+        # we copy this value for thread safety
+        report_service = self._report_service
+        if report_service:
+            return report_service.wait_for_events(timeout=timeout)
 
     def stop(self):
-        if not self._report_service:
-            return
+        # save the report service and allow multiple threads to access it
         report_service = self._report_service
+        if not report_service:
+            return
         self._report_service = None
         if not report_service.is_subprocess_mode() or report_service.is_alive():
             report_service.stop()

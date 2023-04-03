@@ -966,11 +966,6 @@ class Task(_Task):
             This method supports regular expressions for name matching. (Optional)
             To match an exact task name (i.e. not partial matching),
             add ^/$ at the beginning/end of the string, for example: "^exact_task_name_here$"
-        :param list(str) task_ids: list of unique task ID string (if exists other parameters are ignored)
-        :param str project_name: project name (str) the task belongs to (use None for all projects)
-        :param str task_name: task name (str) in within the selected project
-            Return any partial match of task_name, regular expressions matching is also supported
-            If None is passed, returns all tasks within the project
         :param list tags: Filter based on the requested list of tags (strings) (Task must have all the listed tags)
             To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
         :param bool allow_archived: If True (default), allow to return archived Tasks, if False filter out archived Tasks
@@ -1036,7 +1031,7 @@ class Task(_Task):
             - ``parent`` - (str) filter by parent task-id matching
             - ``search_text`` - (str) free text search (in task fields comment/name/id)
             - ``status`` - List[str] List of valid statuses. Options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed", "failed", "completed", "unknown"
-            - ``type`` - List[str] List of valid task type. Ooptions are: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc'. 'custom'
+            - ``type`` - List[Union[str, TaskTypes]] List of valid task type. Ooptions are: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc'. 'custom'
             - ``user`` - List[str] Filter based on Task's user owner, provide list of valid user IDs.
             - `order_by` - List[str] List of field names to order by. When search_text is used. Use '-' prefix to specify descending order. Optional, recommended when using page. Example: ``order_by=['-last_update']``
             - ``_all_`` - dict(fields=[], pattern='')  Match string ``pattern`` (regular expression) appearing in All `fields`. ``dict(fields=['script.repository'], pattern='github.com/user')``
@@ -1053,6 +1048,9 @@ class Task(_Task):
             task_filter = task_filter or {}
             return_fields = set(list(additional_return_fields) + ['id'])
             task_filter['only_fields'] = (task_filter.get('only_fields') or []) + list(return_fields)
+
+        if task_filter.get('type'):
+            task_filter['type'] = [str(task_type) for task_type in task_filter['type']]
 
         results = cls._query_tasks(project_name=project_name, task_name=task_name, **(task_filter or {}))
         return [t.id for t in results] if not additional_return_fields else \

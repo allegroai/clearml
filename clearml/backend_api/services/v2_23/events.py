@@ -1026,52 +1026,6 @@ class DebugImagesResponse(Response):
         else:
             self.assert_isinstance(value, "metrics", DebugImagesResponseTaskMetrics, is_array=True)
         self._property_metrics = value
-        self.assert_isinstance(value, "task", six.string_types)
-        self._property_task = value
-
-    @schema_property("level")
-    def level(self):
-        return self._property_level
-
-    @level.setter
-    def level(self, value):
-        if value is None:
-            self._property_level = None
-            return
-        if isinstance(value, six.string_types):
-            try:
-                value = LogLevelEnum(value)
-            except ValueError:
-                pass
-        else:
-            self.assert_isinstance(value, "level", enum.Enum)
-        self._property_level = value
-
-    @schema_property("worker")
-    def worker(self):
-        return self._property_worker
-
-    @worker.setter
-    def worker(self, value):
-        if value is None:
-            self._property_worker = None
-            return
-
-        self.assert_isinstance(value, "worker", six.string_types)
-        self._property_worker = value
-
-    @schema_property("msg")
-    def msg(self):
-        return self._property_msg
-
-    @msg.setter
-    def msg(self, value):
-        if value is None:
-            self._property_msg = None
-            return
-
-        self.assert_isinstance(value, "msg", six.string_types)
-        self._property_msg = value
 
 
 class PlotsResponseTaskMetrics(NonStrictDataModel):

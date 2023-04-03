@@ -45,5 +45,5 @@ Environment variable primarily for internal use. Expects a base64 encoded string
 If explicitly set to an empty string, will not log the diff, shown in the UI under "Uncommitted Changes".
 
 .. note::
-    Overriding CLEARML_VCS_DIFF will void the possibility of executing a Task remotely.
+    Overriding `CLEARML_VCS_DIFF` may change the results of a task when executed remotely.
 """

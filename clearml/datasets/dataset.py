@@ -1194,6 +1194,9 @@ class Dataset(object):
 
         :return: Newly created Dataset object
         """
+        if not Session.check_min_api_server_version("2.13"):
+            raise NotImplementedError("Datasets are not supported with your current ClearML server version. Please update your server.")
+
         parent_datasets = [cls.get(dataset_id=p) if not isinstance(p, Dataset) else p for p in (parent_datasets or [])]
         if any(not p.is_final() for p in parent_datasets):
             raise ValueError("Cannot inherit from a parent that was not finalized/closed")

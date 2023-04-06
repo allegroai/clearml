@@ -90,7 +90,7 @@ class Logger(object):
 
         if self._connect_logging:
             StdStreamPatch.patch_logging_formatter(self)
-        elif not self._connect_std_streams:
+        elif not self._connect_std_streams and self._task.is_main_task():
             # make sure that at least the main clearml logger is connect
             base_logger = LoggerRoot.get_base_logger()
             if base_logger and base_logger.handlers:

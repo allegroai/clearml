@@ -129,7 +129,10 @@ def get_http_session_with_retry(
         session.trust_env = False
 
     if backoff_max is not None:
-        Retry.DEFAULT_BACKOFF_MAX = backoff_max
+        if "BACKOFF_MAX" in vars(Retry):
+            Retry.BACKOFF_MAX = backoff_max
+        else:
+            Retry.DEFAULT_BACKOFF_MAX = backoff_max
 
     retry = Retry(
         total=total, connect=connect, read=read, redirect=redirect, status=status,

@@ -2695,7 +2695,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param Session session: The session object used for sending requests to the API.
         :param logging.Logger log: The Log object.
         :param kwargs: Keyword args passed to the GetAllRequest
-            (see :class:`.backend_api.services.v2_5.tasks.GetAllRequest`)
+            (see :class:`.backend_api.service.v?.tasks.GetAllRequest` for details; the ? needs to be replaced by the appropriate version.)
 
             For example:
 

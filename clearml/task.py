@@ -969,7 +969,8 @@ class Task(_Task):
         :param list tags: Filter based on the requested list of tags (strings) (Task must have all the listed tags)
             To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
         :param bool allow_archived: If True (default), allow to return archived Tasks, if False filter out archived Tasks
-        :param dict task_filter: filter and order Tasks. See service.tasks.GetAllRequest for details.
+        :param dict task_filter: filter and order Tasks.
+            See ``backend_api.service.v?.tasks.GetAllRequest`` for details (the ? needs to be replaced by the correct version).
 
             - ``parent`` - (str) filter by parent task-id matching
             - ``search_text`` - (str) free text search (in task fields comment/name/id)
@@ -1026,14 +1027,15 @@ class Task(_Task):
             If provided return dict per Task with the additional requested fields.
             Example: ``returned_fields=['last_updated', 'user', 'script.repository']`` will return a list of dict:
             ``[{'id': 'task_id', 'last_update': datetime.datetime(), 'user': 'user_id', 'script.repository': 'https://github.com/user/'}, ]``
-        :param dict task_filter: filter and order Tasks. See service.tasks.GetAllRequest for details.
+        :param dict task_filter: filter and order Tasks.
+            See ``backend_api.service.v?.tasks.GetAllRequest`` for details (the ? needs to be replaced by the correct version).
 
             - ``parent`` - (str) filter by parent task-id matching
             - ``search_text`` - (str) free text search (in task fields comment/name/id)
             - ``status`` - List[str] List of valid statuses. Options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed", "failed", "completed", "unknown"
             - ``type`` - List[Union[str, TaskTypes]] List of valid task type. Ooptions are: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc'. 'custom'
             - ``user`` - List[str] Filter based on Task's user owner, provide list of valid user IDs.
-            - `order_by` - List[str] List of field names to order by. When search_text is used. Use '-' prefix to specify descending order. Optional, recommended when using page. Example: ``order_by=['-last_update']``
+            - ``order_by`` - List[str] List of field names to order by. When search_text is used. Use '-' prefix to specify descending order. Optional, recommended when using page. Example: ``order_by=['-last_update']``
             - ``_all_`` - dict(fields=[], pattern='')  Match string ``pattern`` (regular expression) appearing in All `fields`. ``dict(fields=['script.repository'], pattern='github.com/user')``
             - ``_any_`` - dict(fields=[], pattern='')  Match string `pattern` (regular expression) appearing in Any of the `fields`. `dict(fields=['comment', 'name'], pattern='my comment')`
             - Examples: ``{'status': ['stopped'], 'order_by': ["-last_update"]}``, ``{'order_by'=['-last_update'], '_all_'=dict(fields=['script.repository'], pattern='github.com/user')}``

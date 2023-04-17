@@ -970,7 +970,7 @@ class Task(_Task):
             To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
         :param bool allow_archived: If True (default), allow to return archived Tasks, if False filter out archived Tasks
         :param dict task_filter: filter and order Tasks.
-            See ``backend_api.service.v?.tasks.GetAllRequest`` for details (the ? needs to be replaced by the correct version).
+            See :class:`.backend_api.service.v?.tasks.GetAllRequest` for details; the ? needs to be replaced by the appropriate version.
 
             - ``parent`` - (str) filter by parent task-id matching
             - ``search_text`` - (str) free text search (in task fields comment/name/id)
@@ -1028,7 +1028,7 @@ class Task(_Task):
             Example: ``returned_fields=['last_updated', 'user', 'script.repository']`` will return a list of dict:
             ``[{'id': 'task_id', 'last_update': datetime.datetime(), 'user': 'user_id', 'script.repository': 'https://github.com/user/'}, ]``
         :param dict task_filter: filter and order Tasks.
-            See ``backend_api.service.v?.tasks.GetAllRequest`` for details (the ? needs to be replaced by the correct version).
+            See :class:`.backend_api.service.v?.tasks.GetAllRequest` for details; the ? needs to be replaced by the appropriate version.
 
             - ``parent`` - (str) filter by parent task-id matching
             - ``search_text`` - (str) free text search (in task fields comment/name/id)

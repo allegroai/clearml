@@ -627,8 +627,10 @@ class Task(_Task):
                     cls.__update_master_pid_task(task=task)
                     # make sure we are started
                     task.started(ignore_errors=True)
-                    # continue last iteration if we had any
-                    if task.data.last_iteration:
+                    # continue last iteration if we had any (or we need to override it)
+                    if isinstance(continue_last_task, int) and not isinstance(continue_last_task, bool):
+                        task.set_initial_iteration(int(continue_last_task))
+                    elif task.data.last_iteration:
                         task.set_initial_iteration(int(task.data.last_iteration) + 1)
                 else:
                     # subprocess should get back the task info

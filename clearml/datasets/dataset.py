@@ -877,14 +877,8 @@ class Dataset(object):
         return self._task.get_status() not in (
             Task.TaskStatusEnum.in_progress, Task.TaskStatusEnum.created, Task.TaskStatusEnum.failed)
 
-    def get_local_copy(self,
-                       use_soft_links=None,
-                       part=None,
-                       num_parts=None,
-                       raise_on_error=True,
-                       max_workers=None,
-                       max_workers_external_files=None):
-        # type: (bool, Optional[int], Optional[int], bool, Optional[int], Optional[int]) -> str
+    def get_local_copy(self, use_soft_links=None, part=None, num_parts=None, raise_on_error=True, max_workers=None):
+        # type: (bool, Optional[int], Optional[int], bool, Optional[int]) -> str
         """
         Return a base folder with a read-only (immutable) local copy of the entire dataset
         download and copy / soft-link, files from all the parent dataset versions. The dataset needs to be finalized
@@ -904,8 +898,6 @@ class Dataset(object):
         :param raise_on_error: If True, raise exception if dataset merging failed on any file
         :param max_workers: Number of threads to be spawned when getting the dataset copy. Defaults
             to the number of logical cores.
-        :param max_workers_external_files: Number of threads to be spawned when downloading external files. Defaults
-            to not using threads.
 
         :return: A base folder for the entire dataset
         """
@@ -923,21 +915,13 @@ class Dataset(object):
             part=part,
             num_parts=num_parts,
             max_workers=max_workers,
-            max_workers_external_files=max_workers_external_files
         )
         return target_folder
 
     def get_mutable_local_copy(
-        self,
-        target_folder,
-        overwrite=False,
-        part=None,
-        num_parts=None,
-        raise_on_error=True,
-        max_workers=None,
-        max_workers_external_files=None
+        self, target_folder, overwrite=False, part=None, num_parts=None, raise_on_error=True, max_workers=None
     ):
-        # type: (Union[Path, _Path, str], bool, Optional[int], Optional[int], bool, Optional[int], Optional[int]) -> Optional[str]
+        # type: (Union[Path, _Path, str], bool, Optional[int], Optional[int], bool, Optional[int]) -> Optional[str]
         """
         return a base folder with a writable (mutable) local copy of the entire dataset
             download and copy / soft-link, files from all the parent dataset versions
@@ -959,8 +943,6 @@ class Dataset(object):
         :param raise_on_error: If True, raise exception if dataset merging failed on any file
         :param max_workers: Number of threads to be spawned when getting the dataset copy. Defaults
             to the number of logical cores.
-        :param max_workers_external_files: Number of threads to be spawned when downloading external files. Defaults
-            to not using threads.
 
         :return: The target folder containing the entire dataset
         """
@@ -980,7 +962,7 @@ class Dataset(object):
             shutil.rmtree(target_folder.as_posix())
 
         ro_folder = self.get_local_copy(
-            part=part, num_parts=num_parts, raise_on_error=raise_on_error, max_workers=max_workers, max_workers_external_files=max_workers_external_files
+            part=part, num_parts=num_parts, raise_on_error=raise_on_error, max_workers=max_workers
         )
         shutil.copytree(ro_folder, target_folder.as_posix(), symlinks=False)
         return target_folder.as_posix()
@@ -2181,10 +2163,9 @@ class Dataset(object):
         lock_target_folder=False,
         cleanup_target_folder=True,
         target_folder=None,
-        max_workers=None,
-        max_workers_external_files=None
+        max_workers=None
     ):
-        # type: (bool, Optional[List[int]], bool, bool, Optional[Path], Optional[int], Optional[int]) -> str
+        # type: (bool, Optional[List[int]], bool, bool, Optional[Path], Optional[int]) -> str
         """
         First, extracts the archive present on the ClearML server containing this dataset's files.
         Then, download the remote files. Note that if a remote file was added to the ClearML server, then
@@ -2201,8 +2182,6 @@ class Dataset(object):
         :param target_folder: If provided use the specified target folder, default, auto generate from Dataset ID.
         :param max_workers: Number of threads to be spawned when getting dataset files. Defaults
             to the number of virtual cores.
-        :param max_workers_external_files: Number of threads to be spawned when downloading external files. Defaults
-            to not using threads.
 
         :return: Path to the local storage where the data was downloaded
         """
@@ -2216,7 +2195,7 @@ class Dataset(object):
             max_workers=max_workers
         )
         self._download_external_files(
-            target_folder=target_folder, lock_target_folder=lock_target_folder,max_workers=max_workers_external_files
+            target_folder=target_folder, lock_target_folder=lock_target_folder, max_workers=max_workers
         )
         return local_folder
 
@@ -2279,7 +2258,7 @@ class Dataset(object):
                 LoggerRoot.get_base_logger().info(log_string)
             else:
                 link.size = Path(target_path).stat().st_size
-        if max_workers is None:
+        if max_workers is None or max_workers == 0:
             for relative_path, link in links.items():
                 target_path = os.path.join(target_folder, relative_path)
                 _download_link(link,target_path)
@@ -2288,10 +2267,10 @@ class Dataset(object):
                 for relative_path, link in links.items():
                     target_path = os.path.join(target_folder, relative_path)
                     pool.submit(_download_link,link,target_path)
-                
-        
-        
-            
+
+
+
+
 
     def _extract_dataset_archive(
             self,
@@ -2417,14 +2396,8 @@ class Dataset(object):
         numbers = sorted([int(a[prefix_len:]) for a in data_artifact_entries if a.startswith(prefix)])
         return '{}{:03d}'.format(prefix, numbers[-1]+1 if numbers else 1)
 
-    def _merge_datasets(self,
-                        use_soft_links=None,
-                        raise_on_error=True,
-                        part=None,
-                        num_parts=None,
-                        max_workers=None,
-                        max_workers_external_files=None):
-        # type: (bool, bool, Optional[int], Optional[int], Optional[int], Optional[int]) -> str
+    def _merge_datasets(self, use_soft_links=None, raise_on_error=True, part=None, num_parts=None, max_workers=None):
+        # type: (bool, bool, Optional[int], Optional[int], Optional[int]) -> str
         """
         download and copy / soft-link, files from all the parent dataset versions
         :param use_soft_links: If True use soft links, default False on windows True on Posix systems
@@ -2439,8 +2412,7 @@ class Dataset(object):
             part=0 -> chunks[0,5], part=1 -> chunks[1,6], part=2 -> chunks[2,7], part=3 -> chunks[3, ]
         :param max_workers: Number of threads to be spawned when merging datasets. Defaults to the number
             of logical cores.
-        :param max_workers_external_files: Number of threads to be spawned when downloading external files. Defaults
-            to not using threads.
+
         :return: the target folder
         """
         assert part is None or (isinstance(part, int) and part >= 0)
@@ -2485,8 +2457,7 @@ class Dataset(object):
                 selected_chunks=chunk_selection.get(self._id) if chunk_selection else None,
                 cleanup_target_folder=True,
                 target_folder=target_base_folder,
-                max_workers=max_workers,
-                max_workers_external_files=max_workers_external_files
+                max_workers=max_workers
             )
             dependencies_by_order.remove(self._id)
 
@@ -3031,10 +3002,9 @@ class Dataset(object):
             use_soft_links,
             raise_on_error,
             force,
-            max_workers=None,
-            max_workers_external_files=None
+            max_workers=None
     ):
-        # type: (Path, List[str], dict, bool, bool, bool, Optional[int], Optional[int]) -> ()
+        # type: (Path, List[str], dict, bool, bool, bool, Optional[int]) -> ()
         # create thread pool, for creating soft-links / copying
         max_workers = max_workers or psutil.cpu_count()
         pool = ThreadPool(max_workers)
@@ -3050,8 +3020,7 @@ class Dataset(object):
                 force=force,
                 lock_target_folder=True,
                 cleanup_target_folder=False,
-                max_workers=max_workers,
-                max_workers_external_files=max_workers_external_files
+                max_workers=max_workers
             ))
             ds_base_folder.touch()
 

@@ -2258,7 +2258,7 @@ class Dataset(object):
                 LoggerRoot.get_base_logger().info(log_string)
             else:
                 link.size = Path(target_path).stat().st_size
-        if max_workers is None or max_workers == 0:
+        if not max_workers:
             for relative_path, link in links.items():
                 target_path = os.path.join(target_folder, relative_path)
                 _download_link(link,target_path)

@@ -460,7 +460,7 @@ class Dataset(object):
         source_url_list = source_url if not isinstance(source_url, str) else [source_url]
         max_workers = max_workers or psutil.cpu_count()
         futures_ = []
-        if isinstance(dataset_path,str) or dataset_path is None:
+        if isinstance(dataset_path, str) or dataset_path is None:
             dataset_paths = itertools.repeat(dataset_path)
         else:
             if len(dataset_path) != len(source_url):

@@ -86,7 +86,8 @@ class Logger(object):
         if disable_urllib3_info and logging.getLogger('urllib3').isEnabledFor(logging.INFO):
             logging.getLogger('urllib3').setLevel(logging.WARNING)
 
-        StdStreamPatch.patch_std_streams(self, connect_stdout=connect_stdout, connect_stderr=connect_stderr)
+        if self._task.is_main_task():
+            StdStreamPatch.patch_std_streams(self, connect_stdout=connect_stdout, connect_stderr=connect_stderr)
 
         if self._connect_logging:
             StdStreamPatch.patch_logging_formatter(self)

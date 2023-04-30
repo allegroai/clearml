@@ -47,7 +47,10 @@ else:
     try:
         from requests.packages.urllib3.contrib import appengine as gaecontrib
     except ImportError:
-        from urllib3.contrib import appengine as gaecontrib
+        try:
+            from urllib3.contrib import appengine as gaecontrib
+        except ImportError:
+            gaecontrib = None
 
 if requests.__build__ < 0x021200:
     PyOpenSSLContext = None

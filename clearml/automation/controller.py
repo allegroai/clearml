@@ -4164,8 +4164,6 @@ class PipelineDecorator(PipelineController):
                     a_pipeline._task._set_runtime_properties(
                         dict(multi_pipeline_counter=str(cls._multi_pipeline_call_counter)))
 
-                a_pipeline._start(wait=False)
-
                 # sync arguments back (post deserialization and casting back)
                 for k in pipeline_kwargs.keys():
                     if k in a_pipeline.get_parameters():
@@ -4177,6 +4175,8 @@ class PipelineDecorator(PipelineController):
                     # rerun the pipeline on a remote machine
                     a_pipeline._task.execute_remotely(queue_name=pipeline_execution_queue)
                     # when we get here it means we are running remotely
+
+                a_pipeline._start(wait=False)
 
                 # this time the pipeline is executed only on the remote machine
                 try:

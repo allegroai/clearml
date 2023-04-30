@@ -1411,7 +1411,7 @@ class Task(_Task):
         :param object mutable: The experiment component to connect. The object must be one of the following types:
 
           - argparse - An argparse object for parameters.
-          - dict - A dictionary for parameters. Note: when :meth:`Task.connect` receives a dict, it supports only keys of type `str`
+          - dict - A dictionary for parameters. Note: the dict supports only keys of type `str`
           - TaskParameters - A TaskParameters object.
           - :class:`Model` - A model object for initial model warmup, or for model update/snapshot uploading. In practice the model should be either :class:`InputModel` or :class:`OutputModel`.
           - type - A Class type, storing all class properties (excluding '_' prefixed properties).

@@ -2882,34 +2882,37 @@ class Task(_Task):
 
         .. note::
             `Task.set_offline` can't move the same task from offline to online, nor can it be applied before `Task.create`.
-            See below an example of **incorect** usage of `Task.set_offline`:
-            .. code-block:: py
-                from clearml import Task
+            See below an example of **incorrect** usage of `Task.set_offline`:
 
-                Task.set_offline(True)
-                task = Task.create(project_name='DEBUG', task_name="offline")
-                # ^^^ an error or warning is emitted, telling us that `Task.set_offline(True)`
-                #     is supported only for `Task.init`
-                Task.set_offline(False)
-                # ^^^ an error or warning is emitted, telling us that running `Task.set_offline(False)`
-                #     while the current task is not closed is not something we support
+            ```
+            from clearml import Task
 
-                data = task.export_task()
+            Task.set_offline(True)
+            task = Task.create(project_name='DEBUG', task_name="offline")
+            # ^^^ an error or warning is raised, saying that Task.set_offline(True)
+            #     is supported only for `Task.init`
+            Task.set_offline(False)
+            # ^^^ an error or warning is raised, saying that running Task.set_offline(False)
+            #     while the current task is not closed is not supported
 
-                imported_task = Task.import_task(task_data=data)
+            data = task.export_task()
+
+            imported_task = Task.import_task(task_data=data)
+            ```
 
             The correct way to use `Task.set_offline` can be seen in the following example:
 
-            .. code-block:: py
-                from clearml import Task
+            ```
+            from clearml import Task
 
-                Task.set_offline(True)
-                task = Task.init(project_name='DEBUG', task_name="offline")
-                task.upload_artifact("large_artifact", "test_strign")
-                task.close()
-                Task.set_offline(False)
+            Task.set_offline(True)
+            task = Task.init(project_name='DEBUG', task_name="offline")
+            task.upload_artifact("large_artifact", "test_string")
+            task.close()
+            Task.set_offline(False)
 
-                imported_task = Task.import_offline_session(task.get_offline_mode_folder())
+            imported_task = Task.import_offline_session(task.get_offline_mode_folder())
+            ```
 
         :param offline_mode: If True, offline-mode is turned on, and no communication to the backend is enabled.
         :return:

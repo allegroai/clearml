@@ -2370,14 +2370,16 @@ class PipelineController(object):
         """
         jobs = []
         previous_status_map = {}
-        for name, node in self._nodes.items():
+        # copy to avoid race condition
+        nodes = self._nodes.copy()
+        for name, node in nodes.items():
             if not node.job:
                 continue
             # noinspection PyProtectedMember
             previous_status_map[name] = node.job._last_status
             jobs.append(node.job)
         BaseJob.update_status_batch(jobs)
-        for node in self._nodes.values():
+        for node in nodes.values():
             self._update_node_status(node)
 
     def _update_node_status(self, node):
@@ -2465,7 +2467,9 @@ class PipelineController(object):
         """
         if time() - self._last_progress_update_time < self._update_progress_interval:
             return
-        job_progress = [(node.job.task.get_progress() or 0) if node.job else 0 for node in self._nodes.values()]
+        # copy to avoid race condition
+        nodes = self._nodes.copy()
+        job_progress = [(node.job.task.get_progress() or 0) if node.job else 0 for node in nodes.values()]
         if len(job_progress):
             self._task.set_progress(int(sum(job_progress) / len(job_progress)))
         self._last_progress_update_time = time()

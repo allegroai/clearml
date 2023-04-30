@@ -1410,15 +1410,12 @@ class Task(_Task):
 
         :param object mutable: The experiment component to connect. The object must be one of the following types:
 
-            - argparse - An argparse object for parameters.
-            - dict - A dictionary for parameters.
-            - TaskParameters - A TaskParameters object.
-            - :class:`Model` - A model object for initial model warmup, or for model update/snapshot uploading. In practice the model should be either :class:`InputModel` or :class:`OutputModel`.
-            - type - A Class type, storing all class properties (excluding '_' prefixed properties).
-            - object - A class instance, storing all instance properties (excluding '_' prefixed properties).
-
-            .. note::
-                When :meth:`Task.connect` receives a dict, it supports only keys of type `str`
+          - argparse - An argparse object for parameters.
+          - dict - A dictionary for parameters. Note: only keys of type `str` are supported.
+          - TaskParameters - A TaskParameters object.
+          - :class:`Model` - A model object for initial model warmup, or for model update/snapshot uploading. In practice the model should be either :class:`InputModel` or :class:`OutputModel`.
+          - type - A Class type, storing all class properties (excluding '_' prefixed properties).
+          - object - A class instance, storing all instance properties (excluding '_' prefixed properties).
 
         :param str name: A section name associated with the connected object, if 'name' is None defaults to 'General'
             Currently, `name` is only supported for `dict` and `TaskParameter` objects, and should be omitted for the other supported types. (Optional)
@@ -2885,34 +2882,37 @@ class Task(_Task):
 
         .. note::
             `Task.set_offline` can't move the same task from offline to online, nor can it be applied before `Task.create`.
-            See below an example of **incorect** usage of `Task.set_offline`:
-            .. code-block:: py
-                from clearml import Task
+            See below an example of **incorrect** usage of `Task.set_offline`:
 
-                Task.set_offline(True)
-                task = Task.create(project_name='DEBUG', task_name="offline")
-                # ^^^ an error or warning is emitted, telling us that `Task.set_offline(True)`
-                #     is supported only for `Task.init`
-                Task.set_offline(False)
-                # ^^^ an error or warning is emitted, telling us that running `Task.set_offline(False)`
-                #     while the current task is not closed is not something we support
+            ```
+            from clearml import Task
 
-                data = task.export_task()
+            Task.set_offline(True)
+            task = Task.create(project_name='DEBUG', task_name="offline")
+            # ^^^ an error or warning is raised, saying that Task.set_offline(True)
+            #     is supported only for `Task.init`
+            Task.set_offline(False)
+            # ^^^ an error or warning is raised, saying that running Task.set_offline(False)
+            #     while the current task is not closed is not supported
 
-                imported_task = Task.import_task(task_data=data)
+            data = task.export_task()
+
+            imported_task = Task.import_task(task_data=data)
+            ```
 
             The correct way to use `Task.set_offline` can be seen in the following example:
 
-            .. code-block:: py
-                from clearml import Task
+            ```
+            from clearml import Task
 
-                Task.set_offline(True)
-                task = Task.init(project_name='DEBUG', task_name="offline")
-                task.upload_artifact("large_artifact", "test_strign")
-                task.close()
-                Task.set_offline(False)
+            Task.set_offline(True)
+            task = Task.init(project_name='DEBUG', task_name="offline")
+            task.upload_artifact("large_artifact", "test_string")
+            task.close()
+            Task.set_offline(False)
 
-                imported_task = Task.import_offline_session(task.get_offline_mode_folder())
+            imported_task = Task.import_offline_session(task.get_offline_mode_folder())
+            ```
 
         :param offline_mode: If True, offline-mode is turned on, and no communication to the backend is enabled.
         :return:

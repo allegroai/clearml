@@ -303,153 +303,134 @@ class Task(_Task):
 
         :param tags: Add a list of tags (str) to the created Task. For example: tags=['512x512', 'yolov3']
         :param bool reuse_last_task_id: Force a new Task (experiment) with a previously used Task ID,
-            and the same project and Task name.
+            and the same project and Task name. If the previously executed Task has artifacts or models, it will not be
+            reused (overwritten), and a new Task will be created. When a Task is reused, the previous execution outputs
+            are deleted, including console outputs and logs. The values are:
 
-            .. note::
-               If the previously executed Task has artifacts or models, it will not be reused (overwritten)
-               and a new Task will be created.
-               When a Task is reused, the previous execution outputs are deleted, including console outputs and logs.
+          - ``True`` - Reuse the last  Task ID. (default)
+          - ``False`` - Force a new Task (experiment).
+          - A string - You can also specify a Task ID (string) to be reused, instead of the cached ID based on the project/name combination.
 
+        :param bool continue_last_task: Continue the execution of a previously executed Task (experiment). When
+            continuing the executing of a previously executed Task,
+            all previous artifacts / models / logs remain intact.
+            New logs will continue iteration/step based on the previous-execution maximum iteration value.
+            For example, The last train/loss scalar reported was iteration 100, the next report will be iteration 101.
             The values are:
 
-            - ``True`` - Reuse the last  Task ID. (default)
-            - ``False`` - Force a new Task (experiment).
-            - A string - You can also specify a Task ID (string) to be reused, instead of the cached ID based on the project/name combination.
+          - ``True`` - Continue the last Task ID. Specified explicitly by reuse_last_task_id or implicitly with the same logic as reuse_last_task_id
+          - ``False`` - Overwrite the execution of previous Task  (default).
+          - A string - You can also specify a Task ID (string) to be continued. This is equivalent to `continue_last_task=True` and `reuse_last_task_id=a_task_id_string`.
+          - An integer - Specify initial iteration offset (override the auto automatic last_iteration_offset). Pass 0, to disable the automatic last_iteration_offset or specify a different initial offset. You can specify a Task ID to be used with `reuse_last_task_id='task_id_here'`
 
-        :param bool continue_last_task: Continue the execution of a previously executed Task (experiment)
-
-            .. note::
-                When continuing the executing of a previously executed Task,
-                all previous artifacts / models/ logs are intact.
-                New logs will continue iteration/step based on the previous-execution maximum iteration value.
-                For example:
-                The last train/loss scalar reported was iteration 100, the next report will be iteration 101.
-
-            The values are:
-
-            - ``True`` - Continue the last Task ID. Specified explicitly by reuse_last_task_id or implicitly with the same logic as reuse_last_task_id
-            - ``False`` - Overwrite the execution of previous Task  (default).
-            - A string - You can also specify a Task ID (string) to be continued. This is equivalent to `continue_last_task=True` and `reuse_last_task_id=a_task_id_string`.
-            - An integer - Specify initial iteration offset (override the auto automatic last_iteration_offset). Pass 0, to disable the automatic last_iteration_offset or specify a different initial offset. You can specify a Task ID to be used with `reuse_last_task_id='task_id_here'`
-
-        :param str output_uri: The default location for output models and other artifacts.
-            If True, the default files_server will be used for model storage.
-            In the default location, ClearML creates a subfolder for the output.
-            The subfolder structure is the following:
-            <output destination name> / <project name> / <task name>.<Task ID>
+        :param str output_uri: The default location for output models and other artifacts. If True, the default
+            files_server will be used for model storage. In the default location, ClearML creates a subfolder for the
+            output. The subfolder structure is the following: `<output destination name> / <project name> / <task name>.<Task ID>`.
+            Note that for cloud storage, you must install the **ClearML** package for your cloud storage type,
+            and then configure your storage credentials. For detailed information, see "Storage" in the ClearML
+            Documentation.
             The following are examples of ``output_uri`` values for the supported locations:
 
-            - A shared folder: ``/mnt/share/folder``
-            - S3: ``s3://bucket/folder``
-            - Google Cloud Storage: ``gs://bucket-name/folder``
-            - Azure Storage: ``azure://company.blob.core.windows.net/folder/``
-            - Default file server: True
-
-            .. important::
-
-               For cloud storage, you must install the **ClearML** package for your cloud storage type,
-               and then configure your storage credentials. For detailed information, see
-               `ClearML Python Client Extras <./references/clearml_extras_storage/>`_ in the "ClearML Python Client
-               Reference" section.
+          - A shared folder: ``/mnt/share/folder``
+          - S3: ``s3://bucket/folder``
+          - Google Cloud Storage: ``gs://bucket-name/folder``
+          - Azure Storage: ``azure://company.blob.core.windows.net/folder/``
+          - Default file server: True
 
         :param auto_connect_arg_parser: Automatically connect an argparse object to the Task. Supported argument
-            parser packages are: argparse, click, python-fire, jsonargparse.
+            parser packages are: argparse, click, python-fire, jsonargparse. The values are:
 
-            The values are:
+          - ``True`` - Automatically connect. (default)
+          - ``False`` - Do not automatically connect.
+          - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
+              arguments. The dictionary keys are argparse variable names and the values are booleans.
+              The ``False`` value excludes the specified argument from the Task's parameter section.
+              Keys missing from the dictionary default to ``True``, you can change it to be ``False`` by adding
+              ``*`` key as ``False`` to the dictionary.
+              An empty dictionary defaults to ``False``.
 
-            - ``True`` - Automatically connect. (default)
-            - ``False`` - Do not automatically connect.
-            - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
-                arguments. The dictionary keys are argparse variable names and the values are booleans.
-                The ``False`` value excludes the specified argument from the Task's parameter section.
-                Keys missing from the dictionary default to ``True``, you can change it to be ``False`` by adding
-                ``*`` key as ``False`` to the dictionary.
-                An empty dictionary defaults to ``False``.
+              For example:
 
-            For example:
+              .. code-block:: py
 
-            .. code-block:: py
+                 auto_connect_arg_parser={"do_not_include_me": False, }
 
-               auto_connect_arg_parser={"do_not_include_me": False, }
+              .. code-block:: py
 
-            .. code-block:: py
+                 auto_connect_arg_parser={"only_include_me": True, "*": False}
 
-               auto_connect_arg_parser={"only_include_me": True, "*": False}
-
-            .. note::
+              .. note::
                To manually connect an argparse, use :meth:`Task.connect`.
 
         :param auto_connect_frameworks: Automatically connect frameworks This includes patching MatplotLib, XGBoost,
             scikit-learn, Keras callbacks, and TensorBoard/X to serialize plots, graphs, and the model location to
             the **ClearML Server** (backend), in addition to original output destination.
-
             The values are:
 
-            - ``True`` - Automatically connect (default)
-            - ``False`` - Do not automatically connect
-            - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
-                frameworks. The dictionary keys are frameworks and the values are booleans, other dictionaries used for
-                finer control or wildcard strings.
-                In case of wildcard strings, the local path of a model file has to match at least one wildcard to be
-                saved/loaded by ClearML. Example: {'pytorch' : '*.pt', 'tensorflow': ['*.h5', '*']}
-                Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
-                Supported keys for finer control: {'tensorboard': {'report_hparams': bool}}  # whether to report TensorBoard hyperparameters
+          - ``True`` - Automatically connect (default)
+          - ``False`` - Do not automatically connect
+          - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of connected
+              frameworks. The dictionary keys are frameworks and the values are booleans, other dictionaries used for
+              finer control or wildcard strings.
+              In case of wildcard strings, the local path of a model file has to match at least one wildcard to be
+              saved/loaded by ClearML. Example: {'pytorch' : '*.pt', 'tensorflow': ['*.h5', '*']}
+              Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
+              Supported keys for finer control: {'tensorboard': {'report_hparams': bool}}  # whether to report TensorBoard hyperparameters
 
-            For example:
+              For example:
 
-            .. code-block:: py
+              .. code-block:: py
 
-               auto_connect_frameworks={
-                   'matplotlib': True, 'tensorflow': ['*.hdf5, 'something_else*], 'tensorboard': True,
-                   'pytorch': ['*.pt'], 'xgboost': True, 'scikit': True, 'fastai': True,
-                   'lightgbm': True, 'hydra': True, 'detect_repository': True, 'tfdefines': True,
-                   'joblib': True, 'megengine': True, 'catboost': True, 'gradio': True
-               }
+                 auto_connect_frameworks={
+                     'matplotlib': True, 'tensorflow': ['*.hdf5, 'something_else*], 'tensorboard': True,
+                     'pytorch': ['*.pt'], 'xgboost': True, 'scikit': True, 'fastai': True,
+                     'lightgbm': True, 'hydra': True, 'detect_repository': True, 'tfdefines': True,
+                     'joblib': True, 'megengine': True, 'catboost': True, 'gradio': True
+                 }
 
-            .. code-block:: py
+              .. code-block:: py
 
-                auto_connect_frameworks={'tensorboard': {'report_hparams': False}}
+                  auto_connect_frameworks={'tensorboard': {'report_hparams': False}}
 
         :param bool auto_resource_monitoring: Automatically create machine resource monitoring plots
             These plots appear in the **ClearML Web-App (UI)**, **RESULTS** tab, **SCALARS** sub-tab,
-            with a title of **:resource monitor:**. The values are:
+            with a title of **:resource monitor:**.
+            The values are:
 
-            - ``True`` - Automatically create resource monitoring plots. (default)
-            - ``False`` - Do not automatically create.
-            - Class Type - Create ResourceMonitor object of the specified class type.
+          - ``True`` - Automatically create resource monitoring plots. (default)
+          - ``False`` - Do not automatically create.
+          - Class Type - Create ResourceMonitor object of the specified class type.
 
-        :param auto_connect_streams: Control the automatic logging of stdout and stderr. The values are:
+        :param auto_connect_streams: Control the automatic logging of stdout and stderr.
+            The values are:
 
-            - ``True`` - Automatically connect (default)
-            -  ``False`` - Do not automatically connect
-            - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of stdout and
-                stderr. The dictionary keys are 'stdout' , 'stderr' and 'logging', the values are booleans.
-                Keys missing from the dictionary default to ``False``, and an empty dictionary defaults to ``False``.
-                Notice, the default behaviour is logging stdout/stderr. The `logging` module is logged as a by product
-                of the stderr logging
+          - ``True`` - Automatically connect (default)
+          -  ``False`` - Do not automatically connect
+          - A dictionary - In addition to a boolean, you can use a dictionary for fined grained control of stdout and
+              stderr. The dictionary keys are 'stdout' , 'stderr' and 'logging', the values are booleans.
+              Keys missing from the dictionary default to ``False``, and an empty dictionary defaults to ``False``.
+              Notice, the default behaviour is logging stdout/stderr. The `logging` module is logged as a by product
+              of the stderr logging
 
-            For example:
+              For example:
 
-            .. code-block:: py
+              .. code-block:: py
 
-               auto_connect_streams={'stdout': True, 'stderr': True, 'logging': False}
+                 auto_connect_streams={'stdout': True, 'stderr': True, 'logging': False}
 
         :param deferred_init: (default: False) Wait for Task to be fully initialized (regular behaviour).
-
-            ** BETA feature! use with care **
+            ** BETA feature! use with care **.
 
             If set to True, `Task.init` function returns immediately and all initialization / communication
             to the clearml-server is running in a background thread. The returned object is
             a full proxy to the regular Task object, hence everything will be working as expected.
-            Default behaviour can be controlled with: ``CLEARML_DEFERRED_TASK_INIT=1``
+            Default behaviour can be controlled with: ``CLEARML_DEFERRED_TASK_INIT=1``. Notes:
 
-            Notes:
-
-            - Any access to the returned proxy `Task` object will essentially wait for the `Task.init`
-                to be completed. For example: `print(task.name)` will wait for `Task.init` to complete in the
-                background and then return the `name` property of the task original object
-            - Before `Task.init` completes in the background, auto-magic logging (console/metric) might be missed
-            - If running via an agent, this argument is ignored, and Task init is called synchronously (default)
+          - Any access to the returned proxy `Task` object will essentially wait for the `Task.init` to be completed.
+              For example: `print(task.name)` will wait for `Task.init` to complete in the
+              background and then return the `name` property of the task original object
+          - Before `Task.init` completes in the background, auto-magic logging (console/metric) might be missed
+          - If running via an agent, this argument is ignored, and Task init is called synchronously (default)
 
         :return: The main execution Task (Task context)
         :rtype: Task
@@ -807,7 +788,7 @@ class Task(_Task):
         """
         Manually create and populate a new Task (experiment) in the system.
         If the code does not already contain a call to ``Task.init``, pass add_task_init_call=True,
-        and the code will be patched in remote execution (i.e. when executed by `clearml-agent`
+        and the code will be patched in remote execution (i.e. when executed by `clearml-agent`)
 
         .. note::
            This method **always** creates a new Task.
@@ -974,15 +955,15 @@ class Task(_Task):
         :param dict task_filter: filter and order Tasks.
             See :class:`.backend_api.service.v?.tasks.GetAllRequest` for details; the ? needs to be replaced by the appropriate version.
 
-            - ``parent`` - (str) filter by parent task-id matching
-            - ``search_text`` - (str) free text search (in task fields comment/name/id)
-            - ``status`` - List[str] List of valid statuses. Options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed", "failed", "completed", "unknown"
-            - ``type`` - List[str] List of valid task type. Options are: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc'. 'custom'
-            - ``user`` - List[str] Filter based on Task's user owner, provide list of valid user IDs.
-            - ``order_by`` - List[str] List of field names to order by. When ``search_text`` is used. Use '-' prefix to specify descending order. Optional, recommended when using page. Example: ``order_by=['-last_update']``
-            - ``_all_`` - dict(fields=[], pattern='')  Match string `pattern` (regular expression) appearing in All `fields`. Example: dict(fields=['script.repository'], pattern='github.com/user')
-            - ``_any_`` - dict(fields=[], pattern='')  Match string `pattern` (regular expression) appearing in Any of the `fields`. Example: dict(fields=['comment', 'name'], pattern='my comment')
-            - Examples - ``{'status': ['stopped'], 'order_by': ["-last_update"]}`` , ``{'order_by'=['-last_update'], '_all_'=dict(fields=['script.repository'], pattern='github.com/user'))``
+          - ``parent`` - (str) filter by parent task-id matching
+          - ``search_text`` - (str) free text search (in task fields comment/name/id)
+          - ``status`` - List[str] List of valid statuses. Options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed", "failed", "completed", "unknown"
+          - ``type`` - List[str] List of valid task types. Options are: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc'. 'custom'
+          - ``user`` - List[str] Filter based on Task's user owner, provide list of valid user IDs.
+          - ``order_by`` - List[str] List of field names to order by. When ``search_text`` is used. Use '-' prefix to specify descending order. Optional, recommended when using page. Example: ``order_by=['-last_update']``
+          - ``_all_`` - dict(fields=[], pattern='')  Match string `pattern` (regular expression) appearing in All `fields`. Example: dict(fields=['script.repository'], pattern='github.com/user')
+          - ``_any_`` - dict(fields=[], pattern='')  Match string `pattern` (regular expression) appearing in Any of the `fields`. Example: dict(fields=['comment', 'name'], pattern='my comment')
+          - Examples - ``{'status': ['stopped'], 'order_by': ["-last_update"]}`` , ``{'order_by'=['-last_update'], '_all_'=dict(fields=['script.repository'], pattern='github.com/user'))``
 
         :return: The Tasks specified by the parameter combinations (see the parameters).
         :rtype: List[Task]
@@ -1016,8 +997,8 @@ class Task(_Task):
             ``project_name`` (or all projects if ``project_name`` is ``None``).
             This method supports regular expressions for name matching. (Optional)
         :param str project_name: project name (str) the task belongs to (use None for all projects)
-        :param str task_name: task name (str) in within the selected project
-            Return any partial match of task_name, regular expressions matching is also supported
+        :param str task_name: task name (str) within the selected project
+            Return any partial match of task_name, regular expressions matching is also supported.
             If None is passed, returns all tasks within the project
         :param list tags: Filter based on the requested list of tags (strings)
             To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
@@ -1032,15 +1013,15 @@ class Task(_Task):
         :param dict task_filter: filter and order Tasks.
             See :class:`.backend_api.service.v?.tasks.GetAllRequest` for details; the ? needs to be replaced by the appropriate version.
 
-            - ``parent`` - (str) filter by parent task-id matching
-            - ``search_text`` - (str) free text search (in task fields comment/name/id)
-            - ``status`` - List[str] List of valid statuses. Options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed", "failed", "completed", "unknown"
-            - ``type`` - List[Union[str, TaskTypes]] List of valid task type. Ooptions are: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc'. 'custom'
-            - ``user`` - List[str] Filter based on Task's user owner, provide list of valid user IDs.
-            - ``order_by`` - List[str] List of field names to order by. When search_text is used. Use '-' prefix to specify descending order. Optional, recommended when using page. Example: ``order_by=['-last_update']``
-            - ``_all_`` - dict(fields=[], pattern='')  Match string ``pattern`` (regular expression) appearing in All `fields`. ``dict(fields=['script.repository'], pattern='github.com/user')``
-            - ``_any_`` - dict(fields=[], pattern='')  Match string `pattern` (regular expression) appearing in Any of the `fields`. `dict(fields=['comment', 'name'], pattern='my comment')`
-            - Examples: ``{'status': ['stopped'], 'order_by': ["-last_update"]}``, ``{'order_by'=['-last_update'], '_all_'=dict(fields=['script.repository'], pattern='github.com/user')}``
+          - ``parent`` - (str) filter by parent task-id matching
+          - ``search_text`` - (str) free text search (in task fields comment/name/id)
+          - ``status`` - List[str] List of valid statuses. Options are: "created", "queued", "in_progress", "stopped", "published", "publishing", "closed", "failed", "completed", "unknown"
+          - ``type`` - List[Union[str, TaskTypes]] List of valid task types. Options are: 'training', 'testing', 'inference', 'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc'. 'custom'
+          - ``user`` - List[str] Filter based on Task's user owner, provide list of valid user IDs.
+          - ``order_by`` - List[str] List of field names to order by. When search_text is used. Use '-' prefix to specify descending order. Optional, recommended when using page. Example: ``order_by=['-last_update']``
+          - ``_all_`` - dict(fields=[], pattern='')  Match string ``pattern`` (regular expression) appearing in All `fields`. ``dict(fields=['script.repository'], pattern='github.com/user')``
+          - ``_any_`` - dict(fields=[], pattern='')  Match string `pattern` (regular expression) appearing in Any of the `fields`. `dict(fields=['comment', 'name'], pattern='my comment')`
+          - Examples: ``{'status': ['stopped'], 'order_by': ["-last_update"]}``, ``{'order_by'=['-last_update'], '_all_'=dict(fields=['script.repository'], pattern='github.com/user')}``
 
         :return: The Tasks specified by the parameter combinations (see the parameters).
         """
@@ -1228,8 +1209,7 @@ class Task(_Task):
 
         .. note::
            A worker daemon must be listening at the queue for the worker to fetch the Task and execute it,
-           see `Use Case Examples <../clearml_agent_ref/#use-case-examples>`_ on the "ClearML Agent
-           Reference page.
+           see `ClearML Agent <../clearml_agent>`_ in the ClearML Documentation.
 
         :param Task/str task: The Task to enqueue. Specify a Task object or  Task ID.
         :param str queue_name: The name of the queue. If not specified, then ``queue_id`` must be specified.
@@ -1391,7 +1371,7 @@ class Task(_Task):
         # type: (Union[Sequence[str], str]) -> None
         """
         Add Tags to this task. Old tags are not deleted. When executing a Task (experiment) remotely,
-        this method has no effect).
+        this method has no effect.
 
         :param tags: A list of tags which describe the Task to add.
         """
@@ -1420,8 +1400,8 @@ class Task(_Task):
         :param str name: A section name associated with the connected object, if 'name' is None defaults to 'General'
             Currently, `name` is only supported for `dict` and `TaskParameter` objects, and should be omitted for the other supported types. (Optional)
 
-            For example, by setting `name='General'` the connected dictionary will be under the General section in the hyper-parameters section.
-            While by setting `name='Train'` the connected dictionary will be under the Train section in the hyper-parameters section.
+            For example, by setting `name='General'` the connected dictionary will be under the General section in the hyperparameters section.
+            While by setting `name='Train'` the connected dictionary will be under the Train section in the hyperparameters section.
 
         :return: It will return the same object that was passed as the `mutable` argument to the method, except if the type of the object is dict.
                  For dicts the :meth:`Task.connect` will return the dict decorated as a `ProxyDictPostWrite`.
@@ -1927,15 +1907,14 @@ class Task(_Task):
             before continuing.
 
         :param str extension_name: File extension which indicates the format the artifact should be stored as.
-            The following are supported, depending on the artifact type
-            (default value applies when extension_name is None):
+            The following are supported, depending on the artifact type (default value applies when extension_name is None):
 
-            - Any - ``.pkl`` if passed supersedes any other serialization type, and always pickles the object
-            - dict - ``.json``, ``.yaml`` (default ``.json``)
-            - pandas.DataFrame - ``.csv.gz``, ``.parquet``, ``.feather``, ``.pickle`` (default ``.csv.gz``)
-            - numpy.ndarray - ``.npz``, ``.csv.gz`` (default ``.npz``)
-            - PIL.Image - whatever extensions PIL supports (default ``.png``)
-            - In case the ``serialization_function`` argument is set - any extension is supported
+          - Any - ``.pkl`` if passed supersedes any other serialization type, and always pickles the object
+          - dict - ``.json``, ``.yaml`` (default ``.json``)
+          - pandas.DataFrame - ``.csv.gz``, ``.parquet``, ``.feather``, ``.pickle`` (default ``.csv.gz``)
+          - numpy.ndarray - ``.npz``, ``.csv.gz`` (default ``.npz``)
+          - PIL.Image - whatever extensions PIL supports (default ``.png``)
+          - In case the ``serialization_function`` argument is set - any extension is supported
 
         :param Callable[Any, Union[bytes, bytearray]] serialization_function: A serialization function that takes one
             parameter of any type which is the object to be serialized. The function should return
@@ -1948,8 +1927,8 @@ class Task(_Task):
 
         :return: The status of the upload.
 
-        - ``True`` - Upload succeeded.
-        - ``False`` - Upload failed.
+            - ``True`` - Upload succeeded.
+            - ``False`` - Upload failed.
 
         :raise: If the artifact object type is not supported, raise a ``ValueError``.
         """
@@ -1985,13 +1964,13 @@ class Task(_Task):
         :param str title: Debug sample's title, also called metric in the UI
         :param str series: Debug sample's series,
             corresponding to debug sample's file name in the UI, also known as variant
-        :param int n_last_iterations: How many debug samples iterations to fetch in reverse chronological order.
+        :param int n_last_iterations: How many debug sample iterations to fetch in reverse chronological order.
             Leave empty to get all debug samples.
 
         :raise: TypeError if `n_last_iterations` is explicitly set to anything other than a positive integer value
 
         :return: A list of `dict`s, each dictionary containing the debug sample's URL and other metadata.
-            The URLs can be passed to :meth:`StorageManager.get_local_copy` to fetch local copies of debug samples.
+            The URLs can be passed to StorageManager.get_local_copy to fetch local copies of debug samples.
         """
         from .config.defs import MAX_SERIES_PER_METRIC
 
@@ -2419,7 +2398,7 @@ class Task(_Task):
         """
         Delete hyperparameters for this task.
 
-        :param iterables: Hyper parameter key iterables. Each an iterable whose possible values each represent
+        :param iterables: Hyperparameter key iterables. Each an iterable whose possible values each represent
             a hyperparameter entry to delete, value formats are:
 
             * A dictionary containing a 'section' and 'name' fields

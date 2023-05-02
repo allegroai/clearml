@@ -2088,8 +2088,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Get the Task's configuration object section as a blob of text
         Use only for automation (externally), otherwise use `Task.connect_configuration`.
 
-        :return: The Task's configurations as a
-        dict (config name as key) and text blob as value (unconstrained text string)
+        :return: The Task's configurations as a dict (config name as key) and text blob as value (unconstrained text
+            string)
         """
         if not Session.check_min_api_version('2.9'):
             raise ValueError(
@@ -2269,8 +2269,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Notice: Must be called before `Task.init` !
 
         :param force: Set force using `pip freeze` flag on/off
-        :param requirements_file: Optional pass requirements.txt file to use
-        (instead of `pip freeze` or automatic analysis)
+        :param requirements_file: Optional pass requirements.txt file to use (instead of `pip freeze` or automatic
+            analysis)
         """
         cls._force_use_pip_freeze = requirements_file if requirements_file else bool(force)
 

@@ -98,6 +98,7 @@ class PipelineController(object):
         monitor_metrics = attrib(type=list, default=None)  # List of metric title/series to monitor
         monitor_artifacts = attrib(type=list, default=None)  # List of artifact names to monitor
         monitor_models = attrib(type=list, default=None)  # List of models to monitor
+        explicit_docker_image = attrib(type=str, default=None)  # The Docker image the node uses, specified at creation
 
         def __attrs_post_init__(self):
             if self.parents is None:
@@ -2043,6 +2044,7 @@ class PipelineController(object):
             monitor_metrics=monitor_metrics,
             monitor_models=monitor_models,
             job_code_section=job_code_section,
+            explicit_docker_image=docker
         )
         self._retries[name] = 0
         self._retries_callbacks[name] = retry_on_failure if callable(retry_on_failure) else \
@@ -2096,10 +2098,12 @@ class PipelineController(object):
         task_overrides = self._parse_task_overrides(node.task_overrides) if node.task_overrides else None
 
         extra_args = dict()
-        extra_args['project'] = self._get_target_project(return_project_id=True) or None
+        extra_args["project"] = self._get_target_project(return_project_id=True) or None
         # set Task name to match job name
         if self._pipeline_as_sub_project:
-            extra_args['name'] = node.name
+            extra_args["name"] = node.name
+        if node.explicit_docker_image:
+            extra_args["explicit_docker_image"] = node.explicit_docker_image
 
         skip_node = None
         if self._pre_step_callbacks.get(node.name):

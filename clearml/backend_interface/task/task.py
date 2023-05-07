@@ -684,7 +684,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         This is in contrast to :meth:`Task.close`, which does the first two steps, but does not terminate any Python process.
 
         Let's say that process A created the task and process B has a handle on the task, e.g., with :meth:`Task.get_task`.
-        Then, if we call :meth:`Task.mark_completed`, the process A is terminated, but process B is not.
+        Then, if we call :meth:`Task.mark_completed`, process A is terminated, but process B is not.
 
         However, if :meth:`Task.mark_completed` was called from the same process in which the task was created,
         then - effectively - the process terminates itself.
@@ -1135,7 +1135,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Notice the parameter dict is flat:
         i.e. {'Args/param': 'value'} will set the argument "param" in section "Args" to "value"
 
-        :param args: Positional arguments, which are one or more dictionary or (key, value) iterable. They are
+        :param args: Positional arguments, which are one or more dictionaries or (key, value) iterable. They are
             merged into a single key-value pair dictionary.
         :param kwargs: Key-value pairs, merged into the parameters dictionary created from ``args``.
         """
@@ -1147,7 +1147,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Set the parameters for a Task. This method sets a complete group of key-value parameter pairs, but does not
         support parameter descriptions (the input is a dictionary of key-value pairs).
 
-        :param args: Positional arguments, which are one or more dictionary or (key, value) iterable. They are
+        :param args: Positional arguments, which are one or more dictionaries or (key, value) iterable. They are
             merged into a single key-value pair dictionary.
         :param kwargs: Key-value pairs, merged into the parameters dictionary created from ``args``.
         """
@@ -1362,7 +1362,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Notice the parameter dict is flat:
         i.e. {'Args/param': 'value'} will set the argument "param" in section "Args" to "value"
 
-        :param args: Positional arguments, which are one or more dictionary or (key, value) iterable. They are
+        :param args: Positional arguments, which are one or more dictionaries or (key, value) iterable. They are
             merged into a single key-value pair dictionary.
         :param kwargs: Key-value pairs, merged into the parameters dictionary created from ``args``.
         """
@@ -1551,7 +1551,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param list artifact_names: list of artifact names
         :param bool raise_on_errors: if True, do not suppress connectivity related exceptions
         :param bool delete_from_storage: If True, try to delete the actual
-        file from the external storage (e.g. S3, GS, Azure, File Server etc.)
+            file from the external storage (e.g. S3, GS, Azure, File Server etc.)
 
         :return: True if successful
         """

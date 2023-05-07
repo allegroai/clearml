@@ -1173,9 +1173,8 @@ class Task(_Task):
         :param str comment: A comment / description for the new cloned Task. (Optional)
         :param str parent: The ID of the parent Task of the new Task.
 
-            - If ``parent`` is not specified, then ``parent`` is set to ``source_task.parent``.
-            - If ``parent`` is not specified and ``source_task.parent`` is not available, then
-              ``parent`` set to ``source_task``.
+          - If ``parent`` is not specified, then ``parent`` is set to ``source_task.parent``.
+          - If ``parent`` is not specified and ``source_task.parent`` is not available, then ``parent`` set to ``source_task``.
 
         :param str project: The ID of the project in which to create the new Task.
             If ``None``, the new task inherits the original Task's project. (Optional)
@@ -1456,9 +1455,9 @@ class Task(_Task):
         :param configuration: The configuration. This is usually the configuration used in the model training process.
             Specify one of the following:
 
-            - A dictionary/list - A dictionary containing the configuration. ClearML stores the configuration in
+          - A dictionary/list - A dictionary containing the configuration. ClearML stores the configuration in
               the **ClearML Server** (backend), in a HOCON format (JSON-like format) which is editable.
-            - A ``pathlib2.Path`` string - A path to the configuration file. ClearML stores the content of the file.
+          - A ``pathlib2.Path`` string - A path to the configuration file. ClearML stores the content of the file.
               A local path must be relative path. When executing a Task remotely in a worker, the contents brought
               from the **ClearML Server** (backend) overwrites the contents of the file.
 
@@ -2506,20 +2505,15 @@ class Task(_Task):
         :param queue_name: The queue name used for enqueueing the task. If ``None``, this call exits the process
             without enqueuing the task.
         :param clone: Clone the Task and execute the newly cloned Task
-
             The values are:
 
-            - ``True`` - A cloned copy of the Task will be created, and enqueued, instead of this Task.
-            - ``False`` - The Task will be enqueued.
+          - ``True`` - A cloned copy of the Task will be created, and enqueued, instead of this Task.
+          - ``False`` - The Task will be enqueued.
 
-        :param exit_process: The function call will leave the calling process at the end
+        :param exit_process: The function call will leave the calling process at the end.
 
-            - ``True`` - Exit the process (exit(0)).
-            - ``False`` - Do not exit the process.
-
-            .. warning::
-
-                If ``clone==False``, then ``exit_process`` must be ``True``.
+          - ``True`` - Exit the process (exit(0)). Note: if ``clone==False``, then ``exit_process`` must be ``True``.
+          - ``False`` - Do not exit the process.
 
         :return Task: return the task object of the newly generated remotely executing task
         """
@@ -2589,7 +2583,7 @@ class Task(_Task):
         """
         Create a new task, and call ``func`` with the specified kwargs.
         One can think of this call as remote forking, where the newly created instance is the new Task
-        calling the specified func with the appropriate kwargs and leave once the func terminates.
+        calling the specified func with the appropriate kwargs and leaving once the func terminates.
         Notice that a remote executed function cannot create another child remote executed function.
 
         .. note::

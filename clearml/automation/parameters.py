@@ -110,7 +110,7 @@ class Parameter(RandomSeed):
 
 class UniformParameterRange(Parameter):
     """
-    Uniform randomly sampled hyper-parameter object.
+    Uniform randomly sampled hyperparameter object.
     """
 
     def __init__(
@@ -129,12 +129,11 @@ class UniformParameterRange(Parameter):
         :param float min_value: The minimum sample to use for uniform random sampling.
         :param float max_value: The maximum sample to use for uniform random sampling.
         :param float step_size: If not ``None``, set step size (quantization) for value sampling.
-        :param bool include_max_value: Range includes the ``max_value``
-
+        :param bool include_max_value: Range includes the ``max_value``.
             The values are:
 
-            - ``True`` - The range includes the ``max_value`` (Default)
-            - ``False`` -  Does not include.
+          - ``True`` - The range includes the ``max_value`` (Default)
+          - ``False`` -  Does not include.
 
         """
         super(UniformParameterRange, self).__init__(name=name)
@@ -221,7 +220,7 @@ class LogUniformParameterRange(UniformParameterRange):
 
 class UniformIntegerParameterRange(Parameter):
     """
-    Uniform randomly sampled integer Hyper-Parameter object.
+    Uniform randomly sampled integer Hyperparameter object.
     """
 
     def __init__(self, name, min_value, max_value, step_size=1, include_max_value=True):
@@ -233,12 +232,11 @@ class UniformIntegerParameterRange(Parameter):
         :param int min_value: The minimum sample to use for uniform random sampling.
         :param int max_value: The maximum sample to use for uniform random sampling.
         :param int step_size: The default step size is ``1``.
-        :param bool include_max_value: Range includes the ``max_value``
-
+        :param bool include_max_value: Range includes the ``max_value``.
             The values are:
 
-            - ``True`` - Includes the ``max_value`` (Default)
-            - ``False`` - Does not include.
+          - ``True`` - Includes the ``max_value`` (Default)
+          - ``False`` - Does not include.
 
         """
         super(UniformIntegerParameterRange, self).__init__(name=name)

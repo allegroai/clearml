@@ -309,6 +309,7 @@ class Dataset(object):
         # type: () -> Mapping[str, LinkEntry]
         """
         Notice this call returns an internal representation, do not modify!
+
         :return: dict with relative file path as key, and LinkEntry as value
         """
         return self._dataset_link_entries
@@ -626,8 +627,9 @@ class Dataset(object):
             If -1 is provided, use a single zip artifact for the entire dataset change-set (old behaviour)
         :param max_workers: Numbers of threads to be spawned when zipping and uploading the files.
             If None (default) it will be set to:
-            - 1: if the upload destination is a cloud provider ('s3', 'gs', 'azure')
-            - number of logical cores: otherwise
+
+          - 1: if the upload destination is a cloud provider ('s3', 'gs', 'azure')
+          - number of logical cores: otherwise
         :param int retries: Number of retries before failing to upload each zip. If 0, the upload is not retried.
 
         :raise: If the upload failed (i.e. at least one zip failed to upload), raise a `ValueError`
@@ -812,7 +814,7 @@ class Dataset(object):
         # type: (Union[numpy.array, pd.DataFrame, Dict[str, Any]], str, bool) -> () # noqa: F821
         """
         Attach a user-defined metadata to the dataset. Check `Task.upload_artifact` for supported types.
-        If type is Optionally make it visible as a table in the UI.
+        If type is Pandas Dataframes, optionally make it visible as a table in the UI.
         """
         if metadata_name.startswith(self.__data_entry_name_prefix):
             raise ValueError("metadata_name can not start with '{}'".format(self.__data_entry_name_prefix))
@@ -925,7 +927,7 @@ class Dataset(object):
         # type: (Union[Path, _Path, str], bool, Optional[int], Optional[int], bool, Optional[int]) -> Optional[str]
         """
         return a base folder with a writable (mutable) local copy of the entire dataset
-            download and copy / soft-link, files from all the parent dataset versions
+        download and copy / soft-link, files from all the parent dataset versions
 
         :param target_folder: Target folder for the writable copy
         :param overwrite: If True, recursively delete the target folder before creating a copy.
@@ -1192,11 +1194,11 @@ class Dataset(object):
         :param output_uri: Location to upload the datasets file to, including preview samples.
             The following are examples of ``output_uri`` values for the supported locations:
 
-            - A shared folder: ``/mnt/share/folder``
-            - S3: ``s3://bucket/folder``
-            - Google Cloud Storage: ``gs://bucket-name/folder``
-            - Azure Storage: ``azure://company.blob.core.windows.net/folder/``
-            - Default file server: None
+          - A shared folder: ``/mnt/share/folder``
+          - S3: ``s3://bucket/folder``
+          - Google Cloud Storage: ``gs://bucket-name/folder``
+          - Azure Storage: ``azure://company.blob.core.windows.net/folder/``
+          - Default file server: None
 
         :param description: Description of the dataset
 
@@ -1755,6 +1757,7 @@ class Dataset(object):
         """
         Return a Logger object for the Dataset, allowing users to report statistics metrics
         and debug samples on the Dataset itself
+
         :return: Logger object
         """
         return self._task.get_logger()
@@ -1766,8 +1769,8 @@ class Dataset(object):
         (it does not imply on the number of chunks parent versions store)
 
         :param include_parents: If True (default),
-        return the total number of chunks from this version and all parent versions.
-        If False, only return the number of chunks we stored on this specific version.
+            return the total number of chunks from this version and all parent versions.
+            If False, only return the number of chunks we stored on this specific version.
 
         :return: Number of chunks stored on the dataset.
         """

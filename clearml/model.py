@@ -678,20 +678,16 @@ class BaseModel(object):
         :param int iteration: The reported iteration / step.
         :param str xaxis: The x-axis title. (Optional)
         :param str yaxis: The y-axis title. (Optional)
-        :param str mode: The type of line plot.
+        :param str mode: The type of line plot. The values are:
 
-            The values are:
+          - ``lines`` (default)
+          - ``markers``
+          - ``lines+markers``
 
-            - ``lines`` (default)
-            - ``markers``
-            - ``lines+markers``
+        :param bool reverse_xaxis: Reverse the x-axis. The values are:
 
-        :param bool reverse_xaxis: Reverse the x-axis
-
-            The values are:
-
-            - ``True`` - The x-axis is high to low  (reversed).
-            - ``False`` - The x-axis is low to high  (not reversed). (default)
+          - ``True`` - The x-axis is high to low  (reversed).
+          - ``False`` - The x-axis is low to high  (not reversed). (default)
 
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
@@ -819,19 +815,15 @@ class BaseModel(object):
         :param str zaxis: The z-axis title. (Optional)
         :param list(str) labels: Labels per point in the data assigned to the ``scatter`` parameter. The labels must be
             in the same order as the data.
-        :param str mode: The type of scatter plot. The values are:
+        :param str mode: The type of scatter plot. The values are: ``lines``, ``markers``, ``lines+markers``.
 
-          - ``lines``
-          - ``markers``
-          - ``lines+markers``
+            For example:
 
-          For example:
+            .. code-block:: py
 
-          .. code-block:: py
-
-             scatter3d = np.random.randint(10, size=(10, 3))
-             model.report_scatter3d(title="example_scatter_3d", series="series_xyz", iteration=1, scatter=scatter3d,
-                  xaxis="title x", yaxis="title y", zaxis="title z")
+               scatter3d = np.random.randint(10, size=(10, 3))
+               model.report_scatter3d(title="example_scatter_3d", series="series_xyz", iteration=1, scatter=scatter3d,
+                   xaxis="title x", yaxis="title y", zaxis="title z")
 
         :param bool fill: Fill the area under the curve. The values are:
 
@@ -1550,13 +1542,11 @@ class InputModel(Model):
 
         :param str weights_url: A valid URL for the initial weights file. If the **ClearML Web-App** (backend)
             already stores the metadata of a model with the same URL, that existing model is returned
-            and ClearML ignores all other parameters.
+            and ClearML ignores all other parameters. For example:
 
-            For example:
-
-            - ``https://domain.com/file.bin``
-            - ``s3://bucket/file.bin``
-            - ``file:///home/user/file.bin``
+          - ``https://domain.com/file.bin``
+          - ``s3://bucket/file.bin``
+          - ``file:///home/user/file.bin``
 
         :param str config_text: The configuration as a string. This is usually the content of a configuration
             dictionary file. Specify ``config_text`` or ``config_dict``, but not both.

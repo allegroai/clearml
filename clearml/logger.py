@@ -132,12 +132,11 @@ class Logger(object):
 
         :param str msg: The text to log.
         :param int level: The log level from the Python ``logging`` package. The default value is ``logging.INFO``.
-        :param bool print_console: In addition to the log, print to the console
-
+        :param bool print_console: In addition to the log, print to the console.
             The values are:
 
-            - ``True`` - Print to the console. (default)
-            - ``False`` - Do not print to the console.
+          - ``True`` - Print to the console. (default)
+          - ``False`` - Do not print to the console.
         """
         force_send = not print_console and self._parse_level(level) >= logging.WARNING
         return self._console(msg, level, not print_console, force_send=force_send, *args, **_)
@@ -420,19 +419,17 @@ class Logger(object):
         :param str xaxis: The x-axis title. (Optional)
         :param str yaxis: The y-axis title. (Optional)
         :param str mode: The type of line plot.
-
             The values are:
 
-            - ``lines`` (default)
-            - ``markers``
-            - ``lines+markers``
+          - ``lines`` (default)
+          - ``markers``
+          - ``lines+markers``
 
-        :param bool reverse_xaxis: Reverse the x-axis
-
+        :param bool reverse_xaxis: Reverse the x-axis.
             The values are:
 
-            - ``True`` - The x-axis is high to low  (reversed).
-            - ``False`` - The x-axis is low to high  (not reversed). (default)
+          - ``True`` - The x-axis is high to low  (reversed).
+          - ``False`` - The x-axis is low to high  (not reversed). (default)
 
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
@@ -566,19 +563,14 @@ class Logger(object):
         :param str zaxis: The z-axis title. (Optional)
         :param list(str) labels: Labels per point in the data assigned to the ``scatter`` parameter. The labels must be
             in the same order as the data.
-        :param str mode: The type of scatter plot. The values are:
+        :param str mode: The type of scatter plot. The values are: ``lines``, ``markers``, ``lines+markers``.
+            For example:
 
-          - ``lines``
-          - ``markers``
-          - ``lines+markers``
+            .. code-block:: py
 
-          For example:
-
-          .. code-block:: py
-
-             scatter3d = np.random.randint(10, size=(10, 3))
-             logger.report_scatter3d(title="example_scatter_3d", series="series_xyz", iteration=1, scatter=scatter3d,
-                  xaxis="title x", yaxis="title y", zaxis="title z")
+               scatter3d = np.random.randint(10, size=(10, 3))
+               logger.report_scatter3d(title="example_scatter_3d", series="series_xyz", iteration=1, scatter=scatter3d,
+                    xaxis="title x", yaxis="title y", zaxis="title z")
 
         :param bool fill: Fill the area under the curve. The values are:
 
@@ -1258,7 +1250,7 @@ class Logger(object):
     def matplotlib_force_report_non_interactive(cls, force):
         # type: (bool) -> None
         """
-        If True, all matplotlib are always converted to non interactive static plots (images), appearing in under
+        If True, all matplotlib are always converted to non-interactive static plots (images), appearing in under
         the Plots section. If False (default), matplotlib figures are converted into interactive web UI plotly
         figures, in case figure conversion fails, it defaults to non-interactive plots.
 

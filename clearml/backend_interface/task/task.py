@@ -1907,10 +1907,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         :return: http/s URL link.
         """
-        return '{}/projects/{}/experiments/{}/output/log'.format(
-            self._get_app_server(),
-            self.project if self.project is not None else '*',
-            self.id,
+        return self.get_task_output_log_web_page(
+            task_id=self.id,
+            project_id=self.project,
+            app_server_host=self._get_app_server()
         )
 
     def get_reported_scalars(
@@ -2713,6 +2713,30 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         task = get_single_result(entity='task', query=task_name, results=res.response.tasks)
         return cls(task_id=task.id)
+
+    @classmethod
+    def get_task_output_log_web_page(cls, task_id, project_id=None, app_server_host=None):
+        # type: (str, Optional[str], Optional[str]) -> str
+        """
+        Return the Task results & outputs web page address.
+        For example: https://demoapp.demo.clear.ml/projects/216431/experiments/60763e04/output/log
+
+        :param str task_id: Task ID.
+        :param str project_id: Project ID for this task.
+        :param str app_server_host: ClearML Application server host name.
+            If not provided, the current session will be used to resolve the host name.
+        :return: http/s URL link.
+        """
+        if not app_server_host:
+            if not hasattr(cls, "__cached_app_server_host"):
+                cls.__cached_app_server_host = Session.get_app_server_host()
+            app_server_host = cls.__cached_app_server_host
+
+        return "{}/projects/{}/experiments/{}/output/log".format(
+            app_server_host.rstrip("/"),
+            project_id if project_id is not None else '*',
+            task_id,
+        )
 
     @classmethod
     def _get_project_name(cls, project_id):

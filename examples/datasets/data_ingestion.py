@@ -32,11 +32,11 @@ params = {
 params = task.connect(params)  # enabling configuration override by clearml/
 print(params)  # printing actual configuration (after override in remote mode)
 
-
 # The below gets the dataset and stores in the cache. If you want to download the dataset regardless if it's in the
 # cache, use the Dataset.get(dataset_name, dataset_project).get_mutable_local_copy(path to download)
+# Dataset need to have finalized or closed state to get the local copy of it
 dataset_path = Dataset.get(
-    dataset_name=dataset_name, dataset_project=dataset_project
+    dataset_name=dataset_name, dataset_project=dataset_project, only_completed=False
 ).get_local_copy()
 
 # Dataset and Dataloader initializations

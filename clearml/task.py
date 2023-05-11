@@ -702,8 +702,10 @@ class Task(_Task):
                 resource_monitor_cls = auto_resource_monitoring \
                     if isinstance(auto_resource_monitoring, six.class_types) else ResourceMonitor
                 task._resource_monitor = resource_monitor_cls(
-                    task, report_mem_used_per_process=not config.get(
-                        'development.worker.report_global_mem_used', False))
+                    task,
+                    report_mem_used_per_process=not config.get('development.worker.report_global_mem_used', False),
+                    first_report_sec=config.get('development.worker.report_start_sec', None),
+                )
                 task._resource_monitor.start()
 
             # make sure all random generators are initialized with new seed

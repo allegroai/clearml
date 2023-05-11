@@ -99,7 +99,6 @@ class PatchJsonArgParse(object):
             try:
                 PatchJsonArgParse._load_task_params()
                 params = PatchJsonArgParse.__remote_task_params_dict
-                print(params)
                 params_namespace = Namespace()
                 for k, v in params.items():
                     params_namespace[k] = v

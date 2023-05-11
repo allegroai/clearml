@@ -1158,24 +1158,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
             str_value = str(value)
             if isinstance(value, (tuple, list, dict)):
-                if 'None' in re.split(r'[ ,\[\]{}()]', str_value):
-                    # If we have None in the string we have to use json to replace it with null,
-                    # otherwise we end up with None as string when running remotely
-                    try:
-                        str_json = json.dumps(value)
-                        # verify we actually have a null in the string, otherwise prefer the str cast
-                        # This is because we prefer to have \' as in str and not \" used in json
-                        if 'null' in re.split(r'[ ,\[\]{}()]', str_json):
-                            return str_json
-                    except TypeError:
-                        # if we somehow failed to json serialize, revert to previous std casting
-                        pass
-                elif any('\\' in str(v) for v in value):
-                    try:
-                        str_json = json.dumps(value)
-                        return str_json
-                    except TypeError:
-                        pass
+                try:
+                    str_json = json.dumps(value)
+                    return str_json
+                except TypeError:
+                    pass
 
             if isinstance(value, Enum):
                 # remove the class name

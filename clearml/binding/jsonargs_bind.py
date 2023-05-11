@@ -1,4 +1,5 @@
 import json
+import logging
 
 try:
     from jsonargparse import ArgumentParser
@@ -98,11 +99,13 @@ class PatchJsonArgParse(object):
             try:
                 PatchJsonArgParse._load_task_params()
                 params = PatchJsonArgParse.__remote_task_params_dict
+                print(params)
                 params_namespace = Namespace()
                 for k, v in params.items():
                     params_namespace[k] = v
                 return params_namespace
-            except Exception:
+            except Exception as e:
+                logging.getLogger(__file__).warning("Failed parsing jsonargparse arguments: {}".format(e))
                 return original_fn(obj, **kwargs)
         parsed_args = original_fn(obj, **kwargs)
         # noinspection PyBroadException
@@ -114,10 +117,14 @@ class PatchJsonArgParse(object):
                     PatchJsonArgParse._args_type[ns_name] = PatchJsonArgParse._command_type
                     subcommand = ns_val
             try:
-                import pytorch_lightning
+                import lightning
             except ImportError:
-                pytorch_lightning = None
-            if subcommand and subcommand in PatchJsonArgParse._args and pytorch_lightning:
+                try:
+                    import pytorch_lightning
+                    lightning = pytorch_lightning
+                except ImportError:
+                    lightning = None
+            if subcommand and subcommand in PatchJsonArgParse._args and lightning:
                 subcommand_args = flatten_dictionary(
                     PatchJsonArgParse._args[subcommand],
                     prefix=subcommand + PatchJsonArgParse._commands_sep,
@@ -127,8 +134,8 @@ class PatchJsonArgParse(object):
                 PatchJsonArgParse._args.update(subcommand_args)
             PatchJsonArgParse._args = {k: v for k, v in PatchJsonArgParse._args.items()}
             PatchJsonArgParse._update_task_args()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.getLogger(__file__).warning("Failed parsing jsonargparse arguments: {}".format(e))
         return parsed_args
 
     @staticmethod

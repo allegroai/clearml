@@ -1044,19 +1044,18 @@ class Task(_Task):
 
         :return: The Tasks specified by the parameter combinations (see the parameters).
         """
+        task_filter = task_filter or {}
         if tags:
-            task_filter = task_filter or {}
             task_filter['tags'] = (task_filter.get('tags') or []) + list(tags)
         return_fields = {}
         if additional_return_fields:
-            task_filter = task_filter or {}
             return_fields = set(list(additional_return_fields) + ['id'])
             task_filter['only_fields'] = (task_filter.get('only_fields') or []) + list(return_fields)
 
         if task_filter.get('type'):
             task_filter['type'] = [str(task_type) for task_type in task_filter['type']]
 
-        results = cls._query_tasks(project_name=project_name, task_name=task_name, **(task_filter or {}))
+        results = cls._query_tasks(project_name=project_name, task_name=task_name, **task_filter)
         return [t.id for t in results] if not additional_return_fields else \
             [{k: cls._get_data_property(prop_path=k, data=r, raise_on_error=False, log_on_error=False)
               for k in return_fields}

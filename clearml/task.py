@@ -4650,3 +4650,14 @@ class Task(_Task):
             auto_connect_frameworks={'detect_repository': False}) \
             if state['main'] else Task.get_task(task_id=state['id'])
         self.__dict__ = task.__dict__
+
+    def __getattr__(self, name):
+        try:
+            self.__getattribute__(name)
+        except AttributeError as e:
+            if self.__class__ is Task:
+                getLogger().warning(
+                    "'clearml.Task' object has no attribute '{}'. Did you mean to import 'Task' from 'allegroai'?".format(name)
+                )
+            raise e
+

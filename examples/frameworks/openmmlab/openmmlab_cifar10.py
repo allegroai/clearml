@@ -3,12 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
-from torchvision.datasets import CIFAR10
-
 from mmcv.parallel import MMDataParallel
 from mmcv.runner import EpochBasedRunner
 from mmcv.utils import get_logger
+from torch.utils.data import DataLoader
+from torchvision.datasets import CIFAR10
 
 
 class Model(nn.Module):

@@ -10,6 +10,7 @@ import platform
 import shutil
 import sys
 import threading
+import uuid
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
@@ -1036,19 +1037,19 @@ class StorageHelper(object):
     def check_write_permissions(self, dest_path=None):
         # create a temporary file, then delete it
         base_url = dest_path or self._base_url
-        dest_path = base_url + '/.clearml.test'
+        dest_path = base_url + "/.clearml.{}.test".format(str(uuid.uuid4()))
         # do not check http/s connection permissions
-        if dest_path.startswith('http'):
+        if dest_path.startswith("http"):
             return True
 
         try:
-            self.upload_from_stream(stream=six.BytesIO(b'clearml'), dest_path=dest_path)
+            self.upload_from_stream(stream=six.BytesIO(b"clearml"), dest_path=dest_path)
         except Exception:
-            raise ValueError('Insufficient permissions (write failed) for {}'.format(base_url))
+            raise ValueError("Insufficient permissions (write failed) for {}".format(base_url))
         try:
             self.delete(path=dest_path)
         except Exception:
-            raise ValueError('Insufficient permissions (delete failed) for {}'.format(base_url))
+            raise ValueError("Insufficient permissions (delete failed) for {}".format(base_url))
         return True
 
     @classmethod

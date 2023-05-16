@@ -1,13 +1,14 @@
-import os
+import sys
 from argparse import ArgumentParser
-import torch
+
 import pytorch_lightning as pl
+import torch
 from torch.nn import functional as F
 from torch.utils.data import DataLoader, random_split
-from clearml import Task
-
-from torchvision.datasets.mnist import MNIST
 from torchvision import transforms
+from torchvision.datasets.mnist import MNIST
+
+from clearml import Task
 
 
 class LitClassifier(pl.LightningModule):
@@ -35,12 +36,13 @@ class LitClassifier(pl.LightningModule):
         y_hat = self(x)
         loss = F.cross_entropy(y_hat, y)
         self.log('valid_loss', loss)
+        return loss
 
     def test_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
         loss = F.cross_entropy(y_hat, y)
-        self.log('test_loss', loss)
+        return loss
 
     def configure_optimizers(self):
         return torch.optim.Adam(self.parameters(), lr=self.hparams.learning_rate)
@@ -54,18 +56,16 @@ class LitClassifier(pl.LightningModule):
 
 
 if __name__ == '__main__':
-    # Connecting ClearML with the current process,
-    # from here on everything is logged automatically
-    task = Task.init(project_name="examples", task_name="PyTorch lightning MNIST example")
-
     pl.seed_everything(0)
 
     parser = ArgumentParser()
     parser.add_argument('--batch_size', default=32, type=int)
-    parser = pl.Trainer.add_argparse_args(parser)
-    parser.set_defaults(max_epochs=3)
+    parser.add_argument('--max_epochs', default=3, type=int)
+    sys.argv.extend(['--max_epochs', '2'])
     parser = LitClassifier.add_model_specific_args(parser)
     args = parser.parse_args()
+
+    Task.init(project_name="examples-internal", task_name="lightning checkpoint issue and argparser")
 
     # ------------
     # data
@@ -74,9 +74,9 @@ if __name__ == '__main__':
     mnist_test = MNIST('', train=False, download=True, transform=transforms.ToTensor())
     mnist_train, mnist_val = random_split(dataset, [55000, 5000])
 
-    train_loader = DataLoader(mnist_train, batch_size=args.batch_size, num_workers=os.cpu_count())
-    val_loader = DataLoader(mnist_val, batch_size=args.batch_size, num_workers=os.cpu_count())
-    test_loader = DataLoader(mnist_test, batch_size=args.batch_size, num_workers=os.cpu_count())
+    train_loader = DataLoader(mnist_train, batch_size=args.batch_size)
+    val_loader = DataLoader(mnist_val, batch_size=args.batch_size)
+    test_loader = DataLoader(mnist_test, batch_size=args.batch_size)
 
     # ------------
     # model
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     # ------------
     # training
     # ------------
-    trainer = pl.Trainer.from_argparse_args(args)
+    trainer = pl.Trainer(max_epochs=args.max_epochs)
     trainer.fit(model, train_loader, val_loader)
 
     # ------------

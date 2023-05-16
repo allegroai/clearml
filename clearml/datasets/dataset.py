@@ -463,8 +463,10 @@ class Dataset(object):
             dataset_paths = itertools.repeat(dataset_path)
         else:
             if len(dataset_path) != len(source_url):
-                raise ValueError("dataset_path must be a string or a list of strings with the same length as source_url"
-                                 f" (received {len(dataset_path)} paths for {len(source_url)} source urls))")
+                raise ValueError(
+                    f"dataset_path must be a string or a list of strings with the same length as source_url"
+                    f" (received {len(dataset_path)} paths for {len(source_url)} source urls))"
+                )
             dataset_paths = dataset_path
         with ThreadPoolExecutor(max_workers=max_workers) as tp:
             for source_url_, dataset_path_ in zip(source_url_list, dataset_paths):

@@ -1,4 +1,4 @@
 clearml
-mmcv>=1.5.1
+mmcv>=1.5.1,<2.0.0
 torch
 torchvision

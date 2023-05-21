@@ -56,6 +56,9 @@ from .repo import ScriptInfo, pip_freeze
 from .hyperparams import HyperParams
 from ...config import config, PROC_MASTER_ID_ENV_VAR, SUPPRESS_UPDATE_MESSAGE_ENV_VAR, DOCKER_BASH_SETUP_ENV_VAR
 from ...utilities.process.mp import SingletonLock
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ...model import BaseModel
 
 
 class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
@@ -1373,6 +1376,22 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 raise ValueError('Expected label to be a dict[str => int]')
             execution.model_labels = enumeration
             self._edit(execution=execution)
+
+    def remove_input_models(self, models_to_remove):
+        # type: (Sequence[Union[str, BaseModel]]) -> ()
+        """
+        Remove input models from the current task. Note that the models themselves are not deleted,
+        but the tasks' reference to the models is removed.
+        To delete the models themselves, see `Models.remove`
+        
+        :param models_to_remove: The models to remove from the task. Can be a list of ids,
+            or of `BaseModel` (including its subclasses: `Model` and `InputModel`)
+        """
+        ids_to_remove = [model if isinstance(model, str) else model.id for model in models_to_remove]
+        with self._edit_lock:
+            self.reload()
+            self.data.models.input = [model for model in self.data.models.input if model.model not in ids_to_remove]
+            self._edit(models=self.data.models)
 
     def _set_default_docker_image(self):
         # type: () -> ()

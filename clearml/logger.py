@@ -1067,7 +1067,7 @@ class Logger(object):
 
         :param str uri: example: 's3://bucket/directory/' or 'file:///tmp/debug/'
 
-        :return: True, if the destination scheme is supported (for example, ``s3://``, ``file://``, or ``gc://``).
+        :return: True, if the destination scheme is supported (for example, ``s3://``, ``file://``, or ``gs://``).
             False, if not supported.
 
         """

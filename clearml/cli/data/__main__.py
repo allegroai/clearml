@@ -553,12 +553,12 @@ def ds_search(args):
         + str(id_col_len)
         + "}"
     )
-    print(formatting.format("project", "name", "tags", "created", "id"))
+    print(formatting.format("project", "name", "version", "tags", "created", "id"))
     print("-" * len(formatting.format("-", "-", "-", "-", "-")))
     for d in datasets:
         print(
             formatting.format(
-                d["project"], d["name"], str(d["tags"] or [])[1:-1], str(d["created"]).split(".")[0], d["id"]
+                d["project"], d["name"], d["version"], str(d["tags"] or [])[1:-1], str(d["created"]).split(".")[0], d["id"]
             )
         )
     return 0

@@ -655,7 +655,7 @@ class Session(TokenManager):
             if session:
                 active_sessions.append(session)
                 new_sessions_weakrefs.append(session_weakref)
-        cls._sessions_weakrefs = session_weakref
+        cls._sessions_weakrefs = new_sessions_weakrefs
         return active_sessions
 
     @classmethod

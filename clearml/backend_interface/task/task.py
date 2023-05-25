@@ -369,7 +369,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         )
         res = self.send(req)
 
-        return res.response.id if res else 'offline-{}'.format(str(uuid4()).replace("-", ""))
+        if res:
+            return res.response.id
+
+        id = "offline-{}".format(str(uuid4()).replace("-", ""))
+        self._edit(type=tasks.TaskTypeEnum(task_type))
+        return id
+
 
     def _set_storage_uri(self, value):
         value = value.rstrip('/') if value else None
@@ -1962,6 +1968,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             'iter': iteration (default), 'timestamp': timestamp as milliseconds since epoch, 'iso_time': absolute time
         :return: dict: Nested scalar graphs: dict[title(str), dict[series(str), dict[axis(str), list(float)]]]
         """
+        scalar_metrics_iter_histogram_request_max_size = 4800
+
         if x_axis not in ('iter', 'timestamp', 'iso_time'):
             raise ValueError("Scalar x-axis supported values are: 'iter', 'timestamp', 'iso_time'")
 
@@ -1978,7 +1986,50 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not response.ok() or not response.response_data:
             return {}
 
+        metrics_returned = 0
+        for metric in response.response_data.values():
+            for series in metric.values():
+                metrics_returned += len(series.get("x", []))
+        if metrics_returned >= scalar_metrics_iter_histogram_request_max_size:
+            return self._get_all_reported_scalars(x_axis)
+
         return response.response_data
+
+    def _get_all_reported_scalars(self, x_axis):
+        reported_scalars = {}
+        batch_size = 1000
+        scroll_id = None
+        while True:
+            response = self.send(
+                events.GetTaskEventsRequest(
+                    task=self.id, event_type="training_stats_scalar", scroll_id=scroll_id, batch_size=batch_size
+                )
+            )
+            if not response:
+                return reported_scalars
+            response = response.wait()
+            if not response.ok() or not response.response_data:
+                return reported_scalars
+            response = response.response_data
+            for event in response.get("events", []):
+                metric = event["metric"]
+                variant = event["variant"]
+                if x_axis in ["timestamp", "iter"]:
+                    x_val = event[x_axis]
+                else:
+                    x_val = datetime.utcfromtimestamp(event["timestamp"] / 1000).isoformat(timespec="milliseconds") + "Z"
+                y_val = event["value"]
+                reported_scalars.setdefault(metric, {})
+                reported_scalars[metric].setdefault(variant, {"name": variant, "x": [], "y": []})
+                if len(reported_scalars[metric][variant]["x"]) == 0 or reported_scalars[metric][variant]["x"][-1] != x_val:
+                    reported_scalars[metric][variant]["x"].append(x_val)
+                    reported_scalars[metric][variant]["y"].append(y_val)
+                else:
+                    reported_scalars[metric][variant]["y"][-1] = y_val
+            if response.get("returned", 0) < batch_size or not response.get("scroll_id"):
+                break
+            scroll_id = response["scroll_id"]
+        return reported_scalars
 
     def get_reported_plots(
             self,
@@ -2459,19 +2510,26 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         return running_remotely() and get_remote_task_id() == self.id
 
+    def _save_data_to_offline_dir(self, **kwargs):
+        # type: (**Any) -> ()
+        for k, v in kwargs.items():
+            setattr(self.data, k, v)
+        offline_mode_folder = self.get_offline_mode_folder() 
+        if not offline_mode_folder:
+            return
+        Path(offline_mode_folder).mkdir(parents=True, exist_ok=True)
+        with open((offline_mode_folder / self._offline_filename).as_posix(), "wt") as f:
+            export_data = self.data.to_dict()
+            export_data["project_name"] = self.get_project_name()
+            export_data["offline_folder"] = self.get_offline_mode_folder().as_posix()
+            export_data["offline_output_models"] = self._offline_output_models
+            json.dump(export_data, f, ensure_ascii=True, sort_keys=True)
+
     def _edit(self, **kwargs):
         # type: (**Any) -> Any
         with self._edit_lock:
             if self._offline_mode:
-                for k, v in kwargs.items():
-                    setattr(self.data, k, v)
-                Path(self.get_offline_mode_folder()).mkdir(parents=True, exist_ok=True)
-                with open((self.get_offline_mode_folder() / self._offline_filename).as_posix(), "wt") as f:
-                    export_data = self.data.to_dict()
-                    export_data["project_name"] = self.get_project_name()
-                    export_data["offline_folder"] = self.get_offline_mode_folder().as_posix()
-                    export_data["offline_output_models"] = self._offline_output_models
-                    json.dump(export_data, f, ensure_ascii=True, sort_keys=True)
+                self._save_data_to_offline_dir(**kwargs)
                 return None
 
             # Since we ae using forced update, make sure he task status is valid
@@ -2593,6 +2651,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Return the folder where all the task outputs and logs are stored in the offline session.
         :return: Path object, local folder, later to be used with `report_offline_session()`
         """
+        if not self.task_id:
+            return None
         if self._offline_dir:
             return self._offline_dir
         if not self._offline_mode:

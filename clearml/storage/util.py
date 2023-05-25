@@ -44,7 +44,7 @@ def get_config_object_matcher(**patterns):
 
 def quote_url(url):
     parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https"):
+    if parsed.scheme not in ("http", "https", "gs"):
         return url
     parsed = parsed._replace(path=quote(parsed.path))
     return urlunparse(parsed)

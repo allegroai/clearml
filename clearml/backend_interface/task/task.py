@@ -1953,6 +1953,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
            This call is not cached, any call will retrieve all the scalar reports from the back-end.
            If the Task has many scalars reported, it might take long for the call to return.
 
+        .. note::
+           Calling this method will return potentially downsampled scalars. The maximum number of returned samples is 5000.
+           Even when setting `max_samples` to a value larger than 5000, it will be limited to at most 5000 samples.
+           To fetch all scalar values, please see the :meth:`Task.get_all_reported_scalars`.
+
         Example:
 
         .. code-block:: py
@@ -1962,13 +1967,12 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                       "y": [10, 11 ,12]
           }}}
 
-        :param int max_samples: Maximum samples per series to return. Default is 0 returning all scalars.
+        :param int max_samples: Maximum samples per series to return. Default is 0 returning up to 5000 samples.
             With sample limit, average scalar values inside sampling window.
         :param str x_axis: scalar x_axis, possible values:
             'iter': iteration (default), 'timestamp': timestamp as milliseconds since epoch, 'iso_time': absolute time
         :return: dict: Nested scalar graphs: dict[title(str), dict[series(str), dict[axis(str), list(float)]]]
         """
-        scalar_metrics_iter_histogram_request_max_size = 4800
 
         if x_axis not in ('iter', 'timestamp', 'iso_time'):
             raise ValueError("Scalar x-axis supported values are: 'iter', 'timestamp', 'iso_time'")
@@ -1986,16 +1990,24 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if not response.ok() or not response.response_data:
             return {}
 
-        metrics_returned = 0
-        for metric in response.response_data.values():
-            for series in metric.values():
-                metrics_returned += len(series.get("x", []))
-        if metrics_returned >= scalar_metrics_iter_histogram_request_max_size:
-            return self._get_all_reported_scalars(x_axis)
-
         return response.response_data
 
-    def _get_all_reported_scalars(self, x_axis):
+    def get_all_reported_scalars(self, x_axis='iter'):
+        # type: (str) -> Mapping[str, Mapping[str, Mapping[str, Sequence[float]]]]
+        """
+        Return a nested dictionary for the all scalar graphs, containing all the registered samples,
+        where the first key is the graph title and the second is the series name.
+        Value is a dict with 'x': values and 'y': values.
+        To fetch downsampled scalar values, please see the :meth:`Task.get_reported_scalars`.
+
+        .. note::
+           This call is not cached, any call will retrieve all the scalar reports from the back-end.
+           If the Task has many scalars reported, it might take long for the call to return.
+
+        :param str x_axis: scalar x_axis, possible values:
+            'iter': iteration (default), 'timestamp': timestamp as milliseconds since epoch, 'iso_time': absolute time
+        :return: dict: Nested scalar graphs: dict[title(str), dict[series(str), dict[axis(str), list(float)]]]
+        """
         reported_scalars = {}
         batch_size = 1000
         scroll_id = None

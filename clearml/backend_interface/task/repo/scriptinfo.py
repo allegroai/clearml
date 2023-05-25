@@ -91,6 +91,12 @@ class ScriptRequirements(object):
             for fname, lines in sklearn.items():
                 modules.add('scikit_learn', fname, lines)
 
+        # bugfix, replace sklearn with scikit-learn name
+        if 'skimage' in modules:
+            skimage = modules.pop('skimage', {})
+            for fname, lines in skimage.items():
+                modules.add('scikit_image', fname, lines)
+
         # if we have torch and it supports tensorboard, we should add that as well
         # (because it will not be detected automatically)
         if 'torch' in modules and 'tensorboard' not in modules and 'tensorboardX' not in modules:

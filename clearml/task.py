@@ -1692,6 +1692,15 @@ class Task(_Task):
                 dist.init_process_group('gloo')
                 run(config.get('node_rank'), config.get('total_num_nodes'))
 
+        When using the ClearML cloud autoscaler apps, one needs to make sure the nodes can reach eachother.
+        The machines need to be in the same security group, the `MASTER_PORT` needs to be exposed and the
+        `MASTER_ADDR` needs to be the right private ip of the instance the master is running on.
+        For example, to achieve this, one can set the following Docker arguments in the `Additional ClearML Configuration` section:
+
+        .. code-block:: py
+
+            agent.extra_docker_arguments=["--ipc=host", "--network=host", "-p", "29500:29500", "--env", "CLEARML_MULTI_NODE_MASTER_DEF_ADDR=`hostname -I | awk '{print $1}'`"]`
+
         :param total_num_nodes: The total number of nodes to be enqueued, including the master node,
             which should already be enqueued when running remotely
         :param port: Port opened by the master node. If the environment variable `CLEARML_MULTI_NODE_MASTER_DEF_PORT`
@@ -1702,8 +1711,13 @@ class Task(_Task):
         :param queue: The queue to enqueue the nodes to. Can be different than the queue the master
             node is enqueued to. If None, the nodes will be enqueued to the same queue as the master node
         :param wait: If True, the master node will wait for the other nodes to start
-        :param addr: The address of the master node's worker. If not set, it defaults to the private IP
-            of the machine the master is running on
+        :param addr: The address of the master node's worker. If the environment variable
+            `CLEARML_MULTI_NODE_MASTER_DEF_ADDR` is set, the value of this parameter will be set to 
+            the one defined in `CLEARML_MULTI_NODE_MASTER_DEF_ADDR`.
+            If `CLEARML_MULTI_NODE_MASTER_DEF_ADDR` doesn't exist, but `MASTER_ADDR` does, then the value of this
+            parameter will be set to the one defined in `MASTER_ADDR`. If neither environment variables exist,
+            the value passed to the parameter will be used. If this value is None (default), the private IP of
+            the machine the master node is running on will be used.
 
         :return: A dictionary containing relevant information regarding the multi node run. This dictionary
             has the following entries:
@@ -1724,10 +1738,14 @@ class Task(_Task):
             raise UsageError("Master task is not enqueued to any queue and the queue parameter is None")
 
         master_conf = {
-            "master_addr": get_private_ip(),
-            "master_port": int(os.environ.get("CLEARML_MULTI_NODE_MASTER_DEF_PORT", os.environ.get("MASTER_PORT", port))),
+            "master_addr": os.environ.get(
+                "CLEARML_MULTI_NODE_MASTER_DEF_ADDR", os.environ.get("MASTER_ADDR", addr or get_private_ip())
+            ),
+            "master_port": int(
+                os.environ.get("CLEARML_MULTI_NODE_MASTER_DEF_PORT", os.environ.get("MASTER_PORT", port))
+            ),
             "node_rank": 0,
-            "wait": wait
+            "wait": wait,
         }
         editable_conf = {"total_num_nodes": total_num_nodes, "queue": queue}
         editable_conf = self.connect(editable_conf, name=self._launch_multi_node_section)
@@ -4650,14 +4668,3 @@ class Task(_Task):
             auto_connect_frameworks={'detect_repository': False}) \
             if state['main'] else Task.get_task(task_id=state['id'])
         self.__dict__ = task.__dict__
-
-    def __getattr__(self, name):
-        try:
-            self.__getattribute__(name)
-        except AttributeError as e:
-            if self.__class__ is Task:
-                getLogger().warning(
-                    "'clearml.Task' object has no attribute '{}'. Did you mean to import 'Task' from 'allegroai'?".format(name)
-                )
-            raise e
-

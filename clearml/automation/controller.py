@@ -470,7 +470,7 @@ class PipelineController(object):
                     pass
 
         :param post_execute_callback: Callback function, called when a step (Task) is completed
-            and it other jobs are executed. Allows a user to modify the Task status after completion.
+            and other jobs are executed. Allows a user to modify the Task status after completion.
 
             .. code-block:: py
 
@@ -738,7 +738,7 @@ class PipelineController(object):
                     pass
 
         :param post_execute_callback: Callback function, called when a step (Task) is completed
-            and it other jobs are executed. Allows a user to modify the Task status after completion.
+            and other jobs are executed. Allows a user to modify the Task status after completion.
 
             .. code-block:: py
 
@@ -862,7 +862,7 @@ class PipelineController(object):
                     pass
 
         :param Callable step_task_completed_callback: Callback function, called when a step (Task) is completed
-            and it other jobs are executed. Allows a user to modify the Task status after completion.
+            and other jobs are executed. Allows a user to modify the Task status after completion.
 
             .. code-block:: py
 
@@ -951,7 +951,7 @@ class PipelineController(object):
     def connect_configuration(self, configuration, name=None, description=None):
         # type: (Union[Mapping, list, Path, str], Optional[str], Optional[str]) -> Union[dict, Path, str]
         """
-        Connect a configuration dictionary or configuration file (pathlib.Path / str) to a the PipelineController object.
+        Connect a configuration dictionary or configuration file (pathlib.Path / str) to the PipelineController object.
         This method should be called before reading the configuration file.
 
         For example, a local file:
@@ -1373,7 +1373,7 @@ class PipelineController(object):
                     pass
 
         :param Callable step_task_completed_callback: Callback function, called when a step (Task) is completed
-            and it other jobs are executed. Allows a user to modify the Task status after completion.
+            and other jobs are executed. Allows a user to modify the Task status after completion.
 
             .. code-block:: py
 
@@ -1895,7 +1895,7 @@ class PipelineController(object):
                     pass
 
         :param post_execute_callback: Callback function, called when a step (Task) is completed
-            and it other jobs are executed. Allows a user to modify the Task status after completion.
+            and other jobs are executed. Allows a user to modify the Task status after completion.
 
             .. code-block:: py
 
@@ -3644,7 +3644,7 @@ class PipelineDecorator(PipelineController):
                     pass
 
         :param post_execute_callback: Callback function, called when a step (Task) is completed
-            and it other jobs are executed. Allows a user to modify the Task status after completion.
+            and other jobs are executed. Allows a user to modify the Task status after completion.
 
             .. code-block:: py
 

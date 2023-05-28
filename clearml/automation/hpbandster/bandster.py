@@ -229,14 +229,15 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
               year =         {2018},
             }
 
-        :param eta : float (3)
+
+        :param eta: float (3)
             In each iteration, a complete run of sequential halving is executed. In it,
             after evaluating each configuration on the same subset size, only a fraction of
             1/eta of them 'advances' to the next round.
             Must be greater or equal to 2.
-        :param min_budget : float (0.01)
+        :param min_budget: float (0.01)
             The smallest budget to consider. Needs to be positive!
-        :param max_budget : float (1)
+        :param max_budget: float (1)
             The largest budget to consider. Needs to be larger than min_budget!
             The budgets will be geometrically distributed
             :math:`a^2 + b^2 = c^2 /sim /eta^k` for :math:`k/in [0, 1, ... , num/_subsets - 1]`.

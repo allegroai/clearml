@@ -1703,30 +1703,30 @@ class Task(_Task):
 
         :param total_num_nodes: The total number of nodes to be enqueued, including the master node,
             which should already be enqueued when running remotely
-        :param port: Port opened by the master node. If the environment variable `CLEARML_MULTI_NODE_MASTER_DEF_PORT`
-            is set, the value of this parameter will be set to the one defined in `CLEARML_MULTI_NODE_MASTER_DEF_PORT`.
-            If `CLEARML_MULTI_NODE_MASTER_DEF_PORT` doesn't exist, but `MASTER_PORT` does, then the value of this
-            parameter will be set to the one defined in `MASTER_PORT`. If neither environment variables exist,
+        :param port: Port opened by the master node. If the environment variable ``CLEARML_MULTI_NODE_MASTER_DEF_PORT``
+            is set, the value of this parameter will be set to the one defined in ``CLEARML_MULTI_NODE_MASTER_DEF_PORT``.
+            If ``CLEARML_MULTI_NODE_MASTER_DEF_PORT`` doesn't exist, but ``MASTER_PORT`` does, then the value of this
+            parameter will be set to the one defined in ``MASTER_PORT``. If neither environment variables exist,
             the value passed to the parameter will be used
-        :param queue: The queue to enqueue the nodes to. Can be different than the queue the master
+        :param queue: The queue to enqueue the nodes to. Can be different from the queue the master
             node is enqueued to. If None, the nodes will be enqueued to the same queue as the master node
         :param wait: If True, the master node will wait for the other nodes to start
         :param addr: The address of the master node's worker. If the environment variable
-            `CLEARML_MULTI_NODE_MASTER_DEF_ADDR` is set, the value of this parameter will be set to 
-            the one defined in `CLEARML_MULTI_NODE_MASTER_DEF_ADDR`.
-            If `CLEARML_MULTI_NODE_MASTER_DEF_ADDR` doesn't exist, but `MASTER_ADDR` does, then the value of this
-            parameter will be set to the one defined in `MASTER_ADDR`. If neither environment variables exist,
+            ``CLEARML_MULTI_NODE_MASTER_DEF_ADDR`` is set, the value of this parameter will be set to
+            the one defined in ``CLEARML_MULTI_NODE_MASTER_DEF_ADDR``.
+            If ``CLEARML_MULTI_NODE_MASTER_DEF_ADDR`` doesn't exist, but ``MASTER_ADDR`` does, then the value of this
+            parameter will be set to the one defined in ``MASTER_ADDR``. If neither environment variables exist,
             the value passed to the parameter will be used. If this value is None (default), the private IP of
             the machine the master node is running on will be used.
 
-        :return: A dictionary containing relevant information regarding the multi node run. This dictionary
-            has the following entries:
-            - `master_addr` - the address of the machine that the master node is running on
-            - `master_port` - the open port of the machine that the master node is running on
-            - `total_num_nodes` - the total number of nodes, including the master
-            - `queue` - the queue the nodes are enqueued to, excluding the master
-            - `node_rank` - the rank of the current node (master has rank 0)
-            - `wait` - if True, the master node will wait for the other nodes to start
+        :return: A dictionary containing relevant information regarding the multi node run. This dictionary has the following entries:
+
+          - `master_addr` - the address of the machine that the master node is running on
+          - `master_port` - the open port of the machine that the master node is running on
+          - `total_num_nodes` - the total number of nodes, including the master
+          - `queue` - the queue the nodes are enqueued to, excluding the master
+          - `node_rank` - the rank of the current node (master has rank 0)
+          - `wait` - if True, the master node will wait for the other nodes to start
         """
         def set_launch_multi_node_runtime_props(task, conf):
             # noinspection PyProtectedMember

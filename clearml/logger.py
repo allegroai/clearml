@@ -309,7 +309,7 @@ class Logger(object):
             extra_data=None,  # type: Optional[dict]
     ):
         """
-        For explicit report, report a table plot.
+        For explicit reporting, report a table plot.
 
         One and only one of the following parameters must be provided.
 
@@ -340,25 +340,29 @@ class Logger(object):
             See full details on the supported configuration: https://plotly.com/javascript/reference/layout/
             For example:
 
-            .. code block:: py
-            logger.report_table(
-                title='table example',
-                series='pandas DataFrame',
-                iteration=0,
-                table_plot=df,
-                extra_layout={'height': 600})
+            .. code-block:: py
+
+                logger.report_table(
+                    title='table example',
+                    series='pandas DataFrame',
+                    iteration=0,
+                    table_plot=df,
+                    extra_layout={'height': 600}
+                )
 
         :param extra_data: optional dictionary for data configuration, like column width, passed directly to plotly
             See full details on the supported configuration: https://plotly.com/javascript/reference/table/
             For example:
 
-            .. code block:: py
-            logger.report_table(
-                title='table example',
-                series='pandas DataFrame',
-                iteration=0,
-                table_plot=df,
-                extra_data={'columnwidth': [2., 1., 1., 1.]})
+            .. code-block:: py
+
+                logger.report_table(
+                    title='table example',
+                    series='pandas DataFrame',
+                    iteration=0,
+                    table_plot=df,
+                    extra_data={'columnwidth': [2., 1., 1., 1.]}
+                )
 
         """
         mutually_exclusive(

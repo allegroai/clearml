@@ -130,9 +130,9 @@ Next step, automation! **Learn more about ClearML's two-click automation [here](
 
 The ClearML run-time components:
 
-* The ClearML Python Package for integrating ClearML into your existing scripts by adding just two lines of code, and optionally extending your experiments and other workflows with ClearML's powerful and versatile set of classes and methods.
-* The ClearML Server for storing experiment, model, and workflow data, and supporting the Web UI experiment manager, and MLOps automation for reproducibility and tuning. It is available as a hosted service and open source for you to deploy your own ClearML Server.
-* The ClearML Agent for MLOps orchestration, experiment and workflow reproducibility, and scalability.
+* The ClearML Python Package for integrating ClearML into your existing scripts by adding just two lines of code, and optionally extending your experiments and other workflows with ClearML powerful and versatile set of classes and methods.
+* The ClearML Server storing experiment, model, and workflow data, and supporting the Web UI experiment manager, and ML-Ops automation for reproducibility and tuning. It is available as a hosted service and open source for you to deploy your own ClearML Server.
+* The ClearML Agent for ML-Ops orchestration, experiment and workflow reproducibility, and scalability.
 
 <img src="https://raw.githubusercontent.com/allegroai/clearml-docs/main/docs/img/clearml_architecture.png" width="100%" alt="clearml-architecture">
 
@@ -163,11 +163,12 @@ and practices.
   - Make you data transparent by cataloging it all on the ClearML platform    
 
 We believe ClearML is ground-breaking. We wish to establish new standards of true seamless integration between
-experiment management,MLOps and data management. 
+experiment management,ML-Ops and data management. 
 
 ## Who We Are
 
-ClearML is supported by you and the [clear.ml](https://clear.ml) team, which helps enterprise companies build scalable MLOps. 
+ClearML is supported by the team behind [clear.ml](https://clear.ml),
+where we build deep learning pipelines and infrastructure for enterprise companies.
 
 We built ClearML to track and control the glorious but messy process of training production-grade deep learning models.
 We are committed to vigorously supporting and expanding the capabilities of ClearML.

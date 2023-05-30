@@ -432,7 +432,7 @@ class SearchStrategy(object):
         Helper function, Implementation is not required. Default use in process_step default implementation.
         Check if the job needs to be aborted or already completed.
 
-        If returns ``False``, the job was aborted / completed, and should be taken off the current job list
+        If returns ``False``, the job was aborted / completed, and should be taken off the current job list.
 
         If there is a budget limitation, this call should update
         ``self.budget.compute_time.update`` / ``self.budget.iterations.update``
@@ -534,6 +534,8 @@ class SearchStrategy(object):
         where index 0 is the best performing Task.
         Example w/ all_metrics=False:
 
+        .. code-block:: py
+
             [
                 ('0593b76dc7234c65a13a301f731958fa',
                     {
@@ -549,6 +551,8 @@ class SearchStrategy(object):
             ]
 
         Example w/ all_metrics=True:
+
+        .. code-block:: py
 
             [
                 ('0593b76dc7234c65a13a301f731958fa',
@@ -599,9 +603,8 @@ class SearchStrategy(object):
         # type: (int, bool, bool, bool) -> Sequence[(str, dict)]
         """
         Return a list of dictionaries of the top performing experiments.
-        Example: [
-            {'task_id': Task-ID, 'metrics': scalar-metric-dict, 'hyper_parameters': Hyper-Parameters},
-        ]
+        Example: ``[{'task_id': Task-ID, 'metrics': scalar-metric-dict, 'hyper_parameters': Hyper-Parameters},]``
+
         Order is based on the controller ``Objective`` object.
 
         :param int top_k: The number of Tasks (experiments) to return.
@@ -614,46 +617,50 @@ class SearchStrategy(object):
             where index 0 is the best performing Task.
             Example w/ all_metrics=False:
 
-            [
-                {
-                    task_id: '0593b76dc7234c65a13a301f731958fa',
-                    hyper_parameters: {'General/lr': '0.03', 'General/batch_size': '32'},
-                    metrics: {
-                        'accuracy per class/cat': {
-                            'metric': 'accuracy per class',
-                            'variant': 'cat',
-                            'value': 0.119,
-                            'min_value': 0.119,
-                            'max_value': 0.782
-                        },
-                    }
-                },
-            ]
+            .. code-block:: py
 
-        Example w/ all_metrics=True:
+                [
+                    {
+                        task_id: '0593b76dc7234c65a13a301f731958fa',
+                        hyper_parameters: {'General/lr': '0.03', 'General/batch_size': '32'},
+                        metrics: {
+                            'accuracy per class/cat': {
+                                'metric': 'accuracy per class',
+                                'variant': 'cat',
+                                'value': 0.119,
+                                'min_value': 0.119,
+                                'max_value': 0.782
+                            },
+                        }
+                    },
+                ]
 
-            [
-                {
-                    task_id: '0593b76dc7234c65a13a301f731958fa',
-                    hyper_parameters: {'General/lr': '0.03', 'General/batch_size': '32'},
-                    metrics: {
-                        'accuracy per class/cat': {
-                            'metric': 'accuracy per class',
-                            'variant': 'cat',
-                            'value': 0.119,
-                            'min_value': 0.119,
-                            'max_value': 0.782
-                        },
-                        'accuracy per class/deer': {
-                            'metric': 'accuracy per class',
-                            'variant': 'deer',
-                            'value': 0.219,
-                            'min_value': 0.219,
-                            'max_value': 0.282
-                        },
-                    }
-                },
-            ]
+            Example w/ all_metrics=True:
+
+            .. code-block:: py
+
+                [
+                    {
+                        task_id: '0593b76dc7234c65a13a301f731958fa',
+                        hyper_parameters: {'General/lr': '0.03', 'General/batch_size': '32'},
+                        metrics: {
+                            'accuracy per class/cat': {
+                                'metric': 'accuracy per class',
+                                'variant': 'cat',
+                                'value': 0.119,
+                                'min_value': 0.119,
+                                'max_value': 0.782
+                            },
+                            'accuracy per class/deer': {
+                                'metric': 'accuracy per class',
+                                'variant': 'deer',
+                                'value': 0.219,
+                                'min_value': 0.219,
+                                'max_value': 0.282
+                            },
+                        }
+                    },
+                ]
         """
         additional_filters = dict(page_size=int(top_k), page=0)
         if only_completed:
@@ -761,7 +768,8 @@ class SearchStrategy(object):
         """
         Set the function used to name a newly created job.
 
-        :param callable naming_function:
+        :param callable naming_function: Callable function for naming a newly created job.
+            Use the following format:
 
             .. code-block:: py
 
@@ -1072,7 +1080,7 @@ class RandomSearch(SearchStrategy):
 
 class HyperParameterOptimizer(object):
     """
-    Hyper-parameter search controller. Clones the base experiment, changes arguments and tries to maximize/minimize
+    Hyperparameter search controller. Clones the base experiment, changes arguments and tries to maximize/minimize
     the defined objective.
     """
     _tag = 'optimization'
@@ -1105,13 +1113,12 @@ class HyperParameterOptimizer(object):
             ``validation``).
         :param str objective_metric_series: The Objective metric series to maximize / minimize (for example, ``loss``).
         :param str objective_metric_sign: The objective to maximize / minimize.
-
             The values are:
 
-            - ``min`` - Minimize the last reported value for the specified title/series scalar.
-            - ``max`` - Maximize the last reported value for the specified title/series scalar.
-            - ``min_global`` - Minimize the min value of *all* reported values for the specific title/series scalar.
-            - ``max_global`` - Maximize the max value of *all* reported values for the specific title/series scalar.
+          - ``min`` - Minimize the last reported value for the specified title/series scalar.
+          - ``max`` - Maximize the last reported value for the specified title/series scalar.
+          - ``min_global`` - Minimize the min value of *all* reported values for the specific title/series scalar.
+          - ``max_global`` - Maximize the max value of *all* reported values for the specific title/series scalar.
 
         :param class.SearchStrategy optimizer_class: The SearchStrategy optimizer to use for the hyper-parameter search
         :param int max_number_of_concurrent_tasks: The maximum number of concurrent Tasks (experiments) running at the
@@ -1121,24 +1128,21 @@ class HyperParameterOptimizer(object):
             default is ``None``, indicating no time limit.
         :param float compute_time_limit: The maximum compute time in minutes. When time limit is exceeded,
             all jobs aborted. (Optional)
-        :param bool auto_connect_task: Store optimization arguments and configuration in the Task
-
+        :param bool auto_connect_task: Store optimization arguments and configuration in the Task.
             The values are:
 
-            - ``True`` - The optimization argument and configuration will be stored in the Task. All arguments will
-              be under the hyper-parameter section ``opt``, and the optimization hyper_parameters space will
+          - ``True`` - The optimization argument and configuration will be stored in the Task. All arguments will
+              be under the hyperparameter section ``opt``, and the optimization hyper_parameters space will be
               stored in the Task configuration object section.
+          - ``False`` - Do not store with Task.
+          - ``Task`` - A specific Task object to connect the optimization process with.
 
-            - ``False`` - Do not store with Task.
-            - ``Task`` - A specific Task object to connect the optimization process with.
-        :param bool always_create_task: Always create a new Task
-
+        :param bool always_create_task: Always create a new Task.
             The values are:
 
-            - ``True`` - No current Task initialized. Create a new task named ``optimization`` in the ``base_task_id``
+          - ``True`` - No current Task initialized. Create a new task named ``optimization`` in the ``base_task_id``
               project.
-
-            - ``False`` - Use the :py:meth:`task.Task.current_task` (if exists) to report statistics.
+          - ``False`` - Use the :py:meth:`task.Task.current_task` (if exists) to report statistics.
 
         :param str spawn_project: If project name is specified, create all optimization Jobs (Tasks) in the
             specified project instead of the original base_task_id project.
@@ -1505,9 +1509,8 @@ class HyperParameterOptimizer(object):
         # type: (int, bool, bool, bool) -> Sequence[(str, dict)]
         """
         Return a list of dictionaries of the top performing experiments.
-        Example: [
-            {'task_id': Task-ID, 'metrics': scalar-metric-dict, 'hyper_parameters': Hyper-Parameters},
-        ]
+        Example: ``[{'task_id': Task-ID, 'metrics': scalar-metric-dict, 'hyper_parameters': Hyper-Parameters},]``
+
         Order is based on the controller ``Objective`` object.
 
         :param int top_k: The number of Tasks (experiments) to return.
@@ -1520,46 +1523,50 @@ class HyperParameterOptimizer(object):
             where index 0 is the best performing Task.
             Example w/ all_metrics=False:
 
-            [
-                {
-                    task_id: '0593b76dc7234c65a13a301f731958fa',
-                    hyper_parameters: {'General/lr': '0.03', 'General/batch_size': '32'},
-                    metrics: {
-                        'accuracy per class/cat': {
-                            'metric': 'accuracy per class',
-                            'variant': 'cat',
-                            'value': 0.119,
-                            'min_value': 0.119,
-                            'max_value': 0.782
-                        },
-                    }
-                },
-            ]
+            .. code-block:: py
 
-        Example w/ all_metrics=True:
+                [
+                    {
+                        task_id: '0593b76dc7234c65a13a301f731958fa',
+                        hyper_parameters: {'General/lr': '0.03', 'General/batch_size': '32'},
+                        metrics: {
+                            'accuracy per class/cat': {
+                                'metric': 'accuracy per class',
+                                'variant': 'cat',
+                                'value': 0.119,
+                                'min_value': 0.119,
+                                'max_value': 0.782
+                            },
+                        }
+                    },
+                ]
 
-            [
-                {
-                    task_id: '0593b76dc7234c65a13a301f731958fa',
-                    hyper_parameters: {'General/lr': '0.03', 'General/batch_size': '32'},
-                    metrics: {
-                        'accuracy per class/cat': {
-                            'metric': 'accuracy per class',
-                            'variant': 'cat',
-                            'value': 0.119,
-                            'min_value': 0.119,
-                            'max_value': 0.782
-                        },
-                        'accuracy per class/deer': {
-                            'metric': 'accuracy per class',
-                            'variant': 'deer',
-                            'value': 0.219,
-                            'min_value': 0.219,
-                            'max_value': 0.282
-                        },
-                    }
-                },
-            ]
+            Example w/ all_metrics=True:
+
+            .. code-block:: py
+
+                [
+                    {
+                        task_id: '0593b76dc7234c65a13a301f731958fa',
+                        hyper_parameters: {'General/lr': '0.03', 'General/batch_size': '32'},
+                        metrics: {
+                            'accuracy per class/cat': {
+                                'metric': 'accuracy per class',
+                                'variant': 'cat',
+                                'value': 0.119,
+                                'min_value': 0.119,
+                                'max_value': 0.782
+                            },
+                            'accuracy per class/deer': {
+                                'metric': 'accuracy per class',
+                                'variant': 'deer',
+                                'value': 0.219,
+                                'min_value': 0.219,
+                                'max_value': 0.282
+                            },
+                        }
+                    },
+                ]
         """
         if not self.optimizer:
             return []
@@ -1615,13 +1622,12 @@ class HyperParameterOptimizer(object):
             ``validation``).
         :param str objective_metric_series: The Objective metric series to maximize / minimize (for example, ``loss``).
         :param str objective_metric_sign: The objective to maximize / minimize.
-
             The values are:
 
-            - ``min`` - Minimize the last reported value for the specified title/series scalar.
-            - ``max`` - Maximize the last reported value for the specified title/series scalar.
-            - ``min_global`` - Minimize the min value of *all* reported values for the specific title/series scalar.
-            - ``max_global`` - Maximize the max value of *all* reported values for the specific title/series scalar.
+          - ``min`` - Minimize the last reported value for the specified title/series scalar.
+          - ``max`` - Maximize the last reported value for the specified title/series scalar.
+          - ``min_global`` - Minimize the min value of *all* reported values for the specific title/series scalar.
+          - ``max_global`` - Maximize the max value of *all* reported values for the specific title/series scalar.
         :param str optimizer_task_id: Parent optimizer Task ID
         :param top_k: The number of Tasks (experiments) to return.
         :return: A list of Task objects, ordered by performance, where index 0 is the best performing Task.

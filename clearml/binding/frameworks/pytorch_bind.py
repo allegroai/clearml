@@ -18,7 +18,6 @@ class PatchPyTorchModelIO(PatchBaseModelIO):
     __patched = None
     __patched_lightning = None
     __patched_mmcv = None
-    __default_checkpoint_filename_counter = {}
 
     @staticmethod
     def update_current_task(task, **_):
@@ -185,9 +184,9 @@ class PatchPyTorchModelIO(PatchBaseModelIO):
 
                 filename = f.name
             else:
-                filename = PatchPyTorchModelIO.__create_default_filename()
+                filename = PatchPyTorchModelIO.__get_cached_checkpoint_filename()
         except Exception:
-            filename = PatchPyTorchModelIO.__create_default_filename()
+            filename = PatchPyTorchModelIO.__get_cached_checkpoint_filename()
 
         # give the model a descriptive name based on the file name
         # noinspection PyBroadException
@@ -195,7 +194,6 @@ class PatchPyTorchModelIO(PatchBaseModelIO):
             model_name = Path(filename).stem if filename is not None else None
         except Exception:
             model_name = None
-
         WeightsFileHandler.create_output_model(
             obj, filename, Framework.pytorch, PatchPyTorchModelIO._current_task, singlefile=True, model_name=model_name)
 
@@ -284,11 +282,7 @@ class PatchPyTorchModelIO(PatchBaseModelIO):
         return model
 
     @staticmethod
-    def __create_default_filename():
+    def __get_cached_checkpoint_filename():
         tid = threading.current_thread().ident
         checkpoint_filename = PatchPyTorchModelIO._checkpoint_filename.get(tid)
-        if checkpoint_filename:
-            return checkpoint_filename
-        counter = PatchPyTorchModelIO.__default_checkpoint_filename_counter.setdefault(tid, 0)
-        PatchPyTorchModelIO.__default_checkpoint_filename_counter[tid] += 1
-        return "default_{}_{}".format(tid, counter)
+        return checkpoint_filename or None

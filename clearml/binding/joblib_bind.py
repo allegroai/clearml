@@ -48,6 +48,10 @@ class PatchedJoblib(object):
                     joblib.numpy_pickle.NumpyPickler.__init__ = _patched_call(
                         joblib.numpy_pickle.NumpyPickler.__init__,
                         PatchedJoblib._numpypickler)
+                    joblib.memory.MemorizedFunc._cached_call = _patched_call(
+                        joblib.memory.MemorizedFunc._cached_call,
+                        PatchedJoblib._cached_call_recursion_guard
+                    )
 
             if not PatchedJoblib._patched_sk_joblib and 'sklearn' in sys.modules:
                 PatchedJoblib._patched_sk_joblib = True
@@ -194,3 +198,8 @@ class PatchedJoblib(object):
                 "Can't get model framework {}, model framework will be: {} ".format(object_orig_module, framework))
         finally:
             return framework
+
+    @staticmethod
+    def _cached_call_recursion_guard(original_fn, *args, **kwargs):
+        # used just to avoid getting into the `_load` binding in the context of memory caching
+        return original_fn(*args, **kwargs)

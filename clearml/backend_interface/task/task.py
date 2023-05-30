@@ -56,6 +56,9 @@ from .repo import ScriptInfo, pip_freeze
 from .hyperparams import HyperParams
 from ...config import config, PROC_MASTER_ID_ENV_VAR, SUPPRESS_UPDATE_MESSAGE_ENV_VAR, DOCKER_BASH_SETUP_ENV_VAR
 from ...utilities.process.mp import SingletonLock
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ...model import BaseModel
 
 
 class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
@@ -366,7 +369,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         )
         res = self.send(req)
 
-        return res.response.id if res else 'offline-{}'.format(str(uuid4()).replace("-", ""))
+        if res:
+            return res.response.id
+
+        id = "offline-{}".format(str(uuid4()).replace("-", ""))
+        self._edit(type=tasks.TaskTypeEnum(task_type))
+        return id
+
 
     def _set_storage_uri(self, value):
         value = value.rstrip('/') if value else None
@@ -1374,6 +1383,22 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             execution.model_labels = enumeration
             self._edit(execution=execution)
 
+    def remove_input_models(self, models_to_remove):
+        # type: (Sequence[Union[str, BaseModel]]) -> ()
+        """
+        Remove input models from the current task. Note that the models themselves are not deleted,
+        but the tasks' reference to the models is removed.
+        To delete the models themselves, see `Models.remove`
+        
+        :param models_to_remove: The models to remove from the task. Can be a list of ids,
+            or of `BaseModel` (including its subclasses: `Model` and `InputModel`)
+        """
+        ids_to_remove = [model if isinstance(model, str) else model.id for model in models_to_remove]
+        with self._edit_lock:
+            self.reload()
+            self.data.models.input = [model for model in self.data.models.input if model.model not in ids_to_remove]
+            self._edit(models=self.data.models)
+
     def _set_default_docker_image(self):
         # type: () -> ()
         if not DOCKER_IMAGE_ENV_VAR.exists() and not DOCKER_BASH_SETUP_ENV_VAR.exists():
@@ -1928,6 +1953,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
            This call is not cached, any call will retrieve all the scalar reports from the back-end.
            If the Task has many scalars reported, it might take long for the call to return.
 
+        .. note::
+           Calling this method will return potentially downsampled scalars. The maximum number of returned samples is 5000.
+           Even when setting `max_samples` to a value larger than 5000, it will be limited to at most 5000 samples.
+           To fetch all scalar values, please see the :meth:`Task.get_all_reported_scalars`.
+
         Example:
 
         .. code-block:: py
@@ -1937,12 +1967,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                       "y": [10, 11 ,12]
           }}}
 
-        :param int max_samples: Maximum samples per series to return. Default is 0 returning all scalars.
+        :param int max_samples: Maximum samples per series to return. Default is 0 returning up to 5000 samples.
             With sample limit, average scalar values inside sampling window.
         :param str x_axis: scalar x_axis, possible values:
             'iter': iteration (default), 'timestamp': timestamp as milliseconds since epoch, 'iso_time': absolute time
         :return: dict: Nested scalar graphs: dict[title(str), dict[series(str), dict[axis(str), list(float)]]]
         """
+
         if x_axis not in ('iter', 'timestamp', 'iso_time'):
             raise ValueError("Scalar x-axis supported values are: 'iter', 'timestamp', 'iso_time'")
 
@@ -1960,6 +1991,57 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return {}
 
         return response.response_data
+
+    def get_all_reported_scalars(self, x_axis='iter'):
+        # type: (str) -> Mapping[str, Mapping[str, Mapping[str, Sequence[float]]]]
+        """
+        Return a nested dictionary for the all scalar graphs, containing all the registered samples,
+        where the first key is the graph title and the second is the series name.
+        Value is a dict with 'x': values and 'y': values.
+        To fetch downsampled scalar values, please see the :meth:`Task.get_reported_scalars`.
+
+        .. note::
+           This call is not cached, any call will retrieve all the scalar reports from the back-end.
+           If the Task has many scalars reported, it might take long for the call to return.
+
+        :param str x_axis: scalar x_axis, possible values:
+            'iter': iteration (default), 'timestamp': timestamp as milliseconds since epoch, 'iso_time': absolute time
+        :return: dict: Nested scalar graphs: dict[title(str), dict[series(str), dict[axis(str), list(float)]]]
+        """
+        reported_scalars = {}
+        batch_size = 1000
+        scroll_id = None
+        while True:
+            response = self.send(
+                events.GetTaskEventsRequest(
+                    task=self.id, event_type="training_stats_scalar", scroll_id=scroll_id, batch_size=batch_size
+                )
+            )
+            if not response:
+                return reported_scalars
+            response = response.wait()
+            if not response.ok() or not response.response_data:
+                return reported_scalars
+            response = response.response_data
+            for event in response.get("events", []):
+                metric = event["metric"]
+                variant = event["variant"]
+                if x_axis in ["timestamp", "iter"]:
+                    x_val = event[x_axis]
+                else:
+                    x_val = datetime.utcfromtimestamp(event["timestamp"] / 1000).isoformat(timespec="milliseconds") + "Z"
+                y_val = event["value"]
+                reported_scalars.setdefault(metric, {})
+                reported_scalars[metric].setdefault(variant, {"name": variant, "x": [], "y": []})
+                if len(reported_scalars[metric][variant]["x"]) == 0 or reported_scalars[metric][variant]["x"][-1] != x_val:
+                    reported_scalars[metric][variant]["x"].append(x_val)
+                    reported_scalars[metric][variant]["y"].append(y_val)
+                else:
+                    reported_scalars[metric][variant]["y"][-1] = y_val
+            if response.get("returned", 0) < batch_size or not response.get("scroll_id"):
+                break
+            scroll_id = response["scroll_id"]
+        return reported_scalars
 
     def get_reported_plots(
             self,
@@ -2440,19 +2522,26 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         """
         return running_remotely() and get_remote_task_id() == self.id
 
+    def _save_data_to_offline_dir(self, **kwargs):
+        # type: (**Any) -> ()
+        for k, v in kwargs.items():
+            setattr(self.data, k, v)
+        offline_mode_folder = self.get_offline_mode_folder() 
+        if not offline_mode_folder:
+            return
+        Path(offline_mode_folder).mkdir(parents=True, exist_ok=True)
+        with open((offline_mode_folder / self._offline_filename).as_posix(), "wt") as f:
+            export_data = self.data.to_dict()
+            export_data["project_name"] = self.get_project_name()
+            export_data["offline_folder"] = self.get_offline_mode_folder().as_posix()
+            export_data["offline_output_models"] = self._offline_output_models
+            json.dump(export_data, f, ensure_ascii=True, sort_keys=True)
+
     def _edit(self, **kwargs):
         # type: (**Any) -> Any
         with self._edit_lock:
             if self._offline_mode:
-                for k, v in kwargs.items():
-                    setattr(self.data, k, v)
-                Path(self.get_offline_mode_folder()).mkdir(parents=True, exist_ok=True)
-                with open((self.get_offline_mode_folder() / self._offline_filename).as_posix(), "wt") as f:
-                    export_data = self.data.to_dict()
-                    export_data["project_name"] = self.get_project_name()
-                    export_data["offline_folder"] = self.get_offline_mode_folder().as_posix()
-                    export_data["offline_output_models"] = self._offline_output_models
-                    json.dump(export_data, f, ensure_ascii=True, sort_keys=True)
+                self._save_data_to_offline_dir(**kwargs)
                 return None
 
             # Since we ae using forced update, make sure he task status is valid
@@ -2574,6 +2663,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Return the folder where all the task outputs and logs are stored in the offline session.
         :return: Path object, local folder, later to be used with `report_offline_session()`
         """
+        if not self.task_id:
+            return None
         if self._offline_dir:
             return self._offline_dir
         if not self._offline_mode:

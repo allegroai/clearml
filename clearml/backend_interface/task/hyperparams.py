@@ -118,6 +118,13 @@ class HyperParams(object):
                 item = make_item(i)
                 props.update({item.name: item})
 
+        if self.task.is_offline():
+            hyperparams = self.task.data.hyperparams or {}
+            hyperparams.setdefault("properties", tasks.SectionParams())
+            hyperparams["properties"].update(props)
+            self.task._save_data_to_offline_dir(hyperparams=hyperparams)
+            return True
+
         res = self.task.session.send(
             tasks.EditHyperParamsRequest(
                 task=self.task.task_id,

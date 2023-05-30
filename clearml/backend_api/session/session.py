@@ -277,13 +277,9 @@ class Session(TokenManager):
 
         return list(retry_codes)
 
-    def _load_vaults(self):
-        # () -> Optional[bool]
+    def _read_vaults(self):
+        # () -> Optional[dict]
         if not self.check_min_api_version("2.15") or self.feature_set == "basic":
-            return
-
-        if ENV_DISABLE_VAULT_SUPPORT.get():
-            # (self._logger or get_logger()).debug("Vault support is disabled")
             return
 
         def parse(vault):
@@ -306,12 +302,22 @@ class Session(TokenManager):
                 vaults = res.json().get("data", {}).get("vaults", [])
                 data = list(filter(None, map(parse, vaults)))
                 if data:
-                    self.config.set_overrides(*data)
-                    return True
+                    return data
             elif res.status_code != 404:
                 raise Exception(res.json().get("meta", {}).get("result_msg", res.text))
         except Exception as ex:
             (self._logger or get_logger()).warning("Failed getting vaults: {}".format(ex))
+
+    def _load_vaults(self):
+        # () -> Optional[bool]
+        if ENV_DISABLE_VAULT_SUPPORT.get():
+            # (self._logger or get_logger()).debug("Vault support is disabled")
+            return
+
+        data = self._read_vaults()
+        if data:
+            self.config.set_overrides(*data)
+            return True
 
     def _apply_config_sections(self, local_logger):
         # type: (_LocalLogger) -> None  # noqa: F821
@@ -649,7 +655,7 @@ class Session(TokenManager):
             if session:
                 active_sessions.append(session)
                 new_sessions_weakrefs.append(session_weakref)
-        cls._sessions_weakrefs = session_weakref
+        cls._sessions_weakrefs = new_sessions_weakrefs
         return active_sessions
 
     @classmethod

@@ -591,7 +591,7 @@ class Task(_Task):
                     elif task.get_project_object().default_output_destination:
                         task.output_uri = task.get_project_object().default_output_destination
                     elif cls.__default_output_uri:
-                        task.output_uri = cls.__default_output_uri
+                        task.output_uri = str(cls.__default_output_uri)
                     # store new task ID
                     cls.__update_master_pid_task(task=task)
                 else:
@@ -1083,7 +1083,7 @@ class Task(_Task):
         if value is False:
             value = None
         elif value is True:
-            value = self.__default_output_uri or self._get_default_report_storage_uri()
+            value = str(self.__default_output_uri or self._get_default_report_storage_uri())
 
         # check if we have the correct packages / configuration
         if value and value != self.storage_uri:

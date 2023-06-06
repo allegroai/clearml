@@ -76,7 +76,7 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
     * Full source control info including non-committed local changes
     * Execution environment (including specific packages & versions)
     * Hyper-parameters
-        * ArgParser/[Click](https://github.com/pallets/click/)/[PythonFire](https://github.com/google/python-fire) for command line parameters with currently used values
+        * [`argparse`](https://docs.python.org/3/library/argparse.html)/[Click](https://github.com/pallets/click/)/[PythonFire](https://github.com/google/python-fire) for command line parameters with currently used values
         * Explicit parameters dictionary
         * Tensorflow Defines (absl-py)
         * [Hydra](https://github.com/facebookresearch/hydra) configuration and overrides

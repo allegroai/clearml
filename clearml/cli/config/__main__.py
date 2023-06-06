@@ -237,6 +237,12 @@ def parse_known_host(parsed_host):
         api_host = parsed_host.scheme + "://" + parsed_host.netloc.replace(':8080', ':8008', 1) + parsed_host.path
         web_host = parsed_host.scheme + "://" + parsed_host.netloc + parsed_host.path
         files_host = parsed_host.scheme + "://" + parsed_host.netloc.replace(':8080', ':8081', 1) + parsed_host.path
+    elif parsed_host.port is None:
+        print('Web app hosted on standard port using ' + parsed_host.scheme + ' protocol.')
+        print('Assuming files and api ports are unchanged and use the same (' + parsed_host.scheme + ') protocol')
+        api_host = parsed_host.scheme + "://" + parsed_host.netloc + ':8008' + parsed_host.path
+        web_host = parsed_host.scheme + "://" + parsed_host.netloc + parsed_host.path
+        files_host = parsed_host.scheme + "://" + parsed_host.netloc+ ':8081' + parsed_host.path
     else:
         print("Warning! Could not parse host name")
         api_host = ''

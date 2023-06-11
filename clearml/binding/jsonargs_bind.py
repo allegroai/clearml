@@ -209,7 +209,10 @@ class PatchJsonArgParse(object):
         with change_to_path_dir(path):
             parsed_cfg = parser.parse_string(path.get_content(), _skip_check=True, _fail_no_subcommand=False)
             if subcommand:
-                parsed_cfg = {subcommand + PatchJsonArgParse._commands_sep + k: v for k, v in parsed_cfg.items()}
+                parsed_cfg = {
+                    ((subcommand + PatchJsonArgParse._commands_sep) if k not in ["config", "subcommand"] else "") + k: v
+                    for k, v in parsed_cfg.items()
+                }
             return parsed_cfg
 
     @staticmethod

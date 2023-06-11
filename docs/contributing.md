@@ -4,7 +4,7 @@ Firstly, we thank you for taking the time to contribute!
 
 Contribution comes in many forms:
 * Reporting [issues](https://github.com/allegroai/clearml/issues) you've come upon
-* Participating in issue discussions in the [issue tracker](https://github.com/allegroai/clearml/issues) and the [ClearML community slack space](https://join.slack.com/t/allegroai-trains/shared_invite/enQtOTQyMTI1MzQxMzE4LTY5NTUxOTY1NmQ1MzQ5MjRhMGRhZmM4ODE5NTNjMTg2NTBlZGQzZGVkMWU3ZDg1MGE1MjQxNDEzMWU2NmVjZmY)
+* Participating in issue discussions in the [issue tracker](https://github.com/allegroai/clearml/issues) and the [ClearML community slack space](https://joinslack.clear.ml)
 * Suggesting new features or enhancements
 * Implementing new features or fixing outstanding issues
 
@@ -51,7 +51,7 @@ Enhancement suggestions are tracked as GitHub issues. After you determine which 
 Before you submit a new PR:
 
 * Verify the work you plan to merge addresses an existing [issue](https://github.com/allegroai/clearml/issues) (If not, open a new one)
-* Check related discussions in the [ClearML slack community](https://join.slack.com/t/allegroai-trains/shared_invite/enQtOTQyMTI1MzQxMzE4LTY5NTUxOTY1NmQ1MzQ5MjRhMGRhZmM4ODE5NTNjMTg2NTBlZGQzZGVkMWU3ZDg1MGE1MjQxNDEzMWU2NmVjZmY) (Or start your own discussion on the `#clearml-dev` channel)
+* Check related discussions in the [ClearML slack community](https://joinslack.clear.ml) (Or start your own discussion on the `#clearml-dev` channel)
 * Make sure your code conforms to the ClearML coding standards by running:  
   `flake8 --max-line-length=120 --statistics --show-source --extend-ignore=E501 ./clearml*`
 

@@ -3673,14 +3673,14 @@ class Task(_Task):
             # noinspection PyProtectedMember
             task._arguments.copy_from_dict(flatten_dictionary(config_dict), prefix=name)
 
-        def _refresh_args_dict(task, config_dict):
+        def _refresh_args_dict(task, config_proxy_dict):
             # reread from task including newly added keys
             # noinspection PyProtectedMember
-            a_flat_dict = task._arguments.copy_to_dict(flatten_dictionary(config_dict), prefix=name)
+            a_flat_dict = task._arguments.copy_to_dict(flatten_dictionary(config_proxy_dict), prefix=name)
             # noinspection PyProtectedMember
-            nested_dict = config_dict._to_dict()
-            config_dict.clear()
-            config_dict.update(nested_from_flat_dictionary(nested_dict, a_flat_dict))
+            nested_dict = config_proxy_dict._to_dict()
+            config_proxy_dict.clear()
+            config_proxy_dict._do_update(nested_from_flat_dictionary(nested_dict, a_flat_dict))
 
         def _check_keys(dict_, warning_sent=False):
             if warning_sent:

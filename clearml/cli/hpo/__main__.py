@@ -1,7 +1,9 @@
-import sys
 import json
+import sys
 from argparse import ArgumentParser, RawTextHelpFormatter
 
+import clearml.backend_api.session
+from clearml import Task
 from clearml.automation import (
     DiscreteParameterRange,
     UniformIntegerParameterRange,
@@ -11,8 +13,11 @@ from clearml.automation import (
     RandomSearch,
     GridSearch,
 )
-from clearml import Task
 from clearml.backend_interface.task.populate import CreateAndPopulate
+from clearml.version import __version__
+
+clearml.backend_api.session.Session.add_client("clearml-param-search", __version__)
+
 
 try:
     from clearml.automation.optuna import OptimizerOptuna  # noqa

@@ -7,7 +7,11 @@ from typing import Sequence
 
 from pathlib2 import Path
 
+import clearml.backend_api.session
 from clearml.datasets import Dataset
+from clearml.version import __version__
+
+clearml.backend_api.session.Session.add_client("clearml-data", __version__)
 
 
 def check_null_id(args):

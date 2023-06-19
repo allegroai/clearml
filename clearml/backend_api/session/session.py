@@ -156,6 +156,19 @@ class Session(TokenManager):
 
         self._connect()
 
+    @classmethod
+    def add_client(cls, client, value, first=True):
+        # noinspection PyBroadException
+        try:
+            if not any(True for c in cls._client if c[0] == client):
+                if first:
+                    cls._client.insert(0, (client, value))
+                else:
+                    cls._client.append((client, value))
+                cls.client = ", ".join("{}-{}".format(*x) for x in cls._client)
+        except Exception:
+            pass
+
     def _connect(self):
         if self._offline_mode:
             return
@@ -219,8 +232,7 @@ class Session(TokenManager):
             if not api_version:
                 api_version = '2.2' if token_dict.get('env', '') == 'prod' else Session.api_version
             if token_dict.get('server_version'):
-                if not any(True for c in Session._client if c[0] == 'clearml-server'):
-                    Session._client.append(('clearml-server', token_dict.get('server_version'), ))
+                self.add_client('clearml-server', token_dict.get('server_version'))
 
             Session.max_api_version = Session.api_version = str(api_version)
             Session.feature_set = str(token_dict.get('feature_set', self.feature_set) or "basic")

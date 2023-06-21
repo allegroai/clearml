@@ -3621,7 +3621,10 @@ class Task(_Task):
         # at least until we support multiple input models
         # notice that we do not check the task's input model because we allow task reuse and overwrite
         # add into comment that we are using this model
-        comment = self.comment or ''
+
+        # refresh comment
+        comment = self._reload_field("comment") or self.comment or ''
+
         if not comment.endswith('\n'):
             comment += '\n'
         comment += 'Using model id: {}'.format(model.id)

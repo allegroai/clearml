@@ -644,6 +644,23 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             res = self.send(tasks.GetByIdRequest(task=self.id))
             return res.response.task
 
+    def _reload_field(self, field):
+        # type: (str) -> Any
+        """ Reload the task specific field, dot seperated for nesting"""
+        with self._edit_lock:
+            if self._offline_mode:
+                task_object = self._reload()
+            else:
+                res = self.send(tasks.GetAllRequest(id=[self.id], only_fields=[field], search_hidden=True))
+                task_object = res.response.tasks[0]
+
+            for p in field.split("."):
+                task_object = getattr(task_object, p, None)
+                if task_object is None:
+                    break
+
+            return task_object
+
     def reset(self, set_started_on_success=True, force=False):
         # type: (bool, bool) -> ()
         """

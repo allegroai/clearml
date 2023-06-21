@@ -1700,7 +1700,8 @@ class PipelineController(object):
                 ]
                 # verify the pair of pairs
                 if not all(isinstance(x[0][0], str) and isinstance(x[0][1], str) and
-                           isinstance(x[1][0], str) and isinstance(x[1][1], str) for x in conformed_monitors):
+                           isinstance(x[1][0], str) and isinstance(x[1][1], str)
+                           for x in conformed_monitors):
                     raise ValueError("{} should be a list of tuples, found: {}".format(monitor_type, monitors))
             else:
                 # verify a list of tuples
@@ -1712,7 +1713,9 @@ class PipelineController(object):
                     pair if isinstance(pair, (list, tuple)) else (pair, pair) for pair in monitors
                 ]
                 # verify the pair of pairs
-                if not all(isinstance(x[0], str) and isinstance(x[1], str) for x in conformed_monitors):
+                if not all(isinstance(x[0], str) and
+                           isinstance(x[1], str)
+                           for x in conformed_monitors):
                     raise ValueError(
                         "{} should be a list of tuples, found: {}".format(monitor_type, monitors))
 

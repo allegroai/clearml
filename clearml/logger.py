@@ -199,6 +199,10 @@ class Logger(object):
         """
         For explicit reporting, plot a vector as (default stacked) histogram.
 
+        .. note::
+            This method is the same as :meth:`Logger.report_histogram`.
+            This method is deprecated, use :meth:`Logger.report_histogram` instead.
+
         For example:
 
         .. code-block:: py
@@ -442,6 +446,10 @@ class Logger(object):
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
             See full details on the supported configuration: https://plotly.com/javascript/reference/scatter/
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+
+        .. note::
+            This method is the same as :meth:`Logger.report_scatter2d` with :param:`mode='lines'`.
+            This method is deprecated, use :meth:`Logger.report_scatter2d` instead.
         """
         warnings.warn(":meth:`Logger.report_line_plot` is deprecated;"
                       "use :meth:`Logger.report_scatter2d` instead, e.g., with :param:`mode='lines'`.",

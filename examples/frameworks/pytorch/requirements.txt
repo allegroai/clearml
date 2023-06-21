@@ -7,3 +7,4 @@ tensorboardX
 torch>=1.1.0
 torchvision>=0.3.0
 tqdm
+protobuf>=4.21.1

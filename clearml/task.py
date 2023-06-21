@@ -3449,8 +3449,8 @@ class Task(_Task):
                         task_tags = task.data.system_tags if hasattr(task.data, 'system_tags') else task.data.tags
                         task_artifacts = task.data.execution.artifacts \
                             if hasattr(task.data.execution, 'artifacts') else None
-                        if ((str(task._status) in (
-                                str(tasks.TaskStatusEnum.published), str(tasks.TaskStatusEnum.closed)))
+                        if ((task._status in (
+                                cls.TaskStatusEnum.published, cls.TaskStatusEnum.closed))
                                 or task.output_models_id or (cls.archived_tag in task_tags)
                                 or (cls._development_tag not in task_tags)
                                 or task_artifacts):
@@ -4609,15 +4609,15 @@ class Task(_Task):
             return False
 
         stopped_statuses = (
-            str(tasks.TaskStatusEnum.stopped),
-            str(tasks.TaskStatusEnum.published),
-            str(tasks.TaskStatusEnum.publishing),
-            str(tasks.TaskStatusEnum.closed),
-            str(tasks.TaskStatusEnum.failed),
-            str(tasks.TaskStatusEnum.completed),
+            cls.TaskStatusEnum.stopped,
+            cls.TaskStatusEnum.published,
+            cls.TaskStatusEnum.publishing,
+            cls.TaskStatusEnum.closed,
+            cls.TaskStatusEnum.failed,
+            cls.TaskStatusEnum.completed,
         )
 
-        if str(task.status) not in stopped_statuses:
+        if task.status not in stopped_statuses:
             cls._send(
                 cls._get_default_session(),
                 tasks.StoppedRequest(

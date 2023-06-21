@@ -769,7 +769,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def publish(self, ignore_errors=True):
         # type: (bool) -> ()
         """ The signal that this task will be published """
-        if str(self.status) not in (str(tasks.TaskStatusEnum.stopped), str(tasks.TaskStatusEnum.completed)):
+        if self.status not in (self.TaskStatusEnum.stopped, self.TaskStatusEnum.completed):
             raise ValueError("Can't publish, Task is not stopped")
         resp = self.send(tasks.PublishRequest(self.id), ignore_errors=ignore_errors)
         assert isinstance(resp.response, tasks.PublishResponse)
@@ -809,7 +809,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         try:
             res = self.send(tasks.GetByIdRequest(self.task_id))
             task = res.response.task
-            if task.status == Task.TaskStatusEnum.published:
+            if task.status == self.TaskStatusEnum.published:
                 if raise_on_error:
                     raise self.DeleteError("Cannot delete published task {}".format(self.task_id))
                 self.log.error("Cannot delete published task {}".format(self.task_id))
@@ -2425,7 +2425,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :return: list of tuples (status, status_message, task_id)
         """
         if cls._offline_mode:
-            return [(tasks.TaskStatusEnum.created, "offline", i) for i in ids]
+            return [(cls.TaskStatusEnum.created, "offline", i) for i in ids]
 
         # noinspection PyBroadException
         try:
@@ -2564,7 +2564,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             # Since we ae using forced update, make sure he task status is valid
             status = self._data.status if self._data and self._reload_skip_flag else self.data.status
             if not kwargs.pop("force", False) and \
-                    status not in (tasks.TaskStatusEnum.created, tasks.TaskStatusEnum.in_progress):
+                    status not in (self.TaskStatusEnum.created, self.TaskStatusEnum.in_progress):
                 # the exception being name/comment that we can always change.
                 if kwargs and all(
                     k in ("name", "project", "comment", "tags", "system_tags", "runtime") for k in kwargs.keys()
@@ -3017,7 +3017,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def _get_task_status(cls, task_id):
         # type: (str) -> (Optional[str], Optional[str])
         if cls._offline_mode:
-            return tasks.TaskStatusEnum.created, 'offline'
+            return cls.TaskStatusEnum.created, 'offline'
 
         # noinspection PyBroadException
         try:

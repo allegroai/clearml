@@ -401,6 +401,8 @@ class _Boto3Driver(_Driver):
 
     _min_pool_connections = 512
     _max_multipart_concurrency = deferred_config('aws.boto3.max_multipart_concurrency', 16)
+    _multipart_threshold = deferred_config('aws.boto3.multipart_threshold', (1024 ** 2) * 8)  # 8 MB
+    _multipart_chunksize = deferred_config('aws.boto3.multipart_chunksize', (1024 ** 2) * 8)
     _pool_connections = deferred_config('aws.boto3.pool_connections', 512)
     _connect_timeout = deferred_config('aws.boto3.connect_timeout', 60)
     _read_timeout = deferred_config('aws.boto3.read_timeout', 60)
@@ -498,7 +500,9 @@ class _Boto3Driver(_Driver):
             container.bucket.upload_fileobj(stream, object_name, Config=boto3.s3.transfer.TransferConfig(
                 use_threads=container.config.multipart,
                 max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
-                num_download_attempts=container.config.retries),
+                num_download_attempts=container.config.retries,
+                multipart_threshold=self._multipart_threshold,
+                multipart_chunksize=self._multipart_chunksize),
                 Callback=callback,
                 ExtraArgs=extra_args,
             )
@@ -512,6 +516,8 @@ class _Boto3Driver(_Driver):
                     Config=boto3.s3.transfer.TransferConfig(
                         use_threads=False,
                         num_download_attempts=container.config.retries,
+                        multipart_threshold=self._multipart_threshold,
+                        multipart_chunksize=self._multipart_chunksize,
                     ),
                     Callback=callback,
                     ExtraArgs=extra_args
@@ -535,7 +541,9 @@ class _Boto3Driver(_Driver):
             container.bucket.upload_file(file_path, object_name, Config=boto3.s3.transfer.TransferConfig(
                 use_threads=container.config.multipart,
                 max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
-                num_download_attempts=container.config.retries),
+                num_download_attempts=container.config.retries,
+                multipart_threshold=self._multipart_threshold,
+                multipart_chunksize=self._multipart_chunksize),
                 Callback=callback,
                 ExtraArgs=extra_args,
             )
@@ -547,7 +555,10 @@ class _Boto3Driver(_Driver):
                     file_path,
                     object_name,
                     Config=boto3.s3.transfer.TransferConfig(
-                        use_threads=False, num_download_attempts=container.config.retries
+                        use_threads=False,
+                        num_download_attempts=container.config.retries,
+                        multipart_threshold=self._multipart_threshold,
+                        multipart_chunksize=self._multipart_chunksize
                     ),
                     Callback=callback,
                     ExtraArgs=extra_args
@@ -600,7 +611,9 @@ class _Boto3Driver(_Driver):
         config = boto3.s3.transfer.TransferConfig(
             use_threads=container.config.multipart,
             max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
-            num_download_attempts=container.config.retries)
+            num_download_attempts=container.config.retries,
+            multipart_threshold=self._multipart_threshold,
+            multipart_chunksize=self._multipart_chunksize)
         total_size_mb = obj.content_length / (1024. * 1024.)
         remote_path = os.path.join(obj.container_name, obj.key)
         cb = DownloadProgressReport(total_size_mb, verbose, remote_path, log)
@@ -618,7 +631,9 @@ class _Boto3Driver(_Driver):
         Config = boto3.s3.transfer.TransferConfig(
             use_threads=container.config.multipart,
             max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
-            num_download_attempts=container.config.retries
+            num_download_attempts=container.config.retries,
+            multipart_threshold=self._multipart_threshold,
+            multipart_chunksize=self._multipart_chunksize
         )
         obj.download_file(str(p), Callback=callback, Config=Config)
 

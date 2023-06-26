@@ -228,9 +228,11 @@ class Logger(object):
             See full details on the supported configuration: https://plotly.com/javascript/reference/layout/
             example: extra_layout={'showlegend': False, 'plot_bgcolor': 'yellow'}
         """
-        warnings.warn(":meth:`Logger.report_vector` is deprecated;"
-                      "use :meth:`Logger.report_histogram` instead.",
-                      DeprecationWarning)
+        warnings.warn(
+            ":meth:`Logger.report_vector` is deprecated;"
+            "use :meth:`Logger.report_histogram` instead.",
+            DeprecationWarning
+        )
         self._touch_title_series(title, series)
         return self.report_histogram(title, series, values, iteration or 0, labels=labels, xlabels=xlabels,
                                      xaxis=xaxis, yaxis=yaxis, mode=mode, extra_layout=extra_layout)
@@ -451,9 +453,11 @@ class Logger(object):
             This method is the same as :meth:`Logger.report_scatter2d` with :param:`mode='lines'`.
             This method is deprecated, use :meth:`Logger.report_scatter2d` instead.
         """
-        warnings.warn(":meth:`Logger.report_line_plot` is deprecated;"
-                      "use :meth:`Logger.report_scatter2d` instead, e.g., with :param:`mode='lines'`.",
-                      DeprecationWarning)
+        warnings.warn(
+            ":meth:`Logger.report_line_plot` is deprecated;"
+            "use :meth:`Logger.report_scatter2d` instead, e.g., with :param:`mode='lines'`.",
+            DeprecationWarning
+        )
 
         # noinspection PyArgumentList
         series = [self.SeriesInfo(**s) if isinstance(s, dict) else s for s in series]
@@ -739,9 +743,11 @@ class Logger(object):
             See full details on the supported configuration: https://plotly.com/javascript/reference/heatmap/
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
-        warnings.warn(":meth:`Logger.report_matrix` is deprecated;"
-                      "use :meth:`Logger.report_confusion_matrix` instead.",
-                      DeprecationWarning)
+        warnings.warn(
+            ":meth:`Logger.report_matrix` is deprecated;"
+            "use :meth:`Logger.report_confusion_matrix` instead.",
+            DeprecationWarning
+        )
         self._touch_title_series(title, series)
         return self.report_confusion_matrix(title, series, matrix, iteration or 0,
                                             xaxis=xaxis, yaxis=yaxis, xlabels=xlabels, ylabels=ylabels,

@@ -3629,8 +3629,7 @@ class PipelineDecorator(PipelineController):
                         return retries < 5
 
         :param pre_execute_callback: Callback function, called when the step (Task) is created,
-             and before it is sent for execution.
-             Allows a user to modify the Task before launch.
+             and before it is sent for execution. Allows a user to modify the Task before launch.
             Use `node.job` to access the ClearmlJob object, or `node.job.task` to directly access the Task object.
             `parameters` are the configuration arguments passed to the ClearmlJob.
 

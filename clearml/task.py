@@ -1009,10 +1009,16 @@ class Task(_Task):
             If None is passed, returns all tasks within the project
         :param list tags: Filter based on the requested list of tags (strings)
             To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
-            To include All tags (instead of the default All behaviour) use "__$all" as the first string, example:
+            The default behaviour is to join all tags with a logical "OR" operator.
+            To join all tags with a logical "AND" operator instead, use "__$all" as the first string, for example:
             ["__$all", "best", "experiment", "ever"]
-            To combine All tags and exclude a list of tags use "__$not" before the excluded tags, example:
-            ["__$all", "best", "experiment", "ever", "__$not", "internal", "test"]
+            To join all tags with AND, but exclude a tag use "__$not" before the excluded tag, for example:
+            ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]
+            The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
+            The NOT operator applies only to the immediately following tag.
+            For example, ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
+            means ("a" AND "b" AND "c" AND ("d" OR NOT "e") AND ("f" OR "g")).
+            See https://clear.ml/docs/latest/docs/clearml_sdk/task_sdk/#tag-filters for more information.
         :param list additional_return_fields: Optional, if not provided return a list of Task IDs.
             If provided return dict per Task with the additional requested fields.
             Example: ``returned_fields=['last_updated', 'user', 'script.repository']`` will return a list of dict:

@@ -1783,7 +1783,7 @@ class StorageHelper(object):
         Supports both local and remote files (currently local files, network-mapped files, HTTP/S and Amazon S3)
     """
     _temp_download_suffix = '.partially'
-    _quotable_uri_schemes = set(_HttpDriver.schemes) | set([_GoogleCloudStorageDriver.scheme])
+    _quotable_uri_schemes = set(_HttpDriver.schemes)
 
     @classmethod
     def _get_logger(cls):

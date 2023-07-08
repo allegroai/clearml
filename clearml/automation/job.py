@@ -416,7 +416,22 @@ class BaseJob(object):
         # we need to ignore `requirements` section because ir might be changing from run to run
         script.pop("requirements", None)
 
-        hyper_params = task.get_parameters() if params_override is None else params_override
+        hyper_params = deepcopy(task.get_parameters() if params_override is None else params_override)
+        hyper_params_to_change = {}
+        task_cache = {}
+        for key, value in hyper_params.items():
+            if key.startswith("kwargs_artifacts/"):
+                # noinspection PyBroadException
+                try:
+                    # key format is <task_id>.<artifact_name>
+                    task_id, artifact = value.split(".", 1)
+                    task_ = task_cache.setdefault(task_id, Task.get_task(task_id))
+                    # set the value of the hyper parameter to the hash of the artifact
+                    # because the task ID might differ, but the artifact might be the same
+                    hyper_params_to_change[key] = task_.artifacts[artifact].hash
+                except Exception:
+                    pass
+        hyper_params.update(hyper_params_to_change)
         configs = task.get_configuration_objects() if configurations_override is None else configurations_override
         # currently we do not add the docker image to the hash (only args and setup script),
         # because default docker image will cause the step to change

@@ -1877,6 +1877,7 @@ class Dataset(object):
         ids=None,  # type: Optional[Sequence[str]]
         only_completed=True,  # type: bool
         recursive_project_search=True,  # type: bool
+        include_archived=True,  # type: bool
     ):
         # type: (...) -> List[dict]
         """
@@ -1890,9 +1891,16 @@ class Dataset(object):
         :param recursive_project_search: If True and the `dataset_project` argument is set,
             search inside subprojects as well.
             If False, don't search inside subprojects (except for the special `.datasets` subproject)
+        :param include_archived: If True, include archived datasets as well.
         :return: List of dictionaries with dataset information
             Example: [{'name': name, 'project': project name, 'id': dataset_id, 'created': date_created},]
         """
+        # if include_archived is False, we need to add the system tag __$not:archived to filter out archived datasets
+        if not include_archived:
+            system_tags = ["__$all", cls.__tag, "__$not", "archived"]
+        else:
+            system_tags = [cls.__tag]
+
         if dataset_project:
             if not recursive_project_search:
                 dataset_projects = [
@@ -1903,12 +1911,13 @@ class Dataset(object):
                 dataset_projects = [exact_match_regex(dataset_project), "^{}/.*".format(re.escape(dataset_project))]
         else:
             dataset_projects = None
+
         # noinspection PyProtectedMember
         datasets = Task._query_tasks(
             task_ids=ids or None,
             project_name=dataset_projects,
             task_name=partial_name,
-            system_tags=[cls.__tag],
+            system_tags=system_tags,
             type=[str(Task.TaskTypes.data_processing)],
             tags=tags or None,
             status=["stopped", "published", "completed", "closed"] if only_completed else None,

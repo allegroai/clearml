@@ -61,6 +61,23 @@ def config_dict_to_text(config):
     try:
         # noinspection PyBroadException
         try:
+            def raise_on_special_key(config_):
+                if not isinstance(config_, dict):
+                    return
+                special_chars = "$}[]:=+#`^?!@*&."
+                for key in config_.keys():
+                    if not isinstance(key, str):
+                        continue
+                    if any(key_char in special_chars for key_char in key):
+                        raise ValueError(
+                            "Configuration dictionary keys cannot contain any of the following characters: {}".format(
+                                special_chars
+                            )
+                        )
+                for val in config_.values():
+                    raise_on_special_key(val)
+            # will fall back to json+pyhocon
+            raise_on_special_key(config)
             text = HOCONConverter.to_hocon(ConfigFactory.from_dict(hocon_quote_key(config)))
         except Exception:
             # fallback json+pyhocon

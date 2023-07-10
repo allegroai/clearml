@@ -2414,7 +2414,7 @@ class StorageHelper(object):
 
         if self.scheme in StorageHelper._quotable_uri_schemes: # TODO: fix-driver-schema
             # quote link
-            result_dest_path = quote_url(result_dest_path)
+            result_dest_path = quote_url(result_dest_path, StorageHelper._quotable_uri_schemes)
 
         return result_dest_path
 
@@ -2436,7 +2436,7 @@ class StorageHelper(object):
 
             # quote link
             def callback(result):
-                return a_cb(quote_url(result_path) if result else result)
+                return a_cb(quote_url(result_path, StorageHelper._quotable_uri_schemes) if result else result)
             # replace callback with wrapper
             cb = callback
 
@@ -2463,7 +2463,7 @@ class StorageHelper(object):
                     retries=retries,
                     return_canonized=return_canonized)
             if res:
-                result_path = quote_url(result_path)
+                result_path = quote_url(result_path, StorageHelper._quotable_uri_schemes)
             return result_path
 
     def list(self, prefix=None, with_metadata=False):

@@ -39,10 +39,14 @@ class ProxyDictPostWrite(dict):
         return a_dict
 
     def update(self, E=None, **F):
+        res = self._do_update(E, **F)
+        self._set_callback()
+        return res
+
+    def _do_update(self, E=None, **F):
         res = super(ProxyDictPostWrite, self).update(
             ProxyDictPostWrite(self._update_obj, self._set_callback, E) if E is not None else
             ProxyDictPostWrite(self._update_obj, self._set_callback, **F))
-        self._set_callback()
         return res
 
 

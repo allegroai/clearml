@@ -3,9 +3,12 @@ from argparse import ArgumentParser
 
 from pathlib2 import Path
 
+import clearml.backend_api.session
 from clearml import Task
-from clearml.version import __version__
 from clearml.backend_interface.task.populate import CreateAndPopulate
+from clearml.version import __version__
+
+clearml.backend_api.session.Session.add_client("clearml-task", __version__)
 
 
 def setup_parser(parser):

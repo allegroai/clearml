@@ -42,9 +42,9 @@ def get_config_object_matcher(**patterns):
     return _matcher
 
 
-def quote_url(url):
+def quote_url(url, valid_schemes=("http", "https")):
     parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https", "gs"):
+    if parsed.scheme not in valid_schemes:
         return url
     parsed = parsed._replace(path=quote(parsed.path))
     return urlunparse(parsed)

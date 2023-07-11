@@ -7,14 +7,17 @@ make sure code doesn't crash, and then move to a stronger machine for the entire
 """
 
 from __future__ import print_function
+
 import argparse
 import os
 from tempfile import gettempdir
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
+
 from clearml import Task, Logger
 
 
@@ -51,7 +54,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
                 "train", "loss", iteration=(epoch * len(train_loader) + batch_idx), value=loss.item())
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
+                       100. * batch_idx / len(train_loader), loss.item()))
 
 
 def test(args, model, device, test_loader, epoch):
@@ -127,8 +130,9 @@ def main():
             task.execute_remotely(queue_name="default")
         train(args, model, device, train_loader, optimizer, epoch)
         test(args, model, device, test_loader, epoch)
-    if (args.save_model):
-        torch.save(model.state_dict(), os.path.join(gettempdir(), "mnist_cnn.pt"))
+
+    if args.save_model:
+        torch.save(model.state_dict(), os.path.join(gettempdir(), "mnist_cnn_remote.pt"))
 
 
 if __name__ == '__main__':

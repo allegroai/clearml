@@ -122,7 +122,7 @@ class Dataset(object):
     __hyperparams_section = "Datasets"
     __datasets_runtime_prop = "datasets"
     __orig_datasets_runtime_prop_prefix = "orig_datasets"
-    __preview_media_max_file_size =  deferred_config("dataset.preview.media.max_file_size", 5 * 1024 * 1024, transform=int)
+    __preview_media_max_file_size = deferred_config("dataset.preview.media.max_file_size", 5 * 1024 * 1024, transform=int)
     __preview_tabular_table_count = deferred_config("dataset.preview.tabular.table_count", 10, transform=int)
     __preview_tabular_row_count = deferred_config("dataset.preview.tabular.row_count", 10, transform=int)
     __preview_media_image_count = deferred_config("dataset.preview.media.image_count", 10, transform=int)
@@ -1877,6 +1877,7 @@ class Dataset(object):
         ids=None,  # type: Optional[Sequence[str]]
         only_completed=True,  # type: bool
         recursive_project_search=True,  # type: bool
+        include_archived=True,  # type: bool
     ):
         # type: (...) -> List[dict]
         """
@@ -1890,9 +1891,16 @@ class Dataset(object):
         :param recursive_project_search: If True and the `dataset_project` argument is set,
             search inside subprojects as well.
             If False, don't search inside subprojects (except for the special `.datasets` subproject)
+        :param include_archived: If True, include archived datasets as well.
         :return: List of dictionaries with dataset information
             Example: [{'name': name, 'project': project name, 'id': dataset_id, 'created': date_created},]
         """
+        # if include_archived is False, we need to add the system tag __$not:archived to filter out archived datasets
+        if not include_archived:
+            system_tags = ["__$all", cls.__tag, "__$not", "archived"]
+        else:
+            system_tags = [cls.__tag]
+
         if dataset_project:
             if not recursive_project_search:
                 dataset_projects = [
@@ -1903,12 +1911,13 @@ class Dataset(object):
                 dataset_projects = [exact_match_regex(dataset_project), "^{}/.*".format(re.escape(dataset_project))]
         else:
             dataset_projects = None
+
         # noinspection PyProtectedMember
         datasets = Task._query_tasks(
             task_ids=ids or None,
             project_name=dataset_projects,
             task_name=partial_name,
-            system_tags=[cls.__tag],
+            system_tags=system_tags,
             type=[str(Task.TaskTypes.data_processing)],
             tags=tags or None,
             status=["stopped", "published", "completed", "closed"] if only_completed else None,
@@ -2278,14 +2287,15 @@ class Dataset(object):
             ds = Dataset.get(dependency)
             links.update(ds._dataset_link_entries)
         links.update(self._dataset_link_entries)
-        def _download_link(link,target_path):
+
+        def _download_link(link, target_path):
             if os.path.exists(target_path):
-                    LoggerRoot.get_base_logger().info(
-                        "{} already exists. Skipping downloading {}".format(
-                            target_path, link
-                        )
+                LoggerRoot.get_base_logger().info(
+                    "{} already exists. Skipping downloading {}".format(
+                        target_path, link
                     )
-                    return
+                )
+                return
             ok = False
             error = None
             try:
@@ -2310,16 +2320,12 @@ class Dataset(object):
         if not max_workers:
             for relative_path, link in links.items():
                 target_path = os.path.join(target_folder, relative_path)
-                _download_link(link,target_path)
+                _download_link(link, target_path)
         else:
             with ThreadPoolExecutor(max_workers=max_workers) as pool:
                 for relative_path, link in links.items():
                     target_path = os.path.join(target_folder, relative_path)
-                    pool.submit(_download_link,link,target_path)
-
-
-
-
+                    pool.submit(_download_link, link, target_path)
 
     def _extract_dataset_archive(
             self,
@@ -2720,7 +2726,7 @@ class Dataset(object):
             dataset._task.mark_completed()
 
         return id
-    
+
     def _log_dataset_page(self):
         if bool(Session.check_min_api_server_version(self.__min_api_version)):
             self._task.get_logger().report_text(
@@ -2732,6 +2738,7 @@ class Dataset(object):
                     )
                 )
             )
+
     def _build_dependency_chunk_lookup(self):
         # type: () -> Dict[str, int]
         """

@@ -1009,10 +1009,16 @@ class Task(_Task):
             If None is passed, returns all tasks within the project
         :param list tags: Filter based on the requested list of tags (strings)
             To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
-            To include All tags (instead of the default All behaviour) use "__$all" as the first string, example:
+            The default behaviour is to join all tags with a logical "OR" operator.
+            To join all tags with a logical "AND" operator instead, use "__$all" as the first string, for example:
             ["__$all", "best", "experiment", "ever"]
-            To combine All tags and exclude a list of tags use "__$not" before the excluded tags, example:
-            ["__$all", "best", "experiment", "ever", "__$not", "internal", "test"]
+            To join all tags with AND, but exclude a tag use "__$not" before the excluded tag, for example:
+            ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]
+            The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
+            The NOT operator applies only to the immediately following tag.
+            For example, ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
+            means ("a" AND "b" AND "c" AND ("d" OR NOT "e") AND ("f" OR "g")).
+            See https://clear.ml/docs/latest/docs/clearml_sdk/task_sdk/#tag-filters for more information.
         :param list additional_return_fields: Optional, if not provided return a list of Task IDs.
             If provided return dict per Task with the additional requested fields.
             Example: ``returned_fields=['last_updated', 'user', 'script.repository']`` will return a list of dict:
@@ -3449,8 +3455,8 @@ class Task(_Task):
                         task_tags = task.data.system_tags if hasattr(task.data, 'system_tags') else task.data.tags
                         task_artifacts = task.data.execution.artifacts \
                             if hasattr(task.data.execution, 'artifacts') else None
-                        if ((str(task._status) in (
-                                str(tasks.TaskStatusEnum.published), str(tasks.TaskStatusEnum.closed)))
+                        if ((task._status in (
+                                cls.TaskStatusEnum.published, cls.TaskStatusEnum.closed))
                                 or task.output_models_id or (cls.archived_tag in task_tags)
                                 or (cls._development_tag not in task_tags)
                                 or task_artifacts):
@@ -3621,7 +3627,10 @@ class Task(_Task):
         # at least until we support multiple input models
         # notice that we do not check the task's input model because we allow task reuse and overwrite
         # add into comment that we are using this model
-        comment = self.comment or ''
+
+        # refresh comment
+        comment = self._reload_field("comment") or self.comment or ''
+
         if not comment.endswith('\n'):
             comment += '\n'
         comment += 'Using model id: {}'.format(model.id)
@@ -3673,14 +3682,14 @@ class Task(_Task):
             # noinspection PyProtectedMember
             task._arguments.copy_from_dict(flatten_dictionary(config_dict), prefix=name)
 
-        def _refresh_args_dict(task, config_dict):
+        def _refresh_args_dict(task, config_proxy_dict):
             # reread from task including newly added keys
             # noinspection PyProtectedMember
-            a_flat_dict = task._arguments.copy_to_dict(flatten_dictionary(config_dict), prefix=name)
+            a_flat_dict = task._arguments.copy_to_dict(flatten_dictionary(config_proxy_dict), prefix=name)
             # noinspection PyProtectedMember
-            nested_dict = config_dict._to_dict()
-            config_dict.clear()
-            config_dict.update(nested_from_flat_dictionary(nested_dict, a_flat_dict))
+            nested_dict = config_proxy_dict._to_dict()
+            config_proxy_dict.clear()
+            config_proxy_dict._do_update(nested_from_flat_dictionary(nested_dict, a_flat_dict))
 
         def _check_keys(dict_, warning_sent=False):
             if warning_sent:
@@ -4606,15 +4615,15 @@ class Task(_Task):
             return False
 
         stopped_statuses = (
-            str(tasks.TaskStatusEnum.stopped),
-            str(tasks.TaskStatusEnum.published),
-            str(tasks.TaskStatusEnum.publishing),
-            str(tasks.TaskStatusEnum.closed),
-            str(tasks.TaskStatusEnum.failed),
-            str(tasks.TaskStatusEnum.completed),
+            cls.TaskStatusEnum.stopped,
+            cls.TaskStatusEnum.published,
+            cls.TaskStatusEnum.publishing,
+            cls.TaskStatusEnum.closed,
+            cls.TaskStatusEnum.failed,
+            cls.TaskStatusEnum.completed,
         )
 
-        if str(task.status) not in stopped_statuses:
+        if task.status not in stopped_statuses:
             cls._send(
                 cls._get_default_session(),
                 tasks.StoppedRequest(

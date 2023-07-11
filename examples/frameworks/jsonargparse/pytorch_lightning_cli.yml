@@ -8,6 +8,6 @@ trainer:
         filename: best
         save_last: False
         save_top_k: 1
-        monitor: loss
+        monitor: train_loss
         mode: min
   max_epochs: 10

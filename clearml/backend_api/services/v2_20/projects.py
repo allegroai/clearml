@@ -4590,7 +4590,7 @@ class UpdateResponse(Response):
 
 class ValidateDeleteRequest(Request):
     """
-    Validates that the project existis and can be deleted
+    Validates that the project exists and can be deleted
 
     :param project: Project ID
     :type project: str

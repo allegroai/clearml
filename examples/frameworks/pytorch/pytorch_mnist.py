@@ -1,6 +1,7 @@
 # ClearML - Example of Pytorch mnist training integration
 #
 from __future__ import print_function
+
 import argparse
 import os
 from tempfile import gettempdir
@@ -47,7 +48,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
                 "train", "loss", iteration=(epoch * len(train_loader) + batch_idx), value=loss.item())
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
+                       100. * batch_idx / len(train_loader), loss.item()))
 
 
 def test(args, model, device, test_loader, epoch):
@@ -128,7 +129,7 @@ def main():
         train(args, model, device, train_loader, optimizer, epoch)
         test(args, model, device, test_loader, epoch)
 
-    if (args.save_model):
+    if args.save_model:
         torch.save(model.state_dict(), os.path.join(gettempdir(), "mnist_cnn.pt"))
 
 

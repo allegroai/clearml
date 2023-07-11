@@ -156,7 +156,7 @@ def main(_):
         test(FLAGS, model, device, test_loader, epoch)
 
     if FLAGS.save_model:
-        torch.save(model.state_dict(), os.path.join(gettempdir(), "mnist_cnn.pt"))
+        torch.save(model.state_dict(), os.path.join(gettempdir(), "mnist_cnn_abseil.pt"))
 
 
 if __name__ == "__main__":

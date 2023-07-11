@@ -1615,7 +1615,7 @@ class PipelineController(object):
 
     def _has_stored_configuration(self):
         """
-        Return True if we are running remotely and we have stored configuration on the Task
+        Return True if we are running remotely, and we have stored configuration on the Task
         """
         if self._auto_connect_task and self._task and not self._task.running_locally() and self._task.is_main_task():
             stored_config = self._task.get_configuration_object(self._config_section)
@@ -1698,9 +1698,10 @@ class PipelineController(object):
                 conformed_monitors = [
                     pair if isinstance(pair[0], (list, tuple)) else (pair, pair) for pair in monitors
                 ]
-                # verify pair of pairs
+                # verify the pair of pairs
                 if not all(isinstance(x[0][0], str) and isinstance(x[0][1], str) and
-                           isinstance(x[1][0], str) and isinstance(x[1][1], str) for x in conformed_monitors):
+                           isinstance(x[1][0], str) and isinstance(x[1][1], str)
+                           for x in conformed_monitors):
                     raise ValueError("{} should be a list of tuples, found: {}".format(monitor_type, monitors))
             else:
                 # verify a list of tuples
@@ -1711,8 +1712,10 @@ class PipelineController(object):
                 conformed_monitors = [
                     pair if isinstance(pair, (list, tuple)) else (pair, pair) for pair in monitors
                 ]
-                # verify pair of pairs
-                if not all(isinstance(x[0], str) and isinstance(x[1], str) for x in conformed_monitors):
+                # verify the pair of pairs
+                if not all(isinstance(x[0], str) and
+                           isinstance(x[1], str)
+                           for x in conformed_monitors):
                     raise ValueError(
                         "{} should be a list of tuples, found: {}".format(monitor_type, monitors))
 
@@ -1782,7 +1785,7 @@ class PipelineController(object):
         # type: (...) -> bool
         """
         Create a Task from a function, including wrapping the function input arguments
-        into the hyper-parameter section as kwargs, and storing function results as named artifacts
+        into the hyperparameter section as kwargs, and storing function results as named artifacts
 
         Example:
 
@@ -1874,7 +1877,7 @@ class PipelineController(object):
         :param continue_on_fail: (default False). If True, failed step will not cause the pipeline to stop
             (or marked as failed). Notice, that steps that are connected (or indirectly connected)
             to the failed step will be skipped.
-        :param pre_execute_callback: Callback function, called when the step (Task) is created
+        :param pre_execute_callback: Callback function, called when the step (Task) is created,
             and before it is sent for execution. Allows a user to modify the Task before launch.
             Use `node.job` to access the ClearmlJob object, or `node.job.task` to directly access the Task object.
             `parameters` are the configuration arguments passed to the ClearmlJob.
@@ -2302,7 +2305,8 @@ class PipelineController(object):
 
         :param node_params: list of node parameters
         :param visited: list of nodes
-        :return: Table as List of List of strings (cell)
+
+        :return: Table as a List of a List of strings (cell)
         """
         task_link_template = self._task.get_output_log_web_page() \
             .replace('/{}/'.format(self._task.project), '/{project}/') \
@@ -2778,6 +2782,7 @@ class PipelineController(object):
         return the pipeline components target folder name/id
 
         :param return_project_id: if False (default), return target folder name. If True, return project id
+
         :return: project id/name (None if not valid)
         """
         if not self._target_project:
@@ -3110,7 +3115,7 @@ class PipelineDecorator(PipelineController):
         :param str target_project: If provided, all pipeline steps are cloned into the target project
         :param bool abort_on_failure: If False (default), failed pipeline steps will not cause the pipeline
             to stop immediately, instead any step that is not connected (or indirectly connected) to the failed step,
-            will still be executed. Nonetheless the pipeline itself will be marked failed, unless the failed step
+            will still be executed. Nonetheless, the pipeline itself will be marked failed, unless the failed step
             was specifically defined with "continue_on_fail=True".
             If True, any failed step will cause the pipeline to immediately abort, stop all running steps,
             and mark the pipeline as failed.
@@ -3540,7 +3545,7 @@ class PipelineDecorator(PipelineController):
 
         :param _func: wrapper function
         :param return_values: Provide a list of names for all the results.
-            Notice! If not provided no results will be stored as artifacts.
+            Notice! If not provided, no results will be stored as artifacts.
         :param name: Optional, set the name of the pipeline component task.
             If not provided, the wrapped function name is used as the pipeline component name
         :param cache: If True, before launching the new step,
@@ -3623,8 +3628,8 @@ class PipelineDecorator(PipelineController):
                         # allow up to 5 retries (total of 6 runs)
                         return retries < 5
 
-        :param pre_execute_callback: Callback function, called when the step (Task) is created
-            and before it is sent for execution. Allows a user to modify the Task before launch.
+        :param pre_execute_callback: Callback function, called when the step (Task) is created,
+             and before it is sent for execution. Allows a user to modify the Task before launch.
             Use `node.job` to access the ClearmlJob object, or `node.job.task` to directly access the Task object.
             `parameters` are the configuration arguments passed to the ClearmlJob.
 
@@ -3644,7 +3649,7 @@ class PipelineDecorator(PipelineController):
                     pass
 
         :param post_execute_callback: Callback function, called when a step (Task) is completed
-            and other jobs are executed. Allows a user to modify the Task status after completion.
+            and other jobs are going to be executed. Allows a user to modify the Task status after completion.
 
             .. code-block:: py
 
@@ -3794,7 +3799,7 @@ class PipelineDecorator(PipelineController):
                     if target_queue:
                         PipelineDecorator.set_default_execution_queue(target_queue)
                     else:
-                        # if we are are not running from a queue, we are probably in debug mode
+                        # if we are not running from a queue, we are probably in debug mode
                         a_pipeline._clearml_job_class = LocalClearmlJob
                         a_pipeline._default_execution_queue = 'mock'
 
@@ -3957,7 +3962,7 @@ class PipelineDecorator(PipelineController):
         :param str target_project: If provided, all pipeline steps are cloned into the target project
         :param bool abort_on_failure: If False (default), failed pipeline steps will not cause the pipeline
             to stop immediately, instead any step that is not connected (or indirectly connected) to the failed step,
-            will still be executed. Nonetheless the pipeline itself will be marked failed, unless the failed step
+            will still be executed. Nonetheless, the pipeline itself will be marked failed, unless the failed step
             was specifically defined with "continue_on_fail=True".
             If True, any failed step will cause the pipeline to immediately abort, stop all running steps,
             and mark the pipeline as failed.

@@ -78,6 +78,7 @@ class ImageClassifier(LightningModule):
         x, y = batch
         logits = self.forward(x)
         loss = F.nll_loss(logits, y.long())
+        self.log("train_loss", loss)
         return loss
 
     def test_step(self, batch, batch_idx):

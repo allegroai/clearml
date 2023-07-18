@@ -437,12 +437,18 @@ class _Boto3Driver(_Driver):
             self.name = name[5:]
             endpoint = (('https://' if cfg.secure else 'http://') + cfg.host) if cfg.host else None
 
+            verify = cfg.verify
+            if verify is True:
+                # True is a non-documented value for boto3, use None instead (which means verify)
+                print("Using boto3 verify=None instead of true")
+                verify = None
+
             # boto3 client creation isn't thread-safe (client itself is)
             with self._creation_lock:
                 boto_kwargs = {
                     "endpoint_url": endpoint,
                     "use_ssl": cfg.secure,
-                    "verify": cfg.verify,
+                    "verify": verify,
                     "region_name": cfg.region or None,  # None in case cfg.region is an empty string
                     "config": botocore.client.Config(
                         max_pool_connections=max(

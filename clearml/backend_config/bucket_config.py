@@ -31,7 +31,7 @@ class S3BucketConfig(object):
     acl = attrib(type=str, converter=_none_to_empty_string, default="")
     secure = attrib(type=bool, default=True)
     region = attrib(type=str, converter=_none_to_empty_string, default="")
-    verify = attrib(type=bool, default=True)
+    verify = attrib(type=bool, default=None)
     use_credentials_chain = attrib(type=bool, default=False)
     extra_args = attrib(type=dict, default=None)
 
@@ -106,6 +106,7 @@ class S3BucketConfigurations(BaseBucketConfigurations):
         default_use_credentials_chain=False,
         default_token="",
         default_extra_args=None,
+        default_verify=None,
     ):
         super(S3BucketConfigurations, self).__init__()
         self._buckets = buckets if buckets else list()
@@ -116,6 +117,7 @@ class S3BucketConfigurations(BaseBucketConfigurations):
         self._default_multipart = True
         self._default_use_credentials_chain = default_use_credentials_chain
         self._default_extra_args = default_extra_args
+        self._default_verify = default_verify
 
     @classmethod
     def from_config(cls, s3_configuration):
@@ -129,6 +131,7 @@ class S3BucketConfigurations(BaseBucketConfigurations):
         default_region = s3_configuration.get("region", "") or getenv("AWS_DEFAULT_REGION", "")
         default_use_credentials_chain = s3_configuration.get("use_credentials_chain") or False
         default_extra_args = s3_configuration.get("extra_args")
+        default_verify = s3_configuration.get("verify", None)
 
         default_key = _none_to_empty_string(default_key)
         default_secret = _none_to_empty_string(default_secret)
@@ -142,7 +145,8 @@ class S3BucketConfigurations(BaseBucketConfigurations):
             default_region,
             default_use_credentials_chain,
             default_token,
-            default_extra_args
+            default_extra_args,
+            default_verify,
         )
 
     def add_config(self, bucket_config):

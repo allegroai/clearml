@@ -4425,13 +4425,14 @@ class Task(_Task):
         ret_tasks = []
         page = -1
         page_size = 500
+        request_task_name = task_name if task_name else kwargs.pop("name", None)
         while page == -1 or (not fetch_only_first_page and res and len(res.response.tasks) == page_size):
             page += 1
             # work on a copy and make sure we override all fields with ours
             request_kwargs = dict(
                 id=task_ids,
                 project=project_ids if project_ids else kwargs.pop("project", None),
-                name=escape(task_name) if task_name else kwargs.pop("name", None),
+                name=escape(request_task_name) if request_task_name else request_task_name,
                 only_fields=only_fields,
                 page=page,
                 page_size=page_size,

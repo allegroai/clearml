@@ -23,7 +23,7 @@ from .. import Logger
 from ..automation import ClearmlJob
 from ..backend_api import Session
 from ..backend_interface.task.populate import CreateFromFunction
-from ..backend_interface.util import get_or_create_project
+from ..backend_interface.util import get_or_create_project, mutually_exclusive
 from ..config import get_remote_task_id
 from ..debugging.log import LoggerRoot
 from ..errors import UsageError
@@ -1291,6 +1291,136 @@ class PipelineController(object):
         :return: Dictionary str -> str
         """
         return self._pipeline_args
+
+    @classmethod
+    def enqueue(cls, pipeline_controller, queue_name=None, queue_id=None, force=False):
+        # type: (Union[PipelineController, str], Optional[str], Optional[str], bool) -> Any
+        """
+        Enqueue a PipelineController for execution, by adding it to an execution queue.
+
+        .. note::
+           A worker daemon must be listening at the queue for the worker to fetch the Task and execute it,
+           see `ClearML Agent <../clearml_agent>`_ in the ClearML Documentation.
+
+        :param pipeline_controller: The PipelineController to enqueue. Specify a PipelineController object or PipelineController ID
+        :param queue_name: The name of the queue. If not specified, then ``queue_id`` must be specified.
+        :param queue_id: The ID of the queue. If not specified, then ``queue_name`` must be specified.
+        :param bool force: If True, reset the PipelineController if necessary before enqueuing it
+
+        :return: An enqueue JSON response.
+
+            .. code-block:: javascript
+
+               {
+                    "queued": 1,
+                    "updated": 1,
+                    "fields": {
+                        "status": "queued",
+                        "status_reason": "",
+                        "status_message": "",
+                        "status_changed": "2020-02-24T15:05:35.426770+00:00",
+                        "last_update": "2020-02-24T15:05:35.426770+00:00",
+                        "execution.queue": "2bd96ab2d9e54b578cc2fb195e52c7cf"
+                        }
+                }
+
+            - ``queued``  - The number of Tasks enqueued (an integer or ``null``).
+            - ``updated`` - The number of Tasks updated (an integer or ``null``).
+            - ``fields``
+
+              - ``status`` - The status of the experiment.
+              - ``status_reason`` - The reason for the last status change.
+              - ``status_message`` - Information about the status.
+              - ``status_changed`` - The last status change date and time (ISO 8601 format).
+              - ``last_update`` - The last Task update time, including Task creation, update, change, or events for this task (ISO 8601 format).
+              - ``execution.queue`` - The ID of the queue where the Task is enqueued. ``null`` indicates not enqueued.
+        """
+        pipeline_controller = (
+            pipeline_controller
+            if isinstance(pipeline_controller, PipelineController)
+            else cls.get(pipeline_id=pipeline_controller)
+        )
+        return Task.enqueue(pipeline_controller._task, queue_name=queue_name, queue_id=queue_id, force=force)
+
+    @classmethod
+    def get(
+        cls,
+        pipeline_id=None,  # type: Optional[str]
+        pipeline_project=None,  # type: Optional[str]
+        pipeline_name=None,  # type: Optional[str]
+        pipeline_version=None,  # type: Optional[str]
+        pipeline_tags=None,  # type: Optional[Sequence[str]]
+        shallow_search=False  # type: bool
+    ):
+        # type: (...) -> "PipelineController"
+        """
+        Get a specific PipelineController. If multiple pipeline controllers are found, the pipeline controller
+        with the highest semantic version is returned. If no semantic version is found, the most recently
+        updated pipeline controller is returned. This function raises aan Exception if no pipeline controller
+        was found
+
+        Note: In order to run the pipeline controller returned by this function, use PipelineController.enqueue
+
+        :param pipeline_id: Requested PipelineController ID
+        :param pipeline_project: Requested PipelineController project
+        :param pipeline_name: Requested PipelineController name
+        :param pipeline_tags: Requested PipelineController tags (list of tag strings)
+        :param shallow_search: If True, search only the first 500 results (first page)
+        """
+        mutually_exclusive(pipeline_id=pipeline_id, pipeline_project=pipeline_project, _require_at_least_one=False)
+        mutually_exclusive(pipeline_id=pipeline_id, pipeline_name=pipeline_name, _require_at_least_one=False)
+        if not pipeline_id:
+            pipeline_project_hidden = "{}/.pipelines/{}".format(pipeline_project, pipeline_name)
+            name_with_runtime_number_regex = r"^{}( #[0-9]+)*$".format(re.escape(pipeline_name))
+            pipelines = Task._query_tasks(
+                pipeline_project=[pipeline_project_hidden],
+                task_name=name_with_runtime_number_regex,
+                fetch_only_first_page=False if not pipeline_version else shallow_search,
+                only_fields=["id"] if not pipeline_version else ["id", "runtime.version"],
+                system_tags=[cls._tag],
+                order_by=["-last_update"],
+                tags=pipeline_tags,
+                search_hidden=True,
+                _allow_extra_fields_=True,
+            )
+            if pipelines:
+                if not pipeline_version:
+                    pipeline_id = pipelines[0].id
+                    current_version = None
+                    for pipeline in pipelines:
+                        if not pipeline.runtime:
+                            continue
+                        candidate_version = pipeline.runtime.get("version")
+                        if not candidate_version or not Version.is_valid_version_string(candidate_version):
+                            continue
+                        if not current_version or Version(candidate_version) > current_version:
+                            current_version = Version(candidate_version)
+                            pipeline_id = pipeline.id
+                else:
+                    for pipeline in pipelines:
+                        if pipeline.runtime.get("version") == pipeline_version:
+                            pipeline_id = pipeline.id
+                            break
+            if not pipeline_id:
+                error_msg = "Could not find dataset with pipeline_project={}, pipeline_name={}".format(pipeline_project, pipeline_name)
+                if pipeline_version:
+                    error_msg += ", pipeline_version={}".format(pipeline_version)
+                raise ValueError(error_msg)
+        pipeline_task = Task.get_task(task_id=pipeline_id)
+        pipeline_object = cls.__new__(cls)
+        pipeline_object._task = pipeline_task
+        pipeline_object._nodes = {}
+        pipeline_object._running_nodes = []
+        try:
+            pipeline_object._deserialize(pipeline_task._get_configuration_dict(cls._config_section))
+        except Exception:
+            pass
+        return pipeline_object
+
+    @property
+    def id(self):
+        # type: () -> str
+        return self._task.id
 
     @property
     def tags(self):

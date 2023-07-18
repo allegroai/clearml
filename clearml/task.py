@@ -1213,8 +1213,8 @@ class Task(_Task):
         return cloned_task
 
     @classmethod
-    def enqueue(cls, task, queue_name=None, queue_id=None):
-        # type: (Union[Task, str], Optional[str], Optional[str]) -> Any
+    def enqueue(cls, task, queue_name=None, queue_id=None, force=False):
+        # type: (Union[Task, str], Optional[str], Optional[str], bool) -> Any
         """
         Enqueue a Task for execution, by adding it to an execution queue.
 
@@ -1225,6 +1225,7 @@ class Task(_Task):
         :param Task/str task: The Task to enqueue. Specify a Task object or  Task ID.
         :param str queue_name: The name of the queue. If not specified, then ``queue_id`` must be specified.
         :param str queue_id: The ID of the queue. If not specified, then ``queue_name`` must be specified.
+        :param bool force: If True, reset the Task if necessary before enqueuing it
 
         :return: An enqueue JSON response.
 
@@ -1271,9 +1272,25 @@ class Task(_Task):
                 raise ValueError('Could not find queue named "{}"'.format(queue_name))
 
         req = tasks.EnqueueRequest(task=task_id, queue=queue_id)
-        res = cls._send(session=session, req=req)
-        if not res.ok():
-            raise ValueError(res.response)
+        exception = None
+        res = None
+        try:
+            res = cls._send(session=session, req=req)
+            ok = res.ok()
+        except Exception as e:
+            exception = e
+            ok = False
+        if not ok:
+            if not force:
+                if res:
+                    raise ValueError(res.response)
+                raise exception
+            task = cls.get_task(task_id=task) if isinstance(task, str) else task
+            task.reset(set_started_on_success=False, force=True)
+            req = tasks.EnqueueRequest(task=task_id, queue=queue_id)
+            res = cls._send(session=session, req=req)
+            if not res.ok():
+                raise ValueError(res.response)
         resp = res.response
         return resp
 

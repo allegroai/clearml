@@ -9,8 +9,10 @@ import threading
 import time
 from argparse import ArgumentParser
 from logging import getLogger
+from re import escape
 from tempfile import mkstemp, mkdtemp
 from zipfile import ZipFile, ZIP_DEFLATED
+
 
 try:
     # noinspection PyCompatibility
@@ -4429,7 +4431,7 @@ class Task(_Task):
             request_kwargs = dict(
                 id=task_ids,
                 project=project_ids if project_ids else kwargs.pop("project", None),
-                name=task_name if task_name else kwargs.pop("name", None),
+                name=escape(task_name) if task_name else kwargs.pop("name", None),
                 only_fields=only_fields,
                 page=page,
                 page_size=page_size,

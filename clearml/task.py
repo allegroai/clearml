@@ -7,6 +7,7 @@ import signal
 import sys
 import threading
 import time
+import warnings
 from argparse import ArgumentParser
 from logging import getLogger
 from tempfile import mkstemp, mkdtemp
@@ -859,6 +860,23 @@ class Task(_Task):
             task.reload()
 
         return task
+
+    @classmethod
+    def get_by_name(cls, task_name):
+        # type: (str) -> TaskInstance
+        """
+
+        .. note::
+            This method is deprecated, use :meth:`Task.get_task` instead.
+
+        Returns the most recent task with the given name from anywhere in the system as a Task object.
+
+        :param str task_name: The name of the task to search for.
+
+        :return: Task object of the most recent task with that name.
+        """
+        warnings.warn("Warning: 'Task.get_by_name' is deprecated. Use 'Task.get_task' instead", DeprecationWarning)
+        return cls.get_task(task_name=task_name)
 
     @classmethod
     def get_task(

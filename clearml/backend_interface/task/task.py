@@ -2808,21 +2808,6 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return res
 
     @classmethod
-    def get_by_name(cls, task_name):
-        # type: (str) -> Task
-        """
-        Returns the most recent task with the given name from anywhere in the system as a Task object.
-
-        :param str task_name: The name of the task to search for.
-
-        :return: Task object of the most recent task with that name.
-        """
-        res = cls._send(cls._get_default_session(), tasks.GetAllRequest(name=exact_match_regex(task_name)))
-
-        task = get_single_result(entity='task', query=task_name, results=res.response.tasks)
-        return cls(task_id=task.id)
-
-    @classmethod
     def get_task_output_log_web_page(cls, task_id, project_id=None, app_server_host=None):
         # type: (str, Optional[str], Optional[str]) -> str
         """

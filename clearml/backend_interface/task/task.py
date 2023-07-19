@@ -3,7 +3,6 @@ import itertools
 import json
 import logging
 import os
-import re
 import sys
 import warnings
 from copy import copy
@@ -34,12 +33,12 @@ from ...backend_interface.task.development.worker import DevWorker
 from ...backend_interface.session import SendError
 from ...backend_api import Session
 from ...backend_api.services import tasks, models, events, projects
-from ...backend_api.session.defs import ENV_OFFLINE_MODE
+# from ...backend_api.session.defs import ENV_OFFLINE_MODE
 from ...utilities.pyhocon import ConfigTree, ConfigFactory
 from ...utilities.config import config_dict_to_text, text_to_config_dict
 from ...errors import ArtifactUriDeleteError
 
-from ..base import IdObjectBase, InterfaceBase
+from ..base import IdObjectBase  # , InterfaceBase
 from ..metrics import Metrics, Reporter
 from ..model import Model
 from ..setupuploadmixin import SetupUploadMixin
@@ -375,7 +374,6 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         id = "offline-{}".format(str(uuid4()).replace("-", ""))
         self._edit(type=tasks.TaskTypeEnum(task_type))
         return id
-
 
     def _set_storage_uri(self, value):
         value = value.rstrip('/') if value else None
@@ -1406,7 +1404,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Remove input models from the current task. Note that the models themselves are not deleted,
         but the tasks' reference to the models is removed.
         To delete the models themselves, see `Models.remove`
-        
+
         :param models_to_remove: The models to remove from the task. Can be a list of ids,
             or of `BaseModel` (including its subclasses: `Model` and `InputModel`)
         """
@@ -2543,7 +2541,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         # type: (**Any) -> ()
         for k, v in kwargs.items():
             setattr(self.data, k, v)
-        offline_mode_folder = self.get_offline_mode_folder() 
+        offline_mode_folder = self.get_offline_mode_folder()
         if not offline_mode_folder:
             return
         Path(offline_mode_folder).mkdir(parents=True, exist_ok=True)

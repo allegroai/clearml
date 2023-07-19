@@ -116,6 +116,7 @@ class _Driver(object):
             cls._file_server_hosts = hosts
         return cls._file_server_hosts
 
+
 class _HttpDriver(_Driver):
     """ LibCloud http/https adapter (simple, enough for now) """
 
@@ -1797,7 +1798,6 @@ class _FileStorageDriver(_Driver):
         return os.path.isfile(object_name)
 
 
-
 class StorageHelper(object):
     """ Storage helper.
         Used by the entire system to download/upload files.
@@ -2433,7 +2433,7 @@ class StorageHelper(object):
 
         result_dest_path = canonized_dest_path if return_canonized else dest_path
 
-        if self.scheme in StorageHelper._quotable_uri_schemes: # TODO: fix-driver-schema
+        if self.scheme in StorageHelper._quotable_uri_schemes:  # TODO: fix-driver-schema
             # quote link
             result_dest_path = quote_url(result_dest_path, StorageHelper._quotable_uri_schemes)
 
@@ -2451,7 +2451,7 @@ class StorageHelper(object):
 
         result_path = canonized_dest_path if return_canonized else dest_path
 
-        if cb and self.scheme in StorageHelper._quotable_uri_schemes: # TODO: fix-driver-schema
+        if cb and self.scheme in StorageHelper._quotable_uri_schemes:  # TODO: fix-driver-schema
             # store original callback
             a_cb = cb
 
@@ -2974,7 +2974,6 @@ class StorageHelper(object):
         return self._driver.exists_file(
             container_name=self._container.name if self._container else "", object_name=object_name
         )
-
 
 
 def normalize_local_path(local_path):

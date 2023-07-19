@@ -20,6 +20,7 @@ except ImportError as err:
         "install with: pip install boto3"
     ) from err
 
+
 @attr.s
 class AWSDriver(CloudDriver):
     """AWS Driver"""
@@ -48,7 +49,7 @@ class AWSDriver(CloudDriver):
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
         self.tags = parse_tags(self.tags)
-        
+
     def spin_up_worker(self, resource_conf, worker_prefix, queue_name, task_id):
         # user_data script will automatically run when the instance is started. it will install the required packages
         # for clearml-agent, configure it using environment variables and run clearml-agent on the required queue
@@ -59,7 +60,7 @@ class AWSDriver(CloudDriver):
         launch_specification = ConfigFactory.from_dict(
             {
                 "ImageId": resource_conf["ami_id"],
-                "Monitoring": {'Enabled':bool(resource_conf.get('enable_monitoring', False))},
+                "Monitoring": {'Enabled': bool(resource_conf.get('enable_monitoring', False))},
                 "InstanceType": resource_conf["instance_type"],
             }
         )
@@ -84,7 +85,7 @@ class AWSDriver(CloudDriver):
                     }
                 }
             ]
-            
+
         if resource_conf.get("subnet_id", None):
             launch_specification["SubnetId"] = resource_conf["subnet_id"]
         elif resource_conf.get("availability_zone", None):

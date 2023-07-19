@@ -725,7 +725,7 @@ class EventTrainsWriter(object):
             else:
                 step = int(step)
             step = tweak_step(step)
-                
+
             self._max_step = max(self._max_step, step)
             if value_dicts is None:
                 LoggerRoot.get_base_logger(TensorflowBinding).debug("Summary arrived without 'value'")
@@ -2299,6 +2299,6 @@ def tweak_step(step):
         # unlike other frameworks, tensorflow already accounts for the iteration number
         # when continuing the training. we substract the smallest iteration such that we
         # don't increment the step twice number
-        return step - EventTrainsWriter._current_task.get_initial_iteration() 
+        return step - EventTrainsWriter._current_task.get_initial_iteration()
     except Exception:
         return step

@@ -657,7 +657,7 @@ class PipelineController(object):
         :param function: A global function to convert into a standalone Task
         :param function_kwargs: Optional, provide subset of function arguments and default values to expose.
             If not provided automatically take all function arguments & defaults
-            Optional, pass input arguments to the function from other Tasks's output artifact.
+            Optional, pass input arguments to the function from other Tasks' output artifact.
             Example argument named `numpy_matrix` from Task ID `aabbcc` artifact name `answer`:
             {'numpy_matrix': 'aabbcc.answer'}
         :param function_return: Provide a list of names for all the results.

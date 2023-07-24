@@ -232,6 +232,9 @@ class Dataset(object):
             if dataset_tags:
                 task.set_tags((task.get_tags() or []) + list(dataset_tags))
             task.mark_started()
+            if dataset_name == "":
+                raise ValueError("An empty string for a dataset name will cause the dataset's project to be hidden.")
+
             if not Dataset.is_offline():
                 # generate the script section
                 script = (

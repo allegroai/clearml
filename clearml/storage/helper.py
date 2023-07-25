@@ -116,6 +116,7 @@ class _Driver(object):
             cls._file_server_hosts = hosts
         return cls._file_server_hosts
 
+
 class _HttpDriver(_Driver):
     """ LibCloud http/https adapter (simple, enough for now) """
 
@@ -401,6 +402,8 @@ class _Boto3Driver(_Driver):
 
     _min_pool_connections = 512
     _max_multipart_concurrency = deferred_config('aws.boto3.max_multipart_concurrency', 16)
+    _multipart_threshold = deferred_config('aws.boto3.multipart_threshold', (1024 ** 2) * 8)  # 8 MB
+    _multipart_chunksize = deferred_config('aws.boto3.multipart_chunksize', (1024 ** 2) * 8)
     _pool_connections = deferred_config('aws.boto3.pool_connections', 512)
     _connect_timeout = deferred_config('aws.boto3.connect_timeout', 60)
     _read_timeout = deferred_config('aws.boto3.read_timeout', 60)
@@ -435,12 +438,18 @@ class _Boto3Driver(_Driver):
             self.name = name[5:]
             endpoint = (('https://' if cfg.secure else 'http://') + cfg.host) if cfg.host else None
 
+            verify = cfg.verify
+            if verify is True:
+                # True is a non-documented value for boto3, use None instead (which means verify)
+                print("Using boto3 verify=None instead of true")
+                verify = None
+
             # boto3 client creation isn't thread-safe (client itself is)
             with self._creation_lock:
                 boto_kwargs = {
                     "endpoint_url": endpoint,
                     "use_ssl": cfg.secure,
-                    "verify": cfg.verify,
+                    "verify": verify,
                     "region_name": cfg.region or None,  # None in case cfg.region is an empty string
                     "config": botocore.client.Config(
                         max_pool_connections=max(
@@ -498,7 +507,9 @@ class _Boto3Driver(_Driver):
             container.bucket.upload_fileobj(stream, object_name, Config=boto3.s3.transfer.TransferConfig(
                 use_threads=container.config.multipart,
                 max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
-                num_download_attempts=container.config.retries),
+                num_download_attempts=container.config.retries,
+                multipart_threshold=self._multipart_threshold,
+                multipart_chunksize=self._multipart_chunksize),
                 Callback=callback,
                 ExtraArgs=extra_args,
             )
@@ -512,6 +523,8 @@ class _Boto3Driver(_Driver):
                     Config=boto3.s3.transfer.TransferConfig(
                         use_threads=False,
                         num_download_attempts=container.config.retries,
+                        multipart_threshold=self._multipart_threshold,
+                        multipart_chunksize=self._multipart_chunksize,
                     ),
                     Callback=callback,
                     ExtraArgs=extra_args
@@ -535,7 +548,9 @@ class _Boto3Driver(_Driver):
             container.bucket.upload_file(file_path, object_name, Config=boto3.s3.transfer.TransferConfig(
                 use_threads=container.config.multipart,
                 max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
-                num_download_attempts=container.config.retries),
+                num_download_attempts=container.config.retries,
+                multipart_threshold=self._multipart_threshold,
+                multipart_chunksize=self._multipart_chunksize),
                 Callback=callback,
                 ExtraArgs=extra_args,
             )
@@ -547,7 +562,10 @@ class _Boto3Driver(_Driver):
                     file_path,
                     object_name,
                     Config=boto3.s3.transfer.TransferConfig(
-                        use_threads=False, num_download_attempts=container.config.retries
+                        use_threads=False,
+                        num_download_attempts=container.config.retries,
+                        multipart_threshold=self._multipart_threshold,
+                        multipart_chunksize=self._multipart_chunksize
                     ),
                     Callback=callback,
                     ExtraArgs=extra_args
@@ -600,7 +618,9 @@ class _Boto3Driver(_Driver):
         config = boto3.s3.transfer.TransferConfig(
             use_threads=container.config.multipart,
             max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
-            num_download_attempts=container.config.retries)
+            num_download_attempts=container.config.retries,
+            multipart_threshold=self._multipart_threshold,
+            multipart_chunksize=self._multipart_chunksize)
         total_size_mb = obj.content_length / (1024. * 1024.)
         remote_path = os.path.join(obj.container_name, obj.key)
         cb = DownloadProgressReport(total_size_mb, verbose, remote_path, log)
@@ -618,7 +638,9 @@ class _Boto3Driver(_Driver):
         Config = boto3.s3.transfer.TransferConfig(
             use_threads=container.config.multipart,
             max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
-            num_download_attempts=container.config.retries
+            num_download_attempts=container.config.retries,
+            multipart_threshold=self._multipart_threshold,
+            multipart_chunksize=self._multipart_chunksize
         )
         obj.download_file(str(p), Callback=callback, Config=Config)
 
@@ -1776,7 +1798,6 @@ class _FileStorageDriver(_Driver):
         return os.path.isfile(object_name)
 
 
-
 class StorageHelper(object):
     """ Storage helper.
         Used by the entire system to download/upload files.
@@ -2412,7 +2433,7 @@ class StorageHelper(object):
 
         result_dest_path = canonized_dest_path if return_canonized else dest_path
 
-        if self.scheme in StorageHelper._quotable_uri_schemes: # TODO: fix-driver-schema
+        if self.scheme in StorageHelper._quotable_uri_schemes:  # TODO: fix-driver-schema
             # quote link
             result_dest_path = quote_url(result_dest_path, StorageHelper._quotable_uri_schemes)
 
@@ -2430,7 +2451,7 @@ class StorageHelper(object):
 
         result_path = canonized_dest_path if return_canonized else dest_path
 
-        if cb and self.scheme in StorageHelper._quotable_uri_schemes: # TODO: fix-driver-schema
+        if cb and self.scheme in StorageHelper._quotable_uri_schemes:  # TODO: fix-driver-schema
             # store original callback
             a_cb = cb
 
@@ -2953,7 +2974,6 @@ class StorageHelper(object):
         return self._driver.exists_file(
             container_name=self._container.name if self._container else "", object_name=object_name
         )
-
 
 
 def normalize_local_path(local_path):

@@ -26,6 +26,7 @@ class AWSDriver(CloudDriver):
     """AWS Driver"""
     aws_access_key_id = attr.ib(validator=instance_of(str), default='')
     aws_secret_access_key = attr.ib(validator=instance_of(str), default='')
+    aws_session_token = attr.ib(validator=instance_of(str), default='')
     aws_region = attr.ib(validator=instance_of(str), default='')
     use_credentials_chain = attr.ib(validator=instance_of(bool), default=False)
     use_iam_instance_profile = attr.ib(validator=instance_of(bool), default=False)
@@ -37,6 +38,7 @@ class AWSDriver(CloudDriver):
         obj = super().from_config(config)
         obj.aws_access_key_id = config['hyper_params'].get('cloud_credentials_key')
         obj.aws_secret_access_key = config['hyper_params'].get('cloud_credentials_secret')
+        obj.aws_session_token = config['hyper_params'].get('cloud_credentials_token')
         obj.aws_region = config['hyper_params'].get('cloud_credentials_region')
         obj.use_credentials_chain = config['hyper_params'].get('use_credentials_chain', False)
         obj.use_iam_instance_profile = config['hyper_params'].get('use_iam_instance_profile', False)
@@ -50,26 +52,46 @@ class AWSDriver(CloudDriver):
 
     def spin_up_worker(self, resource_conf, worker_prefix, queue_name, task_id):
         # user_data script will automatically run when the instance is started. it will install the required packages
-        # for clearml-agent configure it using environment variables and run clearml-agent on the required queue
+        # for clearml-agent, configure it using environment variables and run clearml-agent on the required queue
+        # Config reference: https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/ec2/client/run_instances.html
         user_data = self.gen_user_data(worker_prefix, queue_name, task_id, resource_conf.get("cpu_only", False))
 
         ec2 = boto3.client("ec2", **self.creds())
         launch_specification = ConfigFactory.from_dict(
             {
                 "ImageId": resource_conf["ami_id"],
+                "Monitoring": {'Enabled': bool(resource_conf.get('enable_monitoring', False))},
                 "InstanceType": resource_conf["instance_type"],
-                "BlockDeviceMappings": [
-                    {
-                        "DeviceName": resource_conf["ebs_device_name"],
-                        "Ebs": {
-                            "VolumeSize": resource_conf["ebs_volume_size"],
-                            "VolumeType": resource_conf["ebs_volume_type"],
-                        },
-                    }
-                ],
-                "Placement": {"AvailabilityZone": resource_conf["availability_zone"]},
             }
         )
+        # handle EBS volumes (existing or new)
+        # Ref: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/block-device-mapping-concepts.html
+        if resource_conf.get("ebs_snapshot_id") and resource_conf.get("ebs_device_name"):
+            launch_specification["BlockDeviceMappings"] = [
+                {
+                    "DeviceName": resource_conf["ebs_device_name"],
+                    "Ebs": {
+                        "SnapshotId": resource_conf["ebs_snapshot_id"]
+                    }
+                }
+            ]
+        elif resource_conf.get("ebs_device_name"):
+            launch_specification["BlockDeviceMappings"] = [
+                {
+                    "DeviceName": resource_conf["ebs_device_name"],
+                    "Ebs": {
+                        "VolumeSize": resource_conf.get("ebs_volume_size", 80),
+                        "VolumeType": resource_conf.get("ebs_volume_type", "gp3")
+                    }
+                }
+            ]
+
+        if resource_conf.get("subnet_id", None):
+            launch_specification["SubnetId"] = resource_conf["subnet_id"]
+        elif resource_conf.get("availability_zone", None):
+            launch_specification["Placement"] = {"AvailabilityZone": resource_conf["availability_zone"]}
+        else:
+            raise Exception('subnet_id or availability_zone must to be specified in the config')
         if resource_conf.get("key_name", None):
             launch_specification["KeyName"] = resource_conf["key_name"]
         if resource_conf.get("security_group_ids", None):
@@ -150,6 +172,7 @@ class AWSDriver(CloudDriver):
             creds.update({
                 'aws_secret_access_key': self.aws_secret_access_key or None,
                 'aws_access_key_id': self.aws_access_key_id or None,
+                'aws_session_token': self.aws_session_token or None,
             })
         return creds
 

@@ -70,7 +70,7 @@ class PatchGradio:
         # noinspection PyBroadException
         try:
             return original_fn(*args, **kwargs)
-        except Exception as e:
+        except Exception:
             del kwargs["root_path"]
             return original_fn(*args, **kwargs)
 

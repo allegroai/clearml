@@ -2981,7 +2981,7 @@ class Dataset(object):
 
             task = Task.get_task(task_id=id_)
             dataset_struct_entry = {
-                "job_id": id_[len("offline-"):] if id_.startswith("offline-") else id_, # .removeprefix not supported < Python 3.9
+                "job_id": id_[len("offline-"):] if id_.startswith("offline-") else id_,  # .removeprefix not supported < Python 3.9
                 "status": task.status
             }
             # noinspection PyProtectedMember

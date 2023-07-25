@@ -15,7 +15,7 @@ class RandomSeed(object):
     def set_random_seed(seed=1337):
         # type: (int) -> ()
         """
-        Set global seed for all hyper-parameter strategy random number sampling.
+        Set global seed for all hyperparameter strategy random number sampling.
 
         :param int seed: The random seed.
         """
@@ -26,7 +26,7 @@ class RandomSeed(object):
     def get_random_seed():
         # type: () -> int
         """
-        Get the global seed for all hyper-parameter strategy random number sampling.
+        Get the global seed for all hyperparameter strategy random number sampling.
 
         :return: The random seed.
         """
@@ -35,14 +35,14 @@ class RandomSeed(object):
 
 class Parameter(RandomSeed):
     """
-    The base hyper-parameter optimization object.
+    The base hyperparameter optimization object.
     """
     _class_type_serialize_name = 'type'
 
     def __init__(self, name):
         # type: (Optional[str]) -> ()
         """
-        Create a new Parameter for hyper-parameter optimization
+        Create a new Parameter for hyperparameter optimization
 
         :param str name: The new Parameter name. This is the parameter name that will be passed to a Task.
         """
@@ -125,7 +125,7 @@ class UniformParameterRange(Parameter):
         """
         Create a parameter to be sampled by the SearchStrategy
 
-        :param str name: The parameter name. Match the Task hyper-parameter name.
+        :param str name: The parameter name. Match the Task hyperparameter name.
         :param float min_value: The minimum sample to use for uniform random sampling.
         :param float max_value: The maximum sample to use for uniform random sampling.
         :param float step_size: If not ``None``, set step size (quantization) for value sampling.
@@ -172,7 +172,7 @@ class UniformParameterRange(Parameter):
 
 class LogUniformParameterRange(UniformParameterRange):
     """
-    Logarithmic uniform randomly sampled hyper-parameter object.
+    Logarithmic uniform randomly sampled hyperparameter object.
     """
 
     def __init__(
@@ -188,7 +188,7 @@ class LogUniformParameterRange(UniformParameterRange):
         """
         Create a parameter to be sampled by the SearchStrategy
 
-        :param str name: The parameter name. Match the Task hyper-parameter name.
+        :param str name: The parameter name. Match the Task hyperparameter name.
         :param float min_value: The minimum exponent sample to use for uniform random sampling.
         :param float max_value: The maximum exponent sample to use for uniform random sampling.
         :param float base: The base used to raise the sampled exponent.
@@ -228,7 +228,7 @@ class UniformIntegerParameterRange(Parameter):
         """
         Create a parameter to be sampled by the SearchStrategy.
 
-        :param str name: The parameter name. Match the task hyper-parameter name.
+        :param str name: The parameter name. Match the task hyperparameter name.
         :param int min_value: The minimum sample to use for uniform random sampling.
         :param int max_value: The maximum sample to use for uniform random sampling.
         :param int step_size: The default step size is ``1``.
@@ -272,7 +272,7 @@ class UniformIntegerParameterRange(Parameter):
 
 class DiscreteParameterRange(Parameter):
     """
-    Discrete randomly sampled hyper-parameter object.
+    Discrete randomly sampled hyperparameter object.
     """
 
     def __init__(self, name, values=()):
@@ -280,7 +280,7 @@ class DiscreteParameterRange(Parameter):
         """
         Uniformly sample values form a list of discrete options.
 
-        :param str name: The parameter name. Match the task hyper-parameter name.
+        :param str name: The parameter name. Match the task hyperparameter name.
         :param list values: The list/tuple of valid parameter values to sample from.
         """
         super(DiscreteParameterRange, self).__init__(name=name)

@@ -12,7 +12,7 @@ Using the **ClearML** [Logger](https://github.com/allegroai/clearml/blob/master/
   * [Surface diagrams](#surface-diagrams)
   * [Images](#images)
   
-* Track hyper-parameters and OS environment variables
+* Track hyperparameters and OS environment variables
   * Logging experiment parameter [dictionaries](#logging-experiment-parameter-dictionaries)
   * Specifying [environment variables](#specifying-environment-variables-to-track) to track
 
@@ -925,7 +925,7 @@ def report_image(self, title, series, iteration, local_path=None, matrix=None, m
     </tbody>
 </table>
 
-## Hyper-parameters and Environment Variables
+## Hyperparameters and Environment Variables
 
 ### Logging Experiment Parameter Dictionaries
 

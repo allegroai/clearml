@@ -2160,7 +2160,7 @@ class OutputModel(BaseModel):
         # type: (str) -> None
         """
         Set the URI of the storage destination for uploaded model weight files.
-        Supported storage destinations include S3, Google Cloud Storage), and file locations.
+        Supported storage destinations include S3, Google Cloud Storage, and file locations.
 
         Using this method, file uploads are separate and then a link to each is stored in the model object.
 

@@ -819,7 +819,7 @@ def report_surface(self, title, series, matrix, iteration, xlabels=None, ylabels
 ### Images
 
 Use to report an image and upload its contents to the bucket specified in the **ClearML** configuration file,
-or a [a default upload destination](#set-default-upload-destination), if you set a default. 
+or a [default upload destination](#set-default-upload-destination), if you set a default. 
 
 First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/manual_reporting.py)) with the following method.
 
@@ -931,7 +931,7 @@ def report_image(self, title, series, iteration, local_path=None, matrix=None, m
 
 In order for **ClearML** to log a dictionary of parameters, use the `Task.connect` method.
 
-For example, to log the hyper-parameters <code>learning_rate</code>, <code>batch_size</code>, <code>display_step</code>, <code>model_path</code>, <code>n_hidden_1</code>, and <code>n_hidden_2</code>:  
+For example, to log the hyperparameters <code>learning_rate</code>, <code>batch_size</code>, <code>display_step</code>, <code>model_path</code>, <code>n_hidden_1</code>, and <code>n_hidden_2</code>:  
 
 ```python
 # Create a dictionary of parameters

@@ -65,7 +65,7 @@ if __name__ == '__main__':
     parser = LitClassifier.add_model_specific_args(parser)
     args = parser.parse_args()
 
-    Task.init(project_name="examples-internal", task_name="lightning checkpoint issue and argparser")
+    Task.init(project_name="examples", task_name="pytorch lightning MNIST")
 
     # ------------
     # data

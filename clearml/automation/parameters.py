@@ -15,7 +15,7 @@ class RandomSeed(object):
     def set_random_seed(seed=1337):
         # type: (int) -> ()
         """
-        Set global seed for all hyper-parameter strategy random number sampling.
+        Set global seed for all hyperparameter strategy random number sampling.
 
         :param int seed: The random seed.
         """
@@ -26,7 +26,7 @@ class RandomSeed(object):
     def get_random_seed():
         # type: () -> int
         """
-        Get the global seed for all hyper-parameter strategy random number sampling.
+        Get the global seed for all hyperparameter strategy random number sampling.
 
         :return: The random seed.
         """

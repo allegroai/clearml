@@ -610,7 +610,7 @@ class SearchStrategy(object):
         :param int top_k: The number of Tasks (experiments) to return.
         :param all_metrics: Default False, only return the objective metric on the metrics dictionary.
             If True, return all scalar metrics of the experiment
-        :param all_hyper_parameters: Default False. If True, return all the hyper-parameters from all the sections.
+        :param all_hyper_parameters: Default False. If True, return all the hyperparameters from all the sections.
         :param only_completed: return only completed Tasks. Default False.
 
         :return: A list of dictionaries ({task_id: '', hyper_parameters: {}, metrics: {}}), ordered by performance,
@@ -791,7 +791,7 @@ class SearchStrategy(object):
     def _validate_base_task(self):
         # type: () -> ()
         """
-        Check the base task exists and contains the requested Objective metric and hyper parameters.
+        Check the base task exists and contains the requested Objective metric and hyperparameters.
         """
         # check if the task exists
         try:
@@ -929,7 +929,7 @@ class SearchStrategy(object):
 
 class GridSearch(SearchStrategy):
     """
-    Grid search strategy controller. Full grid sampling of every hyper-parameter combination.
+    Grid search strategy controller. Full grid sampling of every hyperparameter combination.
     """
 
     def __init__(
@@ -1001,7 +1001,7 @@ class GridSearch(SearchStrategy):
 
 class RandomSearch(SearchStrategy):
     """
-    Random search strategy controller. Random uniform sampling of hyper-parameters.
+    Random search strategy controller. Random uniform sampling of hyperparameters.
     """
 
     # Number of already chosen random samples before assuming we covered the entire hyper-parameter space
@@ -1105,7 +1105,7 @@ class HyperParameterOptimizer(object):
     ):
         # type: (...) -> ()
         """
-        Create a new hyper-parameter controller. The newly created object will launch and monitor the new experiments.
+        Create a new hyperparameter controller. The newly created object will launch and monitor the new experiments.
 
         :param str base_task_id: The Task ID to be used as template experiment to optimize.
         :param list hyper_parameters: The list of Parameter objects to optimize over.
@@ -1120,7 +1120,7 @@ class HyperParameterOptimizer(object):
           - ``min_global`` - Minimize the min value of *all* reported values for the specific title/series scalar.
           - ``max_global`` - Maximize the max value of *all* reported values for the specific title/series scalar.
 
-        :param class.SearchStrategy optimizer_class: The SearchStrategy optimizer to use for the hyper-parameter search
+        :param class.SearchStrategy optimizer_class: The SearchStrategy optimizer to use for the hyperparameter search
         :param int max_number_of_concurrent_tasks: The maximum number of concurrent Tasks (experiments) running at the
             same time.
         :param str execution_queue: The execution queue to use for launching Tasks (experiments).
@@ -1516,7 +1516,7 @@ class HyperParameterOptimizer(object):
         :param int top_k: The number of Tasks (experiments) to return.
         :param all_metrics: Default False, only return the objective metric on the metrics dictionary.
             If True, return all scalar metrics of the experiment
-        :param all_hyper_parameters: Default False. If True, return all the hyper-parameters from all the sections.
+        :param all_hyper_parameters: Default False. If True, return all the hyperparameters from all the sections.
         :param only_completed: return only completed Tasks. Default False.
 
         :return: A list of dictionaries ({task_id: '', hyper_parameters: {}, metrics: {}}), ordered by performance,

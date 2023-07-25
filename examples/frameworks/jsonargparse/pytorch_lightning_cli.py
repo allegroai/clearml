@@ -3,7 +3,7 @@ try:
     from lightning.pytorch.demos.boring_classes import DemoModel, BoringDataModule
 except ImportError:
     import sys
-    print("Module 'lightning' not installed (only available for Python 3.8+")
+    print("Module 'lightning' not installed (only available for Python 3.8+)")
     sys.exit(0)
 from clearml import Task
 

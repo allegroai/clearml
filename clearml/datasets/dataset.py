@@ -234,7 +234,6 @@ class Dataset(object):
             if dataset_tags:
                 task.set_tags((task.get_tags() or []) + list(dataset_tags))
             task.mark_started()
-
             if not Dataset.is_offline():
                 # generate the script section
                 script = (

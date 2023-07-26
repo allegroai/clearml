@@ -159,6 +159,8 @@ class Dataset(object):
                 LoggerRoot.get_base_logger().warning(
                     "Setting non-semantic dataset version '{}'".format(self._dataset_version)
                 )
+        if dataset_name == "":
+            raise ValueError("`dataset_name` cannot be an empty string")
         if task:
             self._task_pinger = None
             self._created_task = False
@@ -232,8 +234,6 @@ class Dataset(object):
             if dataset_tags:
                 task.set_tags((task.get_tags() or []) + list(dataset_tags))
             task.mark_started()
-            if dataset_name == "":
-                raise ValueError("An empty string for a dataset name will cause the dataset's project to be hidden.")
 
             if not Dataset.is_offline():
                 # generate the script section

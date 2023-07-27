@@ -159,6 +159,8 @@ class Dataset(object):
                 LoggerRoot.get_base_logger().warning(
                     "Setting non-semantic dataset version '{}'".format(self._dataset_version)
                 )
+        if dataset_name == "":
+            raise ValueError("`dataset_name` cannot be an empty string")
         if task:
             self._task_pinger = None
             self._created_task = False

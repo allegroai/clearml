@@ -504,12 +504,16 @@ class _Boto3Driver(_Driver):
                 'ContentType': get_file_mimetype(object_name)
             }
             extra_args.update(container.config.extra_args or {})
-            container.bucket.upload_fileobj(stream, object_name, Config=boto3.s3.transfer.TransferConfig(
-                use_threads=container.config.multipart,
-                max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
-                num_download_attempts=container.config.retries,
-                multipart_threshold=self._multipart_threshold,
-                multipart_chunksize=self._multipart_chunksize),
+            container.bucket.upload_fileobj(
+                stream,
+                object_name,
+                Config=boto3.s3.transfer.TransferConfig(
+                    use_threads=container.config.multipart,
+                    max_concurrency=int(self._max_multipart_concurrency) if container.config.multipart else 1,
+                    num_download_attempts=container.config.retries,
+                    multipart_threshold=int(self._multipart_threshold),
+                    multipart_chunksize=int(self._multipart_chunksize),
+                ),
                 Callback=callback,
                 ExtraArgs=extra_args,
             )
@@ -523,8 +527,8 @@ class _Boto3Driver(_Driver):
                     Config=boto3.s3.transfer.TransferConfig(
                         use_threads=False,
                         num_download_attempts=container.config.retries,
-                        multipart_threshold=self._multipart_threshold,
-                        multipart_chunksize=self._multipart_chunksize,
+                        multipart_threshold=int(self._multipart_threshold),
+                        multipart_chunksize=int(self._multipart_chunksize),
                     ),
                     Callback=callback,
                     ExtraArgs=extra_args
@@ -545,12 +549,16 @@ class _Boto3Driver(_Driver):
                 'ContentType': get_file_mimetype(object_name or file_path)
             }
             extra_args.update(container.config.extra_args or {})
-            container.bucket.upload_file(file_path, object_name, Config=boto3.s3.transfer.TransferConfig(
-                use_threads=container.config.multipart,
-                max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
-                num_download_attempts=container.config.retries,
-                multipart_threshold=self._multipart_threshold,
-                multipart_chunksize=self._multipart_chunksize),
+            container.bucket.upload_file(
+                file_path,
+                object_name,
+                Config=boto3.s3.transfer.TransferConfig(
+                    use_threads=container.config.multipart,
+                    max_concurrency=int(self._max_multipart_concurrency) if container.config.multipart else 1,
+                    num_download_attempts=container.config.retries,
+                    multipart_threshold=int(self._multipart_threshold),
+                    multipart_chunksize=int(self._multipart_chunksize),
+                ),
                 Callback=callback,
                 ExtraArgs=extra_args,
             )
@@ -564,8 +572,8 @@ class _Boto3Driver(_Driver):
                     Config=boto3.s3.transfer.TransferConfig(
                         use_threads=False,
                         num_download_attempts=container.config.retries,
-                        multipart_threshold=self._multipart_threshold,
-                        multipart_chunksize=self._multipart_chunksize
+                        multipart_threshold=int(self._multipart_threshold),
+                        multipart_chunksize=int(self._multipart_chunksize)
                     ),
                     Callback=callback,
                     ExtraArgs=extra_args
@@ -617,10 +625,11 @@ class _Boto3Driver(_Driver):
         container = self._containers[obj.container_name]
         config = boto3.s3.transfer.TransferConfig(
             use_threads=container.config.multipart,
-            max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
+            max_concurrency=int(self._max_multipart_concurrency) if container.config.multipart else 1,
             num_download_attempts=container.config.retries,
-            multipart_threshold=self._multipart_threshold,
-            multipart_chunksize=self._multipart_chunksize)
+            multipart_threshold=int(self._multipart_threshold),
+            multipart_chunksize=int(self._multipart_chunksize),
+        )
         total_size_mb = obj.content_length / (1024. * 1024.)
         remote_path = os.path.join(obj.container_name, obj.key)
         cb = DownloadProgressReport(total_size_mb, verbose, remote_path, log)
@@ -637,10 +646,10 @@ class _Boto3Driver(_Driver):
         container = self._containers[obj.container_name]
         Config = boto3.s3.transfer.TransferConfig(
             use_threads=container.config.multipart,
-            max_concurrency=self._max_multipart_concurrency if container.config.multipart else 1,
+            max_concurrency=int(self._max_multipart_concurrency) if container.config.multipart else 1,
             num_download_attempts=container.config.retries,
-            multipart_threshold=self._multipart_threshold,
-            multipart_chunksize=self._multipart_chunksize
+            multipart_threshold=int(self._multipart_threshold),
+            multipart_chunksize=int(self._multipart_chunksize)
         )
         obj.download_file(str(p), Callback=callback, Config=Config)
 

@@ -1886,7 +1886,8 @@ class Dataset(object):
         Query list of dataset in the system
 
         :param dataset_project: Specify dataset project name
-        :param partial_name: Specify partial match to a dataset name
+        :param partial_name: Specify partial match to a dataset name. This method supports regular expressions for name
+            matching (if you wish to match special characters and avoid any regex behaviour, use re.escape())
         :param tags: Specify user tags
         :param ids: List specific dataset based on IDs list
         :param only_completed: If False, return datasets that are still in progress (uploading/edited etc.)

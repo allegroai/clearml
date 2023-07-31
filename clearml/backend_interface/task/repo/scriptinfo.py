@@ -273,8 +273,8 @@ class ScriptRequirements(object):
 
 class _JupyterObserver(object):
     _thread = None
-    _exit_event = SafeEvent()
-    _sync_event = SafeEvent()
+    _exit_event = None
+    _sync_event = None
     _sample_frequency = 30.
     _first_sample_frequency = 3.
     _jupyter_history_logger = None
@@ -286,6 +286,10 @@ class _JupyterObserver(object):
 
     @classmethod
     def observer(cls, jupyter_notebook_filename, notebook_name=None, log_history=False):
+        if cls._exit_event is None:
+            cls._exit_event = SafeEvent()
+        if cls._sync_event is None:
+            cls._sync_event = SafeEvent()
         if cls._thread is not None:
             # order of signaling is important!
             cls._exit_event.set()
@@ -304,6 +308,8 @@ class _JupyterObserver(object):
 
     @classmethod
     def signal_sync(cls, *_, **__):
+        if cls._sync_event is None:
+            return
         cls._sync_event.set()
 
     @classmethod

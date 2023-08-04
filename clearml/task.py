@@ -2778,7 +2778,8 @@ class Task(_Task):
 
         # leave this process.
         if exit_process:
-            LoggerRoot.get_base_logger().warning('Terminating local execution process')
+            LoggerRoot.get_base_logger().warning(
+                'ClearML Terminating local execution process - continuing execution remotely')
             leave_process(0)
 
         return task

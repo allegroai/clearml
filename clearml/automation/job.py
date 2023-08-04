@@ -414,6 +414,7 @@ class BaseJob(object):
             return None
 
         # we need to ignore `requirements` section because ir might be changing from run to run
+        script = deepcopy(script)
         script.pop("requirements", None)
 
         hyper_params = deepcopy(task.get_parameters() if params_override is None else params_override)

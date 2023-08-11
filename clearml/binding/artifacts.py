@@ -1,4 +1,5 @@
 import gzip
+import io
 import json
 import yaml
 import mimetypes
@@ -1062,7 +1063,16 @@ class Artifacts(object):
         # (otherwise it is encoded and creates new hash every time)
         if self._compression == "gzip":
             with gzip.GzipFile(local_filename, 'wb', mtime=0) as gzip_file:
-                artifact_object.to_csv(gzip_file, **kwargs)
+                try:
+                    pd_version = int(pd.__version__.split(".")[0])
+                except ValueError:
+                    pd_version = 0
+
+                if pd_version >= 2:
+                    artifact_object.to_csv(gzip_file, **kwargs)
+                else:
+                    # old (pandas<2) versions of pandas cannot handle direct gzip stream, so we manually encode it
+                    artifact_object.to_csv(io.TextIOWrapper(gzip_file), **kwargs)
         else:
             artifact_object.to_csv(local_filename, compression=self._compression)
 

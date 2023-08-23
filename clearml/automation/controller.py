@@ -410,7 +410,7 @@ class PipelineController(object):
         :param recursively_parse_parameters: If True, recursively parse parameters from parameter_override in lists, dicts, or tuples.
             Example:
             - ``parameter_override={'Args/input_file': ['${<step_name>.artifacts.<artifact_name>.url}', 'file2.txt']}`` will be correctly parsed.
-            - ``parameter_override={'Args/input_file': ('${<step_name_1>.parameters.Args/input_file}', ''${<step_name_2>.parameters.Args/input_file}'')}`` will be correctly parsed.
+            - ``parameter_override={'Args/input_file': ('${<step_name_1>.parameters.Args/input_file}', '${<step_name_2>.parameters.Args/input_file}')}`` will be correctly parsed.
         :param configuration_overrides: Optional, override Task configuration objects.
             Expected dictionary of configuration object name and configuration object content.
             Examples:

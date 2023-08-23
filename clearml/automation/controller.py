@@ -407,7 +407,7 @@ class PipelineController(object):
           - Parameter access ``parameter_override={'Args/input_file': '${<step_name>.parameters.Args/input_file}' }``
           - Pipeline Task argument (see `Pipeline.add_parameter`) ``parameter_override={'Args/input_file': '${pipeline.<pipeline_parameter>}' }``
           - Task ID ``parameter_override={'Args/input_file': '${stage3.id}' }``
-        :param recursively_parse_parameters: If True, recursively parse parameters from parameter_override in lists, dicts, or tuples. 
+        :param recursively_parse_parameters: If True, recursively parse parameters from parameter_override in lists, dicts, or tuples.
             Example:
             - ``parameter_override={'Args/input_file': ['${<step_name>.artifacts.<artifact_name>.url}', 'file2.txt']}`` will be correctly parsed.
             - ``parameter_override={'Args/input_file': ('${<step_name_1>.parameters.Args/input_file}', ''${<step_name_2>.parameters.Args/input_file}'')}`` will be correctly parsed.
@@ -2811,7 +2811,7 @@ class PipelineController(object):
                 updated_value = [self._parse_step_ref(v, recursive=True) for v in value]
             elif isinstance(value, tuple):
                 updated_value = tuple(self._parse_step_ref(v, recursive=True) for v in value)
-        
+
         return updated_value
 
     def _parse_task_overrides(self, task_overrides):

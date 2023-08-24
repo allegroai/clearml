@@ -8,6 +8,7 @@ from . import _patched_call
 from .tensorflow_bind import WeightsGradientHistHelper
 from ..import_bind import PostImportHookPatching
 from ...debugging.log import LoggerRoot
+from .tensorflow_bind import IsTensorboardInit
 
 try:
     import fastai
@@ -51,7 +52,7 @@ class PatchFastaiV1(object):
     @staticmethod
     def patch_model_callback():
         # if you have tensorboard, we assume you use TensorboardLogger, which we catch, so no need to patch.
-        if "tensorboard" in sys.modules:
+        if "tensorboard" in sys.modules and IsTensorboardInit.tensorboard_used():
             return
 
         try:
@@ -191,7 +192,7 @@ class PatchFastaiV2(object):
 
     @staticmethod
     def patch_model_callback():
-        if "tensorboard" in sys.modules:
+        if "tensorboard" in sys.modules and IsTensorboardInit.tensorboard_used():
             return
 
         # noinspection PyBroadException

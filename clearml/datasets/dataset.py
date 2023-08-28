@@ -910,7 +910,7 @@ class Dataset(object):
             Task.TaskStatusEnum.in_progress, Task.TaskStatusEnum.created, Task.TaskStatusEnum.failed)
 
     def get_local_copy(self, use_soft_links=None, part=None, num_parts=None, raise_on_error=True, max_workers=None,
-                       only_added=False):
+                       ignore_parent_datasets=False):
         # type: (bool, Optional[int], Optional[int], bool, Optional[int], bool) -> str
         """
         Return a base folder with a read-only (immutable) local copy of the entire dataset
@@ -931,7 +931,7 @@ class Dataset(object):
         :param raise_on_error: If True, raise exception if dataset merging failed on any file
         :param max_workers: Number of threads to be spawned when getting the dataset copy. Defaults
             to the number of logical cores.
-        :param only_added: If True, ignore all the parent datasets and download only files added to the latest version
+        :param ignore_parent_datasets: If True, ignore all the parent datasets and download only files added to the latest version
 
         :return: A base folder for the entire dataset
         """
@@ -944,7 +944,7 @@ class Dataset(object):
             raise ValueError("Cannot get a local copy of a dataset that was not finalized/closed")
         max_workers = max_workers or psutil.cpu_count()
 
-        if only_added:
+        if ignore_parent_datasets:
             # merge only added files, ignoring the parents
             if part is not None or num_parts is not None:
                 LoggerRoot.get_base_logger().info("Getting only added files, ignoring parents")

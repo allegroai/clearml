@@ -971,7 +971,8 @@ class Task(_Task):
             Use a list of strings for multiple optional project names.
         :param str task_name: The full name or partial name of the Tasks to match within the specified
             ``project_name`` (or all projects if ``project_name`` is ``None``).
-            This method supports regular expressions for name matching. (Optional)
+            This method supports regular expressions for name matching (if you wish to match special characters and
+            avoid any regex behaviour, use re.escape()). (Optional)
             To match an exact task name (i.e. not partial matching),
             add ^/$ at the beginning/end of the string, for example: "^exact_task_name_here$"
         :param list tags: Filter based on the requested list of tags (strings) (Task must have all the listed tags)
@@ -1020,7 +1021,8 @@ class Task(_Task):
             Use a list of strings for multiple optional project names.
         :param str task_name: The full name or partial name of the Tasks to match within the specified
             ``project_name`` (or all projects if ``project_name`` is ``None``).
-            This method supports regular expressions for name matching. (Optional)
+            This method supports regular expressions for name matching (if you wish to match special characters and
+            avoid any regex behaviour, use re.escape()). (Optional)
         :param str project_name: project name (str) the task belongs to (use None for all projects)
         :param str task_name: task name (str) within the selected project
             Return any partial match of task_name, regular expressions matching is also supported.
@@ -2776,7 +2778,8 @@ class Task(_Task):
 
         # leave this process.
         if exit_process:
-            LoggerRoot.get_base_logger().warning('Terminating local execution process')
+            LoggerRoot.get_base_logger().warning(
+                'ClearML Terminating local execution process - continuing execution remotely')
             leave_process(0)
 
         return task

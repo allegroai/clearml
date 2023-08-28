@@ -467,7 +467,7 @@ class Dataset(object):
             e.g: for source_url='s3://bucket/remote_folder/image.jpg' and dataset_path='s3_files',
             'image.jpg' will be downloaded to 's3_files/image.jpg' (relative path to the dataset).
             For source_url=['s3://bucket/remote_folder/image.jpg', 's3://bucket/remote_folder/image2.jpg'] and
-            dataset_path=['s3_files', s3_files_2], 'image.jpg' will be downloaded to 's3_files/image.jpg' and
+            dataset_path=['s3_files', 's3_files_2'], 'image.jpg' will be downloaded to 's3_files/image.jpg' and
             'image2.jpg' will be downloaded to 's3_files_2/image2.jpg' (relative path to the dataset).
         :param recursive: If True, match all wildcard files recursively
         :param verbose: If True, print to console files added/modified

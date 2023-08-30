@@ -1055,6 +1055,26 @@ class BaseModel(object):
         if not self.published:
             self._get_base_model().publish()
 
+    def archive(self):
+        # type: () -> ()
+        """
+        Archive the model. If the model is already archived, this is a no-op
+        """
+        try:
+            self._get_base_model().archive()
+        except Exception:
+            pass
+
+    def unarchive(self):
+        # type: () -> ()
+        """
+        Unarchive the model. If the model is not archived, this is a no-op
+        """
+        try:
+            self._get_base_model().unarchive()
+        except Exception:
+            pass
+
     def _init_reporter(self):
         if self._reporter:
             return

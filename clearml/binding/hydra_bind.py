@@ -89,6 +89,7 @@ class PatchHydra(object):
                 if overrides and not isinstance(overrides, (list, tuple)):
                     overrides = [overrides]
                 overrides += ['{}={}'.format(k, v) for k, v in stored_config.items()]
+                overrides = ["+" + (o if o.startswith("+") and not o.startswith("++") else o) for o in overrides]
             else:
                 # We take care of it inside the _patched_run_job
                 pass

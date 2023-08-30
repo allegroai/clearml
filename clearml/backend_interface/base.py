@@ -83,7 +83,7 @@ class InterfaceBase(SessionInterface):
                 if raise_on_errors:
                     raise
                 res = None
-            except jsonschema.ValidationError as e:
+            except (jsonschema.ValidationError, requests.exceptions.InvalidJSONError) as e:
                 if log:
                     log.error(
                         'Field %s contains illegal schema: %s', '.'.join(e.path), str(e.message)

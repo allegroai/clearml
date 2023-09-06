@@ -462,9 +462,13 @@ class Dataset(object):
             the dataset (e.g. [s3://bucket/folder/file.csv, http://web.com/file.txt])
         :param wildcard: add only specific set of files.
             Wildcard matching, can be a single string or a list of wildcards.
-        :param dataset_path: The location in the dataset where the file will be downloaded into.
+        :param dataset_path: The location in the dataset where the file will be downloaded into, or list/touple of
+            locations (if list/touple, it must be the same length as ``source_url``).
             e.g: for source_url='s3://bucket/remote_folder/image.jpg' and dataset_path='s3_files',
-            'image.jpg' will be downloaded to 's3_files/image.jpg' (relative path to the dataset)
+            'image.jpg' will be downloaded to 's3_files/image.jpg' (relative path to the dataset).
+            For source_url=['s3://bucket/remote_folder/image.jpg', 's3://bucket/remote_folder/image2.jpg'] and
+            dataset_path=['s3_files', 's3_files_2'], 'image.jpg' will be downloaded to 's3_files/image.jpg' and
+            'image2.jpg' will be downloaded to 's3_files_2/image2.jpg' (relative path to the dataset).
         :param recursive: If True, match all wildcard files recursively
         :param verbose: If True, print to console files added/modified
         :param max_workers: The number of threads to add the external files with. Useful when `source_url` is

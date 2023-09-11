@@ -284,6 +284,11 @@ def is_std_or_local_lib(name):
     False if installed package
     str if local library
     """
+
+    # check if one of the builtin modules first
+    if name in sys.builtin_module_names:
+        return True
+
     exist = True
     if six.PY2:
         import imp  # noqa

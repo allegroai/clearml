@@ -81,7 +81,6 @@ class PipelineController(object):
         parents = attrib(type=list, default=None)  # list of parent DAG steps
         timeout = attrib(type=float, default=None)  # execution timeout limit
         parameters = attrib(type=dict, default=None)  # Task hyper-parameters to change
-        recursively_parse_parameters = attrib(type=bool, default=False)  # if True, recursively parse parameters in lists, dicts, or tuples
         configurations = attrib(type=dict, default=None)  # Task configuration objects to change
         task_overrides = attrib(type=dict, default=None)  # Task overrides to change
         executed = attrib(type=str, default=None)  # The actual executed Task ID (None if not executed yet)
@@ -100,6 +99,8 @@ class PipelineController(object):
         monitor_artifacts = attrib(type=list, default=None)  # List of artifact names to monitor
         monitor_models = attrib(type=list, default=None)  # List of models to monitor
         explicit_docker_image = attrib(type=str, default=None)  # The Docker image the node uses, specified at creation
+        recursively_parse_parameters = attrib(type=bool, default=False)  # if True, recursively parse parameters in
+        # lists, dicts, or tuples
 
         def __attrs_post_init__(self):
             if self.parents is None:
@@ -369,7 +370,6 @@ class PipelineController(object):
             base_task_id=None,  # type: Optional[str]
             parents=None,  # type: Optional[Sequence[str]]
             parameter_override=None,  # type: Optional[Mapping[str, Any]]
-            recursively_parse_parameters=False,  # type: bool
             configuration_overrides=None,  # type: Optional[Mapping[str, Union[str, Mapping]]]
             task_overrides=None,  # type: Optional[Mapping[str, Any]]
             execution_queue=None,  # type: Optional[str]
@@ -386,7 +386,8 @@ class PipelineController(object):
             cache_executed_step=False,  # type: bool
             base_task_factory=None,  # type: Optional[Callable[[PipelineController.Node], Task]]
             retry_on_failure=None,  # type: Optional[Union[int, Callable[[PipelineController, PipelineController.Node, int], bool]]]   # noqa
-            status_change_callback=None  # type: Optional[Callable[[PipelineController, PipelineController.Node, str], None]]  # noqa
+            status_change_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node, str], None]]  # noqa
+            recursively_parse_parameters=False  # type: bool
     ):
         # type: (...) -> bool
         """

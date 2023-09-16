@@ -791,6 +791,7 @@ class Task(_Task):
             argparse_args=None,  # type: Optional[Sequence[Tuple[str, str]]]
             base_task_id=None,  # type: Optional[str]
             add_task_init_call=True,  # type: bool
+            force_single_script_file=False,  # type: bool
     ):
         # type: (...) -> TaskInstance
         """
@@ -832,6 +833,7 @@ class Task(_Task):
         :param base_task_id: Use a pre-existing task in the system, instead of a local repo/script.
             Essentially clones an existing task and overrides arguments/requirements.
         :param add_task_init_call: If True, a 'Task.init()' call is added to the script entry point in remote execution.
+        :param force_single_script_file: If True, do not auto-detect local repository
 
         :return: The newly created Task (experiment)
         :rtype: Task
@@ -852,6 +854,7 @@ class Task(_Task):
             docker=docker, docker_args=docker_args, docker_bash_setup_script=docker_bash_setup_script,
             base_task_id=base_task_id,
             add_task_init_call=add_task_init_call,
+            force_single_script_file=force_single_script_file,
             raise_on_missing_entries=False,
         )
         task = manual_populate.create_task()

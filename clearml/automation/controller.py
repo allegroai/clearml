@@ -3221,8 +3221,10 @@ class PipelineController(object):
             name=artifact_name,
             artifact_object=artifact_object,
             wait_on_upload=True,
-            extension_name=".pkl" if isinstance(artifact_object, dict) and
-                                     not self._artifact_serialization_function else None,
+            extension_name=(
+                ".pkl" if isinstance(artifact_object, dict) and not self._artifact_serialization_function
+                else None
+            ),
             serialization_function=self._artifact_serialization_function
         )
 

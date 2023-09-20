@@ -246,7 +246,6 @@ class PatchOsFork(object):
 
         os._exit = _at_exit_callback
 
-
     @staticmethod
     def _patched_fork(*args, **kwargs):
         if not PatchOsFork._current_task:

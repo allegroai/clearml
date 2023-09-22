@@ -285,11 +285,11 @@ class GPUStatCollection(object):
                 for nv_process in nv_comp_processes + nv_graphics_processes:
                     try:
                         process = get_process_info(nv_process)
-                        processes.append(process)
                     except psutil.NoSuchProcess:
                         # TODO: add some reminder for NVML broken context
                         # e.g. nvidia-smi reset  or  reboot the system
-                        pass
+                        process = None
+                    processes.append(process)
 
                 # we do not actually use these, so no point in collecting them
                 # # TODO: Do not block if full process info is not requested
@@ -313,7 +313,7 @@ class GPUStatCollection(object):
                 # Convert bytes into MBytes
                 'memory.used': memory.used // MB if memory else None,
                 'memory.total': memory.total // MB if memory else None,
-                'processes': processes,
+                'processes': None if (processes and all(p is None for p in processes)) else processes
             }
             if per_process_stats:
                 GPUStatCollection.clean_processes()

@@ -1,7 +1,8 @@
 import abc
 
-import jsonschema
 import six
+from jsonschema.exceptions import FormatError, SchemaError, ValidationError
+from referencing.exceptions import Unresolvable
 
 from .apimodel import ApiModel
 from .datamodel import DataModel
@@ -39,8 +40,7 @@ class BatchRequest(Request):
 
     _batched_request_cls = abc.abstractproperty()
 
-    _schema_errors = (jsonschema.SchemaError, jsonschema.ValidationError, jsonschema.FormatError,
-                      jsonschema.RefResolutionError)
+    _schema_errors = (SchemaError, ValidationError, FormatError, Unresolvable)
 
     def __init__(self, requests, validate_requests=False, allow_raw_requests=True, **kwargs):
         super(BatchRequest, self).__init__(**kwargs)
@@ -70,8 +70,7 @@ class BatchRequest(Request):
         for i, req in enumerate(self.requests):
             try:
                 req.validate()
-            except (jsonschema.SchemaError, jsonschema.ValidationError,
-                    jsonschema.FormatError, jsonschema.RefResolutionError) as e:
+            except (SchemaError, ValidationError, FormatError, Unresolvable) as e:
                 raise Exception('Validation error in batch item #%d: %s' % (i, str(e)))
 
     def get_json(self):

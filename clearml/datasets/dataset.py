@@ -913,8 +913,9 @@ class Dataset(object):
         return self._task.get_status() not in (
             Task.TaskStatusEnum.in_progress, Task.TaskStatusEnum.created, Task.TaskStatusEnum.failed)
 
-    def get_local_copy(self, use_soft_links=None, part=None, num_parts=None, raise_on_error=True, max_workers=None):
-        # type: (bool, Optional[int], Optional[int], bool, Optional[int]) -> str
+    def get_local_copy(self, use_soft_links=None, part=None, num_parts=None, raise_on_error=True, max_workers=None,
+                       ignore_parent_datasets=False):
+        # type: (bool, Optional[int], Optional[int], bool, Optional[int], bool) -> str
         """
         Return a base folder with a read-only (immutable) local copy of the entire dataset
         download and copy / soft-link, files from all the parent dataset versions. The dataset needs to be finalized
@@ -934,6 +935,7 @@ class Dataset(object):
         :param raise_on_error: If True, raise exception if dataset merging failed on any file
         :param max_workers: Number of threads to be spawned when getting the dataset copy. Defaults
             to the number of logical cores.
+        :param ignore_parent_datasets: If True, ignore all the parent datasets and download only files added to the latest version
 
         :return: A base folder for the entire dataset
         """
@@ -946,14 +948,22 @@ class Dataset(object):
             raise ValueError("Cannot get a local copy of a dataset that was not finalized/closed")
         max_workers = max_workers or psutil.cpu_count()
 
-        # now let's merge the parents
-        target_folder = self._merge_datasets(
-            use_soft_links=use_soft_links,
-            raise_on_error=raise_on_error,
-            part=part,
-            num_parts=num_parts,
-            max_workers=max_workers,
-        )
+        if ignore_parent_datasets:
+            # merge only added files, ignoring the parents
+            if part is not None or num_parts is not None:
+                LoggerRoot.get_base_logger().info("Getting only added files, ignoring parents")
+            target_folder = self._merge_diff(
+                max_workers=max_workers,
+            )
+        else:
+            # now let's merge the parents
+            target_folder = self._merge_datasets(
+                use_soft_links=use_soft_links,
+                raise_on_error=raise_on_error,
+                part=part,
+                num_parts=num_parts,
+                max_workers=max_workers,
+            )
         return target_folder
 
     def get_mutable_local_copy(
@@ -2324,6 +2334,7 @@ class Dataset(object):
                 LoggerRoot.get_base_logger().info(log_string)
             else:
                 link.size = Path(target_path).stat().st_size
+
         if not max_workers:
             for relative_path, link in links.items():
                 target_path = os.path.join(target_folder, relative_path)
@@ -2457,6 +2468,51 @@ class Dataset(object):
         prefix_len = len(prefix)
         numbers = sorted([int(a[prefix_len:]) for a in data_artifact_entries if a.startswith(prefix)])
         return '{}{:03d}'.format(prefix, numbers[-1]+1 if numbers else 1)
+
+    def _merge_diff(self, max_workers=None):
+        # type: (Optional[int]) -> str
+        """
+        Download only the added files of the dataset, ignoring all the data from parents
+
+        :param max_workers: Number of threads to be spawned when merging datasets. Defaults to the number
+            of logical cores.
+
+        :return: the target folder
+        """
+
+        max_workers = max_workers or psutil.cpu_count()
+
+        # just create the dataset target folder
+        target_base_folder, _ = self._create_ds_target_folder(
+            part=None, num_parts=None, lock_target_folder=True)
+
+        # check if target folder is not empty, see if it contains everything we need
+        if target_base_folder and next(target_base_folder.iterdir(), None):
+            if self._verify_diff_folder(target_base_folder):
+                target_base_folder.touch()
+                self._release_lock_ds_target_folder(target_base_folder)
+                return target_base_folder.as_posix()
+            else:
+                LoggerRoot.get_base_logger().info('Dataset diff needs refreshing, downloading added files')
+                # we should delete the entire cache folder
+                shutil.rmtree(target_base_folder.as_posix())
+                # make sure we recreate the dataset target folder
+                target_base_folder.mkdir(parents=True, exist_ok=True)
+
+        self._get_dataset_files(
+            force=True,
+            selected_chunks=None,
+            cleanup_target_folder=True,
+            target_folder=target_base_folder,
+            max_workers=max_workers
+        )
+
+        # update target folder timestamp
+        target_base_folder.touch()
+
+        # if we have no dependencies, we can just return now
+        self._release_lock_ds_target_folder(target_base_folder)
+        return target_base_folder.absolute().as_posix()
 
     def _merge_datasets(self, use_soft_links=None, raise_on_error=True, part=None, num_parts=None, max_workers=None):
         # type: (bool, bool, Optional[int], Optional[int], Optional[int]) -> str
@@ -3213,6 +3269,38 @@ class Dataset(object):
             if raise_on_error and any(errors):
                 raise ValueError("Dataset merging failed: {}".format([e for e in errors if e is not None]))
         pool.close()
+
+
+    def _verify_diff_folder(self, target_base_folder):
+        # type: (Path) -> bool
+        target_base_folder = Path(target_base_folder)
+        # check the file size for the added portion of the dataset, regardless of parents
+        verified = True
+
+        datasets = self._dependency_graph[self._id]
+        unified_list = set()
+        for ds_id in datasets:
+            dataset = self.get(dataset_id=ds_id)
+            unified_list |= set(dataset._dataset_file_entries.values())
+            unified_list |= set(dataset._dataset_link_entries.values())
+
+        added_list = [
+            f
+            for f in list(self._dataset_file_entries.values()) + list(self._dataset_link_entries.values())
+            if f not in unified_list
+        ]
+        # noinspection PyBroadException
+        try:
+            for f in set(added_list):
+
+                # check if the local size and the stored size match (faster than comparing hash)
+                if (target_base_folder / f.relative_path).stat().st_size != f.size:
+                    verified = False
+                    break
+        except Exception:
+            verified = False
+
+        return verified
 
     def _verify_dataset_folder(self, target_base_folder, part, chunk_selection):
         # type: (Path, Optional[int], Optional[dict]) -> bool

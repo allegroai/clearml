@@ -3217,22 +3217,22 @@ class Dataset(object):
     def _verify_dataset_folder(self, target_base_folder, part, chunk_selection, max_workers):
         # type: (Path, Optional[int], Optional[dict], Optional[int]) -> bool
 
-        def __verify_file_or_link(target_base_folder, part, chunk_selection, file_entry):
-            # type: (Path, Optional[int], Optional[dict], DatasetFileEntry) -> Optional[bool]
+        def verify_file_or_link(base_folder, ds_part, ds_chunk_selection, file_entry):
+            # type: (Path, Optional[int], Optional[dict], FileEntry) -> Optional[bool]
 
             # check if we need the file for the requested dataset part
-            if part is not None:
-                f_parts = chunk_selection.get(file_entry.parent_dataset_id, [])
+            if ds_part is not None:
+                f_parts = ds_chunk_selection.get(file_entry.parent_dataset_id, [])
                 # file is not in requested dataset part, no need to check it.
                 if self._get_chunk_idx_from_artifact_name(file_entry.artifact_name) not in f_parts:
                     return None
 
             # check if the local size and the stored size match (faster than comparing hash)
-            if (target_base_folder / file_entry.relative_path).stat().st_size != file_entry.size:
+            if (base_folder / file_entry.relative_path).stat().st_size != file_entry.size:
                 return False
-            
+
             return True
-        
+
         target_base_folder = Path(target_base_folder)
         # check dataset file size, if we have a full match no need for parent dataset download / merge
         verified = True
@@ -3241,15 +3241,15 @@ class Dataset(object):
             futures_ = []
             with ThreadPoolExecutor(max_workers=max_workers) as tp:
                 for f in self._dataset_file_entries.values():
-                    future = tp.submit(__verify_file_or_link, target_base_folder, part, chunk_selection, f)
+                    future = tp.submit(verify_file_or_link, target_base_folder, part, chunk_selection, f)
                     futures_.append(future)
 
                 for f in self._dataset_link_entries.values():
                     # don't check whether link is in dataset part, hence None for part and chunk_selection
-                    future = tp.submit(__verify_file_or_link, target_base_folder, None, None, f)
+                    future = tp.submit(verify_file_or_link, target_base_folder, None, None, f)
                     futures_.append(future)
 
-            verified = all(f.result() != False for f in futures_)
+                verified = all(f.result() is not False for f in futures_)
         except Exception:
             verified = False
 

@@ -71,7 +71,7 @@ class PatchLIGHTgbmModelIO(PatchBaseModelIO):
         return ret
 
     @staticmethod
-    def _load(original_fn, model_file, *args, **kwargs):
+    def _load(original_fn, model_file=None, *args, **kwargs):
         if not PatchLIGHTgbmModelIO._current_task:
             return original_fn(model_file, *args, **kwargs)
 

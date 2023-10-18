@@ -12,7 +12,7 @@ def simple_function():
 # Create the scheduler controller
 scheduler = TaskScheduler()
 
-# Run the pipeline Task 'pipeline demo, every day at 10:30am
+# Run the Task 'PyTorch MNIST train', every day at 10:30am
 scheduler.add_task(
     name='recurring pipeline job',
     schedule_task_id=Task.get_task(project_name='examples', task_name='PyTorch MNIST train'),

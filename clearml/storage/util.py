@@ -1,7 +1,7 @@
 import fnmatch
 import hashlib
 import json
-import os.path
+import os
 import re
 import sys
 from typing import Optional, Union, Sequence, Dict
@@ -336,6 +336,37 @@ def is_within_directory(directory, target):
     abs_target = os.path.abspath(target)
     prefix = os.path.commonprefix([abs_directory, abs_target])
     return prefix == abs_directory
+
+
+def create_zip_directories(zipfile, path=None):
+    try:
+        path = os.getcwd() if path is None else os.fspath(path)
+        for member in zipfile.namelist():
+            arcname = member.replace("/", os.path.sep)
+            if os.path.altsep:
+                arcname = arcname.replace(os.path.altsep, os.path.sep)
+            # interpret absolute pathname as relative, remove drive letter or
+            # UNC path, redundant separators, "." and ".." components.
+            arcname = os.path.splitdrive(arcname)[1]
+            invalid_path_parts = ("", os.path.curdir, os.path.pardir)
+            arcname = os.path.sep.join(x for x in arcname.split(os.path.sep) if x not in invalid_path_parts)
+            if os.path.sep == "\\":
+                # noinspection PyBroadException
+                try:
+                    # filter illegal characters on Windows
+                    # noinspection PyProtectedMember
+                    arcname = zipfile._sanitize_windows_name(arcname, os.path.sep)
+                except Exception:
+                    pass
+
+            targetpath = os.path.normpath(os.path.join(path, arcname))
+
+            # Create all upper directories if necessary.
+            upperdirs = os.path.dirname(targetpath)
+            if upperdirs:
+                os.makedirs(upperdirs, exist_ok=True)
+    except Exception as e:
+        LoggerRoot.get_base_logger().warning("Failed creating zip directories: " + str(e))
 
 
 def safe_extract(tar, path=".", members=None, numeric_owner=False):

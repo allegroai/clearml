@@ -1055,6 +1055,26 @@ class BaseModel(object):
         if not self.published:
             self._get_base_model().publish()
 
+    def archive(self):
+        # type: () -> ()
+        """
+        Archive the model. If the model is already archived, this is a no-op
+        """
+        try:
+            self._get_base_model().archive()
+        except Exception:
+            pass
+
+    def unarchive(self):
+        # type: () -> ()
+        """
+        Unarchive the model. If the model is not archived, this is a no-op
+        """
+        try:
+            self._get_base_model().unarchive()
+        except Exception:
+            pass
+
     def _init_reporter(self):
         if self._reporter:
             return
@@ -2380,11 +2400,15 @@ class OutputModel(BaseModel):
 
         # make sure the created model is updated:
         out_model_file_name = target_filename or weights_filename or register_uri
-        name = (
-            Path(out_model_file_name).stem
-            if out_model_file_name
-            else (self._task_connect_name or "Output Model")
-        )
+
+        # prefer self._task_connect_name if exists
+        if self._task_connect_name:
+            name = self._task_connect_name
+        elif out_model_file_name:
+            name = Path(out_model_file_name).stem
+        else:
+            name = "Output Model"
+
         if not self._base_model:
             model = self._get_force_base_model(task_model_entry=name)
         else:

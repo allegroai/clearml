@@ -894,7 +894,7 @@ class _GoogleCloudStorageDriver(_Driver):
         obj.download_to_filename(str(p))
 
     def test_upload(self, test_path, config, **_):
-        bucket_url = str(furl(scheme=self.scheme, netloc=config.bucket, path=config.subdir))
+        bucket_url = str(furl(scheme=self.scheme, netloc=config.bucket))
         bucket = self.get_container(container_name=bucket_url, config=config).bucket
 
         test_obj = bucket

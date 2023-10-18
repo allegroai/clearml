@@ -99,6 +99,8 @@ class PipelineController(object):
         monitor_artifacts = attrib(type=list, default=None)  # List of artifact names to monitor
         monitor_models = attrib(type=list, default=None)  # List of models to monitor
         explicit_docker_image = attrib(type=str, default=None)  # The Docker image the node uses, specified at creation
+        recursively_parse_parameters = attrib(type=bool, default=False)  # if True, recursively parse parameters in
+        # lists, dicts, or tuples
 
         def __attrs_post_init__(self):
             if self.parents is None:
@@ -384,7 +386,8 @@ class PipelineController(object):
             cache_executed_step=False,  # type: bool
             base_task_factory=None,  # type: Optional[Callable[[PipelineController.Node], Task]]
             retry_on_failure=None,  # type: Optional[Union[int, Callable[[PipelineController, PipelineController.Node, int], bool]]]   # noqa
-            status_change_callback=None  # type: Optional[Callable[[PipelineController, PipelineController.Node, str], None]]  # noqa
+            status_change_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node, str], None]]  # noqa
+            recursively_parse_parameters=False  # type: bool
     ):
         # type: (...) -> bool
         """
@@ -405,7 +408,10 @@ class PipelineController(object):
           - Parameter access ``parameter_override={'Args/input_file': '${<step_name>.parameters.Args/input_file}' }``
           - Pipeline Task argument (see `Pipeline.add_parameter`) ``parameter_override={'Args/input_file': '${pipeline.<pipeline_parameter>}' }``
           - Task ID ``parameter_override={'Args/input_file': '${stage3.id}' }``
-
+        :param recursively_parse_parameters: If True, recursively parse parameters from parameter_override in lists, dicts, or tuples.
+            Example:
+            - ``parameter_override={'Args/input_file': ['${<step_name>.artifacts.<artifact_name>.url}', 'file2.txt']}`` will be correctly parsed.
+            - ``parameter_override={'Args/input_file': ('${<step_name_1>.parameters.Args/input_file}', '${<step_name_2>.parameters.Args/input_file}')}`` will be correctly parsed.
         :param configuration_overrides: Optional, override Task configuration objects.
             Expected dictionary of configuration object name and configuration object content.
             Examples:
@@ -572,6 +578,7 @@ class PipelineController(object):
             name=name, base_task_id=base_task_id, parents=parents or [],
             queue=execution_queue, timeout=time_limit,
             parameters=parameter_override or {},
+            recursively_parse_parameters=recursively_parse_parameters,
             configurations=configuration_overrides,
             clone_task=clone_base_task,
             task_overrides=task_overrides,
@@ -2237,7 +2244,7 @@ class PipelineController(object):
 
         updated_hyper_parameters = {}
         for k, v in node.parameters.items():
-            updated_hyper_parameters[k] = self._parse_step_ref(v)
+            updated_hyper_parameters[k] = self._parse_step_ref(v, recursive=node.recursively_parse_parameters)
 
         task_overrides = self._parse_task_overrides(node.task_overrides) if node.task_overrides else None
 
@@ -2776,11 +2783,12 @@ class PipelineController(object):
             except Exception:
                 pass
 
-    def _parse_step_ref(self, value):
+    def _parse_step_ref(self, value, recursive=False):
         # type: (Any) -> Optional[str]
         """
         Return the step reference. For example "${step1.parameters.Args/param}"
         :param value: string
+        :param recursive: if True, recursively parse all values in the dict, list or tuple
         :return:
         """
         # look for all the step references
@@ -2793,6 +2801,18 @@ class PipelineController(object):
                 if not isinstance(new_val, six.string_types):
                     return new_val
                 updated_value = updated_value.replace(g, new_val, 1)
+
+        # if we have a dict, list or tuple, we need to recursively update the values
+        if recursive:
+            if isinstance(value, dict):
+                updated_value = {}
+                for k, v in value.items():
+                    updated_value[k] = self._parse_step_ref(v, recursive=True)
+            elif isinstance(value, list):
+                updated_value = [self._parse_step_ref(v, recursive=True) for v in value]
+            elif isinstance(value, tuple):
+                updated_value = tuple(self._parse_step_ref(v, recursive=True) for v in value)
+
         return updated_value
 
     def _parse_task_overrides(self, task_overrides):
@@ -3201,8 +3221,10 @@ class PipelineController(object):
             name=artifact_name,
             artifact_object=artifact_object,
             wait_on_upload=True,
-            extension_name=".pkl" if isinstance(artifact_object, dict) and
-                                     not self._artifact_serialization_function else None,
+            extension_name=(
+                ".pkl" if isinstance(artifact_object, dict) and not self._artifact_serialization_function
+                else None
+            ),
             serialization_function=self._artifact_serialization_function
         )
 

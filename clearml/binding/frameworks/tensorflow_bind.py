@@ -1589,6 +1589,11 @@ class PatchKerasModelIO(object):
                 from keras import models as keras_saving  # noqa
             except ImportError:
                 keras_saving = None
+            try:
+                from keras.src.saving import saving_api as keras_saving_v3
+            except ImportError:
+                keras_saving_v3 = None
+
             # check that we are not patching anything twice
             if PatchKerasModelIO.__patched_tensorflow:
                 PatchKerasModelIO.__patched_keras = [
@@ -1598,9 +1603,10 @@ class PatchKerasModelIO(object):
                     Functional if PatchKerasModelIO.__patched_tensorflow[3] != Functional else None,
                     None,
                     None,
+                    keras_saving_v3
                 ]
             else:
-                PatchKerasModelIO.__patched_keras = [Network, Sequential, keras_saving, Functional, None, None]
+                PatchKerasModelIO.__patched_keras = [Network, Sequential, keras_saving, Functional, None, None, keras_saving_v3]
             PatchKerasModelIO._patch_io_calls(*PatchKerasModelIO.__patched_keras)
 
         if 'tensorflow' in sys.modules and not PatchKerasModelIO.__patched_tensorflow:
@@ -1643,6 +1649,8 @@ class PatchKerasModelIO(object):
             except ImportError:
                 keras_hdf5 = None
 
+            keras_saving_v3 = None
+
             if PatchKerasModelIO.__patched_keras:
                 PatchKerasModelIO.__patched_tensorflow = [
                     Network if PatchKerasModelIO.__patched_keras[0] != Network else None,
@@ -1651,14 +1659,23 @@ class PatchKerasModelIO(object):
                     Functional if PatchKerasModelIO.__patched_keras[3] != Functional else None,
                     keras_saving_legacy if PatchKerasModelIO.__patched_keras[4] != keras_saving_legacy else None,
                     keras_hdf5 if PatchKerasModelIO.__patched_keras[5] != keras_hdf5 else None,
+                    keras_saving_v3 if PatchKerasModelIO.__patched_keras[6] != keras_saving_v3 else None,
                 ]
             else:
                 PatchKerasModelIO.__patched_tensorflow = [
-                    Network, Sequential, keras_saving, Functional, keras_saving_legacy, keras_hdf5]
+                    Network, Sequential, keras_saving, Functional, keras_saving_legacy, keras_hdf5, keras_saving_v3]
             PatchKerasModelIO._patch_io_calls(*PatchKerasModelIO.__patched_tensorflow)
 
     @staticmethod
-    def _patch_io_calls(Network, Sequential, keras_saving, Functional, keras_saving_legacy=None, keras_hdf5=None):
+    def _patch_io_calls(
+            Network,
+            Sequential,
+            keras_saving,
+            Functional,
+            keras_saving_legacy=None,
+            keras_hdf5=None,
+            keras_saving_v3=None
+    ):
         try:
             if Sequential is not None:
                 Sequential._updated_config = _patched_call(Sequential._updated_config,
@@ -1717,6 +1734,9 @@ class PatchKerasModelIO(object):
                 if hasattr(keras_hdf5, 'save_model_to_hdf5'):
                     keras_hdf5.save_model_to_hdf5 = _patched_call(
                         keras_hdf5.save_model_to_hdf5, PatchKerasModelIO._save_model)
+
+            if keras_saving_v3 is not None:
+                keras_saving_v3.save_model = _patched_call(keras_saving_v3.save_model, PatchKerasModelIO._save_model)
 
         except Exception as ex:
             LoggerRoot.get_base_logger(TensorflowBinding).warning(str(ex))
@@ -2058,6 +2078,11 @@ class PatchTensorflowModelIO(object):
                 Checkpoint.write = _patched_call(Checkpoint.write, PatchTensorflowModelIO._ckpt_write)
             except Exception:
                 pass
+            # noinspection PyBroadException
+            try:
+                Checkpoint._write = _patched_call(Checkpoint._write, PatchTensorflowModelIO._ckpt_write)
+            except Exception:
+                pass
         except ImportError:
             pass
         except Exception:
@@ -2227,27 +2252,56 @@ class PatchTensorflow2ModelIO(object):
             return
 
         PatchTensorflow2ModelIO.__patched = True
+
         # noinspection PyBroadException
         try:
             # hack: make sure tensorflow.__init__ is called
             import tensorflow  # noqa
             from tensorflow.python.training.tracking import util  # noqa
+
             # noinspection PyBroadException
             try:
-                util.TrackableSaver.save = _patched_call(util.TrackableSaver.save,
-                                                         PatchTensorflow2ModelIO._save)
+                util.TrackableSaver.save = _patched_call(util.TrackableSaver.save, PatchTensorflow2ModelIO._save)
             except Exception:
                 pass
+
             # noinspection PyBroadException
             try:
-                util.TrackableSaver.restore = _patched_call(util.TrackableSaver.restore,
-                                                            PatchTensorflow2ModelIO._restore)
+                util.TrackableSaver.restore = _patched_call(
+                    util.TrackableSaver.restore, PatchTensorflow2ModelIO._restore
+                )
             except Exception:
                 pass
         except ImportError:
             pass
         except Exception:
             LoggerRoot.get_base_logger(TensorflowBinding).debug('Failed patching tensorflow v2')
+
+        # noinspection PyBroadException
+        try:
+            # hack: make sure tensorflow.__init__ is called
+            import tensorflow  # noqa
+            from tensorflow.python.checkpoint import checkpoint
+
+            # noinspection PyBroadException
+            try:
+                checkpoint.TrackableSaver.save = _patched_call(
+                    checkpoint.TrackableSaver.save, PatchTensorflow2ModelIO._save
+                )
+            except Exception:
+                pass
+
+            # noinspection PyBroadException
+            try:
+                checkpoint.TrackableSaver.restore = _patched_call(
+                    checkpoint.TrackableSaver.restore, PatchTensorflow2ModelIO._restore
+                )
+            except Exception:
+                pass
+        except ImportError:
+            pass
+        except Exception:
+            LoggerRoot.get_base_logger(TensorflowBinding).debug('Failed patching tensorflow v2.11')
 
     @staticmethod
     def _save(original_fn, self, file_prefix, *args, **kwargs):

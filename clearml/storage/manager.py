@@ -12,7 +12,7 @@ from pathlib2 import Path
 from .cache import CacheManager
 from .callbacks import ProgressReport
 from .helper import StorageHelper
-from .util import encode_string_to_filename, safe_extract
+from .util import encode_string_to_filename, safe_extract, create_zip_directories
 from ..debugging.log import LoggerRoot
 from ..config import deferred_config
 
@@ -163,7 +163,9 @@ class StorageManager(object):
                 temp_target_folder.mkdir(parents=True, exist_ok=True)
 
             if suffix == ".zip":
-                ZipFile(cached_file.as_posix()).extractall(path=temp_target_folder.as_posix())
+                zip_file = ZipFile(cached_file.as_posix())
+                create_zip_directories(zip_file, path=temp_target_folder.as_posix())
+                zip_file.extractall(path=temp_target_folder.as_posix())
             elif suffix == ".tar.gz":
                 with tarfile.open(cached_file.as_posix()) as file:
                     safe_extract(file, temp_target_folder.as_posix())

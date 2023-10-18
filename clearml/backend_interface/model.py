@@ -12,6 +12,7 @@ from ..storage import StorageManager
 from ..storage.helper import StorageHelper
 from ..utilities.async_manager import AsyncManagerMixin
 
+
 ModelPackage = namedtuple("ModelPackage", "weights design")
 
 
@@ -76,6 +77,28 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
     def publish(self):
         self.send(models.SetReadyRequest(model=self.id, publish_task=False))
         self.reload()
+
+    def archive(self):
+        if Session.check_min_api_server_version("2.13"):
+            self.send(models.ArchiveManyRequest(ids=[self.id]))
+            self.reload()
+        else:
+            from ..model import BaseModel
+            # edit will reload
+            self._edit(
+                system_tags=list(set((self.data.system_tags or []) if hasattr(self.data, "system_tags") else []) | {BaseModel._archived_tag})
+            )
+
+    def unarchive(self):
+        if Session.check_min_api_server_version("2.13"):
+            self.send(models.UnarchiveManyRequest(ids=[self.id]))
+            self.reload()
+        else:
+            from ..model import BaseModel
+            # edit will reload
+            self._edit(
+                system_tags=list(set((self.data.system_tags or []) if hasattr(self.data, "system_tags") else []) - {BaseModel._archived_tag})
+            )
 
     def _reload(self):
         """Reload the model object"""

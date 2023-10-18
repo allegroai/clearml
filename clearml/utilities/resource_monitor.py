@@ -43,6 +43,8 @@ class ResourceMonitor(BackgroundMonitor):
         self._process_info = psutil.Process() if report_mem_used_per_process else None
         self._last_process_pool = {}
         self._last_process_id_list = []
+        self._gpu_memory_per_process = True
+
         if not self._gpustat:
             self._task.get_logger().report_text('ClearML Monitor: GPU monitoring is not available')
         else:  # if running_remotely():
@@ -309,27 +311,40 @@ class ResourceMonitor(BackgroundMonitor):
         # On the rest of the samples we return the previous memory measurement
 
         # update mem used by our process and sub processes
-        if self._process_info and (not self._last_process_pool.get('gpu') or
-                                   (time() - self._last_process_pool['gpu'][0]) >= self._report_frequency):
-            gpu_stat = self._gpustat.new_query(per_process_stats=True)
+        if self._gpu_memory_per_process and self._process_info and \
+                (not self._last_process_pool.get('gpu') or
+                 (time() - self._last_process_pool['gpu'][0]) >= self._report_frequency):
             gpu_mem = {}
+            # noinspection PyBroadException
+            try:
+                gpu_stat = self._gpustat.new_query(per_process_stats=True)
+            except Exception:
+                gpu_stat = self._gpustat.new_query(per_process_stats=False)
+
             for i, g in enumerate(gpu_stat.gpus):
+                # if processes is None, that means we can't query GPU memory usage per proces, so we can stop
+                if g.processes is None:
+                    self._gpu_memory_per_process = False
+                    break
                 # only monitor the active gpu's, if none were selected, monitor everything
                 if self._active_gpus and i not in self._active_gpus:
                     continue
+
                 gpu_mem[i] = 0
                 for p in g.processes:
-                    if p['pid'] in self._last_process_id_list:
+                    if p is not None and p['pid'] in self._last_process_id_list:
                         gpu_mem[i] += p.get('gpu_memory_usage', 0)
+
             self._last_process_pool['gpu'] = time(), gpu_mem
         else:
             # if we do no need to update the memory usage, run global query
             # if we have no parent process (backward compatibility), return global stats
-            gpu_stat = self._gpustat.new_query()
+            gpu_stat = self._gpustat.new_query(per_process_stats=False)
             gpu_mem = self._last_process_pool['gpu'][1] if self._last_process_pool.get('gpu') else None
 
         # generate the statistics dict for actual report
         stats = {}
+
         for i, g in enumerate(gpu_stat.gpus):
             # only monitor the active gpu's, if none were selected, monitor everything
             if self._active_gpus and i not in self._active_gpus:
@@ -367,7 +382,7 @@ class ResourceMonitor(BackgroundMonitor):
                     specs.update(
                         gpu_count=int(len(gpus)),
                         gpu_type=', '.join(g.name for g in gpus),
-                        gpu_memory=', '.join('{}GB'.format(round(g.memory_total/1024.0)) for g in gpus),
+                        gpu_memory=', '.join('{}GB'.format(round(g.memory_total / 1024.0)) for g in gpus),
                         gpu_driver_version=gpu_stat.driver_version or '',
                         gpu_driver_cuda_version=gpu_stat.driver_cuda_version or '',
                     )

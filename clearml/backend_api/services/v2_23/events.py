@@ -3075,6 +3075,8 @@ class GetScalarMetricDataRequest(Request):
     :param model_events: If set then the retrieving model events. Otherwise task
         events
     :type model_events: bool
+    :param scroll_id: Pass this value on next call to get next page
+    :type scroll_id: str
     """
 
     _service = "events"
@@ -3095,16 +3097,21 @@ class GetScalarMetricDataRequest(Request):
                 "type": ["boolean", "null"],
             },
             "task": {"description": "task ID", "type": ["string", "null"]},
+            "scroll_id": {
+                "description": "Pass this value on next call to get next page",
+                "type": "string",
+            },
         },
         "type": "object",
     }
 
-    def __init__(self, task=None, metric=None, no_scroll=False, model_events=False, **kwargs):
+    def __init__(self, task=None, metric=None, no_scroll=False, model_events=False, scroll_id=None, **kwargs):
         super(GetScalarMetricDataRequest, self).__init__(**kwargs)
         self.task = task
         self.metric = metric
         self.no_scroll = no_scroll
         self.model_events = model_events
+        self.scroll_id = scroll_id
 
     @schema_property("task")
     def task(self):
@@ -3157,6 +3164,19 @@ class GetScalarMetricDataRequest(Request):
 
         self.assert_isinstance(value, "model_events", (bool,))
         self._property_model_events = value
+
+    @schema_property("scroll_id")
+    def scroll_id(self):
+        return self._property_scroll_id
+
+    @scroll_id.setter
+    def scroll_id(self, value):
+        if value is None:
+            self._property_scroll_id = None
+            return
+
+        self.assert_isinstance(value, "scroll_id", six.string_types)
+        self._property_scroll_id = value
 
 
 class GetScalarMetricDataResponse(Response):

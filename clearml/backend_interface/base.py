@@ -25,6 +25,8 @@ class InterfaceBase(SessionInterface):
     _default_session = None
     _num_retry_warning_display = 1
     _offline_mode = ENV_OFFLINE_MODE.get()
+    _JSON_EXCEPTION = (jsonschema.ValidationError, requests.exceptions.InvalidJSONError) \
+        if hasattr(requests.exceptions, "InvalidJSONError") else (jsonschema.ValidationError,)
 
     @property
     def session(self):
@@ -83,7 +85,7 @@ class InterfaceBase(SessionInterface):
                 if raise_on_errors:
                     raise
                 res = None
-            except jsonschema.ValidationError as e:
+            except cls._JSON_EXCEPTION as e:
                 if log:
                     log.error(
                         'Field %s contains illegal schema: %s', '.'.join(e.path), str(e.message)

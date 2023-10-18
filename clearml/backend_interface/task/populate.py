@@ -46,6 +46,7 @@ class CreateAndPopulate(object):
             output_uri=None,  # type: Optional[str]
             base_task_id=None,  # type: Optional[str]
             add_task_init_call=True,  # type: bool
+            force_single_script_file=False,  # type: bool
             raise_on_missing_entries=False,  # type: bool
             verbose=False,  # type: bool
     ):
@@ -84,6 +85,7 @@ class CreateAndPopulate(object):
         :param base_task_id: Use a pre-existing task in the system, instead of a local repo/script.
             Essentially clones an existing task and overrides arguments/requirements.
         :param add_task_init_call: If True, a 'Task.init()' call is added to the script entry point in remote execution.
+        :param force_single_script_file: If True, do not auto-detect local repository
         :param raise_on_missing_entries: If True, raise ValueError on missing entries when populating
         :param verbose: If True, print verbose logging
         """
@@ -125,6 +127,7 @@ class CreateAndPopulate(object):
         self.task_type = task_type
         self.output_uri = output_uri
         self.task = None
+        self.force_single_script_file = bool(force_single_script_file)
         self.raise_on_missing_entries = raise_on_missing_entries
         self.verbose = verbose
 
@@ -159,6 +162,7 @@ class CreateAndPopulate(object):
                 detect_jupyter_notebook=False,
                 add_missing_installed_packages=True,
                 detailed_req_report=False,
+                force_single_script=self.force_single_script_file,
             )
 
         # check if we have no repository and no requirements raise error
@@ -237,6 +241,23 @@ class CreateAndPopulate(object):
             task_state['script']['diff'] = ''
             task_state['script']['working_dir'] = cwd or '.'
             task_state['script']['entry_point'] = entry_point or ""
+
+            if self.force_single_script_file and Path(self.script).is_file():
+                create_requirements = self.packages is True
+                repo_info, requirements = ScriptInfo.get(
+                    filepaths=[Path(self.script).as_posix()],
+                    log=getLogger(),
+                    create_requirements=create_requirements,
+                    uncommitted_from_remote=True,
+                    detect_jupyter_notebook=False,
+                    add_missing_installed_packages=True,
+                    detailed_req_report=False,
+                    force_single_script=self.force_single_script_file,
+                )
+                task_state['script']['diff'] = repo_info.script['diff'] or ''
+                task_state['script']['entry_point'] = repo_info.script['entry_point']
+                if create_requirements:
+                    task_state['script']['requirements'] = repo_info.script.get('requirements') or {}
         else:
             # standalone task
             task_state['script']['entry_point'] = self.script or ""

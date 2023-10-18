@@ -7,8 +7,9 @@
 # Python
 *.pyc
 __pycache__
-build/
-dist/
+/build/
+/dist/
+*/conda_build/build/
 *.egg-info
 .env
 .venv/

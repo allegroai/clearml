@@ -527,7 +527,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             return False
         return bool(self.data.ready)
 
-    def download_model_weights(self, raise_on_error=False, force_download=False):
+    def download_model_weights(self, raise_on_error=False, force_download=False, extract_archive=False):
         """
         Download the model weights into a local file in our cache
 
@@ -536,6 +536,8 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
 
         :param bool force_download: If True, the base artifact will be downloaded,
             even if the artifact is already cached.
+
+        :param bool extract_archive: If True, unzip the downloaded file if possible
 
         :return: a local path to a downloaded copy of the model
         """
@@ -556,7 +558,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             Model._local_model_to_id_uri.pop(dl_file, None)
 
         local_download = StorageManager.get_local_copy(
-            uri, extract_archive=False, force_download=force_download
+            uri, extract_archive=extract_archive, force_download=force_download
         )
 
         # save local model, so we can later query what was the original one

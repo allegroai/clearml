@@ -135,6 +135,26 @@ class PipelineController(object):
             new_copy.task_factory_func = self.task_factory_func
             return new_copy
 
+        def set_job_ended(self):
+            if self.job_ended:
+                return
+            # noinspection PyBroadException
+            try:
+                self.job.task.reload()
+                self.job_ended = self.job_started + self.job.task.data.active_duration
+            except Exception as e:
+                pass
+
+        def set_job_started(self):
+            if self.job_started:
+                return
+            # noinspection PyBroadException
+            try:
+                self.job_started = self.job.task.data.started.timestamp()
+            except Exception:
+                pass
+
+
     def __init__(
             self,
             name,  # type: str
@@ -1611,7 +1631,7 @@ class PipelineController(object):
             'target_project': self._target_project,
         }
         pipeline_dag = self._serialize()
-
+        
         # serialize pipeline state
         if self._task and self._auto_connect_task:
             # check if we are either running locally or that we are running remotely,
@@ -2322,7 +2342,7 @@ class PipelineController(object):
             self._pipeline_task_status_failed = True
             raise
 
-        node.job_started = time()
+        node.job_started = None
         node.job_ended = None
         node.job_type = str(node.job.task.task_type)
 
@@ -2578,6 +2598,8 @@ class PipelineController(object):
         """
         previous_status = node.status
 
+        if node.job and node.job.is_running():
+            node.set_job_started()
         update_job_ended = node.job_started and not node.job_ended
 
         if node.executed is not None:
@@ -2614,7 +2636,7 @@ class PipelineController(object):
             node.status = "pending"
 
         if update_job_ended and node.status in ("aborted", "failed", "completed"):
-            node.job_ended = time()
+            node.set_job_ended()
 
         if (
             previous_status is not None
@@ -2711,7 +2733,7 @@ class PipelineController(object):
                     if node_failed and self._abort_running_steps_on_failure and not node.continue_on_fail:
                         nodes_failed_stop_pipeline.append(node.name)
                 elif node.timeout:
-                    started = node.job.task.data.started
+                    node.set_job_started()
                     if (datetime.now().astimezone(started.tzinfo) - started).total_seconds() > node.timeout:
                         node.job.abort()
                         completed_jobs.append(j)

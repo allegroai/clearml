@@ -1651,6 +1651,7 @@ class PipelineController(object):
                     self._runtime_property_hash: "{}:{}".format(pipeline_hash, self._version),
                     "version": self._version
                 })
+                self._task.set_user_properties(version=self._version)
             else:
                 self._task.connect_configuration(pipeline_dag, name=self._config_section)
                 connected_args = set()

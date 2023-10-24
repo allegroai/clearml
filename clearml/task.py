@@ -2584,15 +2584,15 @@ class Task(_Task):
         self.reload()
         script = self.data.script
         if repository is not None:
-            script.repository = str(repository) or None
+            script.repository = str(repository)
         if branch is not None:
-            script.branch = str(branch) or None
+            script.branch = str(branch)
             if script.tag:
                 script.tag = None
         if commit is not None:
-            script.version_num = str(commit) or None
+            script.version_num = str(commit)
         if diff is not None:
-            script.diff = str(diff) or None
+            script.diff = str(diff)
         if working_dir is not None:
             script.working_dir = str(working_dir)
         if entry_point is not None:

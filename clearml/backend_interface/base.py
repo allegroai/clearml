@@ -78,13 +78,15 @@ class InterfaceBase(SessionInterface):
             except MaxRequestSizeError as e:
                 res = CallResult(meta=ResponseMeta.from_raw_data(status_code=400, text=str(e)))
                 error_msg = 'Failed sending: %s' % str(e)
-            except requests.exceptions.ConnectionError:
+            except requests.exceptions.ConnectionError as e:
                 # We couldn't send the request for more than the retries times configure in the api configuration file,
                 # so we will end the loop and raise the exception to the upper level.
                 # Notice: this is a connectivity error and not a backend error.
-                if raise_on_errors:
-                    raise
+                # if raise_on_errors:
+                #     raise
                 res = None
+                if log and num_retries >= cls._num_retry_warning_display:
+                    log.warning('Retrying, previous request failed %s: %s' % (str(type(req)), str(e)))
             except cls._JSON_EXCEPTION as e:
                 if log:
                     log.error(

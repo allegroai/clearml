@@ -1,6 +1,7 @@
 import itertools
 import json
 from copy import copy
+from logging import getLogger
 
 import six
 import yaml
@@ -132,16 +133,21 @@ def cast_basic_type(value, type_str):
     parts = type_str.split('/')
     # nested = len(parts) > 1
 
-    if parts[0] in ('list', 'tuple'):
-        v = '[' + value.lstrip('[(').rstrip('])') + ']'
-        v = yaml.load(v, Loader=yaml.SafeLoader)
-        return basic_types.get(parts[0])(v)
-    elif parts[0] in ('dict', ):
+    if parts[0] in ("list", "tuple", "dict"):
+        # noinspection PyBroadException
         try:
-            return json.loads(value)
+            # lists/tuple/dicts should be json loadable
+            return basic_types.get(parts[0])(json.loads(value))
         except Exception:
-            pass
-        return value
+            # noinspection PyBroadException
+            try:
+                # fallback to legacy basic type loading
+                v = '[' + value.lstrip('[(').rstrip('])') + ']'
+                v = yaml.load(v, Loader=yaml.SafeLoader)
+                return basic_types.get(parts[0])(v)
+            except Exception:
+                getLogger().warning("Could not cast `{}` to basic type. Returning it as `str`".format(value))
+                return value
 
     t = basic_types.get(str(type_str).lower().strip(), False)
     if t is not False:

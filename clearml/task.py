@@ -739,6 +739,8 @@ class Task(_Task):
                 if argparser_parseargs_called():
                     for parser, parsed_args in get_argparser_last_args():
                         task._connect_argparse(parser=parser, parsed_args=parsed_args)
+
+                PatchHydra.delete_overrides()
             elif argparser_parseargs_called():
                 # actually we have nothing to do, in remote running, the argparser will ignore
                 # all non argparser parameters, only caveat if parameter connected with the same name

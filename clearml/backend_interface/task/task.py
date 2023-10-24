@@ -1344,12 +1344,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         params = self.get_parameters(cast=cast)
         return params.get(name, default)
 
-    def delete_parameter(self, name):
+    def delete_parameter(self, name, force=False):
         # type: (str) -> bool
         """
         Delete a parameter by its full name Section/name.
 
         :param name: Parameter name in full, i.e. Section/name. For example, 'Args/batch_size'
+        :param force: If set to True then both new and running task hyper params can be deleted.
+            Otherwise only the new task ones. Default is False
         :return: True if the parameter was deleted successfully
         """
         if not Session.check_min_api_version('2.9'):
@@ -1360,7 +1362,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         with self._edit_lock:
             paramkey = tasks.ParamKey(section=name.split('/', 1)[0], name=name.split('/', 1)[1])
             res = self.send(tasks.DeleteHyperParamsRequest(
-                task=self.id, hyperparams=[paramkey]), raise_on_errors=False)
+                task=self.id, hyperparams=[paramkey], force=force), raise_on_errors=False)
             self.reload()
 
         return res.ok()

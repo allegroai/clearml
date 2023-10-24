@@ -522,6 +522,7 @@ class ClearmlJob(BaseJob):
             disable_clone_task=False,  # type: bool
             allow_caching=False,  # type: bool
             target_project=None,  # type: Optional[str]
+            output_uri=None,  # type: Optional[Union[str, bool]]
             **kwargs  # type: Any
     ):
         # type: (...) -> ()
@@ -545,6 +546,8 @@ class ClearmlJob(BaseJob):
             If True, use the base_task_id directly (base-task must be in draft-mode / created),
         :param bool allow_caching: If True, check if we have a previously executed Task with the same specification.
             If we do, use it and set internal is_cached flag. Default False (always create new Task).
+        :param Union[str, bool] output_uri: The storage / output url for this job. This is the default location for
+            output models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
         :param str target_project: Optional, Set the target project name to create the cloned Task in.
         """
         super(ClearmlJob, self).__init__()
@@ -660,6 +663,8 @@ class ClearmlJob(BaseJob):
             # noinspection PyProtectedMember
             self.task._edit(**sections)
 
+        if output_uri is not None:
+            self.task.output_uri = output_uri
         self._set_task_cache_hash(self.task, task_hash)
         self.task_started = False
         self._worker = None

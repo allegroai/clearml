@@ -178,7 +178,7 @@ class CreateAndPopulate(object):
                 project=Task.get_project_id(self.project_name),
                 type=str(self.task_type or Task.TaskTypes.training),
             )  # type: dict
-            if self.output_uri:
+            if self.output_uri is not None:
                 task_state['output'] = dict(destination=self.output_uri)
         else:
             task_state = dict(script={})
@@ -391,7 +391,7 @@ class CreateAndPopulate(object):
         return task
 
     def _set_output_uri(self, task):
-        if self.output_uri:
+        if self.output_uri is not None:
             try:
                 task.output_uri = self.output_uri
             except ValueError:

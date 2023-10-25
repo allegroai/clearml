@@ -1443,7 +1443,8 @@ class Model(BaseModel):
             To include All tags (instead of the default Any behaviour) use "__$all" as the first string, example:
             ["__$all", "best", "model", "ever"]
             To combine All tags and exclude a list of tags use "__$not" before the excluded tags, example:
-            ["__$all", "best", "model", "ever", "__$not", "internal", "__$not", "test"]
+            ["__$all", "best", "model", "ever", "__$not", "internal", "__$not", "test"]. See
+            https://clear.ml/docs/latest/docs/clearml_sdk/model_sdk#tag-filters for more information.
         :param only_published: If True, only return published models.
         :param include_archived: If True, return archived models.
         :param max_results: Optional return the last X models,

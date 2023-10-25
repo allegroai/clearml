@@ -739,6 +739,8 @@ class Task(_Task):
                 if argparser_parseargs_called():
                     for parser, parsed_args in get_argparser_last_args():
                         task._connect_argparse(parser=parser, parsed_args=parsed_args)
+
+                PatchHydra.delete_overrides()
             elif argparser_parseargs_called():
                 # actually we have nothing to do, in remote running, the argparser will ignore
                 # all non argparser parameters, only caveat if parameter connected with the same name
@@ -2604,15 +2606,15 @@ class Task(_Task):
         self.reload()
         script = self.data.script
         if repository is not None:
-            script.repository = str(repository) or None
+            script.repository = str(repository)
         if branch is not None:
-            script.branch = str(branch) or None
+            script.branch = str(branch)
             if script.tag:
                 script.tag = None
         if commit is not None:
-            script.version_num = str(commit) or None
+            script.version_num = str(commit)
         if diff is not None:
-            script.diff = str(diff) or None
+            script.diff = str(diff)
         if working_dir is not None:
             script.working_dir = str(working_dir)
         if entry_point is not None:

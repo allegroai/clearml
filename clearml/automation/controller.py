@@ -101,6 +101,7 @@ class PipelineController(object):
         explicit_docker_image = attrib(type=str, default=None)  # The Docker image the node uses, specified at creation
         recursively_parse_parameters = attrib(type=bool, default=False)  # if True, recursively parse parameters in
         # lists, dicts, or tuples
+        output_uri = attrib(type=Union[bool, str], default=None)  # The default location for output models and other artifacts
 
         def __attrs_post_init__(self):
             if self.parents is None:
@@ -134,6 +135,26 @@ class PipelineController(object):
             new_copy.task_factory_func = self.task_factory_func
             return new_copy
 
+        def set_job_ended(self):
+            if self.job_ended:
+                return
+            # noinspection PyBroadException
+            try:
+                self.job.task.reload()
+                self.job_ended = self.job_started + self.job.task.data.active_duration
+            except Exception as e:
+                pass
+
+        def set_job_started(self):
+            if self.job_started:
+                return
+            # noinspection PyBroadException
+            try:
+                self.job_started = self.job.task.data.started.timestamp()
+            except Exception:
+                pass
+
+
     def __init__(
             self,
             name,  # type: str
@@ -155,7 +176,8 @@ class PipelineController(object):
             repo_commit=None,  # type: Optional[str]
             always_create_from_code=True,  # type: bool
             artifact_serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
-            artifact_deserialization_function=None  # type: Optional[Callable[[bytes], Any]]
+            artifact_deserialization_function=None,  # type: Optional[Callable[[bytes], Any]]
+            output_uri=None  # type: Optional[Union[str, bool]]
     ):
         # type: (...) -> None
         """
@@ -242,6 +264,9 @@ class PipelineController(object):
                 def deserialize(bytes_):
                     import dill
                     return dill.loads(bytes_)
+        :param output_uri: The storage / output url for this pipeline. This is the default location for output
+            models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
+            The `output_uri` of this pipeline's steps will default to this value.
         """
         if auto_version_bump is not None:
             warnings.warn("PipelineController.auto_version_bump is deprecated. It will be ignored", DeprecationWarning)
@@ -316,6 +341,9 @@ class PipelineController(object):
                     project_id=self._task.project, system_tags=self._project_system_tags)
 
             self._task.set_system_tags((self._task.get_system_tags() or []) + [self._tag])
+        if output_uri is not None:
+            self._task.output_uri = output_uri
+        self._output_uri = output_uri
         self._task.set_base_docker(
             docker_image=docker, docker_arguments=docker_args, docker_setup_bash_script=docker_bash_setup_script
         )
@@ -387,7 +415,8 @@ class PipelineController(object):
             base_task_factory=None,  # type: Optional[Callable[[PipelineController.Node], Task]]
             retry_on_failure=None,  # type: Optional[Union[int, Callable[[PipelineController, PipelineController.Node, int], bool]]]   # noqa
             status_change_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node, str], None]]  # noqa
-            recursively_parse_parameters=False  # type: bool
+            recursively_parse_parameters=False,  # type: bool
+            output_uri=None  # type: Optional[Union[str, bool]]
     ):
         # type: (...) -> bool
         """
@@ -529,7 +558,9 @@ class PipelineController(object):
                     previous_status       # type: str
                 ):
                     pass
-
+                    
+        :param output_uri: The storage / output url for this step. This is the default location for output
+            models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
 
         :return: True if successful
         """
@@ -588,6 +619,7 @@ class PipelineController(object):
             monitor_metrics=monitor_metrics or [],
             monitor_artifacts=monitor_artifacts or [],
             monitor_models=monitor_models or [],
+            output_uri=self._output_uri if output_uri is None else output_uri
         )
         self._retries[name] = 0
         self._retries_callbacks[name] = retry_on_failure if callable(retry_on_failure) else \
@@ -632,7 +664,8 @@ class PipelineController(object):
             cache_executed_step=False,  # type: bool
             retry_on_failure=None,  # type: Optional[Union[int, Callable[[PipelineController, PipelineController.Node, int], bool]]]   # noqa
             status_change_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node, str], None]]  # noqa
-            tags=None  # type: Optional[Union[str, Sequence[str]]]
+            tags=None,  # type: Optional[Union[str, Sequence[str]]]
+            output_uri=None  # type: Optional[Union[str, bool]]
     ):
         # type: (...) -> bool
         """
@@ -799,6 +832,8 @@ class PipelineController(object):
         :param tags: A list of tags for the specific pipeline step.
             When executing a Pipeline remotely
             (i.e. launching the pipeline from the UI/enqueuing it), this method has no effect.
+        :param output_uri: The storage / output url for this step. This is the default location for output
+            models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
 
         :return: True if successful
         """
@@ -838,7 +873,8 @@ class PipelineController(object):
             cache_executed_step=cache_executed_step,
             retry_on_failure=retry_on_failure,
             status_change_callback=status_change_callback,
-            tags=tags
+            tags=tags,
+            output_uri=output_uri
         )
 
     def start(
@@ -1014,8 +1050,8 @@ class PipelineController(object):
         return cls._get_pipeline_task().get_logger()
 
     @classmethod
-    def upload_model(cls, model_name, model_local_path):
-        # type: (str, str) -> OutputModel
+    def upload_model(cls, model_name, model_local_path, upload_uri=None):
+        # type: (str, str, Optional[str]) -> OutputModel
         """
         Upload (add) a model to the main Pipeline Task object.
         This function can be called from any pipeline component to directly add models into the main pipeline Task
@@ -1028,12 +1064,16 @@ class PipelineController(object):
         :param model_local_path: Path to the local model file or directory to be uploaded.
             If a local directory is provided the content of the folder (recursively) will be
             packaged into a zip file and uploaded
+        :param upload_uri: The URI of the storage destination for model weights upload. The default value
+            is the previously used URI.
+
+        :return: The uploaded OutputModel
         """
         task = cls._get_pipeline_task()
         model_name = str(model_name)
         model_local_path = Path(model_local_path)
         out_model = OutputModel(task=task, name=model_name)
-        out_model.update_weights(weights_filename=model_local_path.as_posix())
+        out_model.update_weights(weights_filename=model_local_path.as_posix(), upload_uri=upload_uri)
         return out_model
 
     @classmethod
@@ -1457,7 +1497,7 @@ class PipelineController(object):
             self, docker, docker_args, docker_bash_setup_script,
             function, function_input_artifacts, function_kwargs, function_return,
             auto_connect_frameworks, auto_connect_arg_parser,
-            packages, project_name, task_name, task_type, repo, branch, commit, helper_functions
+            packages, project_name, task_name, task_type, repo, branch, commit, helper_functions, output_uri=None
     ):
         task_definition = CreateFromFunction.create_task_from_function(
             a_function=function,
@@ -1476,7 +1516,7 @@ class PipelineController(object):
             docker=docker,
             docker_args=docker_args,
             docker_bash_setup_script=docker_bash_setup_script,
-            output_uri=None,
+            output_uri=output_uri,
             helper_functions=helper_functions,
             dry_run=True,
             task_template_header=self._task_template_header,
@@ -1591,7 +1631,7 @@ class PipelineController(object):
             'target_project': self._target_project,
         }
         pipeline_dag = self._serialize()
-
+        
         # serialize pipeline state
         if self._task and self._auto_connect_task:
             # check if we are either running locally or that we are running remotely,
@@ -1631,6 +1671,7 @@ class PipelineController(object):
                     self._runtime_property_hash: "{}:{}".format(pipeline_hash, self._version),
                     "version": self._version
                 })
+                self._task.set_user_properties(version=self._version)
             else:
                 self._task.connect_configuration(pipeline_dag, name=self._config_section)
                 connected_args = set()
@@ -1927,7 +1968,8 @@ class PipelineController(object):
             cache_executed_step=False,  # type: bool
             retry_on_failure=None,  # type: Optional[Union[int, Callable[[PipelineController, PipelineController.Node, int], bool]]]   # noqa
             status_change_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node, str], None]]  # noqa
-            tags=None  # type: Optional[Union[str, Sequence[str]]]
+            tags=None,  # type: Optional[Union[str, Sequence[str]]]
+            output_uri=None  # type: Optional[Union[str, bool]]
     ):
         # type: (...) -> bool
         """
@@ -2094,6 +2136,8 @@ class PipelineController(object):
         :param tags: A list of tags for the specific pipeline step.
             When executing a Pipeline remotely
             (i.e. launching the pipeline from the UI/enqueuing it), this method has no effect.
+        :param output_uri: The storage / output url for this step. This is the default location for output
+            models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
 
         :return: True if successful
         """
@@ -2106,6 +2150,9 @@ class PipelineController(object):
             self._status_change_callbacks[name] = status_change_callback
 
         self._verify_node_name(name)
+
+        if output_uri is None:
+            output_uri = self._output_uri
 
         function_input_artifacts = {}
         # go over function_kwargs, split it into string and input artifacts
@@ -2145,7 +2192,7 @@ class PipelineController(object):
                 function_input_artifacts, function_kwargs, function_return,
                 auto_connect_frameworks, auto_connect_arg_parser,
                 packages, project_name, task_name,
-                task_type, repo, repo_branch, repo_commit, helper_functions)
+                task_type, repo, repo_branch, repo_commit, helper_functions, output_uri=output_uri)
 
         elif self._task.running_locally() or self._task.get_configuration_object(name=name) is None:
             project_name = project_name or self._get_target_project() or self._task.get_project_name()
@@ -2155,7 +2202,7 @@ class PipelineController(object):
                 function_input_artifacts, function_kwargs, function_return,
                 auto_connect_frameworks, auto_connect_arg_parser,
                 packages, project_name, task_name,
-                task_type, repo, repo_branch, repo_commit, helper_functions)
+                task_type, repo, repo_branch, repo_commit, helper_functions, output_uri=output_uri)
             # update configuration with the task definitions
             # noinspection PyProtectedMember
             self._task._set_configuration(
@@ -2180,6 +2227,9 @@ class PipelineController(object):
             if tags:
                 a_task.add_tags(tags)
 
+            if output_uri is not None:
+                a_task.output_uri = output_uri
+
             return a_task
 
         self._nodes[name] = self.Node(
@@ -2195,7 +2245,8 @@ class PipelineController(object):
             monitor_metrics=monitor_metrics,
             monitor_models=monitor_models,
             job_code_section=job_code_section,
-            explicit_docker_image=docker
+            explicit_docker_image=docker,
+            output_uri=output_uri
         )
         self._retries[name] = 0
         self._retries_callbacks[name] = retry_on_failure if callable(retry_on_failure) else \
@@ -2284,13 +2335,14 @@ class PipelineController(object):
                 disable_clone_task=disable_clone_task,
                 task_overrides=task_overrides,
                 allow_caching=node.cache_executed_step,
+                output_uri=node.output_uri,
                 **extra_args
             )
         except Exception:
             self._pipeline_task_status_failed = True
             raise
 
-        node.job_started = time()
+        node.job_started = None
         node.job_ended = None
         node.job_type = str(node.job.task.task_type)
 
@@ -2546,6 +2598,8 @@ class PipelineController(object):
         """
         previous_status = node.status
 
+        if node.job and node.job.is_running():
+            node.set_job_started()
         update_job_ended = node.job_started and not node.job_ended
 
         if node.executed is not None:
@@ -2582,7 +2636,7 @@ class PipelineController(object):
             node.status = "pending"
 
         if update_job_ended and node.status in ("aborted", "failed", "completed"):
-            node.job_ended = time()
+            node.set_job_ended()
 
         if (
             previous_status is not None
@@ -2679,7 +2733,7 @@ class PipelineController(object):
                     if node_failed and self._abort_running_steps_on_failure and not node.continue_on_fail:
                         nodes_failed_stop_pipeline.append(node.name)
                 elif node.timeout:
-                    started = node.job.task.data.started
+                    node.set_job_started()
                     if (datetime.now().astimezone(started.tzinfo) - started).total_seconds() > node.timeout:
                         node.job.abort()
                         completed_jobs.append(j)
@@ -3261,7 +3315,8 @@ class PipelineDecorator(PipelineController):
             repo_branch=None,  # type: Optional[str]
             repo_commit=None,  # type: Optional[str]
             artifact_serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
-            artifact_deserialization_function=None  # type: Optional[Callable[[bytes], Any]]
+            artifact_deserialization_function=None,  # type: Optional[Callable[[bytes], Any]]
+            output_uri=None  # type: Optional[Union[str, bool]]
     ):
         # type: (...) -> ()
         """
@@ -3341,6 +3396,9 @@ class PipelineDecorator(PipelineController):
                 def deserialize(bytes_):
                     import dill
                     return dill.loads(bytes_)
+        :param output_uri: The storage / output url for this pipeline. This is the default location for output
+            models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
+            The `output_uri` of this pipeline's steps will default to this value.
         """
         super(PipelineDecorator, self).__init__(
             name=name,
@@ -3361,7 +3419,8 @@ class PipelineDecorator(PipelineController):
             repo_commit=repo_commit,
             always_create_from_code=False,
             artifact_serialization_function=artifact_serialization_function,
-            artifact_deserialization_function=artifact_deserialization_function
+            artifact_deserialization_function=artifact_deserialization_function,
+            output_uri=output_uri
         )
 
         # if we are in eager execution, make sure parent class knows it
@@ -3583,7 +3642,7 @@ class PipelineDecorator(PipelineController):
             function, function_input_artifacts, function_kwargs, function_return,
             auto_connect_frameworks, auto_connect_arg_parser,
             packages, project_name, task_name, task_type, repo, branch, commit,
-            helper_functions
+            helper_functions, output_uri=None
     ):
         def sanitize(function_source):
             matched = re.match(r"[\s]*@[\w]*.component[\s\\]*\(", function_source)
@@ -3621,7 +3680,7 @@ class PipelineDecorator(PipelineController):
             docker=docker,
             docker_args=docker_args,
             docker_bash_setup_script=docker_bash_setup_script,
-            output_uri=None,
+            output_uri=output_uri,
             helper_functions=helper_functions,
             dry_run=True,
             task_template_header=self._task_template_header,
@@ -3703,7 +3762,8 @@ class PipelineDecorator(PipelineController):
             pre_execute_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node, dict], bool]]  # noqa
             post_execute_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node], None]]  # noqa
             status_change_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node, str], None]]  # noqa
-            tags=None  # type: Optional[Union[str, Sequence[str]]]
+            tags=None,  # type: Optional[Union[str, Sequence[str]]]
+            output_uri=None  # type: Optional[Union[str, bool]]
     ):
         # type: (...) -> Callable
         """
@@ -3841,6 +3901,8 @@ class PipelineDecorator(PipelineController):
         :param tags: A list of tags for the specific pipeline step.
             When executing a Pipeline remotely
             (i.e. launching the pipeline from the UI/enqueuing it), this method has no effect.
+        :param output_uri: The storage / output url for this step. This is the default location for output
+            models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
 
         :return: function wrapper
         """
@@ -3883,7 +3945,8 @@ class PipelineDecorator(PipelineController):
                 pre_execute_callback=pre_execute_callback,
                 post_execute_callback=post_execute_callback,
                 status_change_callback=status_change_callback,
-                tags=tags
+                tags=tags,
+                output_uri=output_uri
             )
 
             if cls._singleton:
@@ -4109,7 +4172,8 @@ class PipelineDecorator(PipelineController):
             repo_branch=None,  # type: Optional[str]
             repo_commit=None,  # type: Optional[str]
             artifact_serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
-            artifact_deserialization_function=None  # type: Optional[Callable[[bytes], Any]]
+            artifact_deserialization_function=None,  # type: Optional[Callable[[bytes], Any]]
+            output_uri=None  # type: Optional[Union[str, bool]]
     ):
         # type: (...) -> Callable
         """
@@ -4220,6 +4284,9 @@ class PipelineDecorator(PipelineController):
                 def deserialize(bytes_):
                     import dill
                     return dill.loads(bytes_)
+        :param output_uri: The storage / output url for this pipeline. This is the default location for output
+            models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
+            The `output_uri` of this pipeline's steps will default to this value.
         """
         def decorator_wrap(func):
 
@@ -4265,7 +4332,8 @@ class PipelineDecorator(PipelineController):
                         repo_branch=repo_branch,
                         repo_commit=repo_commit,
                         artifact_serialization_function=artifact_serialization_function,
-                        artifact_deserialization_function=artifact_deserialization_function
+                        artifact_deserialization_function=artifact_deserialization_function,
+                        output_uri=output_uri
                     )
                     ret_val = func(**pipeline_kwargs)
                     LazyEvalWrapper.trigger_all_remote_references()
@@ -4316,7 +4384,8 @@ class PipelineDecorator(PipelineController):
                     repo_branch=repo_branch,
                     repo_commit=repo_commit,
                     artifact_serialization_function=artifact_serialization_function,
-                    artifact_deserialization_function=artifact_deserialization_function
+                    artifact_deserialization_function=artifact_deserialization_function,
+                    output_uri=output_uri
                 )
 
                 a_pipeline._args_map = args_map or {}

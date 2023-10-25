@@ -935,9 +935,9 @@ class Task(_Task):
             listed tags). To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"].
             The default behaviour is to join all tags with a logical "OR" operator.
             To join all tags with a logical "AND" operator instead, use "__$all" as the first string, for example:
-            ["__$all", "best", "experiment", "ever"]
+            ["__$all", "best", "experiment", "ever"].
             To join all tags with AND, but exclude a tag use "__$not" before the excluded tag, for example:
-            ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]
+            ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"].
             The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
             The NOT operator applies only to the immediately following tag.
             For example, ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
@@ -994,9 +994,9 @@ class Task(_Task):
             listed tags). To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"].
             The default behaviour is to join all tags with a logical "OR" operator.
             To join all tags with a logical "AND" operator instead, use "__$all" as the first string, for example:
-            ["__$all", "best", "experiment", "ever"]
+            ["__$all", "best", "experiment", "ever"].
             To join all tags with AND, but exclude a tag use "__$not" before the excluded tag, for example:
-            ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]
+            ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"].
             The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
             The NOT operator applies only to the immediately following tag.
             For example, ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
@@ -1052,13 +1052,13 @@ class Task(_Task):
         :param str task_name: task name (str) within the selected project
             Return any partial match of task_name, regular expressions matching is also supported.
             If None is passed, returns all tasks within the project
-        :param list tags: Filter based on the requested list of tags (strings)
-            To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
+        :param list tags: Filter based on the requested list of tags (strings).
+            To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"].
             The default behaviour is to join all tags with a logical "OR" operator.
             To join all tags with a logical "AND" operator instead, use "__$all" as the first string, for example:
-            ["__$all", "best", "experiment", "ever"]
+            ["__$all", "best", "experiment", "ever"].
             To join all tags with AND, but exclude a tag use "__$not" before the excluded tag, for example:
-            ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]
+            ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"].
             The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
             The NOT operator applies only to the immediately following tag.
             For example, ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]

@@ -1427,10 +1427,10 @@ class Model(BaseModel):
 
         :param project_name: Optional, filter based project name string, if not given query models from all projects
         :param model_name: Optional Model name as shown in the model artifactory
-        :param tags: Filter based on the requested list of tags (strings)
-            To exclude a tag add "-" prefix to the tag. Example: ['production', 'verified', '-qa']
+        :param tags: Filter based on the requested list of tags (strings).
+            To exclude a tag add "-" prefix to the tag. Example: ['production', 'verified', '-qa'].
             To include All tags (instead of the default Any behaviour) use "__$all" as the first string, example:
-            ["__$all", "best", "model", "ever"]
+            ["__$all", "best", "model", "ever"].
             To combine All tags and exclude a list of tags use "__$not" before the excluded tags, example:
             ["__$all", "best", "model", "ever", "__$not", "internal", "__$not", "test"]. See
             https://clear.ml/docs/latest/docs/clearml_sdk/model_sdk#tag-filters for more information.

@@ -290,7 +290,7 @@ class Session(TokenManager):
         return list(retry_codes)
 
     def _read_vaults(self):
-        # () -> Optional[dict]
+        # () -> Optional[List[dict]]
         if not self.check_min_api_version("2.15") or self.feature_set == "basic":
             return
 

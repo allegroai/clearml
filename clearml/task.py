@@ -932,17 +932,7 @@ class Task(_Task):
         :param str project_name: The project name of the Task to get.
         :param str task_name: The name of the Task within ``project_name`` to get.
         :param list tags: Filter based on the requested list of tags (strings) (Task must have at least one of the
-            listed tags). To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"].
-            The default behaviour is to join all tags with a logical "OR" operator.
-            To join all tags with a logical "AND" operator instead, use "__$all" as the first string, for example:
-            ["__$all", "best", "experiment", "ever"]
-            To join all tags with AND, but exclude a tag use "__$not" before the excluded tag, for example:
-            ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]
-            The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
-            The NOT operator applies only to the immediately following tag.
-            For example, ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
-            means ("a" AND "b" AND "c" AND ("d" OR NOT "e") AND ("f" OR "g")).
-            See https://clear.ml/docs/latest/docs/clearml_sdk/task_sdk/#tag-filters for more information.
+            listed tags). To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
         :param bool allow_archived: Only applicable if *not* using specific ``task_id``,
             If True (default), allow to return archived Tasks, if False filter out archived Tasks
         :param bool task_filter: Only applicable if *not* using specific ``task_id``,
@@ -990,18 +980,8 @@ class Task(_Task):
             avoid any regex behaviour, use re.escape()). (Optional)
             To match an exact task name (i.e. not partial matching),
             add ^/$ at the beginning/end of the string, for example: "^exact_task_name_here$"
-        :param list tags: Filter based on the requested list of tags (strings) (Task must have at least one of the
-            listed tags). To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"].
-            The default behaviour is to join all tags with a logical "OR" operator.
-            To join all tags with a logical "AND" operator instead, use "__$all" as the first string, for example:
-            ["__$all", "best", "experiment", "ever"]
-            To join all tags with AND, but exclude a tag use "__$not" before the excluded tag, for example:
-            ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]
-            The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
-            The NOT operator applies only to the immediately following tag.
-            For example, ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
-            means ("a" AND "b" AND "c" AND ("d" OR NOT "e") AND ("f" OR "g")).
-            See https://clear.ml/docs/latest/docs/clearml_sdk/task_sdk/#tag-filters for more information.
+        :param list tags: Filter based on the requested list of tags (strings) (Task must have all the listed tags)
+            To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
         :param bool allow_archived: If True (default), allow to return archived Tasks, if False filter out archived Tasks
         :param dict task_filter: filter and order Tasks.
             See :class:`.backend_api.service.v?.tasks.GetAllRequest` for details; the ? needs to be replaced by the appropriate version.

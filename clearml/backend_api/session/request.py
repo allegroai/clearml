@@ -2,12 +2,17 @@ import abc
 
 import six
 from jsonschema.exceptions import FormatError, SchemaError, ValidationError
-from referencing.exceptions import Unresolvable
+
+try:
+    # Since `referencing`` only supports Python >= 3.8, this try-except blocks maintain support
+    # for earlier python versions.
+    from referencing.exceptions import Unresolvable
+except ImportError:
+    from jsonschema.exceptions import RefResolutionError as Unresolvable
 
 from .apimodel import ApiModel
 from .datamodel import DataModel
 from .defs import ENV_API_DEFAULT_REQ_METHOD
-
 
 if ENV_API_DEFAULT_REQ_METHOD.exists() and ENV_API_DEFAULT_REQ_METHOD.get().upper() not in ("GET", "POST", "PUT"):
     raise ValueError(

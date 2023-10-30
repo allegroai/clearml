@@ -1061,7 +1061,7 @@ class Task(_Task):
             ``["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]``
             The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
             The NOT operator applies only to the immediately following tag.
-            For example, ``["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]``
+            For example, ``["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]``.
             means ("a" AND "b" AND "c" AND ("d" OR NOT "e") AND ("f" OR "g")).
             See https://clear.ml/docs/latest/docs/clearml_sdk/task_sdk/#tag-filters for more information.
         :param list additional_return_fields: Optional, if not provided return a list of Task IDs.

@@ -1,9 +1,8 @@
 import abc
 import os
-import tarfile
 import zipfile
 import shutil
-from tempfile import mkdtemp, mkstemp
+from tempfile import mkstemp
 
 import six
 import math

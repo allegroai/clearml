@@ -21,14 +21,14 @@ task = Task.init(project_name='FirstTrial', task_name='config_files_example')
 
 config_file = task.connect_configuration(Path("data_samples") / "sample.json", name='json config file')
 
-with open(config_file, "rt") as f:
+with open(config_file.as_posix(), "rt") as f:
     config_json = json.load(f)
 
 print(config_json)
 
 config_file = task.connect_configuration(Path("data_samples") / "config_yaml.yaml", name='yaml config file')
 
-with open(config_file, "rt") as f:
+with open(config_file.as_posix(), "rt") as f:
     config_yaml = yaml.load(f, Loader=yaml.SafeLoader)
 
 print(config_yaml)

@@ -1524,6 +1524,7 @@ class Task(_Task):
             specified, then a path to a local configuration file is returned. Configuration object.
         """
         pathlib_Path = None  # noqa
+        cast_Path = Path
         if not isinstance(configuration, (dict, list, Path, six.string_types)):
             try:
                 from pathlib import Path as pathlib_Path  # noqa
@@ -1532,6 +1533,8 @@ class Task(_Task):
             if not pathlib_Path or not isinstance(configuration, pathlib_Path):
                 raise ValueError("connect_configuration supports `dict`, `str` and 'Path' types, "
                                  "{} is not supported".format(type(configuration)))
+        if pathlib_Path and isinstance(configuration, pathlib_Path):
+            cast_Path = pathlib_Path
 
         multi_config_support = Session.check_min_api_version('2.9')
         if multi_config_support and not name:
@@ -1599,7 +1602,7 @@ class Task(_Task):
         # it is a path to a local file
         if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):
             # check if not absolute path
-            configuration_path = Path(configuration)
+            configuration_path = cast_Path(configuration)
             if not configuration_path.is_file():
                 ValueError("Configuration file does not exist")
             try:
@@ -1626,7 +1629,7 @@ class Task(_Task):
                     "Using default configuration: {}".format(name, str(configuration)))
                 # update back configuration section
                 if multi_config_support:
-                    configuration_path = Path(configuration)
+                    configuration_path = cast_Path(configuration)
                     if configuration_path.is_file():
                         with open(configuration_path.as_posix(), 'rt') as f:
                             configuration_text = f.read()
@@ -1638,15 +1641,13 @@ class Task(_Task):
                             config_text=configuration_text)
                 return configuration
 
-            configuration_path = Path(configuration)
+            configuration_path = cast_Path(configuration)
             fd, local_filename = mkstemp(prefix='clearml_task_config_',
                                          suffix=configuration_path.suffixes[-1] if
                                          configuration_path.suffixes else '.txt')
             with open(fd, "w") as f:
                 f.write(configuration_text)
-            if pathlib_Path:
-                return pathlib_Path(local_filename)
-            return Path(local_filename) if isinstance(configuration, Path) else local_filename
+            return cast_Path(local_filename) if isinstance(configuration, cast_Path) else local_filename
 
     def connect_label_enumeration(self, enumeration):
         # type: (Dict[str, int]) -> Dict[str, int]

@@ -142,7 +142,7 @@ class PipelineController(object):
             try:
                 self.job.task.reload()
                 self.job_ended = self.job_started + self.job.task.data.active_duration
-            except Exception as e:
+            except Exception:
                 pass
 
         def set_job_started(self):
@@ -153,7 +153,6 @@ class PipelineController(object):
                 self.job_started = self.job.task.data.started.timestamp()
             except Exception:
                 pass
-
 
     def __init__(
             self,
@@ -558,7 +557,7 @@ class PipelineController(object):
                     previous_status       # type: str
                 ):
                     pass
-                    
+
         :param output_uri: The storage / output url for this step. This is the default location for output
             models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
 
@@ -1631,7 +1630,7 @@ class PipelineController(object):
             'target_project': self._target_project,
         }
         pipeline_dag = self._serialize()
-        
+
         # serialize pipeline state
         if self._task and self._auto_connect_task:
             # check if we are either running locally or that we are running remotely,
@@ -2733,7 +2732,7 @@ class PipelineController(object):
                     if node_failed and self._abort_running_steps_on_failure and not node.continue_on_fail:
                         nodes_failed_stop_pipeline.append(node.name)
                 elif node.timeout:
-                    node.set_job_started()
+                    started = node.job.task.data.started
                     if (datetime.now().astimezone(started.tzinfo) - started).total_seconds() > node.timeout:
                         node.job.abort()
                         completed_jobs.append(j)

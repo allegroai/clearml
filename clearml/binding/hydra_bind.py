@@ -1,7 +1,6 @@
 import io
 import sys
 from functools import partial
-import yaml
 from ..config import running_remotely, get_remote_task_id, DEV_TASK_NO_REUSE
 from ..debugging.log import LoggerRoot
 

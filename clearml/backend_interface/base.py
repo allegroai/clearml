@@ -178,8 +178,9 @@ class IdObjectBase(InterfaceBase):
         # noinspection PyBroadException
         try:
             self._data = self._reload()
-        except Exception:
-            self.log.error("Failed reloading task {}".format(self.id))
+        except Exception as ex:
+            self.log.error("Failed reloading {} {}".format(type(self).__name__.lower(), self.id))
+            self.log.debug("Failed reloading {} {}: {}".format(type(self).__name__.lower(), self.id, ex))
 
     @classmethod
     def normalize_id(cls, id):

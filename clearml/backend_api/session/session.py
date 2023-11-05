@@ -31,6 +31,7 @@ from .defs import (
     ENV_API_EXTRA_RETRY_CODES,
     ENV_API_DEFAULT_REQ_METHOD,
     ENV_FORCE_MAX_API_VERSION,
+    ENV_IGNORE_MISSING_CONFIG,
     MissingConfigError
 )
 from .request import Request, BatchRequest  # noqa: F401
@@ -736,7 +737,7 @@ class Session(TokenManager):
         return urlunparse(parsed)
 
     @classmethod
-    def check_min_api_version(cls, min_api_version):
+    def check_min_api_version(cls, min_api_version, raise_error=True):
         """
         Return True if Session.api_version is greater or equal >= to min_api_version
         """
@@ -764,6 +765,9 @@ class Session(TokenManager):
                 # noinspection PyBroadException
                 try:
                     cls()
+                except MissingConfigError:
+                    if raise_error and not ENV_IGNORE_MISSING_CONFIG.get():
+                        raise
                 except Exception:
                     pass
 

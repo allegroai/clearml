@@ -791,10 +791,21 @@ class _GoogleCloudStorageDriver(_Driver):
             self.name = name[len(_GoogleCloudStorageDriver.scheme_prefix):]
 
             if cfg.credentials_json:
+                # noinspection PyBroadException
                 try:
                     credentials = service_account.Credentials.from_service_account_file(cfg.credentials_json)
-                except ValueError:
+                except Exception:
                     credentials = None
+
+                if not credentials:
+                    # noinspection PyBroadException
+                    try:
+                        # Try parsing this as json to support actual json content and not a file path
+                        credentials = service_account.Credentials.from_service_account_info(
+                            json.loads(cfg.credentials_json)
+                        )
+                    except Exception:
+                        pass
             else:
                 credentials = None
 

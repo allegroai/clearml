@@ -1426,12 +1426,31 @@ class Model(BaseModel):
 
         :param project_name: Optional, filter based project name string, if not given query models from all projects
         :param model_name: Optional Model name as shown in the model artifactory
-        :param tags: Filter based on the requested list of tags (strings)
-            To exclude a tag add "-" prefix to the tag. Example: ['production', 'verified', '-qa']
-            To include All tags (instead of the default Any behaviour) use "__$all" as the first string, example:
-            ["__$all", "best", "model", "ever"]
-            To combine All tags and exclude a list of tags use "__$not" before the excluded tags, example:
-            ["__$all", "best", "model", "ever", "__$not", "internal", "__$not", "test"]
+        :param tags: Filter based on the requested list of tags (strings).
+            To exclude a tag add "-" prefix to the tag. Example: ``["production", "verified", "-qa"]``.
+            The default behaviour is to join all tags with a logical "OR" operator.
+            To join all tags with a logical "AND" operator instead, use "__$all" as the first string, for example:
+
+            .. code-block:: py
+
+                ["__$all", "best", "model", "ever"]
+
+            To join all tags with AND, but exclude a tag use "__$not" before the excluded tag, for example:
+
+            .. code-block:: py
+
+                ["__$all", "best", "model", "ever", "__$not", "internal", "__$not", "test"]
+
+            The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
+            The NOT operator applies only to the immediately following tag.
+            For example:
+
+            .. code-block:: py
+
+                ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
+
+            This example means ("a" AND "b" AND "c" AND ("d" OR NOT "e") AND ("f" OR "g")).
+            See https://clear.ml/docs/latest/docs/clearml_sdk/model_sdk#tag-filters for details.
         :param only_published: If True, only return published models.
         :param include_archived: If True, return archived models.
         :param max_results: Optional return the last X models,

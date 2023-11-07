@@ -931,8 +931,31 @@ class Task(_Task):
             If specified, ``project_name`` and ``task_name`` are ignored.
         :param str project_name: The project name of the Task to get.
         :param str task_name: The name of the Task within ``project_name`` to get.
-        :param list tags: Filter based on the requested list of tags (strings) (Task must have at least one of the
-            listed tags). To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
+        :param list tags: Filter based on the requested list of tags (strings). To exclude a tag add "-" prefix to the
+            tag. Example: ``["best", "-debug"]``.
+            The default behaviour is to join all tags with a logical "OR" operator.
+            To join all tags with a logical "AND" operator instead, use "__$all" as the first string, for example:
+
+            .. code-block:: py
+
+                ["__$all", "best", "experiment", "ever"]
+
+            To join all tags with AND, but exclude a tag use "__$not" before the excluded tag, for example:
+
+            .. code-block:: py
+
+                ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]
+
+            The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
+            The NOT operator applies only to the immediately following tag.
+            For example:
+
+            .. code-block:: py
+
+                ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
+
+            This example means ("a" AND "b" AND "c" AND ("d" OR NOT "e") AND ("f" OR "g")).
+            See https://clear.ml/docs/latest/docs/clearml_sdk/task_sdk/#tag-filters for more information.
         :param bool allow_archived: Only applicable if *not* using specific ``task_id``,
             If True (default), allow to return archived Tasks, if False filter out archived Tasks
         :param bool task_filter: Only applicable if *not* using specific ``task_id``,
@@ -980,8 +1003,31 @@ class Task(_Task):
             avoid any regex behaviour, use re.escape()). (Optional)
             To match an exact task name (i.e. not partial matching),
             add ^/$ at the beginning/end of the string, for example: "^exact_task_name_here$"
-        :param list tags: Filter based on the requested list of tags (strings) (Task must have all the listed tags)
-            To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
+        :param list tags: Filter based on the requested list of tags (strings). To exclude a tag add "-" prefix to the
+            tag. Example: ``["best", "-debug"]``.
+            The default behaviour is to join all tags with a logical "OR" operator.
+            To join all tags with a logical "AND" operator instead, use "__$all" as the first string, for example:
+
+            .. code-block:: py
+
+                ["__$all", "best", "experiment", "ever"]
+
+            To join all tags with AND, but exclude a tag use "__$not" before the excluded tag, for example:
+
+            .. code-block:: py
+
+                ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]
+
+            The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
+            The NOT operator applies only to the immediately following tag.
+            For example:
+
+            .. code-block:: py
+
+                ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
+
+            This example means ("a" AND "b" AND "c" AND ("d" OR NOT "e") AND ("f" OR "g")).
+            See https://clear.ml/docs/latest/docs/clearml_sdk/task_sdk/#tag-filters for more information.
         :param bool allow_archived: If True (default), allow to return archived Tasks, if False filter out archived Tasks
         :param dict task_filter: filter and order Tasks.
             See :class:`.backend_api.service.v?.tasks.GetAllRequest` for details; the ? needs to be replaced by the appropriate version.
@@ -1032,17 +1078,30 @@ class Task(_Task):
         :param str task_name: task name (str) within the selected project
             Return any partial match of task_name, regular expressions matching is also supported.
             If None is passed, returns all tasks within the project
-        :param list tags: Filter based on the requested list of tags (strings)
-            To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
+        :param list tags: Filter based on the requested list of tags (strings).
+            To exclude a tag add "-" prefix to the tag. Example: ``["best", "-debug"]``.
             The default behaviour is to join all tags with a logical "OR" operator.
             To join all tags with a logical "AND" operator instead, use "__$all" as the first string, for example:
-            ["__$all", "best", "experiment", "ever"]
+
+            .. code-block:: py
+
+                ["__$all", "best", "experiment", "ever"]
+
             To join all tags with AND, but exclude a tag use "__$not" before the excluded tag, for example:
-            ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]
+
+            .. code-block:: py
+
+                ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]
+
             The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
             The NOT operator applies only to the immediately following tag.
-            For example, ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
-            means ("a" AND "b" AND "c" AND ("d" OR NOT "e") AND ("f" OR "g")).
+            For example:
+
+            .. code-block:: py
+
+                ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
+
+            This example means ("a" AND "b" AND "c" AND ("d" OR NOT "e") AND ("f" OR "g")).
             See https://clear.ml/docs/latest/docs/clearml_sdk/task_sdk/#tag-filters for more information.
         :param list additional_return_fields: Optional, if not provided return a list of Task IDs.
             If provided return dict per Task with the additional requested fields.

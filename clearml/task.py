@@ -331,7 +331,9 @@ class Task(_Task):
 
         :param str output_uri: The default location for output models and other artifacts. If True, the default
             files_server will be used for model storage. In the default location, ClearML creates a subfolder for the
-            output. The subfolder structure is the following: `<output destination name> / <project name> / <task name>.<Task ID>`.
+            output. If set to False, local runs will not upload output models and artifacts,
+            and remote runs will not use any default values provided using ``default_output_uri``.
+            The subfolder structure is the following: `<output destination name> / <project name> / <task name>.<Task ID>`.
             Note that for cloud storage, you must install the **ClearML** package for your cloud storage type,
             and then configure your storage credentials. For detailed information, see "Storage" in the ClearML
             Documentation.
@@ -606,10 +608,14 @@ class Task(_Task):
                         task_id=get_remote_task_id(),
                         log_to_backend=False,
                     )
-                    if task.get_project_object().default_output_destination and not task.output_uri:
-                        task.output_uri = task.get_project_object().default_output_destination
-                    if cls.__default_output_uri and not task.output_uri:
-                        task.output_uri = cls.__default_output_uri
+                    if output_uri is False and not task.output_uri:
+                        # Setting output_uri=False argument will disable using any default when running remotely
+                        pass
+                    else:
+                        if task.get_project_object().default_output_destination and not task.output_uri:
+                            task.output_uri = task.get_project_object().default_output_destination
+                        if cls.__default_output_uri and not task.output_uri:
+                            task.output_uri = cls.__default_output_uri
                     # store new task ID
                     cls.__update_master_pid_task(task=task)
                     # make sure we are started
@@ -1389,7 +1395,7 @@ class Task(_Task):
 
         :return: The number of tasks enqueued in the given queue
         """
-        if not Session.check_min_api_server_version("2.20"):
+        if not Session.check_min_api_server_version("2.20", raise_error=True):
             raise ValueError("You version of clearml-server does not support the 'queues.get_num_entries' endpoint")
         mutually_exclusive(queue_name=queue_name, queue_id=queue_id)
         session = cls._get_default_session()

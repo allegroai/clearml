@@ -1241,7 +1241,7 @@ class Dataset(object):
 
         :return: Newly created Dataset object
         """
-        if not Dataset.is_offline() and not Session.check_min_api_server_version("2.13"):
+        if not Dataset.is_offline() and not Session.check_min_api_server_version("2.13", raise_error=True):
             raise NotImplementedError("Datasets are not supported with your current ClearML server version. Please update your server.")
 
         parent_datasets = [cls.get(dataset_id=p) if not isinstance(p, Dataset) else p for p in (parent_datasets or [])]
@@ -1531,7 +1531,7 @@ class Dataset(object):
         """
         if Dataset.is_offline():
             raise ValueError("Cannot rename dataset in offline mode")
-        if not bool(Session.check_min_api_server_version(cls.__min_api_version)):
+        if not bool(Session.check_min_api_server_version(cls.__min_api_version, raise_error=True)):
             LoggerRoot.get_base_logger().warning(
                 "Could not rename dataset because API version < {}".format(cls.__min_api_version)
             )
@@ -1578,7 +1578,7 @@ class Dataset(object):
         """
         if cls.is_offline():
             raise ValueError("Cannot move dataset project in offlime mode")
-        if not bool(Session.check_min_api_server_version(cls.__min_api_version)):
+        if not bool(Session.check_min_api_server_version(cls.__min_api_version, raise_error=True)):
             LoggerRoot.get_base_logger().warning(
                 "Could not move dataset to another project because API version < {}".format(cls.__min_api_version)
             )

@@ -737,7 +737,7 @@ class Session(TokenManager):
         return urlunparse(parsed)
 
     @classmethod
-    def check_min_api_version(cls, min_api_version, raise_error=True):
+    def check_min_api_version(cls, min_api_version, raise_error=False):
         """
         Return True if Session.api_version is greater or equal >= to min_api_version
         """
@@ -774,12 +774,12 @@ class Session(TokenManager):
         return cls._version_tuple(cls.api_version) >= cls._version_tuple(str(min_api_version))
 
     @classmethod
-    def check_min_api_server_version(cls, min_api_version):
+    def check_min_api_server_version(cls, min_api_version, raise_error=False):
         """
         Return True if Session.max_api_version is greater or equal >= to min_api_version
         Notice this is the api version server reported, not the current SDK max supported api version
         """
-        if cls.check_min_api_version(min_api_version):
+        if cls.check_min_api_version(min_api_version, raise_error=raise_error):
             return True
 
         return cls._version_tuple(cls.max_api_version) >= cls._version_tuple(str(min_api_version))

@@ -1346,7 +1346,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return params.get(name, default)
 
     def delete_parameter(self, name, force=False):
-        # type: (str) -> bool
+        # type: (str, bool) -> bool
         """
         Delete a parameter by its full name Section/name.
 

@@ -79,7 +79,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
         self.reload()
 
     def archive(self):
-        if Session.check_min_api_server_version("2.13"):
+        if Session.check_min_api_server_version("2.13", raise_error=True):
             self.send(models.ArchiveManyRequest(ids=[self.id]))
             self.reload()
         else:
@@ -90,7 +90,7 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
             )
 
     def unarchive(self):
-        if Session.check_min_api_server_version("2.13"):
+        if Session.check_min_api_server_version("2.13", raise_error=True):
             self.send(models.UnarchiveManyRequest(ids=[self.id]))
             self.reload()
         else:

@@ -768,6 +768,9 @@ class Session(TokenManager):
                 except MissingConfigError:
                     if raise_error and not ENV_IGNORE_MISSING_CONFIG.get():
                         raise
+                except LoginError:
+                    if raise_error:
+                        raise
                 except Exception:
                     pass
 

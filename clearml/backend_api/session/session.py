@@ -12,6 +12,7 @@ import jwt
 import requests
 import six
 from requests.auth import HTTPBasicAuth
+from requests.exceptions import ChunkedEncodingError, ContentDecodingError, StreamConsumedError
 from six.moves.urllib.parse import urlparse, urlunparse
 from typing import List, Optional
 
@@ -416,6 +417,13 @@ class Session(TokenManager):
                 # we should retry
                 if retry_counter >= self._ssl_error_count_verbosity:
                     (self._logger or get_logger()).warning("SSLError Retrying {}".format(ex))
+                sleep(0.1)
+                continue
+            except (ChunkedEncodingError, ContentDecodingError, StreamConsumedError) as ex:
+                retry_counter += 1
+                # we should retry
+                if retry_counter >= self._ssl_error_count_verbosity:
+                    (self._logger or get_logger()).warning("Network decoding error Retrying {}".format(ex))
                 sleep(0.1)
                 continue
 

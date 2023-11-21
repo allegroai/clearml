@@ -215,7 +215,7 @@ class CreateAndPopulate(object):
             task_state['script']['requirements'] = repo_info.script.get('requirements') or {}
             if self.cwd:
                 self.cwd = self.cwd
-                cwd = (     Path(repo_info.script['repo_root']) / self.cwd).as_posix()
+                cwd = (Path(repo_info.script['repo_root']) / self.cwd).as_posix()
                 if not Path(cwd).is_dir():
                     raise ValueError("Working directory \'{}\' could not be found".format(cwd))
                 entry_point = \

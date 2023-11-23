@@ -263,8 +263,8 @@ class TaskHandler(BufferingHandler):
         # flush pending logs
         if not self._task_id:
             return
-        # avoid deadlocks just skip the lock, we are shutting down anyway
-        self.lock = None
+        # Never null the lock, it might be used by internal Python at some point
+        # self.lock = None
         self._task_id = None
 
         # shut down the TaskHandler, from this point onwards. No events will be logged

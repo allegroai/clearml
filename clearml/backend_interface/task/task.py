@@ -1088,12 +1088,13 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             if not model.ready:
                 # raise ValueError('Model %s is not published (not ready)' % model_id)
                 self.log.debug('Model %s [%s] is not published yet (not ready)' % (model_id, model.uri))
-            name = name or Path(model.uri).stem
         else:
             # clear the input model
             model = None
             model_id = ''
-            name = name or 'Input Model'
+        from ...model import InputModel
+        # noinspection PyProtectedMember
+        name = name or InputModel._get_connect_name(model)
 
         with self._edit_lock:
             self.reload()
@@ -1345,7 +1346,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         return params.get(name, default)
 
     def delete_parameter(self, name, force=False):
-        # type: (str) -> bool
+        # type: (str, bool) -> bool
         """
         Delete a parameter by its full name Section/name.
 

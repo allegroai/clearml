@@ -32,7 +32,10 @@ class ApiServiceProxy(object):
                 )
 
             # get the most advanced service version that supports our api
-            version = [str(v) for v in ApiServiceProxy._available_versions if Session.check_min_api_version(v)][-1]
+            version = [
+                str(v) for v in ApiServiceProxy._available_versions
+                if Session.check_min_api_version(v)
+            ][-1]
             Session.api_version = version
             self.__dict__["__wrapped_version__"] = Session.api_version
             name = ".v{}.{}".format(

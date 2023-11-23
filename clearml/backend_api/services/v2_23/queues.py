@@ -490,7 +490,7 @@ class Queue(NonStrictDataModel):
             self._property_metadata = None
             return
 
-        self.assert_isinstance(value, "metadata", (dict,), is_array=True)
+        self.assert_isinstance(value, "metadata", (dict,))
         self._property_metadata = value
 
 

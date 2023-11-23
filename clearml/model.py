@@ -1,9 +1,8 @@
 import abc
 import os
-import tarfile
 import zipfile
 import shutil
-from tempfile import mkdtemp, mkstemp
+from tempfile import mkstemp
 
 import six
 import math
@@ -1427,12 +1426,31 @@ class Model(BaseModel):
 
         :param project_name: Optional, filter based project name string, if not given query models from all projects
         :param model_name: Optional Model name as shown in the model artifactory
-        :param tags: Filter based on the requested list of tags (strings)
-            To exclude a tag add "-" prefix to the tag. Example: ['production', 'verified', '-qa']
-            To include All tags (instead of the default Any behaviour) use "__$all" as the first string, example:
-            ["__$all", "best", "model", "ever"]
-            To combine All tags and exclude a list of tags use "__$not" before the excluded tags, example:
-            ["__$all", "best", "model", "ever", "__$not", "internal", "__$not", "test"]
+        :param tags: Filter based on the requested list of tags (strings).
+            To exclude a tag add "-" prefix to the tag. Example: ``["production", "verified", "-qa"]``.
+            The default behaviour is to join all tags with a logical "OR" operator.
+            To join all tags with a logical "AND" operator instead, use "__$all" as the first string, for example:
+
+            .. code-block:: py
+
+                ["__$all", "best", "model", "ever"]
+
+            To join all tags with AND, but exclude a tag use "__$not" before the excluded tag, for example:
+
+            .. code-block:: py
+
+                ["__$all", "best", "model", "ever", "__$not", "internal", "__$not", "test"]
+
+            The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
+            The NOT operator applies only to the immediately following tag.
+            For example:
+
+            .. code-block:: py
+
+                ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
+
+            This example means ("a" AND "b" AND "c" AND ("d" OR NOT "e") AND ("f" OR "g")).
+            See https://clear.ml/docs/latest/docs/clearml_sdk/model_sdk#tag-filters for details.
         :param only_published: If True, only return published models.
         :param include_archived: If True, return archived models.
         :param max_results: Optional return the last X models,
@@ -1596,6 +1614,7 @@ class InputModel(Model):
 
     # noinspection PyProtectedMember
     _EMPTY_MODEL_ID = _Model._EMPTY_MODEL_ID
+    _WARNING_CONNECTED_NAMES = {}
 
     @classmethod
     def import_model(
@@ -1933,9 +1952,11 @@ class InputModel(Model):
 
         :param object task: A Task object.
         :param str name: The model name to be stored on the Task
-            (default the filename, of the model weights, without the file extension)
+            (default to filename of the model weights, without the file extension, or to `Input Model` if that is not found)
         """
         self._set_task(task)
+        name = name or InputModel._get_connect_name(self)
+        InputModel._warn_on_same_name_connect(name)
 
         model_id = None
         # noinspection PyProtectedMember
@@ -1966,6 +1987,28 @@ class InputModel(Model):
                 task._set_model_config(config_text=model.model_design)
             if not self._task.get_labels_enumeration() and model.data.labels:
                 task.set_model_label_enumeration(model.data.labels)
+
+    @classmethod
+    def _warn_on_same_name_connect(cls, name):
+        if name not in cls._WARNING_CONNECTED_NAMES:
+            cls._WARNING_CONNECTED_NAMES[name] = False
+            return
+        if cls._WARNING_CONNECTED_NAMES[name]:
+            return
+        get_logger().warning("Connecting multiple input models with the same name: `{}`. This might result in the wrong model being used when executing remotely".format(name))
+        cls._WARNING_CONNECTED_NAMES[name] = True
+
+    @staticmethod
+    def _get_connect_name(model):
+        default_name = "Input Model"
+        if model is None:
+            return default_name
+        # noinspection PyBroadException
+        try:
+            model_uri = getattr(model, "url", getattr(model, "uri", None))
+            return Path(model_uri).stem
+        except Exception:
+            return default_name
 
 
 class OutputModel(BaseModel):

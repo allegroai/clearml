@@ -331,7 +331,9 @@ class Task(_Task):
 
         :param str output_uri: The default location for output models and other artifacts. If True, the default
             files_server will be used for model storage. In the default location, ClearML creates a subfolder for the
-            output. The subfolder structure is the following: `<output destination name> / <project name> / <task name>.<Task ID>`.
+            output. If set to False, local runs will not upload output models and artifacts,
+            and remote runs will not use any default values provided using ``default_output_uri``.
+            The subfolder structure is the following: `<output destination name> / <project name> / <task name>.<Task ID>`.
             Note that for cloud storage, you must install the **ClearML** package for your cloud storage type,
             and then configure your storage credentials. For detailed information, see "Storage" in the ClearML
             Documentation.
@@ -606,10 +608,14 @@ class Task(_Task):
                         task_id=get_remote_task_id(),
                         log_to_backend=False,
                     )
-                    if task.get_project_object().default_output_destination and not task.output_uri:
-                        task.output_uri = task.get_project_object().default_output_destination
-                    if cls.__default_output_uri and not task.output_uri:
-                        task.output_uri = cls.__default_output_uri
+                    if output_uri is False and not task.output_uri:
+                        # Setting output_uri=False argument will disable using any default when running remotely
+                        pass
+                    else:
+                        if task.get_project_object().default_output_destination and not task.output_uri:
+                            task.output_uri = task.get_project_object().default_output_destination
+                        if cls.__default_output_uri and not task.output_uri:
+                            task.output_uri = cls.__default_output_uri
                     # store new task ID
                     cls.__update_master_pid_task(task=task)
                     # make sure we are started
@@ -931,8 +937,31 @@ class Task(_Task):
             If specified, ``project_name`` and ``task_name`` are ignored.
         :param str project_name: The project name of the Task to get.
         :param str task_name: The name of the Task within ``project_name`` to get.
-        :param list tags: Filter based on the requested list of tags (strings) (Task must have at least one of the
-            listed tags). To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
+        :param list tags: Filter based on the requested list of tags (strings). To exclude a tag add "-" prefix to the
+            tag. Example: ``["best", "-debug"]``.
+            The default behaviour is to join all tags with a logical "OR" operator.
+            To join all tags with a logical "AND" operator instead, use "__$all" as the first string, for example:
+
+            .. code-block:: py
+
+                ["__$all", "best", "experiment", "ever"]
+
+            To join all tags with AND, but exclude a tag use "__$not" before the excluded tag, for example:
+
+            .. code-block:: py
+
+                ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]
+
+            The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
+            The NOT operator applies only to the immediately following tag.
+            For example:
+
+            .. code-block:: py
+
+                ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
+
+            This example means ("a" AND "b" AND "c" AND ("d" OR NOT "e") AND ("f" OR "g")).
+            See https://clear.ml/docs/latest/docs/clearml_sdk/task_sdk/#tag-filters for more information.
         :param bool allow_archived: Only applicable if *not* using specific ``task_id``,
             If True (default), allow to return archived Tasks, if False filter out archived Tasks
         :param bool task_filter: Only applicable if *not* using specific ``task_id``,
@@ -980,8 +1009,31 @@ class Task(_Task):
             avoid any regex behaviour, use re.escape()). (Optional)
             To match an exact task name (i.e. not partial matching),
             add ^/$ at the beginning/end of the string, for example: "^exact_task_name_here$"
-        :param list tags: Filter based on the requested list of tags (strings) (Task must have all the listed tags)
-            To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
+        :param list tags: Filter based on the requested list of tags (strings). To exclude a tag add "-" prefix to the
+            tag. Example: ``["best", "-debug"]``.
+            The default behaviour is to join all tags with a logical "OR" operator.
+            To join all tags with a logical "AND" operator instead, use "__$all" as the first string, for example:
+
+            .. code-block:: py
+
+                ["__$all", "best", "experiment", "ever"]
+
+            To join all tags with AND, but exclude a tag use "__$not" before the excluded tag, for example:
+
+            .. code-block:: py
+
+                ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]
+
+            The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
+            The NOT operator applies only to the immediately following tag.
+            For example:
+
+            .. code-block:: py
+
+                ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
+
+            This example means ("a" AND "b" AND "c" AND ("d" OR NOT "e") AND ("f" OR "g")).
+            See https://clear.ml/docs/latest/docs/clearml_sdk/task_sdk/#tag-filters for more information.
         :param bool allow_archived: If True (default), allow to return archived Tasks, if False filter out archived Tasks
         :param dict task_filter: filter and order Tasks.
             See :class:`.backend_api.service.v?.tasks.GetAllRequest` for details; the ? needs to be replaced by the appropriate version.
@@ -1032,17 +1084,30 @@ class Task(_Task):
         :param str task_name: task name (str) within the selected project
             Return any partial match of task_name, regular expressions matching is also supported.
             If None is passed, returns all tasks within the project
-        :param list tags: Filter based on the requested list of tags (strings)
-            To exclude a tag add "-" prefix to the tag. Example: ["best", "-debug"]
+        :param list tags: Filter based on the requested list of tags (strings).
+            To exclude a tag add "-" prefix to the tag. Example: ``["best", "-debug"]``.
             The default behaviour is to join all tags with a logical "OR" operator.
             To join all tags with a logical "AND" operator instead, use "__$all" as the first string, for example:
-            ["__$all", "best", "experiment", "ever"]
+
+            .. code-block:: py
+
+                ["__$all", "best", "experiment", "ever"]
+
             To join all tags with AND, but exclude a tag use "__$not" before the excluded tag, for example:
-            ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]
+
+            .. code-block:: py
+
+                ["__$all", "best", "experiment", "ever", "__$not", "internal", "__$not", "test"]
+
             The "OR" and "AND" operators apply to all tags that follow them until another operator is specified.
             The NOT operator applies only to the immediately following tag.
-            For example, ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
-            means ("a" AND "b" AND "c" AND ("d" OR NOT "e") AND ("f" OR "g")).
+            For example:
+
+            .. code-block:: py
+
+                ["__$all", "a", "b", "c", "__$or", "d", "__$not", "e", "__$and", "__$or" "f", "g"]
+
+            This example means ("a" AND "b" AND "c" AND ("d" OR NOT "e") AND ("f" OR "g")).
             See https://clear.ml/docs/latest/docs/clearml_sdk/task_sdk/#tag-filters for more information.
         :param list additional_return_fields: Optional, if not provided return a list of Task IDs.
             If provided return dict per Task with the additional requested fields.
@@ -1330,7 +1395,7 @@ class Task(_Task):
 
         :return: The number of tasks enqueued in the given queue
         """
-        if not Session.check_min_api_server_version("2.20"):
+        if not Session.check_min_api_server_version("2.20", raise_error=True):
             raise ValueError("You version of clearml-server does not support the 'queues.get_num_entries' endpoint")
         mutually_exclusive(queue_name=queue_name, queue_id=queue_id)
         session = cls._get_default_session()
@@ -1524,6 +1589,7 @@ class Task(_Task):
             specified, then a path to a local configuration file is returned. Configuration object.
         """
         pathlib_Path = None  # noqa
+        cast_Path = Path
         if not isinstance(configuration, (dict, list, Path, six.string_types)):
             try:
                 from pathlib import Path as pathlib_Path  # noqa
@@ -1532,6 +1598,8 @@ class Task(_Task):
             if not pathlib_Path or not isinstance(configuration, pathlib_Path):
                 raise ValueError("connect_configuration supports `dict`, `str` and 'Path' types, "
                                  "{} is not supported".format(type(configuration)))
+        if pathlib_Path and isinstance(configuration, pathlib_Path):
+            cast_Path = pathlib_Path
 
         multi_config_support = Session.check_min_api_version('2.9')
         if multi_config_support and not name:
@@ -1599,7 +1667,7 @@ class Task(_Task):
         # it is a path to a local file
         if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):
             # check if not absolute path
-            configuration_path = Path(configuration)
+            configuration_path = cast_Path(configuration)
             if not configuration_path.is_file():
                 ValueError("Configuration file does not exist")
             try:
@@ -1626,7 +1694,7 @@ class Task(_Task):
                     "Using default configuration: {}".format(name, str(configuration)))
                 # update back configuration section
                 if multi_config_support:
-                    configuration_path = Path(configuration)
+                    configuration_path = cast_Path(configuration)
                     if configuration_path.is_file():
                         with open(configuration_path.as_posix(), 'rt') as f:
                             configuration_text = f.read()
@@ -1638,15 +1706,13 @@ class Task(_Task):
                             config_text=configuration_text)
                 return configuration
 
-            configuration_path = Path(configuration)
+            configuration_path = cast_Path(configuration)
             fd, local_filename = mkstemp(prefix='clearml_task_config_',
                                          suffix=configuration_path.suffixes[-1] if
                                          configuration_path.suffixes else '.txt')
             with open(fd, "w") as f:
                 f.write(configuration_text)
-            if pathlib_Path:
-                return pathlib_Path(local_filename)
-            return Path(local_filename) if isinstance(configuration, Path) else local_filename
+            return cast_Path(local_filename) if isinstance(configuration, cast_Path) else local_filename
 
     def connect_label_enumeration(self, enumeration):
         # type: (Dict[str, int]) -> Dict[str, int]

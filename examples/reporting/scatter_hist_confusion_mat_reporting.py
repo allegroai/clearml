@@ -46,7 +46,7 @@ def report_plots(logger, iteration=0):
 
     # report confusion matrix
     confusion = np.random.randint(10, size=(10, 10))
-    logger.report_matrix(
+    logger.report_confusion_matrix(
         "example_confusion",
         "ignored",
         iteration=iteration,
@@ -56,7 +56,7 @@ def report_plots(logger, iteration=0):
     )
 
     # report confusion matrix with 0,0 is at the top left
-    logger.report_matrix(
+    logger.report_confusion_matrix(
         "example_confusion_0_0_at_top",
         "ignored",
         iteration=iteration,

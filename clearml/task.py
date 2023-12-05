@@ -1552,6 +1552,56 @@ class Task(_Task):
 
         raise Exception('Unsupported mutable type %s: no connect function found' % type(mutable).__name__)
 
+    def set_packages(self, packages):
+        # type: (Union[str, Sequence[str]]) -> ()
+        """
+        Manually specify a list of required packages or a local requirements.txt file.
+        When running remotely the call is ignored
+
+        :param packages: The list of packages or the path to the requirements.txt file.
+            Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
+        """
+        if not packages or running_remotely():
+            return
+        self._wait_for_repo_detection(timeout=300.)
+        if not isinstance(packages, str) or not os.path.exists(packages):
+            # noinspection PyProtectedMember
+            self._update_requirements(packages)
+            return
+        with open(packages) as f:
+            # noinspection PyProtectedMember
+            self._update_requirements([line.strip() for line in f.readlines()])
+
+    def set_repo(self, repo, branch=None, commit=None):
+        # type: (str, Optional[str], Optional[str]) -> ()
+        """
+        Specify a repository to attach to the function.
+        Allow users to execute the task inside the specified repository, enabling them to load modules/script
+        from the repository. Notice the execution work directory will be the repository root folder.
+        Supports both git repo url link, and local repository path (automatically converted into the remote
+        git/commit as is currently checkout).
+        Example remote url: 'https://github.com/user/repo.git'.
+        Example local repo copy: './repo' -> will automatically store the remote
+        repo url and commit ID based on the locally cloned copy.
+        When executing remotely, this call will not override the repository data (it is ignored)
+
+        :param repo: Remote URL for the repository to use, OR path to local copy of the git repository
+            Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'
+        :param branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
+        :param commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
+        """
+        if not repo or running_remotely():
+            return
+        self._wait_for_repo_detection(timeout=300.)
+        with self._edit_lock:
+            self.reload()
+            self.data.script.repository = repo
+            if branch:
+                self.data.script.branch = branch
+            if commit:
+                self.data.script.version_num = commit
+            self._edit(script=self.data.script)
+
     def connect_configuration(self, configuration, name=None, description=None):
         # type: (Union[Mapping, list, Path, str], Optional[str], Optional[str]) -> Union[dict, Path, str]
         """
@@ -2714,41 +2764,6 @@ class Task(_Task):
             docker_arguments=docker_arguments,
             docker_setup_bash_script=docker_setup_bash_script
         )
-
-    def set_packages(self, packages):
-        # type: (Union[str, Sequence[str]]) -> ()
-        """
-        Manually specify a list of required packages or a local requirements.txt file.
-        When running remotely the call is ignored
-
-        :param packages: The list of packages or the path to the requirements.txt file.
-            Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
-        """
-        if running_remotely():
-            return
-        super(Task, self).set_packages(packages)
-
-    def set_repo(self, repo, branch=None, commit=None):
-        # type: (str, Optional[str], Optional[str]) -> ()
-        """
-        Specify a repository to attach to the function.
-        Allow users to execute the task inside the specified repository, enabling them to load modules/script
-        from the repository. Notice the execution work directory will be the repository root folder.
-        Supports both git repo url link, and local repository path (automatically converted into the remote
-        git/commit as is currently checkout).
-        Example remote url: 'https://github.com/user/repo.git'.
-        Example local repo copy: './repo' -> will automatically store the remote
-        repo url and commit ID based on the locally cloned copy.
-        When executing remotely, this call will not override the repository data (it is ignored)
-
-        :param repo: Remote URL for the repository to use, OR path to local copy of the git repository
-            Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'
-        :param branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
-        :param commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
-        """
-        if running_remotely():
-            return
-        super(Task, self).set_repo(repo, branch=branch, commit=commit)
 
     def set_resource_monitor_iteration_timeout(self, seconds_from_start=1800):
         # type: (float) -> bool

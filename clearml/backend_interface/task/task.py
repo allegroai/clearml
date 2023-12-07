@@ -2280,7 +2280,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             import pkg_resources
         except ImportError:
             get_logger("task").warning(
-                "Requirement file %s skipped since pkg_resources is not installed" % package_name)
+                "Requirement file `{}` skipped since pkg_resources is not installed".format(package_name))
         else:
             with Path(package_name).open() as requirements_txt:
                 for req in pkg_resources.parse_requirements(requirements_txt):

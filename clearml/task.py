@@ -1553,53 +1553,66 @@ class Task(_Task):
         raise Exception('Unsupported mutable type %s: no connect function found' % type(mutable).__name__)
 
     def set_packages(self, packages):
-        # type: (Union[str, Sequence[str]]) -> ()
+        # type: (Union[str, Path, Sequence[str]]) -> ()
         """
         Manually specify a list of required packages or a local requirements.txt file.
-        When running remotely the call is ignored
+
+        When running remotely this call is ignored
 
         :param packages: The list of packages or the path to the requirements.txt file.
-            Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
+
+            Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt" or ""
+            Use an empty string (packages="") to clear the requirements section (remote execution will use
+                requirements.txt from the git repository if the file exists)
         """
-        if not packages or running_remotely():
+        if running_remotely() or packages is None:
             return
         self._wait_for_repo_detection(timeout=300.)
-        if not isinstance(packages, str) or not os.path.exists(packages):
-            # noinspection PyProtectedMember
-            self._update_requirements(packages)
-            return
-        with open(packages) as f:
-            # noinspection PyProtectedMember
-            self._update_requirements([line.strip() for line in f.readlines()])
 
-    def set_repo(self, repo, branch=None, commit=None):
-        # type: (str, Optional[str], Optional[str]) -> ()
+        if packages and isinstance(packages, (str, Path)) and Path(packages).is_file():
+            with open(Path(packages).as_posix(), "rt") as f:
+                # noinspection PyProtectedMember
+                self._update_requirements([line.strip() for line in f.readlines()])
+            return
+
+        # noinspection PyProtectedMember
+        self._update_requirements(packages or "")
+
+    def set_repo(self, repo=None, branch=None, commit=None):
+        # type: (Optional[str], Optional[str], Optional[str]) -> ()
         """
         Specify a repository to attach to the function.
         Allow users to execute the task inside the specified repository, enabling them to load modules/script
         from the repository. Notice the execution work directory will be the repository root folder.
         Supports both git repo url link, and local repository path (automatically converted into the remote
         git/commit as is currently checkout).
-        Example remote url: 'https://github.com/user/repo.git'.
-        Example local repo copy: './repo' -> will automatically store the remote
+        Example remote url: "https://github.com/user/repo.git".
+        Example local repo copy: "./repo" -> will automatically store the remote
         repo url and commit ID based on the locally cloned copy.
         When executing remotely, this call will not override the repository data (it is ignored)
 
-        :param repo: Remote URL for the repository to use, OR path to local copy of the git repository
-            Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'
-        :param branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
-        :param commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
+        :param repo: Optional, remote URL for the repository to use, OR path to local copy of the git repository.
+            Use an empty string to clear the repo.
+            Example: "https://github.com/allegroai/clearml.git" or "~/project/repo" or ""
+        :param branch: Optional, specify the remote repository branch (Ignored, if local repo path is used).
+            Use an empty string to clear the branch.
+        :param commit: Optional, specify the repository commit ID (Ignored, if local repo path is used).
+            Use an empty string to clear the commit.
         """
-        if not repo or running_remotely():
+        if running_remotely():
             return
         self._wait_for_repo_detection(timeout=300.)
         with self._edit_lock:
             self.reload()
-            self.data.script.repository = repo
-            if branch:
-                self.data.script.branch = branch
-            if commit:
-                self.data.script.version_num = commit
+            if repo is not None:
+                # we cannot have None on the value itself
+                self.data.script.repository = repo or ""
+            if branch is not None:
+                # we cannot have None on the value itself
+                self.data.script.branch = branch or ""
+            if commit is not None:
+                # we cannot have None on the value itself
+                self.data.script.version_num = commit or ""
             self._edit(script=self.data.script)
 
     def connect_configuration(self, configuration, name=None, description=None):

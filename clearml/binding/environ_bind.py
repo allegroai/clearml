@@ -175,10 +175,11 @@ class PatchOsFork(object):
         try:
             return PatchOsFork._original_process_run(self, *args, **kwargs)
         finally:
-            if task:
+            if task and patched_worker:
                 try:
-                    if patched_worker:
-                        # remove at exit hooks, we will deadlock when the
+                    # noinspection PyProtectedMember
+                    if task._report_subprocess_enabled:
+                        # just in case, remove at exit hooks, we will deadlock when the
                         # main Pool manager will terminate this process, and it will...
                         # noinspection PyProtectedMember
                         task._at_exit_called = True
@@ -214,11 +215,29 @@ class PatchOsFork(object):
         if not task:
             return
 
+        if not Task._report_subprocess_enabled:
+            # https://stackoverflow.com/a/34507557
+            # NOTICE: subprocesses do not exit through exit we have to register signals
+            if task._Task__exit_hook:
+                task._Task__exit_hook.register_signal_and_exception_hooks()
+        else:
+            # noinspection PyProtectedMember
+            task._remove_signal_hooks()
+
+        # noinspection PyProtectedMember
+        if Task._report_subprocess_enabled:
+            # noinspection PyProtectedMember
+            task._remove_exception_hooks()
+
         PatchOsFork._current_task = task
         # # Hack: now make sure we setup the reporter threads (Log+Reporter)
         # noinspection PyProtectedMember
         if not bool(task._report_subprocess_enabled):
             BackgroundMonitor.start_all(task=task)
+
+        # if we are reporting into a subprocess, no need to further patch the exit functions
+        if Task._report_subprocess_enabled:
+            return
 
         # The signal handler method is Not enough, for the time being, we have both
         # even though it makes little sense
@@ -244,6 +263,10 @@ class PatchOsFork(object):
             # noinspection PyProtectedMember, PyUnresolvedReferences
             os._org_exit = os._exit
 
+        # noinspection PyProtectedMember
+        # https://stackoverflow.com/a/34507557
+        # NOTICE: subprocesses do not exit through exit, and in most cases not with _exit,
+        # this means at_exit calls are Not registered respected
         os._exit = _at_exit_callback
 
     @staticmethod
@@ -261,3 +284,23 @@ class PatchOsFork(object):
             PatchOsFork._fork_callback_after_child()
 
         return ret
+
+    @staticmethod
+    def unpatch_fork():
+        try:
+            if PatchOsFork._original_fork and os._exit != PatchOsFork._original_fork:
+                os._exit = PatchOsFork._original_fork
+                PatchOsFork._original_fork = None
+        except Exception:
+            pass
+
+    @staticmethod
+    def unpatch_process_run():
+        try:
+            from multiprocessing.process import BaseProcess
+
+            if PatchOsFork._original_process_run and BaseProcess.run != PatchOsFork._original_process_run:
+                BaseProcess.run = PatchOsFork._original_process_run
+                PatchOsFork._original_process_run = None
+        except Exception:
+            pass

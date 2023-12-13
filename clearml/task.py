@@ -100,6 +100,7 @@ from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
 from .utilities.process.mp import BackgroundMonitor, leave_process
+from .utilities.process.exit_hooks import ExitHooks
 from .utilities.matching import matches_any_wildcard
 from .utilities.parallel import FutureTaskCaller
 from .utilities.networking import get_private_ip
@@ -487,8 +488,6 @@ class Task(_Task):
                 # unregister signal hooks, they cause subprocess to hang
                 # noinspection PyProtectedMember
                 cls.__main_task.__register_at_exit(cls.__main_task._at_exit)
-                # TODO: Check if the signal handler method is safe enough, for the time being, do not unhook
-                # cls.__main_task.__register_at_exit(None, only_remove_signal_and_exception_hooks=True)
 
                 # start all reporting threads
                 BackgroundMonitor.start_all(task=cls.__main_task)
@@ -636,7 +635,11 @@ class Task(_Task):
             # register at exist only on the real (none deferred) Task
             if not is_deferred:
                 # register the main task for at exit hooks (there should only be one)
+                # noinspection PyProtectedMember
                 task.__register_at_exit(task._at_exit)
+                # noinspection PyProtectedMember
+                if cls.__exit_hook:
+                    cls.__exit_hook.register_signal_and_exception_hooks()
 
             # always patch OS forking because of ProcessPool and the alike
             PatchOsFork.patch_fork(task)
@@ -2078,6 +2081,8 @@ class Task(_Task):
         # unregister atexit callbacks and signal hooks, if we are the main task
         if is_main:
             self.__register_at_exit(None)
+            self._remove_signal_hooks()
+            self._remove_exception_hooks()
             if not is_sub_process:
                 # make sure we enable multiple Task.init callas with reporting sub-processes
                 BackgroundMonitor.clear_main_process(self)
@@ -4220,172 +4225,21 @@ class Task(_Task):
         if not is_sub_process and BackgroundMonitor.is_subprocess_enabled():
             BackgroundMonitor.wait_for_sub_process(self)
 
+        # we are done
+        return
+
     @classmethod
-    def __register_at_exit(cls, exit_callback, only_remove_signal_and_exception_hooks=False):
-        class ExitHooks(object):
-            _orig_exit = None
-            _orig_exc_handler = None
-            remote_user_aborted = False
+    def _remove_exception_hooks(cls):
+        if cls.__exit_hook:
+            cls.__exit_hook.remove_exception_hooks()
 
-            def __init__(self, callback):
-                self.exit_code = None
-                self.exception = None
-                self.signal = None
-                self._exit_callback = callback
-                self._org_handlers = {}
-                self._signal_recursion_protection_flag = False
-                self._except_recursion_protection_flag = False
-                self._import_bind_path = os.path.join("clearml", "binding", "import_bind.py")
+    @classmethod
+    def _remove_signal_hooks(cls):
+        if cls.__exit_hook:
+            cls.__exit_hook.remove_signal_hooks()
 
-            def update_callback(self, callback):
-                if self._exit_callback and not six.PY2:
-                    # noinspection PyBroadException
-                    try:
-                        atexit.unregister(self._exit_callback)
-                    except Exception:
-                        pass
-                self._exit_callback = callback
-                if callback:
-                    self.hook()
-                else:
-                    # un register int hook
-                    if self._orig_exc_handler:
-                        sys.excepthook = self._orig_exc_handler
-                        self._orig_exc_handler = None
-                    for h in self._org_handlers:
-                        # noinspection PyBroadException
-                        try:
-                            signal.signal(h, self._org_handlers[h])
-                        except Exception:
-                            pass
-                    self._org_handlers = {}
-
-            def hook(self):
-                if self._orig_exit is None:
-                    self._orig_exit = sys.exit
-                    sys.exit = self.exit
-
-                if self._orig_exc_handler is None:
-                    self._orig_exc_handler = sys.excepthook
-                    sys.excepthook = self.exc_handler
-
-                if self._exit_callback:
-                    atexit.register(self._exit_callback)
-
-                # TODO: check if sub-process hooks are safe enough, for the time being allow it
-                if not self._org_handlers:  # ## and not Task._Task__is_subprocess():
-                    if sys.platform == 'win32':
-                        catch_signals = [signal.SIGINT, signal.SIGTERM, signal.SIGSEGV, signal.SIGABRT,
-                                         signal.SIGILL, signal.SIGFPE]
-                    else:
-                        catch_signals = [signal.SIGINT, signal.SIGTERM, signal.SIGSEGV, signal.SIGABRT,
-                                         signal.SIGILL, signal.SIGFPE, signal.SIGQUIT]
-                    for c in catch_signals:
-                        # noinspection PyBroadException
-                        try:
-                            self._org_handlers[c] = signal.getsignal(c)
-                            signal.signal(c, self.signal_handler)
-                        except Exception:
-                            pass
-
-            def exit(self, code=0):
-                self.exit_code = code
-                self._orig_exit(code)
-
-            def exc_handler(self, exctype, value, traceback, *args, **kwargs):
-                if self._except_recursion_protection_flag:
-                    # noinspection PyArgumentList
-                    return sys.__excepthook__(exctype, value, traceback, *args, **kwargs)
-
-                self._except_recursion_protection_flag = True
-                self.exception = value
-
-                try:
-                    # remove us from import errors
-                    if six.PY3 and isinstance(exctype, type) and issubclass(exctype, ImportError):
-                        prev = cur = traceback
-                        while cur is not None:
-                            tb_next = cur.tb_next
-                            # if this is the import frame, we should remove it
-                            if cur.tb_frame.f_code.co_filename.endswith(self._import_bind_path):
-                                # remove this frame by connecting the previous one to the next one
-                                prev.tb_next = tb_next
-                                cur.tb_next = None
-                                del cur
-                                cur = prev
-
-                            prev = cur
-                            cur = tb_next
-                except:  # noqa
-                    pass
-
-                if self._orig_exc_handler:
-                    # noinspection PyArgumentList
-                    ret = self._orig_exc_handler(exctype, value, traceback, *args, **kwargs)
-                else:
-                    # noinspection PyNoneFunctionAssignment, PyArgumentList
-                    ret = sys.__excepthook__(exctype, value, traceback, *args, **kwargs)
-                self._except_recursion_protection_flag = False
-
-                return ret
-
-            def signal_handler(self, sig, frame):
-                self.signal = sig
-
-                org_handler = self._org_handlers.get(sig)
-                signal.signal(sig, org_handler or signal.SIG_DFL)
-
-                # if this is a sig term, we wait until __at_exit is called (basically do nothing)
-                if sig == signal.SIGINT:
-                    # return original handler result
-                    return org_handler if not callable(org_handler) else org_handler(sig, frame)
-
-                if self._signal_recursion_protection_flag:
-                    # call original
-                    os.kill(os.getpid(), sig)
-                    return org_handler if not callable(org_handler) else org_handler(sig, frame)
-
-                self._signal_recursion_protection_flag = True
-
-                # call exit callback
-                if self._exit_callback:
-                    # noinspection PyBroadException
-                    try:
-                        self._exit_callback()
-                    except Exception:
-                        pass
-
-                # remove stdout logger, just in case
-                # noinspection PyBroadException
-                try:
-                    # noinspection PyProtectedMember
-                    Logger._remove_std_logger()
-                except Exception:
-                    pass
-
-                # noinspection PyUnresolvedReferences
-                os.kill(os.getpid(), sig)
-
-                self._signal_recursion_protection_flag = False
-                # return handler result
-                return org_handler if not callable(org_handler) else org_handler(sig, frame)
-
-        # we only remove the signals since this will hang subprocesses
-        if only_remove_signal_and_exception_hooks:
-            if not cls.__exit_hook:
-                return
-            if cls.__exit_hook._orig_exc_handler:
-                sys.excepthook = cls.__exit_hook._orig_exc_handler
-                cls.__exit_hook._orig_exc_handler = None
-            for s in cls.__exit_hook._org_handlers:
-                # noinspection PyBroadException
-                try:
-                    signal.signal(s, cls.__exit_hook._org_handlers[s])
-                except Exception:
-                    pass
-            cls.__exit_hook._org_handlers = {}
-            return
-
+    @classmethod
+    def __register_at_exit(cls, exit_callback):
         if cls.__exit_hook is None:
             # noinspection PyBroadException
             try:
@@ -4395,12 +4249,6 @@ class Task(_Task):
                 cls.__exit_hook = None
         else:
             cls.__exit_hook.update_callback(exit_callback)
-
-    def _remove_at_exit_callbacks(self):
-        self.__register_at_exit(None, only_remove_signal_and_exception_hooks=True)
-        # noinspection PyProtectedMember
-        atexit.unregister(self.__exit_hook._exit_callback)
-        self._at_exit_called = True
 
     @classmethod
     def __get_task(

@@ -31,6 +31,7 @@ class PatchJsonArgParse(object):
     _special_fields = ["config", "subcommand"]
     _section_name = "Args"
     _allow_jsonargparse_overrides = "_allow_config_file_override_from_ui_"
+    _ignore_ui_overrides = "_ignore_ui_overrides_"
     __remote_task_params = {}
     __remote_task_params_dict = {}
     __patched = False
@@ -86,9 +87,9 @@ class PatchJsonArgParse(object):
         cls._current_task._set_parameters(args, __update=True, __parameters_types=args_type)
         if have_config_file:
             cls._current_task.set_parameter(
-                cls._section_name + cls._args_sep + cls._allow_jsonargparse_overrides,
+                cls._section_name + cls._args_sep + cls._ignore_ui_overrides,
                 False,
-                description="If True, values in the config file will be overriden by values found in the UI. Otherwise, the values in the config file have priority"
+                description="If False, values in the config file will be overriden by values found in the UI. Otherwise, the values in the config file have priority"
             )
 
     @staticmethod
@@ -124,7 +125,11 @@ class PatchJsonArgParse(object):
                 params_namespace = Namespace()
                 for k, v in params.items():
                     params_namespace[k] = v
-                allow_jsonargparse_overrides_value = params.pop(PatchJsonArgParse._allow_jsonargparse_overrides, True)
+                allow_jsonargparse_overrides_value = True
+                if PatchJsonArgParse._allow_jsonargparse_overrides in params:
+                    allow_jsonargparse_overrides_value = params.pop(PatchJsonArgParse._allow_jsonargparse_overrides)
+                if PatchJsonArgParse._ignore_ui_overrides in params:
+                    allow_jsonargparse_overrides_value = not params.pop(PatchJsonArgParse._ignore_ui_overrides)
                 if not allow_jsonargparse_overrides_value:
                     params_namespace = PatchJsonArgParse.__restore_args(
                         obj,

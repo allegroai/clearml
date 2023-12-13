@@ -69,6 +69,7 @@ class PipelineController(object):
     _final_failure = {}  # Node.name: bool
     _task_template_header = CreateFromFunction.default_task_template_header
     _default_pipeline_version = "1.0.0"
+    _project_section = ".pipelines"
 
     valid_job_status = ["failed", "cached", "completed", "aborted", "queued", "running", "skipped", "pending"]
 
@@ -305,7 +306,7 @@ class PipelineController(object):
         if not self._task:
             task_name = name or project or '{}'.format(datetime.now())
             if self._pipeline_as_sub_project:
-                parent_project = "{}.pipelines".format(project+'/' if project else '')
+                parent_project = (project + "/" if project else "") + self._pipeline_section
                 project_name = "{}/{}".format(parent_project, task_name)
             else:
                 parent_project = None
@@ -1422,7 +1423,7 @@ class PipelineController(object):
         mutually_exclusive(pipeline_id=pipeline_id, pipeline_project=pipeline_project, _require_at_least_one=False)
         mutually_exclusive(pipeline_id=pipeline_id, pipeline_name=pipeline_name, _require_at_least_one=False)
         if not pipeline_id:
-            pipeline_project_hidden = "{}/.pipelines/{}".format(pipeline_project, pipeline_name)
+            pipeline_project_hidden = "{}/{}/{}".format(pipeline_project, cls._pipeline_section, pipeline_name)
             name_with_runtime_number_regex = r"^{}( #[0-9]+)*$".format(re.escape(pipeline_name))
             pipelines = Task._query_tasks(
                 pipeline_project=[pipeline_project_hidden],

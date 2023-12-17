@@ -364,8 +364,7 @@ def debug_print(*args, **kwargs):
     tic = globals().get('tic', time.time())
     stdout_print(
         "\033[1;33m[pid={}, t={:.04f}] ".format(os.getpid(), time.time()-tic)
-        + str(args[0] if len(args) == 1 else ("" if not args else args)) + "\033[0m"
-        , **kwargs
+        + str(args[0] if len(args) == 1 else ("" if not args else args)) + "\033[0m", **kwargs
      )
     tic = time.time()
 

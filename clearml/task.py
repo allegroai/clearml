@@ -1,9 +1,7 @@
-import atexit
 import copy
 import json
 import os
 import shutil
-import signal
 import sys
 import threading
 import time

@@ -9,6 +9,7 @@ from pathlib2 import Path
 
 import clearml.backend_api.session
 from clearml.datasets import Dataset
+from clearml.task import Task
 from clearml.version import __version__
 
 clearml.backend_api.session.Session.add_client("clearml-data", __version__)
@@ -437,6 +438,11 @@ def ds_get(args):
     print("Download dataset id {}".format(args.id))
     check_null_id(args)
     print_args(args)
+
+    task = Task.get_task(args.id)    
+    if 'dataset' not in task.get_system_tags():
+        print('Task {} is not a dataset task'.format(args.id))
+
     ds = Dataset.get(dataset_id=args.id)
     if args.overwrite:
         if args.copy:

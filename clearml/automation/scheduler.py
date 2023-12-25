@@ -9,6 +9,7 @@ from attr import attrs, attrib
 from dateutil.relativedelta import relativedelta
 
 from .job import ClearmlJob
+from .controller import PipelineController
 from ..backend_interface.util import datetime_from_isoformat, datetime_to_isoformat, mutually_exclusive
 from ..task import Task
 
@@ -58,6 +59,18 @@ class BaseScheduleJob(object):
             if not self._executed_instances:
                 self._executed_instances = []
             self._executed_instances.append(str(task_id))
+
+    def get_resolved_target_project(self):
+        if not self.base_task_id or not self.target_project:
+            return self.target_project
+        # noinspection PyBroadException
+        try:
+            task = Task.get_task(task_id=self.base_task_id)
+            if PipelineController._tag in task.get_system_tags() and "/{}/".format(PipelineController._pipeline_section) not in self.target_project:
+                return "{}/{}/{}".format(self.target_project, PipelineController._pipeline_section, task.name)
+        except Exception:
+            pass
+        return self.target_project
 
 
 @attrs
@@ -447,7 +460,7 @@ class BaseScheduler(object):
             task_overrides=job.task_overrides,
             disable_clone_task=not job.clone_task,
             allow_caching=False,
-            target_project=job.target_project,
+            target_project=job.get_resolved_target_project(),
             tags=[add_tags] if add_tags and isinstance(add_tags, str) else add_tags,
         )
         self._log('Scheduling Job {}, Task {} on queue {}.'.format(

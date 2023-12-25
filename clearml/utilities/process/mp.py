@@ -541,6 +541,15 @@ class BackgroundMonitor(object):
             self._event.set()
 
         if isinstance(self._thread, Thread):
+            # should we wait for the thread to finish
+            # noinspection PyBroadException
+            try:
+                # there is a race here, and if someone else closes the
+                # thread it can become True/None and we will fail, it is fine
+                self._thread.join()
+            except BaseException:
+                pass
+
             try:
                 self._get_instances().remove(self)
             except ValueError:
@@ -669,21 +678,23 @@ class BackgroundMonitor(object):
     @classmethod
     def _background_process_start(cls, task_obj_id, event_start=None, parent_pid=None):
         # type: (int, Optional[SafeEvent], Optional[int]) -> None
+        # noinspection PyProtectedMember
         is_debugger_running = bool(getattr(sys, 'gettrace', None) and sys.gettrace())
         # make sure we update the pid to our own
         cls._main_process = os.getpid()
         cls._main_process_proc_obj = psutil.Process(cls._main_process)
-        # restore original signal, this will prevent any deadlocks
-        # Do not change the exception we need to catch base exception as well
         # noinspection PyBroadException
         try:
             from ... import Task
-            # make sure we do not call Task.current_task() it will create a Task object for us on a subprocess!
+            if Task._Task__current_task and Task._Task__current_task._Task__exit_hook:  # noqa
+                Task._Task__current_task._Task__exit_hook.register_signal_and_exception_hooks()  # noqa
+
             # noinspection PyProtectedMember
-            if Task._has_current_task_obj():
-                # noinspection PyProtectedMember
-                Task.current_task()._remove_at_exit_callbacks()
+            from ...binding.environ_bind import PatchOsFork
+            PatchOsFork.unpatch_fork()
+            PatchOsFork.unpatch_process_run()
         except:  # noqa
+            # Do not change the exception we need to catch base exception as well
             pass
 
         # if a debugger is running, wait for it to attach to the subprocess

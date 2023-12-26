@@ -75,7 +75,11 @@ class ExitHooks(object):
 
     def remove_signal_hooks(self):
         for org_handler_k, org_handler_v in self._org_handlers.items():
-            signal.signal(org_handler_k, org_handler_v)
+            # noinspection PyBroadException
+            try:
+                signal.signal(org_handler_k, org_handler_v)
+            except Exception:
+                pass
         self._org_handlers = {}
 
     def remove_exception_hooks(self):

@@ -134,6 +134,10 @@ class PatchJsonArgParse(object):
                     params_namespace = PatchJsonArgParse.__restore_args(
                         obj, params_namespace, subcommand=params_namespace.get(PatchJsonArgParse._command_name)
                     )
+                if PatchJsonArgParse._allow_jsonargparse_overrides in params_namespace:
+                    del params_namespace[PatchJsonArgParse._allow_jsonargparse_overrides]
+                if PatchJsonArgParse._ignore_ui_overrides in params_namespace:
+                    del params_namespace[PatchJsonArgParse._ignore_ui_overrides]
                 return params_namespace
             except Exception as e:
                 logging.getLogger(__file__).warning("Failed parsing jsonargparse arguments: {}".format(e))

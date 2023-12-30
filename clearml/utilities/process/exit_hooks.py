@@ -1,8 +1,10 @@
-import os
 import atexit
-import sys
+import os
 import signal
+import sys
+
 import six
+
 from ...logger import Logger
 
 
@@ -60,11 +62,24 @@ class ExitHooks(object):
 
         if not self._org_handlers:
             if sys.platform == "win32":
-                catch_signals = [signal.SIGINT, signal.SIGTERM, signal.SIGSEGV, signal.SIGABRT,
-                                 signal.SIGILL, signal.SIGFPE]
+                catch_signals = [
+                    signal.SIGINT,
+                    signal.SIGTERM,
+                    signal.SIGSEGV,
+                    signal.SIGABRT,
+                    signal.SIGILL,
+                    signal.SIGFPE,
+                ]
             else:
-                catch_signals = [signal.SIGINT, signal.SIGTERM, signal.SIGSEGV, signal.SIGABRT,
-                                 signal.SIGILL, signal.SIGFPE, signal.SIGQUIT]
+                catch_signals = [
+                    signal.SIGINT,
+                    signal.SIGTERM,
+                    signal.SIGSEGV,
+                    signal.SIGABRT,
+                    signal.SIGILL,
+                    signal.SIGFPE,
+                    signal.SIGQUIT,
+                ]
             for c in catch_signals:
                 # noinspection PyBroadException
                 try:

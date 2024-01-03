@@ -177,7 +177,8 @@ class PipelineController(object):
             always_create_from_code=True,  # type: bool
             artifact_serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
             artifact_deserialization_function=None,  # type: Optional[Callable[[bytes], Any]]
-            output_uri=None  # type: Optional[Union[str, bool]]
+            output_uri=None,  # type: Optional[Union[str, bool]]
+            skip_global_imports=False  # type: bool
     ):
         # type: (...) -> None
         """
@@ -267,6 +268,9 @@ class PipelineController(object):
         :param output_uri: The storage / output url for this pipeline. This is the default location for output
             models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
             The `output_uri` of this pipeline's steps will default to this value.
+        :param skip_global_imports: If True, global imports will not be included in the steps' execution when creating
+            the steps from a functions, otherwise all global imports will be automatically imported in a safe manner at
+             the beginning of each step’s execution. Default is False
         """
         if auto_version_bump is not None:
             warnings.warn("PipelineController.auto_version_bump is deprecated. It will be ignored", DeprecationWarning)
@@ -303,6 +307,7 @@ class PipelineController(object):
         self._last_progress_update_time = 0
         self._artifact_serialization_function = artifact_serialization_function
         self._artifact_deserialization_function = artifact_deserialization_function
+        self._skip_global_imports = skip_global_imports
         if not self._task:
             task_name = name or project or '{}'.format(datetime.now())
             if self._pipeline_as_sub_project:
@@ -1521,7 +1526,8 @@ class PipelineController(object):
             dry_run=True,
             task_template_header=self._task_template_header,
             artifact_serialization_function=self._artifact_serialization_function,
-            artifact_deserialization_function=self._artifact_deserialization_function
+            artifact_deserialization_function=self._artifact_deserialization_function,
+            skip_global_imports=self._skip_global_imports
         )
         return task_definition
 
@@ -3316,7 +3322,8 @@ class PipelineDecorator(PipelineController):
             repo_commit=None,  # type: Optional[str]
             artifact_serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
             artifact_deserialization_function=None,  # type: Optional[Callable[[bytes], Any]]
-            output_uri=None  # type: Optional[Union[str, bool]]
+            output_uri=None,  # type: Optional[Union[str, bool]]
+            skip_global_imports=False  # type: bool
     ):
         # type: (...) -> ()
         """
@@ -3399,6 +3406,9 @@ class PipelineDecorator(PipelineController):
         :param output_uri: The storage / output url for this pipeline. This is the default location for output
             models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
             The `output_uri` of this pipeline's steps will default to this value.
+        :param skip_global_imports: If True, global imports will not be included in the steps' execution, otherwise all
+            global imports will be automatically imported in a safe manner at the beginning of each step’s execution.
+            Default is False
         """
         super(PipelineDecorator, self).__init__(
             name=name,
@@ -3420,7 +3430,8 @@ class PipelineDecorator(PipelineController):
             always_create_from_code=False,
             artifact_serialization_function=artifact_serialization_function,
             artifact_deserialization_function=artifact_deserialization_function,
-            output_uri=output_uri
+            output_uri=output_uri,
+            skip_global_imports=skip_global_imports
         )
 
         # if we are in eager execution, make sure parent class knows it
@@ -3686,7 +3697,8 @@ class PipelineDecorator(PipelineController):
             task_template_header=self._task_template_header,
             _sanitize_function=sanitize,
             artifact_serialization_function=self._artifact_serialization_function,
-            artifact_deserialization_function=self._artifact_deserialization_function
+            artifact_deserialization_function=self._artifact_deserialization_function,
+            skip_global_imports=self._skip_global_imports
         )
         return task_definition
 
@@ -4173,7 +4185,8 @@ class PipelineDecorator(PipelineController):
             repo_commit=None,  # type: Optional[str]
             artifact_serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
             artifact_deserialization_function=None,  # type: Optional[Callable[[bytes], Any]]
-            output_uri=None  # type: Optional[Union[str, bool]]
+            output_uri=None, # type: Optional[Union[str, bool]]
+            skip_global_imports=False  # type: bool
     ):
         # type: (...) -> Callable
         """
@@ -4287,6 +4300,9 @@ class PipelineDecorator(PipelineController):
         :param output_uri: The storage / output url for this pipeline. This is the default location for output
             models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
             The `output_uri` of this pipeline's steps will default to this value.
+        :param skip_global_imports: If True, global imports will not be included in the steps' execution, otherwise all
+            global imports will be automatically imported in a safe manner at the beginning of each step’s execution.
+            Default is False
         """
         def decorator_wrap(func):
 
@@ -4333,7 +4349,8 @@ class PipelineDecorator(PipelineController):
                         repo_commit=repo_commit,
                         artifact_serialization_function=artifact_serialization_function,
                         artifact_deserialization_function=artifact_deserialization_function,
-                        output_uri=output_uri
+                        output_uri=output_uri,
+                        skip_global_imports=skip_global_imports
                     )
                     ret_val = func(**pipeline_kwargs)
                     LazyEvalWrapper.trigger_all_remote_references()
@@ -4385,7 +4402,8 @@ class PipelineDecorator(PipelineController):
                     repo_commit=repo_commit,
                     artifact_serialization_function=artifact_serialization_function,
                     artifact_deserialization_function=artifact_deserialization_function,
-                    output_uri=output_uri
+                    output_uri=output_uri,
+                    skip_global_imports=skip_global_imports
                 )
 
                 a_pipeline._args_map = args_map or {}

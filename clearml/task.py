@@ -40,7 +40,8 @@ from .backend_config.defs import get_active_config_file, get_config_file
 from .backend_api.services import tasks, projects, events
 from .backend_api.session.session import (
     Session, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_HOST, ENV_WEB_HOST, ENV_FILES_HOST, )
-from .backend_api.session.defs import ENV_DEFERRED_TASK_INIT, ENV_IGNORE_MISSING_CONFIG, ENV_OFFLINE_MODE, MissingConfigError
+from .backend_api.session.defs import (ENV_DEFERRED_TASK_INIT, ENV_IGNORE_MISSING_CONFIG,
+                                       ENV_OFFLINE_MODE, MissingConfigError)
 from .backend_interface.metrics import Metrics
 from .backend_interface.model import Model as BackendModel
 from .backend_interface.base import InterfaceBase
@@ -97,6 +98,8 @@ from .utilities.proxy_object import (
 from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
+from .utilities.lowlevel.distributed import get_torch_local_rank, get_torch_distributed_anchor_task_id, \
+    create_torch_distributed_anchor
 from .utilities.process.mp import BackgroundMonitor, leave_process
 from .utilities.process.exit_hooks import ExitHooks
 from .utilities.matching import matches_any_wildcard
@@ -104,6 +107,7 @@ from .utilities.parallel import FutureTaskCaller
 from .utilities.networking import get_private_ip
 # noinspection PyProtectedMember
 from .backend_interface.task.args import _Arguments
+
 
 if TYPE_CHECKING:
     import pandas
@@ -527,10 +531,16 @@ class Task(_Task):
         is_deferred = False
         try:
             if not running_remotely():
+                # check remote status
+                _local_rank = get_torch_local_rank()
+                if _local_rank is not None and _local_rank > 0:
+                    is_sub_process_task_id = get_torch_distributed_anchor_task_id(timeout=30)
+
                 # only allow if running locally and creating the first Task
                 # otherwise we ignore and perform in order
                 if ENV_DEFERRED_TASK_INIT.get():
                     deferred_init = True
+
                 if not is_sub_process_task_id and deferred_init and deferred_init != cls.__nested_deferred_init_flag:
                     def completed_cb(x):
                         Task.__main_task = x
@@ -571,6 +581,11 @@ class Task(_Task):
                                     not auto_connect_frameworks.get('detect_repository', True)) else True,
                             auto_connect_streams=auto_connect_streams,
                         )
+                        # check if we are local rank 0 (local master),
+                        # create an anchor with task ID for the other processes
+                        if _local_rank == 0:
+                            create_torch_distributed_anchor(task_id=task.id)
+
                     except MissingConfigError as e:
                         if not ENV_IGNORE_MISSING_CONFIG.get():
                             raise

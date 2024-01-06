@@ -186,7 +186,15 @@ def get_node_id(default=0):
     if node_id is None and (mpi_world_rank is not None or mpi_rank is not None):
         node_id = mpi_world_rank if mpi_world_rank is not None else mpi_rank
 
-    # if node is is till None, use the default
+    # if node is still None, use the global RANK
+    if node_id is None:
+        # noinspection PyBroadException
+        try:
+            node_id = int(os.environ.get("RANK"))
+        except Exception:
+            pass
+
+    # if node is still None, use the default
     if node_id is None:
         node_id = default
 

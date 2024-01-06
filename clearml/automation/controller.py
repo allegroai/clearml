@@ -3919,10 +3919,12 @@ class PipelineDecorator(PipelineController):
         :return: function wrapper
         """
         def decorator_wrap(func):
-            _name = name or str(func.__name__)
+            # noinspection PyProtectedMember
+            unwrapped_func = CreateFromFunction._deep_extract_wrapped(func)
+            _name = name or str(unwrapped_func.__name__)
             function_return = return_values if isinstance(return_values, (tuple, list)) else [return_values]
 
-            inspect_func = inspect.getfullargspec(func)
+            inspect_func = inspect.getfullargspec(unwrapped_func)
             # add default argument values
             if inspect_func.args:
                 default_values = list(inspect_func.defaults or [])

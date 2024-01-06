@@ -1066,7 +1066,7 @@ class ScriptInfo(object):
                 script_requirements)
 
     @staticmethod
-    def __legacy_jupyter_notebook_server_json_parsing(self):
+    def __legacy_jupyter_notebook_server_json_parsing():
         # noinspection PyBroadException
         try:
             # on some jupyter notebook versions this function can crash on parsing the json file,

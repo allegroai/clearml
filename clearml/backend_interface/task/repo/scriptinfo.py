@@ -97,6 +97,11 @@ class ScriptRequirements(object):
             for fname, lines in skimage.items():
                 modules.add('scikit_image', fname, lines)
 
+        if 'tensorflow-intel' in modules:
+            tfmodule = modules.pop('tensorflow-intel', {})
+            for fname, lines in tfmodule.items():
+                modules.add('tensorflow', fname, lines)
+
         # if we have torch and it supports tensorboard, we should add that as well
         # (because it will not be detected automatically)
         if 'torch' in modules and 'tensorboard' not in modules and 'tensorboardX' not in modules:

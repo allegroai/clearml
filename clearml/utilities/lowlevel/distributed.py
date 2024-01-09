@@ -83,7 +83,7 @@ def get_torch_distributed_anchor_task_id(timeout=None):
                 getLogger().warning("Failed detecting rank zero clearml Task ID, creating a new Task")
                 return None
             # wait
-            sleep(0.1)
+            sleep(0.25)
 
         # create the file
         with open(torch_dist_path, "rt") as f:

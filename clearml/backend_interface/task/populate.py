@@ -17,16 +17,14 @@ from ...task import Task
 
 
 class CreateAndPopulate(object):
-    _VCS_SSH_REGEX = \
-        "^" \
-        "(?:(?P<user>{regular}*?)@)?" \
-        "(?P<host>{regular}*?)" \
-        ":" \
-        "(?P<path>{regular}.*)?" \
-        "$" \
-            .format(
-            regular=r"[^/@:#]"
-        )
+    _VCS_SSH_REGEX = (
+        "^"
+        "(?:(?P<user>{regular}*?)@)?"
+        "(?P<host>{regular}*?)"
+        ":"
+        "(?P<path>{regular}.*)?"
+        "$".format(regular=r"[^/@:#]")
+    )
 
     def __init__(
             self,
@@ -854,7 +852,7 @@ if __name__ == '__main__':
         def add_import_guard(import_):
             return ("try:\n    "
                     + import_.replace("\n", "\n    ", import_.count("\n") - 1)
-                    + "except Exception as e:\n    print('Import error: ' + str(e))\n"
+                    + "\nexcept Exception as e:\n    print('Import error: ' + str(e))\n"
                     )
 
         # noinspection PyBroadException
@@ -862,14 +860,24 @@ if __name__ == '__main__':
             import ast
             func_module = inspect.getmodule(func)
             source = inspect.getsource(func_module)
-            source_lines = inspect.getsourcelines(func_module)[0]
             parsed_source = ast.parse(source)
             imports = []
             for parsed_source_entry in parsed_source.body:
-                if isinstance(parsed_source_entry,
-                              (ast.Import, ast.ImportFrom)) and parsed_source_entry.col_offset == 0:
-                    imports.append(
-                        "\n".join(source_lines[parsed_source_entry.lineno - 1: parsed_source_entry.end_lineno]))
+                # we only include global imports (i.e. at col_offset 0)
+                if parsed_source_entry.col_offset != 0:
+                    continue
+                if isinstance(parsed_source_entry, ast.ImportFrom):
+                    for sub_entry in parsed_source_entry.names:
+                        import_str = "from {} import {}".format(parsed_source_entry.module, sub_entry.name)
+                        if sub_entry.asname:
+                            import_str += " as {}".format(sub_entry.asname)
+                        imports.append(import_str)
+                elif isinstance(parsed_source_entry, ast.Import):
+                    for sub_entry in parsed_source_entry.names:
+                        import_str = "import {}".format(sub_entry.name)
+                        if sub_entry.asname:
+                            import_str += " as {}".format(sub_entry.asname)
+                        imports.append(import_str)
             imports = [add_import_guard(import_) for import_ in imports]
             return "\n".join(imports)
         except Exception as e:

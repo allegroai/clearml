@@ -4187,7 +4187,7 @@ class PipelineDecorator(PipelineController):
             repo_commit=None,  # type: Optional[str]
             artifact_serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
             artifact_deserialization_function=None,  # type: Optional[Callable[[bytes], Any]]
-            output_uri=None, # type: Optional[Union[str, bool]]
+            output_uri=None,  # type: Optional[Union[str, bool]]
             skip_global_imports=False  # type: bool
     ):
         # type: (...) -> Callable

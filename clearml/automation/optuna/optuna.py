@@ -1,7 +1,7 @@
 from time import sleep
 from typing import Any, Optional, Sequence
 
-from ..optimization import Objective, SearchStrategy, MultiObjective
+from ..optimization import Objective, SearchStrategy
 from ..parameters import (DiscreteParameterRange, Parameter, UniformIntegerParameterRange, UniformParameterRange,
                           LogUniformParameterRange)
 from ...task import Task

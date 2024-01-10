@@ -1,8 +1,6 @@
 import hashlib
 import json
 import six
-import numpy as np
-import functools
 from copy import copy, deepcopy
 from datetime import datetime
 from itertools import product
@@ -20,6 +18,7 @@ from ..backend_api.services import workers as workers_service, tasks as tasks_se
 from ..task import Task
 
 logger = getLogger('clearml.automation.optimization')
+
 
 class _ObjectiveInterface(ABC):
     @abstractmethod
@@ -1992,8 +1991,9 @@ class HyperParameterOptimizer(object):
 
                 self._report_resources(task_logger, counter)
                 # collect a summary of all the jobs and their final objective values
-                cur_completed_jobs = set(self.optimizer.get_created_jobs_ids().keys()) - \
-                                     {j.task_id() for j in self.optimizer.get_running_jobs()}
+                cur_completed_jobs = set(self.optimizer.get_created_jobs_ids().keys()) - {
+                    j.task_id() for j in self.optimizer.get_running_jobs()
+                }
                 self._report_completed_status(completed_jobs, cur_completed_jobs, task_logger, title)
                 self._report_completed_tasks_best_results(set(completed_jobs.keys()), task_logger, title, counter)
 
@@ -2015,10 +2015,14 @@ class HyperParameterOptimizer(object):
 
     def _report_completed_status(self, completed_jobs, cur_completed_jobs, task_logger, title, force=False):
         job_ids_sorted_by_objective = self.__sort_jobs_by_objective(completed_jobs)
-        best_experiment = \
-            (self._objective_metric.get_normalized_objective(job_ids_sorted_by_objective[0]),
-             job_ids_sorted_by_objective[0]) \
-                if job_ids_sorted_by_objective else ([float("-inf")], None)
+        best_experiment = (
+            (
+                self._objective_metric.get_normalized_objective(job_ids_sorted_by_objective[0]),
+                job_ids_sorted_by_objective[0],
+            )
+            if job_ids_sorted_by_objective
+            else ([float("-inf")], None)
+        )
         if force or cur_completed_jobs != set(completed_jobs.keys()):
             pairs = []
             labels = []
@@ -2209,8 +2213,9 @@ class HyperParameterOptimizer(object):
                             type="parcoords",
                             line=dict(
                                 colorscale="Viridis",
-                                reversescale=not isinstance(self._objective_metric, MultiObjective)
-                                             and self._objective_metric.sign >= 0,
+                                reversescale = (
+                                    self._objective_metric.len == 1 and self._objective_metric.objectives[0].sign >= 0,
+                                ),
                                 color=table_values_columns[-1][1:],
                             ),
                             dimensions=pcc_dims,

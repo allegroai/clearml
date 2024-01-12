@@ -66,8 +66,13 @@ class BaseScheduleJob(object):
         # noinspection PyBroadException
         try:
             task = Task.get_task(task_id=self.base_task_id)
-            if PipelineController._tag in task.get_system_tags() and "/{}/".format(PipelineController._pipeline_section) not in self.target_project:
-                return "{}/{}/{}".format(self.target_project, PipelineController._pipeline_section, task.name)
+            # noinspection PyProtectedMember
+            if (
+                PipelineController._tag in task.get_system_tags()
+                and "/{}/".format(PipelineController._project_section) not in self.target_project
+            ):
+                # noinspection PyProtectedMember
+                return "{}/{}/{}".format(self.target_project, PipelineController._project_section, task.name)
         except Exception:
             pass
         return self.target_project

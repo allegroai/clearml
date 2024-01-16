@@ -2213,7 +2213,7 @@ class HyperParameterOptimizer(object):
                             type="parcoords",
                             line=dict(
                                 colorscale="Viridis",
-                                reversescale = (
+                                reversescale=(
                                     self._objective_metric.len == 1 and self._objective_metric.objectives[0].sign >= 0,
                                 ),
                                 color=table_values_columns[-1][1:],

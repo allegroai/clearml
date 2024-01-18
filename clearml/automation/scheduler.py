@@ -385,7 +385,13 @@ class BaseScheduler(object):
 
         :param queue: Remote queue to run the scheduler on, default 'services' queue.
         """
+        # make sure we serialize the current state if we are running locally
+        if self._task.running_locally():
+            self._serialize_state()
+            self._serialize()
+        # launch on the remote agent
         self._task.execute_remotely(queue_name=queue, exit_process=True)
+        # we will be deserializing the state inside `start`
         self.start()
 
     def _update_execution_plots(self):

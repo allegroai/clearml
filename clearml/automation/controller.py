@@ -2732,7 +2732,7 @@ class PipelineController(object):
                             self._final_failure[node.name] = True
 
                     completed_jobs.append(j)
-                    node.executed = node.job.task_id() if not node_failed else False
+                    node.executed = node.job.task_id() if not (node_failed or node.job.is_aborted()) else False
                     if j in launched_nodes:
                         launched_nodes.remove(j)
                     # check if we need to stop all running steps
@@ -3494,7 +3494,7 @@ class PipelineDecorator(PipelineController):
                         else:
                             self._final_failure[node.name] = True
                     completed_jobs.append(j)
-                    node.executed = node.job.task_id() if not node_failed else False
+                    node.executed = node.job.task_id() if not (node_failed or node.job.is_aborted()) else False
                     if j in launched_nodes:
                         launched_nodes.remove(j)
                     # check if we need to stop all running steps
@@ -4142,7 +4142,7 @@ class PipelineDecorator(PipelineController):
                         return task.artifacts[return_name].get(
                             deserialization_function=cls._singleton._artifact_deserialization_function
                         )
-                    return task.get_parameters(cast=True)[CreateFromFunction.return_section + "/" + return_name]
+                    return task.get_parameters(cast=True).get(CreateFromFunction.return_section + "/" + return_name)
 
                 return_w = [LazyEvalWrapper(
                     callback=functools.partial(result_wrapper, n),
@@ -4572,6 +4572,13 @@ class PipelineDecorator(PipelineController):
             _node.parents = (_node.parents or []) + [
                 x for x in cls._evaluated_return_values.get(tid, []) if x in leaves
             ]
+
+        if not cls._singleton._abort_running_steps_on_failure:
+            for parent in _node.parents:
+                if cls._singleton._nodes[parent].status in ["failed", "aborted", "skipped"]:
+                    _node.skip_job = True
+                    return
+
         for k, v in kwargs.items():
             if v is None or isinstance(v, (float, int, bool, six.string_types)):
                 _node.parameters["{}/{}".format(CreateFromFunction.kwargs_section, k)] = v

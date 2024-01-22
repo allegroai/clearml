@@ -68,24 +68,15 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
 
 ---
 
-<img src="https://github.com/pollfly/clearml/blob/gifs/docs/experiment_manager.gif?raw=true" width="49%">
-
-<img src="https://github.com/pollfly/clearml/blob/gifs/docs/datasets.gif?raw=true" width="49%">
-
-<img src="https://github.com/pollfly/clearml/blob/gifs/docs/orchestration.gif?raw=true" width="49%">
-
-<img src="https://github.com/pollfly/clearml/blob/gifs/docs/pipelines.gif?raw=true" width="49%">
-
-
 <table>
 <tbody>
   <tr>
-    <td> <img src="https://github.com/pollfly/clearml/blob/gifs/docs/experiment_manager.gif?raw=true" width="49%"></td>
-    <td> <img src="https://github.com/pollfly/clearml/blob/gifs/docs/datasets.gif?raw=true" width="49%"></td>
+    <td> <img src="https://github.com/pollfly/clearml/blob/gifs/docs/experiment_manager.gif?raw=true" width="100%"></td>
+    <td> <img src="https://github.com/pollfly/clearml/blob/gifs/docs/datasets.gif?raw=true" width="100%"></td>
   </tr>
   <tr>
-    <td><img src="https://github.com/pollfly/clearml/blob/gifs/docs/orchestration.gif?raw=true" width="49%"></td>
-    <td><img src="https://github.com/pollfly/clearml/blob/gifs/docs/pipelines.gif?raw=true" width="49%"></td>
+    <td><img src="https://github.com/pollfly/clearml/blob/gifs/docs/orchestration.gif?raw=true" width="100%"></td>
+    <td><img src="https://github.com/pollfly/clearml/blob/gifs/docs/pipelines.gif?raw=true" width="100%"></td>
   </tr>
 </tbody>
 </table>

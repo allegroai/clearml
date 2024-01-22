@@ -71,12 +71,12 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
 <table>
 <tbody>
   <tr>
-    <td> <a href="https://app.clear.ml"><img src="https://github.com/pollfly/clearml/blob/master/docs/experiment_manager.gif?raw=true" width="100%"></a></td>
-    <td> <a href="https://app.clear.ml"><img src="https://github.com/pollfly/clearml/blob/master/docs/datasets.gif?raw=true" width="100%"></a></td>
+    <td> <a href="https://app.clear.ml"><img src="https://github.com/pollfly/clearml/blob/master/docs/experiment_manager.gif?raw=true" width="49%"></a></td>
+    <td> <a href="https://app.clear.ml"><img src="https://github.com/pollfly/clearml/blob/master/docs/datasets.gif?raw=true" width="49%"></a></td>
   </tr>
   <tr>
-    <td><a href="https://app.clear.ml"><img src="https://github.com/pollfly/clearml/blob/master/docs/orchestration.gif?raw=true" width="100%"></a></td>
-    <td><a href="https://app.clear.ml"><img src="https://github.com/pollfly/clearml/blob/master/docs/pipelines.gif?raw=true" width="100%"></a></td>
+    <td><a href="https://app.clear.ml"><img src="https://github.com/pollfly/clearml/blob/master/docs/orchestration.gif?raw=true" width="49%"></a></td>
+    <td><a href="https://app.clear.ml"><img src="https://github.com/pollfly/clearml/blob/master/docs/pipelines.gif?raw=true" width="49%"></a></td>
   </tr>
 </tbody>
 </table>

@@ -71,12 +71,12 @@ Instrumenting these components is the **ClearML-server**, see [Self-Hosting](htt
 <table>
 <tbody>
   <tr>
-    <td> <img src="https://github.com/pollfly/clearml/blob/gifs/docs/experiment_manager.gif?raw=true" width="100%"></td>
-    <td> <img src="https://github.com/pollfly/clearml/blob/gifs/docs/datasets.gif?raw=true" width="100%"></td>
+    <td> <img src="https://github.com/allegroai/clearml/blob/master/docs/experiment_manager.gif?raw=true" width="100%"></td>
+    <td> <img src="https://github.com/allegroai/clearml/blob/master/docs/datasets.gif?raw=true" width="100%"></td>
   </tr>
   <tr>
-    <td><img src="https://github.com/pollfly/clearml/blob/gifs/docs/orchestration.gif?raw=true" width="100%"></td>
-    <td><img src="https://github.com/pollfly/clearml/blob/gifs/docs/pipelines.gif?raw=true" width="100%"></td>
+    <td><img src="https://github.com/allegroai/clearml/blob/master/docs/orchestration.gif?raw=true" width="100%"></td>
+    <td><img src="https://github.com/allegroai/clearml/blob/master/docs/pipelines.gif?raw=true" width="100%"></td>
   </tr>
 </tbody>
 </table>

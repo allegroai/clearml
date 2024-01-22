@@ -528,8 +528,10 @@ class _Arguments(object):
                     "Failed parsing task parameter {}={} keeping default {}={}".format(k, param, k, v)
                 )
 
-            # assume more general purpose type int -> float
-            if v_type == int:
+            # if parameter is empty and default value is None, keep as None
+            if param == '' and v is None:
+                v_type = type(None)
+            elif v_type == int:  # assume more general purpose type int -> float
                 if v is not None and int(v) != float(v):
                     v_type = float
             elif v_type == bool:

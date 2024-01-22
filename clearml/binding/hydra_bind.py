@@ -131,7 +131,7 @@ class PatchHydra(object):
         # noinspection PyBroadException
         try:
             override = PatchHydra._parse_override(override)
-            group_exists = hydra_context.config_loader.repository.group_exists(override.key_or_group) 
+            group_exists = hydra_context.config_loader.repository.group_exists(override.key_or_group)
             return group_exists
         except Exception:
             if not PatchHydra._config_group_warning_sent:

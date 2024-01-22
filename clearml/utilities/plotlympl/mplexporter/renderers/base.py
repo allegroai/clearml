@@ -1,7 +1,7 @@
 import warnings
 import itertools
 from contextlib import contextmanager
-from distutils.version import LooseVersion
+from clearml.utilities.distutils_version import LooseVersion
 
 import numpy as np
 import matplotlib as mpl

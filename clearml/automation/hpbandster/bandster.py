@@ -85,7 +85,7 @@ class _TrainsBandsterWorker(Worker):
                 self.optimizer.budget.iterations.update(self._current_job.task_id(), iteration_value[0])
 
                 # check if we exceeded this job budget
-                if iteration_value[0] >= self.budget_iteration_scale * budget:
+                if iteration_value[0][0] >= self.budget_iteration_scale * budget:
                     self._current_job.abort()
                     break
 
@@ -95,7 +95,7 @@ class _TrainsBandsterWorker(Worker):
             # noinspection PyProtectedMember
             self.optimizer.budget.jobs.update(
                 self._current_job.task_id(),
-                float(iteration_value[0]) / self.optimizer._max_iteration_per_job)
+                float(iteration_value[0][0]) / self.optimizer._max_iteration_per_job)
 
         result = {
             # this is the a mandatory field to run hyperband
@@ -104,7 +104,7 @@ class _TrainsBandsterWorker(Worker):
             # can be used for any user-defined information - also mandatory
             'info': self._current_job.task_id()
         }
-        print('TrainsBandsterWorker result {}, iteration {}'.format(result, iteration_value))
+        print('TrainsBandsterWorker result {}, iteration {}'.format(result, iteration_value[0]))
         # noinspection PyProtectedMember
         self.optimizer._current_jobs.remove(self._current_job)
         return result
@@ -299,7 +299,7 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
                 sleep_interval=int(self.pool_period_minutes * 60),
                 budget_iteration_scale=budget_iteration_scale,
                 base_task_id=self._base_task_id,
-                objective=self._objective_metric,
+                objective=self._objective_metric.objectives[0],
                 queue_name=self._execution_queue,
                 nameserver='127.0.0.1', nameserver_port=self._nameserver_port, run_id=fake_run_id, id=i)
             w.run(background=True)

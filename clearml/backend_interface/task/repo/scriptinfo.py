@@ -97,7 +97,12 @@ class ScriptRequirements(object):
             for fname, lines in skimage.items():
                 modules.add('scikit_image', fname, lines)
 
-        # if we have torch and it supports tensorboard, we should add that as well
+        if 'tensorflow-intel' in modules:
+            tfmodule = modules.pop('tensorflow-intel', {})
+            for fname, lines in tfmodule.items():
+                modules.add('tensorflow', fname, lines)
+
+        # if we have torch, and it supports tensorboard, we should add that as well
         # (because it will not be detected automatically)
         if 'torch' in modules and 'tensorboard' not in modules and 'tensorboardX' not in modules:
             # noinspection PyBroadException
@@ -331,14 +336,14 @@ class _JupyterObserver(object):
             # noinspection PyBroadException
             try:
                 # noinspection PyPackageRequirements
-                from nbconvert.exporters import PythonExporter
+                from nbconvert.exporters import PythonExporter  # noqa
                 _script_exporter = PythonExporter()
             except Exception:
                 _script_exporter = None
 
             if _script_exporter is None:
                 # noinspection PyPackageRequirements
-                from nbconvert.exporters.script import ScriptExporter
+                from nbconvert.exporters.script import ScriptExporter  # noqa
                 _script_exporter = ScriptExporter()
 
         except Exception as ex:
@@ -617,7 +622,7 @@ class ScriptInfo(object):
             # noinspection PyBroadException
             try:
                 # noinspection PyPackageRequirements
-                from notebook.notebookapp import list_running_servers  # <= Notebook v6
+                from notebook.notebookapp import list_running_servers  # noqa <= Notebook v6
                 # noinspection PyBroadException
                 try:
                     jupyter_servers += list(list_running_servers())
@@ -632,7 +637,7 @@ class ScriptInfo(object):
             # noinspection PyBroadException
             try:
                 # noinspection PyPackageRequirements
-                from jupyter_server.serverapp import list_running_servers
+                from jupyter_server.serverapp import list_running_servers  # noqa
                 # noinspection PyBroadException
                 try:
                     jupyter_servers += list(list_running_servers())
@@ -719,7 +724,7 @@ class ScriptInfo(object):
             is_google_colab = False
             log_history = False
             colab_name = None
-            # check if this is google.colab, then there is no local file
+            # check if this is `google.colab`, then there is no local file
             is_google_colab = ScriptInfo.is_google_colab()
 
             if is_google_colab:
@@ -748,7 +753,7 @@ class ScriptInfo(object):
                 if not entry_point.exists():
                     # noinspection PyBroadException
                     try:
-                        alternative_entry_point = '-'.join(entry_point_filename.split('-')[:-5])+'.ipynb'
+                        alternative_entry_point = '-'.join(entry_point_filename.split('-')[:-5]) + '.ipynb'
                         # now we should try to find the actual file
                         entry_point_alternative = (Path.cwd() / alternative_entry_point).absolute()
                         if not entry_point_alternative.is_file():
@@ -823,7 +828,7 @@ class ScriptInfo(object):
         # returns tuple (notebook name, raw string notebook)
         # None, None if fails
         try:
-            from google.colab import _message
+            from google.colab import _message  # noqa
 
             notebook = _message.blocking_request('get_ipynb', timeout_sec=timeout)['ipynb']
             notebook_name = notebook.get("metadata", {}).get("colab", {}).get("name", "colab.ipynb")
@@ -990,6 +995,10 @@ class ScriptInfo(object):
             working_dir = cls._get_working_dir(repo_root)
             entry_point = cls._get_entry_point(repo_root, script_path)
 
+        # check if we are running with torch distributed, or transformers accelerate
+        # make sure we change the entry point to reflect it.
+        entry_point = cls._detect_distributed_execution(entry_point, log)
+
         if check_uncommitted:
             # if we have a jupyter notebook, always store the entire notebook (instead of the git diff)
             if jupyter_filepath:
@@ -1005,7 +1014,7 @@ class ScriptInfo(object):
             if len(diff) > cls.max_diff_size_bytes:
                 messages.append(
                     "======> WARNING! Git diff too large to store "
-                    "({}kb), skipping uncommitted changes <======".format(len(diff)//1024))
+                    "({}kb), skipping uncommitted changes <======".format(len(diff) // 1024))
                 auxiliary_git_diff = diff
                 diff = '# WARNING! git diff too large to store, clear this section to execute without it.\n' \
                        '# full git diff available in Artifacts/auxiliary_git_diff\n' \
@@ -1060,8 +1069,54 @@ class ScriptInfo(object):
         return (ScriptInfoResult(script=script_info, warning_messages=messages, auxiliary_git_diff=auxiliary_git_diff),
                 script_requirements)
 
+    @classmethod
+    def _detect_distributed_execution(cls, entry_point, log):
+        # check if we are running with torch distributed, or transformers accelerate
+        # make sure we change the entry point to reflect it.
+        is_torch_distributed = os.environ.get("TORCHELASTIC_RUN_ID") is not None
+        is_transformers_distributed = os.environ.get("ACCELERATE_DYNAMO_MODE") is not None
+        if not is_torch_distributed and not is_transformers_distributed:
+            return entry_point
+
+        # this torch distributed
+        # noinspection PyBroadException
+        try:
+            from psutil import Process  # noqa
+            cmdline = Process().parent().cmdline()
+            # first find the torch model call "torch.distributed.run" or "torch.distributed.launch"
+            if is_torch_distributed:
+                cmdstart_i = next(i for i, c in enumerate(cmdline) if c.lower().startswith("torch.distributed."))
+            elif is_transformers_distributed:
+                cmdstart_i = next(i for i, c in enumerate(cmdline) if c.lower().startswith("accelerate.commands."))
+            else:
+                raise Exception()  # we should not get here
+
+            cmdline = cmdline[cmdstart_i:]
+            # reverse look into the paths
+            cmdend_i = next(i for i, c in enumerate(cmdline) if Path(c).stem == Path(entry_point).stem)
+            filearg = cmdline[cmdend_i]
+            # notice --args (script args) are passed on the Args section, we skip detecting them here
+            # we are also already removing the filearg from the cmd (it is the last before script args)
+            new_cmd = cmdline[:cmdend_i]
+
+            # we assume our entrypoint is the last parameter of the execution cmd line
+            if Path(filearg).stem == Path(entry_point).stem:
+                entry_point = "-m {} {}".format(" ".join(new_cmd), entry_point)
+            if log:
+                log.info(
+                    "{} execution detected: adjusting entrypoint to "
+                    "reflect distributed execution arguments".format(
+                        "Torch Distributed" if is_torch_distributed else "Transformers Accelerate")
+                )
+        except Exception:
+            if log:
+                log.warning("{} execution detected: Failed Detecting launch arguments, skipping".format(
+                    "Torch Distributed" if is_torch_distributed else "Transformers Accelerate"))
+
+        return entry_point
+
     @staticmethod
-    def __legacy_jupyter_notebook_server_json_parsing(self):
+    def __legacy_jupyter_notebook_server_json_parsing():
         # noinspection PyBroadException
         try:
             # on some jupyter notebook versions this function can crash on parsing the json file,

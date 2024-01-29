@@ -4075,6 +4075,13 @@ class PipelineDecorator(PipelineController):
                     ):
                         _node.name = "{}_{}".format(_node_name, counter)
                         counter += 1
+                    # Copy callbacks to the replicated node
+                    if cls._singleton._pre_step_callbacks.get(_node_name):
+                        cls._singleton._pre_step_callbacks[_node.name] = cls._singleton._pre_step_callbacks[_node_name]
+                    if cls._singleton._post_step_callbacks.get(_node_name):
+                        cls._singleton._post_step_callbacks[_node.name] = cls._singleton._post_step_callbacks[_node_name]
+                    if cls._singleton._status_change_callbacks.get(_node_name):
+                        cls._singleton._status_change_callbacks[_node.name] = cls._singleton._status_change_callbacks[_node_name]
                     _node_name = _node.name
                     if _node.name not in cls._singleton._nodes:
                         cls._singleton._nodes[_node.name] = _node

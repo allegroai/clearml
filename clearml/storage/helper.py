@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from datetime import datetime
 from multiprocessing.pool import ThreadPool
-from tempfile import mktemp
+from tempfile import mkstemp
 from time import time
 from types import GeneratorType
 
@@ -2004,7 +2004,7 @@ class StorageHelper(object):
             return None
         # create temp file with the requested file name
         file_name = '.' + remote_url.split('/')[-1].split(os.path.sep)[-1]
-        local_path = mktemp(suffix=file_name)
+        _, local_path = mkstemp(suffix=file_name)
         return helper.download_to_file(remote_url, local_path, skip_zero_size_check=skip_zero_size_check)
 
     def __init__(
@@ -2614,7 +2614,9 @@ class StorageHelper(object):
         try:
             if verbose:
                 self._log.info("Start downloading from {}".format(remote_path))
-            if not overwrite_existing and Path(local_path).is_file():
+            # check for 0 sized files as well - we want to override empty files that were created
+            # via mkstemp or similar functions
+            if not overwrite_existing and Path(local_path).is_file() and Path(local_path).stat().st_size != 0:
                 self._log.debug(
                     'File {} already exists, no need to download, thread id = {}'.format(
                         local_path,

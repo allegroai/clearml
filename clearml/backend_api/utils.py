@@ -9,6 +9,7 @@ from urllib3 import PoolManager
 import six
 
 from .session.defs import ENV_HOST_VERIFY_CERT
+from ..backend_config.converters import strtobool
 
 if six.PY3:
     from functools import lru_cache
@@ -141,8 +142,14 @@ def get_http_session_with_retry(
     adapter = TLSv1HTTPAdapter(max_retries=retry, pool_connections=pool_connections, pool_maxsize=pool_maxsize)
     session.mount('http://', adapter)
     session.mount('https://', adapter)
+
     # update verify host certificate
-    session.verify = ENV_HOST_VERIFY_CERT.get(default=config.get('api.verify_certificate', True))
+    verify = ENV_HOST_VERIFY_CERT.get(default=config.get('api.verify_certificate', True))
+    try:
+        session.verify = bool(strtobool(verify) if isinstance(verify, str) else verify)
+    except (ValueError, AttributeError):
+        session.verify = verify
+
     if not session.verify and __disable_certificate_verification_warning < 2:
         # show warning
         __disable_certificate_verification_warning += 1

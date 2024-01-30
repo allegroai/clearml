@@ -20,3 +20,15 @@ def get_filename_max_length(dir_path):
         print(err)
 
     return 255  # Common filesystems like NTFS, EXT4 and HFS+ limited with 255
+
+
+def is_path_traversal(target_folder, relative_path):
+    try:
+        target_folder = pathlib2.Path(target_folder)
+        relative_path = pathlib2.Path(relative_path)
+        # returns the relative path starting from the target_folder,
+        # or raise an ValueError if a directory traversal attack is tried
+        target_folder.joinpath(relative_path).resolve().relative_to(target_folder.resolve())
+        return False
+    except ValueError:
+        return True

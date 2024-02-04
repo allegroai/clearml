@@ -1469,6 +1469,7 @@ class PipelineController(object):
         pipeline_object._task = pipeline_task
         pipeline_object._nodes = {}
         pipeline_object._running_nodes = []
+        pipeline_object._version = pipeline_task._get_runtime_properties().get("version")
         try:
             pipeline_object._deserialize(pipeline_task._get_configuration_dict(cls._config_section), force=True)
         except Exception:
@@ -1484,6 +1485,11 @@ class PipelineController(object):
     def tags(self):
         # type: () -> List[str]
         return self._task.get_tags() or []
+
+    @property
+    def version(self):
+        # type: () -> str
+        return self._version
 
     def add_tags(self, tags):
         # type: (Union[Sequence[str], str]) -> None

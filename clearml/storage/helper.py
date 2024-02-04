@@ -461,15 +461,15 @@ class _Boto3Driver(_Driver):
                     )
                 }
                 if not cfg.use_credentials_chain:
-                    boto_kwargs["aws_access_key_id"] = cfg.key
-                    boto_kwargs["aws_secret_access_key"] = cfg.secret
+                    boto_kwargs["aws_access_key_id"] = cfg.key or None
+                    boto_kwargs["aws_secret_access_key"] = cfg.secret or None
                     if cfg.token:
                         boto_kwargs["aws_session_token"] = cfg.token
 
-                self.resource = boto3.resource(
-                    "s3",
-                    **boto_kwargs
+                boto_session = boto3.Session(
+                    profile_name=cfg.profile or None,
                 )
+                self.resource = boto_session.resource("s3", **boto_kwargs)
 
                 self.config = cfg
                 bucket_name = self.name[len(cfg.host) + 1:] if cfg.host else self.name
@@ -683,7 +683,12 @@ class _Boto3Driver(_Driver):
                 'time': datetime.utcnow().isoformat()
             }
 
-            boto_session = boto3.Session(conf.key, conf.secret, aws_session_token=conf.token)
+            boto_session = boto3.Session(
+                aws_access_key_id=conf.key or None,
+                aws_secret_access_key=conf.secret or None,
+                aws_session_token=conf.token or None,
+                profile_name=conf.profile or None
+            )
             endpoint = (('https://' if conf.secure else 'http://') + conf.host) if conf.host else None
             boto_resource = boto_session.resource('s3', region_name=conf.region or None, endpoint_url=endpoint)
             bucket = boto_resource.Bucket(bucket_name)
@@ -738,7 +743,9 @@ class _Boto3Driver(_Driver):
                 cls._bucket_location_failure_reported.add(conf.get_bucket_host())
 
         try:
-            boto_session = boto3.Session(conf.key, conf.secret, aws_session_token=conf.token)
+            boto_session = boto3.Session(
+                conf.key, conf.secret, aws_session_token=conf.token, profile_name=conf.profile_name or None
+            )
             boto_resource = boto_session.resource('s3')
             return boto_resource.meta.client.get_bucket_location(Bucket=conf.bucket)["LocationConstraint"]
 
@@ -2018,6 +2025,7 @@ class StorageHelper(object):
         logger=None,
         retries=5,
         token=None,
+        profile=None,
         **kwargs
     ):
         level = config.get("storage.log.level", None)
@@ -2072,6 +2080,7 @@ class StorageHelper(object):
                 region=final_region,
                 use_credentials_chain=self._conf.use_credentials_chain,
                 token=token or self._conf.token,
+                profile=profile or self._conf.profile,
                 extra_args=self._conf.extra_args,
             )
 

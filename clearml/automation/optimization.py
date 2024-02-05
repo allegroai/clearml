@@ -1947,7 +1947,7 @@ class HyperParameterOptimizer(object):
                     objective if objective is not None else (
                             [-1] * self._objective_metric.len
                     ),
-                    iteration_value if iteration_value is not None else (
+                    [iteration_value] * self._objective_metric.len if iteration_value is not None else (
                             [-1] * self._objective_metric.len
                     ),
                     params

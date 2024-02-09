@@ -45,6 +45,7 @@ class S3BucketConfig(object):
         use_credentials_chain=False,
         token="",
         extra_args=None,
+        secure=True,
         profile=""
     ):
         self.key = key
@@ -54,6 +55,7 @@ class S3BucketConfig(object):
         self.region = region
         self.use_credentials_chain = use_credentials_chain
         self.extra_args = extra_args
+        self.secure = secure
         self.profile = profile
 
     def is_valid(self):

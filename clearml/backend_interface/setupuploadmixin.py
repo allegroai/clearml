@@ -67,6 +67,7 @@ class SetupUploadMixin(object):
         multipart=True,  # bool
         secure=True,  # bool
         verify=True,  # bool
+        profile=None  # Optional[str]
     ):
         # type: (...) -> None
         """
@@ -85,6 +86,7 @@ class SetupUploadMixin(object):
             multipart.
         :param secure: Server supports HTTPS. Only required when using a Non-AWS S3 solution that only supports HTTPS.
         :param verify: Whether or not to verify SSL certificates.
+        :param profile: The AWS profile
             Only required when using a Non-AWS S3 solution that only supports HTTPS with self-signed certificate.
         """
         self._bucket_config = S3BucketConfig(  # noqa
@@ -98,6 +100,7 @@ class SetupUploadMixin(object):
             multipart=multipart,
             secure=secure,
             verify=verify,
+            profile=profile
         )
         StorageHelper.add_aws_configuration(self._bucket_config, log=self.log)
         self.storage_uri = StorageHelper.get_aws_storage_uri_from_config(self._bucket_config)

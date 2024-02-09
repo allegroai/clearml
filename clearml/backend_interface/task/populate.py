@@ -213,6 +213,8 @@ class CreateAndPopulate(object):
             task_state['script']['requirements'] = repo_info.script.get('requirements') or {}
             if self.cwd:
                 self.cwd = self.cwd
+                # cwd should be relative to the repo_root, but we need the full path
+                # (repo_root + cwd) in order to resolve the entry point
                 cwd = (Path(repo_info.script['repo_root']) / self.cwd).as_posix()
 
                 if not Path(cwd).is_dir():
@@ -220,7 +222,9 @@ class CreateAndPopulate(object):
                 entry_point = \
                     Path(repo_info.script['repo_root']) / repo_info.script['working_dir'] / repo_info.script[
                         'entry_point']
+                # resolve entry_point relative to the current working directory
                 entry_point = entry_point.relative_to(cwd).as_posix()
+                # restore cwd - make it relative to the repo_root again
                 cwd = Path(cwd).relative_to(repo_info.script['repo_root']).as_posix()
                 task_state['script']['entry_point'] = entry_point or ""
                 task_state['script']['working_dir'] = cwd or "."

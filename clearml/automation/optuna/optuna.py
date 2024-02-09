@@ -55,21 +55,29 @@ class OptunaObjective(object):
             if not is_pending:
                 # noinspection PyProtectedMember
                 iteration_value = self.optimizer._objective_metric.get_current_raw_objective(current_job)
+                if not iteration_value:
+                    if not self.optimizer.monitor_job(current_job):
+                        break
+                    continue
 
                 # make sure we skip None objective values
-                if iteration_value and iteration_value[1] is not None:
-                    # update budget
-                    trial.report(value=iteration_value[1], step=iteration_value[0])
+                if not any(val is None or val[1] is None for val in iteration_value):
+                    iteration = max(iv[0] for iv in iteration_value)
+                    # trial pruning based on intermediate values not supported when using multi-objective
+                    # noinspection PyProtectedMember
+                    if self.optimizer._objective_metric.len == 1:
+                        # update budget
+                        trial.report(value=iteration_value[0][1], step=iteration)
 
-                    # Handle pruning based on the intermediate value.
-                    if trial.should_prune() and (
-                            not self.min_iteration_per_job or
-                            iteration_value[0] >= self.min_iteration_per_job):
-                        current_job.abort()
-                        raise optuna.TrialPruned()
+                        # Handle pruning based on the intermediate value.
+                        if trial.should_prune() and (
+                                not self.min_iteration_per_job or
+                                iteration >= self.min_iteration_per_job):
+                            current_job.abort()
+                            raise optuna.TrialPruned()
 
                     # check if we exceeded this job budget
-                    if self.max_iteration_per_job and iteration_value[0] >= self.max_iteration_per_job:
+                    if self.max_iteration_per_job and iteration >= self.max_iteration_per_job:
                         current_job.abort()
                         break
 
@@ -79,6 +87,10 @@ class OptunaObjective(object):
 
         # noinspection PyProtectedMember
         objective_metric = self.optimizer._objective_metric.get_objective(current_job)
+        # noinspection PyProtectedMember
+        if self.optimizer._objective_metric.len == 1:
+            objective_metric = objective_metric[0]
+            iteration_value = iteration_value[0]
         print('OptunaObjective result metric={}, iteration {}'.format(objective_metric, iteration_value))
         # noinspection PyProtectedMember
         self.optimizer._current_jobs.remove(current_job)
@@ -157,13 +169,22 @@ class OptimizerOptuna(SearchStrategy):
             This function returns only after optimization is completed or :meth:`stop` was called.
 
         """
-        self._study = optuna.create_study(
-            direction="minimize" if self._objective_metric.get_objective_sign() < 0 else "maximize",
-            load_if_exists=False,
-            sampler=self._optuna_sampler,
-            pruner=self._optuna_pruner,
-            study_name=self._optimizer_task.id if self._optimizer_task else None,
-        )
+        if self._objective_metric.len != 1:
+            self._study = optuna.create_study(
+                directions=["minimize" if sign_ < 0 else "maximize" for sign_ in self._objective_metric.get_objective_sign()],
+                load_if_exists=False,
+                sampler=self._optuna_sampler,
+                pruner=self._optuna_pruner,
+                study_name=self._optimizer_task.id if self._optimizer_task else None,
+            )
+        else:
+            self._study = optuna.create_study(
+                direction="minimize" if self._objective_metric.get_objective_sign()[0] < 0 else "maximize",
+                load_if_exists=False,
+                sampler=self._optuna_sampler,
+                pruner=self._optuna_pruner,
+                study_name=self._optimizer_task.id if self._optimizer_task else None,
+            )
         config_space = self._convert_hyper_parameters_to_optuna()
         self._objective = OptunaObjective(
             base_task_id=self._base_task_id,

@@ -38,6 +38,7 @@ from .defs import (
 from .request import Request, BatchRequest  # noqa: F401
 from .token_manager import TokenManager
 from ..utils import get_http_session_with_retry, urllib_log_warning_setup
+from ...backend_config import ConfigurationError
 from ...backend_config.defs import get_config_file
 from ...debugging import get_logger
 from ...debugging.log import resolve_logging_level
@@ -773,7 +774,7 @@ class Session(TokenManager):
                 # noinspection PyBroadException
                 try:
                     cls()
-                except MissingConfigError:
+                except (MissingConfigError, ConfigurationError):
                     if raise_error and not ENV_IGNORE_MISSING_CONFIG.get():
                         raise
                 except LoginError:

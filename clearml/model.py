@@ -1932,8 +1932,8 @@ class InputModel(Model):
         # type: () -> str
         return self._base_model_id
 
-    def connect(self, task, name=None):
-        # type: (Task, Optional[str]) -> None
+    def connect(self, task, name=None, ignore_remote_overrides=False):
+        # type: (Task, Optional[str], bool) -> None
         """
         Connect the current model to a Task object, if the model is preexisting. Preexisting models include:
 
@@ -1943,24 +1943,31 @@ class InputModel(Model):
         - Models whose origin is not ClearML that are used to create an InputModel object. For example,
           models created using TensorFlow models.
 
-        When the experiment is executed remotely in a worker, the input model already specified in the experiment is
-        used.
+        When the experiment is executed remotely in a worker, the input model specified in the experiment UI/backend
+        is used, unless `ignore_remote_overrides` is set to True.
 
         .. note::
            The **ClearML Web-App** allows you to switch one input model for another and then enqueue the experiment
            to execute in a worker.
 
         :param object task: A Task object.
+        :param ignore_remote_overrides: If True, changing the model in the UI/backend will have no
+            effect when running remotely.
+            Default is False, meaning that any changes made in the UI/backend will be applied in remote execution.
         :param str name: The model name to be stored on the Task
-            (default to filename of the model weights, without the file extension, or to `Input Model` if that is not found)
+            (default to filename of the model weights, without the file extension, or to `Input Model`
+            if that is not found)
         """
         self._set_task(task)
         name = name or InputModel._get_connect_name(self)
         InputModel._warn_on_same_name_connect(name)
+        ignore_remote_overrides = task._handle_ignore_remote_overrides(
+            name + "/_ignore_remote_overrides_input_model_", ignore_remote_overrides
+        )
 
         model_id = None
         # noinspection PyProtectedMember
-        if running_remotely() and (task.is_main_task() or task._is_remote_main_task()):
+        if running_remotely() and (task.is_main_task() or task._is_remote_main_task()) and not ignore_remote_overrides:
             input_models = task.input_models_id
             # noinspection PyBroadException
             try:
@@ -2245,7 +2252,7 @@ class OutputModel(BaseModel):
             pass
         self.connect(task, name=name)
 
-    def connect(self, task, name=None):
+    def connect(self, task, name=None, **kwargs):
         # type: (Task, Optional[str]) -> None
         """
         Connect the current model to a Task object, if the model is a preexisting model. Preexisting models include:
@@ -2347,6 +2354,7 @@ class OutputModel(BaseModel):
         iteration=None,  # type: Optional[int]
         update_comment=True,  # type: bool
         is_package=False,  # type: bool
+        async_enable=True,  # type: bool
     ):
         # type: (...) -> str
         """
@@ -2374,6 +2382,8 @@ class OutputModel(BaseModel):
             - ``True`` - Update model comment (Default)
             - ``False`` - Do not update
         :param bool is_package: Mark the weights file as compressed package, usually a zip file.
+        :param bool async_enable: Whether to upload model in background or to block.
+            Will raise an error in the main thread if the weights failed to be uploaded or not.
 
         :return: The uploaded URI.
         """
@@ -2421,6 +2431,7 @@ class OutputModel(BaseModel):
                     target_filename=target_filename or Path(weights_filename).name,
                     auto_delete_file=auto_delete_file,
                     iteration=iteration,
+                    async_enable=async_enable
                 )
 
             # make sure we delete the previous file, if it exists
@@ -2502,7 +2513,7 @@ class OutputModel(BaseModel):
             output_uri = model.update_and_upload(
                 model_file=weights_filename,
                 task_id=self._task.id,
-                async_enable=True,
+                async_enable=async_enable,
                 target_filename=target_filename,
                 framework=self.framework or framework,
                 comment=comment,
@@ -2535,6 +2546,7 @@ class OutputModel(BaseModel):
         target_filename=None,  # type: Optional[str]
         auto_delete_file=True,  # type: bool
         iteration=None,  # type: Optional[int]
+        async_enable=True,  # type: bool
     ):
         # type: (...) -> str
         """
@@ -2559,6 +2571,8 @@ class OutputModel(BaseModel):
             - ``False`` - Do not delete
 
         :param int iteration: The iteration number.
+        :param bool async_enable: Whether to upload model in background or to block.
+            Will raise an error in the main thread if the weights failed to be uploaded or not.
 
         :return: The uploaded URI for the weights package.
         """
@@ -2626,6 +2640,7 @@ class OutputModel(BaseModel):
             target_filename=target_filename or "model_package.zip",
             iteration=iteration,
             update_comment=False,
+            async_enable=async_enable
         )
         # set the model tag (by now we should have a model object) so we know we have packaged file
         self._set_package_tag()

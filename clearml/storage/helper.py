@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from datetime import datetime
 from multiprocessing.pool import ThreadPool
-from tempfile import mktemp
+from tempfile import mkstemp
 from time import time
 from types import GeneratorType
 
@@ -461,15 +461,15 @@ class _Boto3Driver(_Driver):
                     )
                 }
                 if not cfg.use_credentials_chain:
-                    boto_kwargs["aws_access_key_id"] = cfg.key
-                    boto_kwargs["aws_secret_access_key"] = cfg.secret
+                    boto_kwargs["aws_access_key_id"] = cfg.key or None
+                    boto_kwargs["aws_secret_access_key"] = cfg.secret or None
                     if cfg.token:
                         boto_kwargs["aws_session_token"] = cfg.token
 
-                self.resource = boto3.resource(
-                    "s3",
-                    **boto_kwargs
+                boto_session = boto3.Session(
+                    profile_name=cfg.profile or None,
                 )
+                self.resource = boto_session.resource("s3", **boto_kwargs)
 
                 self.config = cfg
                 bucket_name = self.name[len(cfg.host) + 1:] if cfg.host else self.name
@@ -615,7 +615,11 @@ class _Boto3Driver(_Driver):
         def async_download(a_obj, a_stream, cb, cfg):
             try:
                 a_obj.download_fileobj(a_stream, Callback=cb, Config=cfg)
+                if cb:
+                    cb.close(report_completed=True)
             except Exception as ex:
+                if cb:
+                    cb.close()
                 (log or self.get_logger()).error('Failed downloading: %s' % ex)
             a_stream.close()
 
@@ -679,7 +683,12 @@ class _Boto3Driver(_Driver):
                 'time': datetime.utcnow().isoformat()
             }
 
-            boto_session = boto3.Session(conf.key, conf.secret, aws_session_token=conf.token)
+            boto_session = boto3.Session(
+                aws_access_key_id=conf.key or None,
+                aws_secret_access_key=conf.secret or None,
+                aws_session_token=conf.token or None,
+                profile_name=conf.profile or None
+            )
             endpoint = (('https://' if conf.secure else 'http://') + conf.host) if conf.host else None
             boto_resource = boto_session.resource('s3', region_name=conf.region or None, endpoint_url=endpoint)
             bucket = boto_resource.Bucket(bucket_name)
@@ -734,7 +743,9 @@ class _Boto3Driver(_Driver):
                 cls._bucket_location_failure_reported.add(conf.get_bucket_host())
 
         try:
-            boto_session = boto3.Session(conf.key, conf.secret, aws_session_token=conf.token)
+            boto_session = boto3.Session(
+                conf.key, conf.secret, aws_session_token=conf.token, profile_name=conf.profile_name or None
+            )
             boto_resource = boto_session.resource('s3')
             return boto_resource.meta.client.get_bucket_location(Bucket=conf.bucket)["LocationConstraint"]
 
@@ -780,8 +791,8 @@ class _GoogleCloudStorageDriver(_Driver):
     class _Container(object):
         def __init__(self, name, cfg):
             try:
-                from google.cloud import storage
-                from google.oauth2 import service_account
+                from google.cloud import storage  # noqa
+                from google.oauth2 import service_account  # noqa
             except ImportError:
                 raise UsageError(
                     'Google cloud driver not found. '
@@ -862,7 +873,7 @@ class _GoogleCloudStorageDriver(_Driver):
             object.delete()
         except Exception as ex:
             try:
-                from google.cloud.exceptions import NotFound
+                from google.cloud.exceptions import NotFound  # noqa
                 if isinstance(ex, NotFound):
                     return False
             except ImportError:
@@ -949,7 +960,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
             except ImportError:
                 try:
                     from azure.storage.blob import BlockBlobService  # noqa
-                    from azure.common import AzureHttpError  # noqa: F401
+                    from azure.common import AzureHttpError  # noqa
 
                     self.__legacy = True
                 except ImportError:
@@ -1193,6 +1204,7 @@ class _AzureBlobServiceStorageDriver(_Driver):
             obj.blob_name,
             progress_callback=cb,
         )
+        cb.close()
         if container.is_legacy():
             return blob.content
         else:
@@ -1663,7 +1675,7 @@ class _FileStorageDriver(_Driver):
 
         try:
             os.unlink(path)
-        except Exception:
+        except Exception:  # noqa
             return False
 
         # # Check and delete all the empty parent folders
@@ -1767,14 +1779,14 @@ class _FileStorageDriver(_Driver):
         if six.PY3:
             from io import FileIO as file
 
-        if isinstance(iterator, (file)):
+        if isinstance(iterator, file):
             get_data = iterator.read
             args = (chunk_size,)
         else:
             get_data = next
             args = (iterator,)
 
-        data = bytes('')
+        data = bytes(b'')
         empty = False
 
         while not empty or len(data) > 0:
@@ -1999,7 +2011,7 @@ class StorageHelper(object):
             return None
         # create temp file with the requested file name
         file_name = '.' + remote_url.split('/')[-1].split(os.path.sep)[-1]
-        local_path = mktemp(suffix=file_name)
+        _, local_path = mkstemp(suffix=file_name)
         return helper.download_to_file(remote_url, local_path, skip_zero_size_check=skip_zero_size_check)
 
     def __init__(
@@ -2013,6 +2025,7 @@ class StorageHelper(object):
         logger=None,
         retries=5,
         token=None,
+        profile=None,
         **kwargs
     ):
         level = config.get("storage.log.level", None)
@@ -2067,6 +2080,7 @@ class StorageHelper(object):
                 region=final_region,
                 use_credentials_chain=self._conf.use_credentials_chain,
                 token=token or self._conf.token,
+                profile=profile or self._conf.profile,
                 extra_args=self._conf.extra_args,
             )
 
@@ -2320,7 +2334,7 @@ class StorageHelper(object):
         return self._get_object_size_bytes(obj, silence_errors)
 
     def _get_object_size_bytes(self, obj, silence_errors=False):
-        # type: (object) -> [int, None]
+        # type: (object, bool) -> [int, None]
         """
         Auxiliary function for `get_object_size_bytes`.
         Get size of the remote object in bytes.
@@ -2448,6 +2462,10 @@ class StorageHelper(object):
                     stream.seek(0)
                 except Exception:
                     pass
+
+        if cb:
+            cb.close(report_completed=not bool(last_ex))
+
         if last_ex:
             raise last_ex
 
@@ -2601,10 +2619,13 @@ class StorageHelper(object):
             return direct_access_path
 
         temp_local_path = None
+        cb = None
         try:
             if verbose:
-                self._log.info('Start downloading from %s' % remote_path)
-            if not overwrite_existing and Path(local_path).is_file():
+                self._log.info("Start downloading from {}".format(remote_path))
+            # check for 0 sized files as well - we want to override empty files that were created
+            # via mkstemp or similar functions
+            if not overwrite_existing and Path(local_path).is_file() and Path(local_path).stat().st_size != 0:
                 self._log.debug(
                     'File {} already exists, no need to download, thread id = {}'.format(
                         local_path,
@@ -2643,8 +2664,9 @@ class StorageHelper(object):
 
             # if driver supports download with callback, use it (it might be faster)
             if hasattr(self._driver, 'download_object'):
-                # callback
-                cb = DownloadProgressReport(total_size_mb, verbose, remote_path, self._log)
+                # callback if verbose we already reported download start, no need to do that again
+                cb = DownloadProgressReport(total_size_mb, verbose, remote_path, self._log,
+                                            report_start=True if verbose else None)
                 self._driver.download_object(obj, temp_local_path, callback=cb)
                 download_reported = bool(cb.last_reported)
                 dl_total_mb = cb.current_status_mb
@@ -2686,15 +2708,28 @@ class StorageHelper(object):
                     raise Exception('Failed renaming partial file, downloaded file exists and a 0-sized file')
 
             # report download if we are on the second chunk
-            if verbose or download_reported:
+            if cb:
+                cb.close(
+                    report_completed=True,
+                    report_summary=verbose or download_reported,
+                    report_prefix="Downloaded",
+                    report_suffix="from {} , saved to {}".format(remote_path, local_path)
+                )
+            elif verbose or download_reported:
                 self._log.info(
-                    'Downloaded %.2f MB successfully from %s , saved to %s' % (dl_total_mb, remote_path, local_path))
+                    "Downloaded {:.2f} MB successfully from {} , saved to {}".format(
+                        dl_total_mb, remote_path, local_path)
+                )
             return local_path
         except DownloadError:
+            if cb:
+                cb.close()
             raise
         except Exception as e:
+            if cb:
+                cb.close()
             self._log.error("Could not download {} , err: {} ".format(remote_path, e))
-            if delete_on_failure:
+            if delete_on_failure and temp_local_path:
                 # noinspection PyBroadException
                 try:
                     os.remove(temp_local_path)
@@ -2880,7 +2915,9 @@ class StorageHelper(object):
 
     def _do_async_upload(self, data):
         assert isinstance(data, self._UploadData)
-        return self._do_upload(data.src_path, data.dest_path, data.canonized_dest_path, extra=data.extra, cb=data.callback, verbose=True, retries=data.retries, return_canonized=data.return_canonized)
+        return self._do_upload(data.src_path, data.dest_path, data.canonized_dest_path,
+                               extra=data.extra, cb=data.callback, verbose=True,
+                               retries=data.retries, return_canonized=data.return_canonized)
 
     def _upload_from_file(self, local_path, dest_path, extra=None):
         if not hasattr(self._driver, 'upload_object'):
@@ -2897,9 +2934,12 @@ class StorageHelper(object):
                 object_name=object_name,
                 callback=cb,
                 extra=extra)
+            if cb:
+                cb.close()
         return res
 
-    def _do_upload(self, src_path, dest_path, canonized_dest_path, extra=None, cb=None, verbose=False, retries=1, return_canonized=False):
+    def _do_upload(self, src_path, dest_path, canonized_dest_path,
+                   extra=None, cb=None, verbose=False, retries=1, return_canonized=False):
         object_name = self._normalize_object_name(canonized_dest_path)
         if cb:
             try:

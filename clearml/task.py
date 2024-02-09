@@ -1,9 +1,7 @@
-import atexit
 import copy
 import json
 import os
 import shutil
-import signal
 import sys
 import threading
 import time
@@ -42,7 +40,8 @@ from .backend_config.defs import get_active_config_file, get_config_file
 from .backend_api.services import tasks, projects, events
 from .backend_api.session.session import (
     Session, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_HOST, ENV_WEB_HOST, ENV_FILES_HOST, )
-from .backend_api.session.defs import ENV_DEFERRED_TASK_INIT, ENV_IGNORE_MISSING_CONFIG, ENV_OFFLINE_MODE, MissingConfigError
+from .backend_api.session.defs import (ENV_DEFERRED_TASK_INIT, ENV_IGNORE_MISSING_CONFIG,
+                                       ENV_OFFLINE_MODE, MissingConfigError)
 from .backend_interface.metrics import Metrics
 from .backend_interface.model import Model as BackendModel
 from .backend_interface.base import InterfaceBase
@@ -99,12 +98,16 @@ from .utilities.proxy_object import (
 from .utilities.resource_monitor import ResourceMonitor
 from .utilities.seed import make_deterministic
 from .utilities.lowlevel.threads import get_current_thread_id
+from .utilities.lowlevel.distributed import get_torch_local_rank, get_torch_distributed_anchor_task_id, \
+    create_torch_distributed_anchor
 from .utilities.process.mp import BackgroundMonitor, leave_process
+from .utilities.process.exit_hooks import ExitHooks
 from .utilities.matching import matches_any_wildcard
 from .utilities.parallel import FutureTaskCaller
 from .utilities.networking import get_private_ip
 # noinspection PyProtectedMember
 from .backend_interface.task.args import _Arguments
+
 
 if TYPE_CHECKING:
     import pandas
@@ -487,8 +490,6 @@ class Task(_Task):
                 # unregister signal hooks, they cause subprocess to hang
                 # noinspection PyProtectedMember
                 cls.__main_task.__register_at_exit(cls.__main_task._at_exit)
-                # TODO: Check if the signal handler method is safe enough, for the time being, do not unhook
-                # cls.__main_task.__register_at_exit(None, only_remove_signal_and_exception_hooks=True)
 
                 # start all reporting threads
                 BackgroundMonitor.start_all(task=cls.__main_task)
@@ -530,10 +531,16 @@ class Task(_Task):
         is_deferred = False
         try:
             if not running_remotely():
+                # check remote status
+                _local_rank = get_torch_local_rank()
+                if _local_rank is not None and _local_rank > 0:
+                    is_sub_process_task_id = get_torch_distributed_anchor_task_id(timeout=30)
+
                 # only allow if running locally and creating the first Task
                 # otherwise we ignore and perform in order
                 if ENV_DEFERRED_TASK_INIT.get():
                     deferred_init = True
+
                 if not is_sub_process_task_id and deferred_init and deferred_init != cls.__nested_deferred_init_flag:
                     def completed_cb(x):
                         Task.__main_task = x
@@ -574,6 +581,11 @@ class Task(_Task):
                                     not auto_connect_frameworks.get('detect_repository', True)) else True,
                             auto_connect_streams=auto_connect_streams,
                         )
+                        # check if we are local rank 0 (local master),
+                        # create an anchor with task ID for the other processes
+                        if _local_rank == 0:
+                            create_torch_distributed_anchor(task_id=task.id)
+
                     except MissingConfigError as e:
                         if not ENV_IGNORE_MISSING_CONFIG.get():
                             raise
@@ -636,7 +648,11 @@ class Task(_Task):
             # register at exist only on the real (none deferred) Task
             if not is_deferred:
                 # register the main task for at exit hooks (there should only be one)
+                # noinspection PyProtectedMember
                 task.__register_at_exit(task._at_exit)
+                # noinspection PyProtectedMember
+                if cls.__exit_hook:
+                    cls.__exit_hook.register_signal_and_exception_hooks()
 
             # always patch OS forking because of ProcessPool and the alike
             PatchOsFork.patch_fork(task)
@@ -1500,11 +1516,13 @@ class Task(_Task):
         self.data.tags = list(set((self.data.tags or []) + tags))
         self._edit(tags=self.data.tags)
 
-    def connect(self, mutable, name=None):
-        # type: (Any, Optional[str]) -> Any
+    def connect(self, mutable, name=None, ignore_remote_overrides=False):
+        # type: (Any, Optional[str], bool) -> Any
         """
         Connect an object to a Task object. This connects an experiment component (part of an experiment) to the
         experiment. For example, an experiment component can be a valid object containing some hyperparameters, or a :class:`Model`.
+        When running remotely, the value of the connected object is overridden by the corresponding value found
+        under the experiment's UI/backend (unless `ignore_remote_overrides` is True).
 
         :param object mutable: The experiment component to connect. The object must be one of the following types:
 
@@ -1517,9 +1535,11 @@ class Task(_Task):
 
         :param str name: A section name associated with the connected object, if 'name' is None defaults to 'General'
             Currently, `name` is only supported for `dict` and `TaskParameter` objects, and should be omitted for the other supported types. (Optional)
-
             For example, by setting `name='General'` the connected dictionary will be under the General section in the hyperparameters section.
             While by setting `name='Train'` the connected dictionary will be under the Train section in the hyperparameters section.
+
+        :param ignore_remote_overrides: If True, ignore UI/backend overrides when running remotely.
+        Default is False, meaning that any changes made in the UI/backend will be applied in remote execution.
 
         :return: It will return the same object that was passed as the `mutable` argument to the method, except if the type of the object is dict.
                  For dicts the :meth:`Task.connect` will return the dict decorated as a `ProxyDictPostWrite`.
@@ -1527,6 +1547,11 @@ class Task(_Task):
 
         :raise: Raises an exception if passed an unsupported object.
         """
+        # input model connect and task parameters will handle this instead
+        if not isinstance(mutable, (InputModel, TaskParameters)):
+            ignore_remote_overrides = self._handle_ignore_remote_overrides(
+                (name or "General") + "/_ignore_remote_overrides_", ignore_remote_overrides
+            )
         # dispatching by match order
         dispatch = (
             (OutputModel, self._connect_output_model),
@@ -1548,12 +1573,75 @@ class Task(_Task):
 
         for mutable_type, method in dispatch:
             if isinstance(mutable, mutable_type):
-                return method(mutable, name=name)
+                return method(mutable, name=name, ignore_remote_overrides=ignore_remote_overrides)
 
         raise Exception('Unsupported mutable type %s: no connect function found' % type(mutable).__name__)
 
-    def connect_configuration(self, configuration, name=None, description=None):
-        # type: (Union[Mapping, list, Path, str], Optional[str], Optional[str]) -> Union[dict, Path, str]
+    def set_packages(self, packages):
+        # type: (Union[str, Path, Sequence[str]]) -> ()
+        """
+        Manually specify a list of required packages or a local requirements.txt file.
+
+        When running remotely this call is ignored
+
+        :param packages: The list of packages or the path to the requirements.txt file.
+
+            Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt" or ""
+            Use an empty string (packages="") to clear the requirements section (remote execution will use
+                requirements.txt from the git repository if the file exists)
+        """
+        if running_remotely() or packages is None:
+            return
+        self._wait_for_repo_detection(timeout=300.)
+
+        if packages and isinstance(packages, (str, Path)) and Path(packages).is_file():
+            with open(Path(packages).as_posix(), "rt") as f:
+                # noinspection PyProtectedMember
+                self._update_requirements([line.strip() for line in f.readlines()])
+            return
+
+        # noinspection PyProtectedMember
+        self._update_requirements(packages or "")
+
+    def set_repo(self, repo=None, branch=None, commit=None):
+        # type: (Optional[str], Optional[str], Optional[str]) -> ()
+        """
+        Specify a repository to attach to the function.
+        Allow users to execute the task inside the specified repository, enabling them to load modules/script
+        from the repository. Notice the execution work directory will be the repository root folder.
+        Supports both git repo url link, and local repository path (automatically converted into the remote
+        git/commit as is currently checkout).
+        Example remote url: "https://github.com/user/repo.git".
+        Example local repo copy: "./repo" -> will automatically store the remote
+        repo url and commit ID based on the locally cloned copy.
+        When executing remotely, this call will not override the repository data (it is ignored)
+
+        :param repo: Optional, remote URL for the repository to use, OR path to local copy of the git repository.
+            Use an empty string to clear the repo.
+            Example: "https://github.com/allegroai/clearml.git" or "~/project/repo" or ""
+        :param branch: Optional, specify the remote repository branch (Ignored, if local repo path is used).
+            Use an empty string to clear the branch.
+        :param commit: Optional, specify the repository commit ID (Ignored, if local repo path is used).
+            Use an empty string to clear the commit.
+        """
+        if running_remotely():
+            return
+        self._wait_for_repo_detection(timeout=300.)
+        with self._edit_lock:
+            self.reload()
+            if repo is not None:
+                # we cannot have None on the value itself
+                self.data.script.repository = repo or ""
+            if branch is not None:
+                # we cannot have None on the value itself
+                self.data.script.branch = branch or ""
+            if commit is not None:
+                # we cannot have None on the value itself
+                self.data.script.version_num = commit or ""
+            self._edit(script=self.data.script)
+
+    def connect_configuration(self, configuration, name=None, description=None, ignore_remote_overrides=False):
+        # type: (Union[Mapping, list, Path, str], Optional[str], Optional[str], bool) -> Union[dict, Path, str]
         """
         Connect a configuration dictionary or configuration file (pathlib.Path / str) to a Task object.
         This method should be called before reading the configuration file.
@@ -1571,6 +1659,9 @@ class Task(_Task):
 
            my_params = task.connect_configuration(my_params)
 
+        When running remotely, the value of the connected configuration is overridden by the corresponding value found
+        under the experiment's UI/backend (unless `ignore_remote_overrides` is True).
+
         :param configuration: The configuration. This is usually the configuration used in the model training process.
             Specify one of the following:
 
@@ -1585,9 +1676,15 @@ class Task(_Task):
 
         :param str description: Configuration section description (text). default: None
 
+        :param bool ignore_remote_overrides: If True, ignore UI/backend overrides when running remotely.
+        Default is False, meaning that any changes made in the UI/backend will be applied in remote execution.
+
         :return: If a dictionary is specified, then a dictionary is returned. If pathlib2.Path / string is
             specified, then a path to a local configuration file is returned. Configuration object.
         """
+        ignore_remote_overrides = self._handle_ignore_remote_overrides(
+            (name or "General") + "/_ignore_remote_overrides_config_", ignore_remote_overrides
+        )
         pathlib_Path = None  # noqa
         cast_Path = Path
         if not isinstance(configuration, (dict, list, Path, six.string_types)):
@@ -1631,7 +1728,7 @@ class Task(_Task):
                     configuration_ = ProxyDictPostWrite(self, _update_config_dict, configuration_)
                 return configuration_
 
-            if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):
+            if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()) or ignore_remote_overrides:
                 configuration = get_dev_config(configuration)
             else:
                 # noinspection PyBroadException
@@ -1665,7 +1762,7 @@ class Task(_Task):
             return configuration
 
         # it is a path to a local file
-        if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):
+        if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()) or ignore_remote_overrides:
             # check if not absolute path
             configuration_path = cast_Path(configuration)
             if not configuration_path.is_file():
@@ -1714,8 +1811,8 @@ class Task(_Task):
                 f.write(configuration_text)
             return cast_Path(local_filename) if isinstance(configuration, cast_Path) else local_filename
 
-    def connect_label_enumeration(self, enumeration):
-        # type: (Dict[str, int]) -> Dict[str, int]
+    def connect_label_enumeration(self, enumeration, ignore_remote_overrides=False):
+        # type: (Dict[str, int], bool) -> Dict[str, int]
         """
         Connect a label enumeration dictionary to a Task (experiment) object.
 
@@ -1732,13 +1829,22 @@ class Task(_Task):
                     "person": 1
                }
 
+        :param ignore_remote_overrides: If True, ignore UI/backend overrides when running remotely.
+            Default is False, meaning that any changes made in the UI/backend will be applied in remote execution.
         :return: The label enumeration dictionary (JSON).
         """
+        ignore_remote_overrides = self._handle_ignore_remote_overrides(
+            "General/_ignore_remote_overrides_label_enumeration_", ignore_remote_overrides
+        )
         if not isinstance(enumeration, dict):
             raise ValueError("connect_label_enumeration supports only `dict` type, "
                              "{} is not supported".format(type(enumeration)))
 
-        if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):
+        if (
+            not running_remotely()
+            or not (self.is_main_task() or self._is_remote_main_task())
+            or ignore_remote_overrides
+        ):
             self.set_model_label_enumeration(enumeration)
         else:
             # pop everything
@@ -2015,6 +2121,8 @@ class Task(_Task):
         # unregister atexit callbacks and signal hooks, if we are the main task
         if is_main:
             self.__register_at_exit(None)
+            self._remove_signal_hooks()
+            self._remove_exception_hooks()
             if not is_sub_process:
                 # make sure we enable multiple Task.init callas with reporting sub-processes
                 BackgroundMonitor.clear_main_process(self)
@@ -2714,41 +2822,6 @@ class Task(_Task):
             docker_arguments=docker_arguments,
             docker_setup_bash_script=docker_setup_bash_script
         )
-
-    def set_packages(self, packages):
-        # type: (Union[str, Sequence[str]]) -> ()
-        """
-        Manually specify a list of required packages or a local requirements.txt file.
-        When running remotely the call is ignored
-
-        :param packages: The list of packages or the path to the requirements.txt file.
-            Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
-        """
-        if running_remotely():
-            return
-        super(Task, self).set_packages(packages)
-
-    def set_repo(self, repo, branch=None, commit=None):
-        # type: (str, Optional[str], Optional[str]) -> ()
-        """
-        Specify a repository to attach to the function.
-        Allow users to execute the task inside the specified repository, enabling them to load modules/script
-        from the repository. Notice the execution work directory will be the repository root folder.
-        Supports both git repo url link, and local repository path (automatically converted into the remote
-        git/commit as is currently checkout).
-        Example remote url: 'https://github.com/user/repo.git'.
-        Example local repo copy: './repo' -> will automatically store the remote
-        repo url and commit ID based on the locally cloned copy.
-        When executing remotely, this call will not override the repository data (it is ignored)
-
-        :param repo: Remote URL for the repository to use, OR path to local copy of the git repository
-            Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'
-        :param branch: Optional, specify the remote repository branch (Ignored, if local repo path is used)
-        :param commit: Optional, specify the repository commit ID (Ignored, if local repo path is used)
-        """
-        if running_remotely():
-            return
-        super(Task, self).set_repo(repo, branch=branch, commit=commit)
 
     def set_resource_monitor_iteration_timeout(self, seconds_from_start=1800):
         # type: (float) -> bool
@@ -3704,9 +3777,9 @@ class Task(_Task):
 
         return self._logger
 
-    def _connect_output_model(self, model, name=None):
+    def _connect_output_model(self, model, name=None, **kwargs):
         assert isinstance(model, OutputModel)
-        model.connect(self, name=name)
+        model.connect(self, name=name, ignore_remote_overrides=False)
         return model
 
     def _save_output_model(self, model):
@@ -3717,6 +3790,19 @@ class Task(_Task):
         """
         # deprecated
         self._connected_output_model = model
+
+    def _handle_ignore_remote_overrides(self, overrides_name, ignore_remote_overrides):
+        if self.running_locally() and ignore_remote_overrides:
+            self.set_parameter(
+                overrides_name,
+                True,
+                description="If True, ignore UI/backend overrides when running remotely."
+                " Set it to False if you would like the overrides to be applied",
+                value_type=bool
+            )
+        elif not self.running_locally():
+            ignore_remote_overrides = self.get_parameter(overrides_name, default=ignore_remote_overrides, cast=True)
+        return ignore_remote_overrides
 
     def _reconnect_output_model(self):
         """
@@ -3730,7 +3816,7 @@ class Task(_Task):
         if self._connected_output_model:
             self.connect(self._connected_output_model)
 
-    def _connect_input_model(self, model, name=None):
+    def _connect_input_model(self, model, name=None, ignore_remote_overrides=False):
         assert isinstance(model, InputModel)
         # we only allow for an input model to be connected once
         # at least until we support multiple input models
@@ -3745,18 +3831,21 @@ class Task(_Task):
         comment += 'Using model id: {}'.format(model.id)
         self.set_comment(comment)
 
-        model.connect(self, name)
+        model.connect(self, name, ignore_remote_overrides=ignore_remote_overrides)
         return model
 
-    def _connect_argparse(self, parser, args=None, namespace=None, parsed_args=None, name=None):
+    def _connect_argparse(
+        self, parser, args=None, namespace=None, parsed_args=None, name=None, ignore_remote_overrides=False
+    ):
         # do not allow argparser to connect to jupyter notebook
         # noinspection PyBroadException
         try:
-            if 'IPython' in sys.modules:
+            if "IPython" in sys.modules:
                 # noinspection PyPackageRequirements
                 from IPython import get_ipython  # noqa
+
                 ip = get_ipython()
-                if ip is not None and 'IPKernelApp' in ip.config:
+                if ip is not None and "IPKernelApp" in ip.config:
                     return parser
         except Exception:
             pass
@@ -3779,14 +3868,14 @@ class Task(_Task):
                     if parsed_args is None and parser == _parser:
                         parsed_args = _parsed_args
 
-        if running_remotely() and (self.is_main_task() or self._is_remote_main_task()):
+        if running_remotely() and (self.is_main_task() or self._is_remote_main_task()) and not ignore_remote_overrides:
             self._arguments.copy_to_parser(parser, parsed_args)
         else:
             self._arguments.copy_defaults_from_argparse(
                 parser, args=args, namespace=namespace, parsed_args=parsed_args)
         return parser
 
-    def _connect_dictionary(self, dictionary, name=None):
+    def _connect_dictionary(self, dictionary, name=None, ignore_remote_overrides=False):
         def _update_args_dict(task, config_dict):
             # noinspection PyProtectedMember
             task._arguments.copy_from_dict(flatten_dictionary(config_dict), prefix=name)
@@ -3816,7 +3905,7 @@ class Task(_Task):
                 if isinstance(v, dict):
                     _check_keys(v, warning_sent)
 
-        if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()):
+        if not running_remotely() or not (self.is_main_task() or self._is_remote_main_task()) or ignore_remote_overrides:
             _check_keys(dictionary)
             flat_dict = {str(k): v for k, v in flatten_dictionary(dictionary).items()}
             self._arguments.copy_from_dict(flat_dict, prefix=name)
@@ -3829,19 +3918,28 @@ class Task(_Task):
 
         return dictionary
 
-    def _connect_task_parameters(self, attr_class, name=None):
-        if running_remotely() and (self.is_main_task() or self._is_remote_main_task()):
-            parameters = self.get_parameters()
-            if not name:
-                attr_class.update_from_dict(parameters)
-            else:
-                attr_class.update_from_dict(
-                    dict((k[len(name) + 1:], v) for k, v in parameters.items() if k.startswith('{}/'.format(name))))
+    def _connect_task_parameters(self, attr_class, name=None, ignore_remote_overrides=False):
+        ignore_remote_overrides_section = "_ignore_remote_overrides_"
+        if running_remotely():
+            ignore_remote_overrides = self.get_parameter(
+                (name or "General") + "/" + ignore_remote_overrides_section, default=ignore_remote_overrides, cast=True
+            )
+        if running_remotely() and (self.is_main_task() or self._is_remote_main_task()) and not ignore_remote_overrides:
+            parameters = self.get_parameters(cast=True)
+            if name:
+                parameters = dict(
+                    (k[len(name) + 1:], v) for k, v in parameters.items() if k.startswith("{}/".format(name))
+                )
+            parameters.pop(ignore_remote_overrides_section, None)
+            attr_class.update_from_dict(parameters)
         else:
-            self.set_parameters(attr_class.to_dict(), __parameters_prefix=name)
+            parameters_dict = attr_class.to_dict()
+            if ignore_remote_overrides:
+                parameters_dict[ignore_remote_overrides_section] = True
+            self.set_parameters(parameters_dict, __parameters_prefix=name)
         return attr_class
 
-    def _connect_object(self, an_object, name=None):
+    def _connect_object(self, an_object, name=None, ignore_remote_overrides=False):
         def verify_type(key, value):
             if str(key).startswith('_') or not isinstance(value, self._parameters_allowed_types):
                 return False
@@ -3858,15 +3956,15 @@ class Task(_Task):
             for k, v in cls_.__dict__.items()
             if verify_type(k, v)
         }
-        if running_remotely() and (self.is_main_task() or self._is_remote_main_task()):
-            a_dict = self._connect_dictionary(a_dict, name)
+        if running_remotely() and (self.is_main_task() or self._is_remote_main_task()) and not ignore_remote_overrides:
+            a_dict = self._connect_dictionary(a_dict, name, ignore_remote_overrides=ignore_remote_overrides)
             for k, v in a_dict.items():
                 if getattr(an_object, k, None) != a_dict[k]:
                     setattr(an_object, k, v)
 
             return an_object
         else:
-            self._connect_dictionary(a_dict, name)
+            self._connect_dictionary(a_dict, name, ignore_remote_overrides=ignore_remote_overrides)
             return an_object
 
     def _dev_mode_stop_task(self, stop_reason, pid=None):
@@ -4192,172 +4290,21 @@ class Task(_Task):
         if not is_sub_process and BackgroundMonitor.is_subprocess_enabled():
             BackgroundMonitor.wait_for_sub_process(self)
 
+        # we are done
+        return
+
     @classmethod
-    def __register_at_exit(cls, exit_callback, only_remove_signal_and_exception_hooks=False):
-        class ExitHooks(object):
-            _orig_exit = None
-            _orig_exc_handler = None
-            remote_user_aborted = False
+    def _remove_exception_hooks(cls):
+        if cls.__exit_hook:
+            cls.__exit_hook.remove_exception_hooks()
 
-            def __init__(self, callback):
-                self.exit_code = None
-                self.exception = None
-                self.signal = None
-                self._exit_callback = callback
-                self._org_handlers = {}
-                self._signal_recursion_protection_flag = False
-                self._except_recursion_protection_flag = False
-                self._import_bind_path = os.path.join("clearml", "binding", "import_bind.py")
+    @classmethod
+    def _remove_signal_hooks(cls):
+        if cls.__exit_hook:
+            cls.__exit_hook.remove_signal_hooks()
 
-            def update_callback(self, callback):
-                if self._exit_callback and not six.PY2:
-                    # noinspection PyBroadException
-                    try:
-                        atexit.unregister(self._exit_callback)
-                    except Exception:
-                        pass
-                self._exit_callback = callback
-                if callback:
-                    self.hook()
-                else:
-                    # un register int hook
-                    if self._orig_exc_handler:
-                        sys.excepthook = self._orig_exc_handler
-                        self._orig_exc_handler = None
-                    for h in self._org_handlers:
-                        # noinspection PyBroadException
-                        try:
-                            signal.signal(h, self._org_handlers[h])
-                        except Exception:
-                            pass
-                    self._org_handlers = {}
-
-            def hook(self):
-                if self._orig_exit is None:
-                    self._orig_exit = sys.exit
-                    sys.exit = self.exit
-
-                if self._orig_exc_handler is None:
-                    self._orig_exc_handler = sys.excepthook
-                    sys.excepthook = self.exc_handler
-
-                if self._exit_callback:
-                    atexit.register(self._exit_callback)
-
-                # TODO: check if sub-process hooks are safe enough, for the time being allow it
-                if not self._org_handlers:  # ## and not Task._Task__is_subprocess():
-                    if sys.platform == 'win32':
-                        catch_signals = [signal.SIGINT, signal.SIGTERM, signal.SIGSEGV, signal.SIGABRT,
-                                         signal.SIGILL, signal.SIGFPE]
-                    else:
-                        catch_signals = [signal.SIGINT, signal.SIGTERM, signal.SIGSEGV, signal.SIGABRT,
-                                         signal.SIGILL, signal.SIGFPE, signal.SIGQUIT]
-                    for c in catch_signals:
-                        # noinspection PyBroadException
-                        try:
-                            self._org_handlers[c] = signal.getsignal(c)
-                            signal.signal(c, self.signal_handler)
-                        except Exception:
-                            pass
-
-            def exit(self, code=0):
-                self.exit_code = code
-                self._orig_exit(code)
-
-            def exc_handler(self, exctype, value, traceback, *args, **kwargs):
-                if self._except_recursion_protection_flag:
-                    # noinspection PyArgumentList
-                    return sys.__excepthook__(exctype, value, traceback, *args, **kwargs)
-
-                self._except_recursion_protection_flag = True
-                self.exception = value
-
-                try:
-                    # remove us from import errors
-                    if six.PY3 and isinstance(exctype, type) and issubclass(exctype, ImportError):
-                        prev = cur = traceback
-                        while cur is not None:
-                            tb_next = cur.tb_next
-                            # if this is the import frame, we should remove it
-                            if cur.tb_frame.f_code.co_filename.endswith(self._import_bind_path):
-                                # remove this frame by connecting the previous one to the next one
-                                prev.tb_next = tb_next
-                                cur.tb_next = None
-                                del cur
-                                cur = prev
-
-                            prev = cur
-                            cur = tb_next
-                except:  # noqa
-                    pass
-
-                if self._orig_exc_handler:
-                    # noinspection PyArgumentList
-                    ret = self._orig_exc_handler(exctype, value, traceback, *args, **kwargs)
-                else:
-                    # noinspection PyNoneFunctionAssignment, PyArgumentList
-                    ret = sys.__excepthook__(exctype, value, traceback, *args, **kwargs)
-                self._except_recursion_protection_flag = False
-
-                return ret
-
-            def signal_handler(self, sig, frame):
-                self.signal = sig
-
-                org_handler = self._org_handlers.get(sig)
-                signal.signal(sig, org_handler or signal.SIG_DFL)
-
-                # if this is a sig term, we wait until __at_exit is called (basically do nothing)
-                if sig == signal.SIGINT:
-                    # return original handler result
-                    return org_handler if not callable(org_handler) else org_handler(sig, frame)
-
-                if self._signal_recursion_protection_flag:
-                    # call original
-                    os.kill(os.getpid(), sig)
-                    return org_handler if not callable(org_handler) else org_handler(sig, frame)
-
-                self._signal_recursion_protection_flag = True
-
-                # call exit callback
-                if self._exit_callback:
-                    # noinspection PyBroadException
-                    try:
-                        self._exit_callback()
-                    except Exception:
-                        pass
-
-                # remove stdout logger, just in case
-                # noinspection PyBroadException
-                try:
-                    # noinspection PyProtectedMember
-                    Logger._remove_std_logger()
-                except Exception:
-                    pass
-
-                # noinspection PyUnresolvedReferences
-                os.kill(os.getpid(), sig)
-
-                self._signal_recursion_protection_flag = False
-                # return handler result
-                return org_handler if not callable(org_handler) else org_handler(sig, frame)
-
-        # we only remove the signals since this will hang subprocesses
-        if only_remove_signal_and_exception_hooks:
-            if not cls.__exit_hook:
-                return
-            if cls.__exit_hook._orig_exc_handler:
-                sys.excepthook = cls.__exit_hook._orig_exc_handler
-                cls.__exit_hook._orig_exc_handler = None
-            for s in cls.__exit_hook._org_handlers:
-                # noinspection PyBroadException
-                try:
-                    signal.signal(s, cls.__exit_hook._org_handlers[s])
-                except Exception:
-                    pass
-            cls.__exit_hook._org_handlers = {}
-            return
-
+    @classmethod
+    def __register_at_exit(cls, exit_callback):
         if cls.__exit_hook is None:
             # noinspection PyBroadException
             try:
@@ -4367,12 +4314,6 @@ class Task(_Task):
                 cls.__exit_hook = None
         else:
             cls.__exit_hook.update_callback(exit_callback)
-
-    def _remove_at_exit_callbacks(self):
-        self.__register_at_exit(None, only_remove_signal_and_exception_hooks=True)
-        # noinspection PyProtectedMember
-        atexit.unregister(self.__exit_hook._exit_callback)
-        self._at_exit_called = True
 
     @classmethod
     def __get_task(

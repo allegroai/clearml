@@ -355,6 +355,20 @@ def stdout_print(*args, **kwargs):
         sys.stdout.write(line)
 
 
+def debug_print(*args, **kwargs):
+    """
+    Print directly to stdout, with process and timestamp from last print call
+    Example: [pid=123, t=0.003] message here
+    """
+    global tic
+    tic = globals().get('tic', time.time())
+    stdout_print(
+        "\033[1;33m[pid={}, t={:.04f}] ".format(os.getpid(), time.time()-tic)
+        + str(args[0] if len(args) == 1 else ("" if not args else args)) + "\033[0m", **kwargs
+     )
+    tic = time.time()
+
+
 if __name__ == '__main__':
     # from clearml import Task
     # task = Task.init(project_name="examples", task_name="trace test")

@@ -26,7 +26,7 @@ from .storage.helper import StorageHelper
 from .utilities.plotly_reporter import SeriesInfo
 
 # Make sure that DeprecationWarning within this package always gets printed
-warnings.filterwarnings('always', category=DeprecationWarning, module=__name__)
+warnings.filterwarnings("always", category=DeprecationWarning, module=__name__)
 
 
 if TYPE_CHECKING:
@@ -56,9 +56,10 @@ class Logger(object):
 
 
     """
+
     SeriesInfo = SeriesInfo
     _tensorboard_logging_auto_group_scalars = False
-    _tensorboard_single_series_per_graph = deferred_config('metrics.tensorboard_single_series_per_graph', False)
+    _tensorboard_single_series_per_graph = deferred_config("metrics.tensorboard_single_series_per_graph", False)
 
     def __init__(self, private_task, connect_stdout=True, connect_stderr=True, connect_logging=False):
         """
@@ -66,8 +67,9 @@ class Logger(object):
             **Do not construct Logger manually!**
             Please use :meth:`Logger.get_current`
         """
-        assert isinstance(private_task, _Task), \
-            'Logger object cannot be instantiated externally, use Logger.current_logger()'
+        assert isinstance(
+            private_task, _Task
+        ), "Logger object cannot be instantiated externally, use Logger.current_logger()"
         super(Logger, self).__init__()
         self._task = private_task
         self._default_upload_destination = None
@@ -75,16 +77,19 @@ class Logger(object):
         self._report_worker = None
         self._graph_titles = {}
         self._tensorboard_series_force_prefix = None
-        self._task_handler = TaskHandler(task=self._task, capacity=100) \
-            if private_task.is_main_task() or (connect_stdout or connect_stderr or connect_logging) else None
+        self._task_handler = (
+            TaskHandler(task=self._task, capacity=100)
+            if private_task.is_main_task() or (connect_stdout or connect_stderr or connect_logging)
+            else None
+        )
         self._connect_std_streams = connect_stdout or connect_stderr
         self._connect_logging = connect_logging
         self._default_max_sample_history = None
 
         # Make sure urllib is never in debug/info,
-        disable_urllib3_info = config.get('log.disable_urllib3_info', True)
-        if disable_urllib3_info and logging.getLogger('urllib3').isEnabledFor(logging.INFO):
-            logging.getLogger('urllib3').setLevel(logging.WARNING)
+        disable_urllib3_info = config.get("log.disable_urllib3_info", True)
+        if disable_urllib3_info and logging.getLogger("urllib3").isEnabledFor(logging.INFO):
+            logging.getLogger("urllib3").setLevel(logging.WARNING)
 
         if self._task.is_main_task():
             StdStreamPatch.patch_std_streams(self, connect_stdout=connect_stdout, connect_stderr=connect_stderr)
@@ -112,6 +117,7 @@ class Logger(object):
         :return: The Logger object (a singleton) for the current running Task.
         """
         from .task import Task
+
         task = Task.current_task()
         if not task:
             return None
@@ -181,20 +187,20 @@ class Logger(object):
         :param name: Metric's name
         :param value: Metric's value
         """
-        return self.report_scalar(title="Summary", series=name, value=value, iteration=-2**31)
+        return self.report_scalar(title="Summary", series=name, value=value, iteration=-(2**31))
 
     def report_vector(
-            self,
-            title,  # type: str
-            series,  # type: str
-            values,  # type: Sequence[Union[int, float]]
-            iteration=None,  # type: Optional[int]
-            labels=None,  # type: Optional[List[str]]
-            xlabels=None,  # type: Optional[List[str]]
-            xaxis=None,  # type: Optional[str]
-            yaxis=None,  # type: Optional[str]
-            mode=None,  # type: Optional[str]
-            extra_layout=None,  # type: Optional[dict]
+        self,
+        title,  # type: str
+        series,  # type: str
+        values,  # type: Sequence[Union[int, float]]
+        iteration=None,  # type: Optional[int]
+        labels=None,  # type: Optional[List[str]]
+        xlabels=None,  # type: Optional[List[str]]
+        xaxis=None,  # type: Optional[str]
+        yaxis=None,  # type: Optional[str]
+        mode=None,  # type: Optional[str]
+        extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, plot a vector as (default stacked) histogram.
@@ -229,27 +235,36 @@ class Logger(object):
             example: extra_layout={'showlegend': False, 'plot_bgcolor': 'yellow'}
         """
         warnings.warn(
-            ":meth:`Logger.report_vector` is deprecated;"
-            "use :meth:`Logger.report_histogram` instead.",
-            DeprecationWarning
+            ":meth:`Logger.report_vector` is deprecated; use :meth:`Logger.report_histogram` instead.",
+            DeprecationWarning,
         )
         self._touch_title_series(title, series)
-        return self.report_histogram(title, series, values, iteration or 0, labels=labels, xlabels=xlabels,
-                                     xaxis=xaxis, yaxis=yaxis, mode=mode, extra_layout=extra_layout)
+        return self.report_histogram(
+            title,
+            series,
+            values,
+            iteration or 0,
+            labels=labels,
+            xlabels=xlabels,
+            xaxis=xaxis,
+            yaxis=yaxis,
+            mode=mode,
+            extra_layout=extra_layout
+        )
 
     def report_histogram(
-            self,
-            title,  # type: str
-            series,  # type: str
-            values,  # type: Sequence[Union[int, float]]
-            iteration=None,  # type: Optional[int]
-            labels=None,  # type: Optional[List[str]]
-            xlabels=None,  # type: Optional[List[str]]
-            xaxis=None,  # type: Optional[str]
-            yaxis=None,  # type: Optional[str]
-            mode=None,  # type: Optional[str]
-            data_args=None,  # type: Optional[dict]
-            extra_layout=None,  # type: Optional[dict]
+        self,
+        title,  # type: str
+        series,  # type: str
+        values,  # type: Sequence[Union[int, float]]
+        iteration=None,  # type: Optional[int]
+        labels=None,  # type: Optional[List[str]]
+        xlabels=None,  # type: Optional[List[str]]
+        xaxis=None,  # type: Optional[str]
+        yaxis=None,  # type: Optional[str]
+        mode=None,  # type: Optional[str]
+        data_args=None,  # type: Optional[dict]
+        extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, plot a (default grouped) histogram.
@@ -301,21 +316,21 @@ class Logger(object):
             xlabels=xlabels,
             xtitle=xaxis,
             ytitle=yaxis,
-            mode=mode or 'group',
+            mode=mode or "group",
             data_args=data_args,
             layout_config=extra_layout,
         )
 
     def report_table(
-            self,
-            title,  # type: str
-            series,  # type: str
-            iteration=None,  # type: Optional[int]
-            table_plot=None,  # type: Optional[pd.DataFrame, Sequence[Sequence]]
-            csv=None,  # type: Optional[str]
-            url=None,  # type: Optional[str]
-            extra_layout=None,  # type: Optional[dict]
-            extra_data=None,  # type: Optional[dict]
+        self,
+        title,  # type: str
+        series,  # type: str
+        iteration=None,  # type: Optional[int]
+        table_plot=None,  # type: Optional[pd.DataFrame, Sequence[Sequence]]
+        csv=None,  # type: Optional[str]
+        url=None,  # type: Optional[str]
+        extra_layout=None,  # type: Optional[dict]
+        extra_data=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, report a table plot.
@@ -374,10 +389,7 @@ class Logger(object):
                 )
 
         """
-        mutually_exclusive(
-            UsageError, _check_none=True,
-            table_plot=table_plot, csv=csv, url=url
-        )
+        mutually_exclusive(UsageError, _check_none=True, table_plot=table_plot, csv=csv, url=url)
         table = table_plot
         if url or csv:
             if not pd:
@@ -412,16 +424,16 @@ class Logger(object):
         )
 
     def report_line_plot(
-            self,
-            title,  # type: str
-            series,  # type: Sequence[SeriesInfo]
-            xaxis,  # type: str
-            yaxis,  # type: str
-            mode='lines',  # type: str
-            iteration=None,  # type: Optional[int]
-            reverse_xaxis=False,  # type: bool
-            comment=None,  # type: Optional[str]
-            extra_layout=None,  # type: Optional[dict]
+        self,
+        title,  # type: str
+        series,  # type: Sequence[SeriesInfo]
+        xaxis,  # type: str
+        yaxis,  # type: str
+        mode="lines",  # type: str
+        iteration=None,  # type: Optional[int]
+        reverse_xaxis=False,  # type: bool
+        comment=None,  # type: Optional[str]
+        extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, plot one or more series as lines.
@@ -464,7 +476,7 @@ class Logger(object):
 
         # if task was not started, we have to start it
         self._start_task_if_needed()
-        self._touch_title_series(title, series[0].name if series else '')
+        self._touch_title_series(title, series[0].name if series else "")
         # noinspection PyProtectedMember
         return self._task._reporter.report_line_plot(
             title=title,
@@ -479,17 +491,17 @@ class Logger(object):
         )
 
     def report_scatter2d(
-            self,
-            title,  # type: str
-            series,  # type: str
-            scatter,  # type: Union[Sequence[Tuple[float, float]], np.ndarray]
-            iteration=None,  # type: Optional[int]
-            xaxis=None,  # type: Optional[str]
-            yaxis=None,  # type: Optional[str]
-            labels=None,  # type: Optional[List[str]]
-            mode='lines',  # type: str
-            comment=None,  # type: Optional[str]
-            extra_layout=None,  # type: Optional[dict]
+        self,
+        title,  # type: str
+        series,  # type: str
+        scatter,  # type: Union[Sequence[Tuple[float, float]], np.ndarray]
+        iteration=None,  # type: Optional[int]
+        xaxis=None,  # type: Optional[str]
+        yaxis=None,  # type: Optional[str]
+        labels=None,  # type: Optional[List[str]]
+        mode="lines",  # type: str
+        comment=None,  # type: Optional[str]
+        extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, report a 2d scatter plot.
@@ -558,19 +570,19 @@ class Logger(object):
         )
 
     def report_scatter3d(
-            self,
-            title,  # type: str
-            series,  # type: str
-            scatter,  # type: Union[Sequence[Tuple[float, float, float]], np.ndarray]
-            iteration=None,  # type: Optional[int]
-            xaxis=None,  # type: Optional[str]
-            yaxis=None,  # type: Optional[str]
-            zaxis=None,  # type: Optional[str]
-            labels=None,  # type: Optional[List[str]]
-            mode='markers',  # type: str
-            fill=False,  # type: bool
-            comment=None,  # type: Optional[str]
-            extra_layout=None,  # type: Optional[dict]
+        self,
+        title,  # type: str
+        series,  # type: str
+        scatter,  # type: Union[Sequence[Tuple[float, float, float]], np.ndarray]
+        iteration=None,  # type: Optional[int]
+        xaxis=None,  # type: Optional[str]
+        yaxis=None,  # type: Optional[str]
+        zaxis=None,  # type: Optional[str]
+        labels=None,  # type: Optional[List[str]]
+        mode="markers",  # type: str
+        fill=False,  # type: bool
+        comment=None,  # type: Optional[str]
+        extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, plot a 3d scatter graph (with markers).
@@ -605,16 +617,9 @@ class Logger(object):
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
         # check if multiple series
-        multi_series = (
-            isinstance(scatter, list)
-            and (
-                isinstance(scatter[0], np.ndarray)
-                or (
-                    scatter[0]
-                    and isinstance(scatter[0], list)
-                    and isinstance(scatter[0][0], list)
-                )
-            )
+        multi_series = isinstance(scatter, list) and (
+            isinstance(scatter[0], np.ndarray)
+            or (scatter[0] and isinstance(scatter[0], list) and isinstance(scatter[0][0], list))
         )
 
         if not multi_series:
@@ -647,18 +652,18 @@ class Logger(object):
         )
 
     def report_confusion_matrix(
-            self,
-            title,  # type: str
-            series,  # type: str
-            matrix,  # type: np.ndarray
-            iteration=None,  # type: Optional[int]
-            xaxis=None,  # type: Optional[str]
-            yaxis=None,  # type: Optional[str]
-            xlabels=None,  # type: Optional[List[str]]
-            ylabels=None,  # type: Optional[List[str]]
-            yaxis_reversed=False,  # type: bool
-            comment=None,  # type: Optional[str]
-            extra_layout=None,  # type: Optional[dict]
+        self,
+        title,  # type: str
+        series,  # type: str
+        matrix,  # type: np.ndarray
+        iteration=None,  # type: Optional[int]
+        xaxis=None,  # type: Optional[str]
+        yaxis=None,  # type: Optional[str]
+        xlabels=None,  # type: Optional[List[str]]
+        ylabels=None,  # type: Optional[List[str]]
+        yaxis_reversed=False,  # type: bool
+        comment=None,  # type: Optional[str]
+        extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, plot a heat-map matrix.
@@ -690,7 +695,7 @@ class Logger(object):
             matrix = np.array(matrix)
 
         if extra_layout is None:
-            extra_layout = {'texttemplate': '%{z}'}
+            extra_layout = {"texttemplate": "%{z}"}
 
         # if task was not started, we have to start it
         self._start_task_if_needed()
@@ -711,17 +716,17 @@ class Logger(object):
         )
 
     def report_matrix(
-            self,
-            title,  # type: str
-            series,  # type: str
-            matrix,  # type: np.ndarray
-            iteration=None,  # type: Optional[int]
-            xaxis=None,  # type: Optional[str]
-            yaxis=None,  # type: Optional[str]
-            xlabels=None,  # type: Optional[List[str]]
-            ylabels=None,  # type: Optional[List[str]]
-            yaxis_reversed=False,  # type: bool
-            extra_layout=None,  # type: Optional[dict]
+        self,
+        title,  # type: str
+        series,  # type: str
+        matrix,  # type: np.ndarray
+        iteration=None,  # type: Optional[int]
+        xaxis=None,  # type: Optional[str]
+        yaxis=None,  # type: Optional[str]
+        xlabels=None,  # type: Optional[List[str]]
+        ylabels=None,  # type: Optional[List[str]]
+        yaxis_reversed=False,  # type: bool
+        extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, plot a confusion matrix.
@@ -744,30 +749,37 @@ class Logger(object):
             example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
         """
         warnings.warn(
-            ":meth:`Logger.report_matrix` is deprecated;"
-            "use :meth:`Logger.report_confusion_matrix` instead.",
+            ":meth:`Logger.report_matrix` is deprecated;" "use :meth:`Logger.report_confusion_matrix` instead.",
             DeprecationWarning
         )
         self._touch_title_series(title, series)
-        return self.report_confusion_matrix(title, series, matrix, iteration or 0,
-                                            xaxis=xaxis, yaxis=yaxis, xlabels=xlabels, ylabels=ylabels,
-                                            yaxis_reversed=yaxis_reversed,
-                                            extra_layout=extra_layout)
+        return self.report_confusion_matrix(
+            title,
+            series,
+            matrix,
+            iteration or 0,
+            xaxis=xaxis,
+            yaxis=yaxis,
+            xlabels=xlabels,
+            ylabels=ylabels,
+            yaxis_reversed=yaxis_reversed,
+            extra_layout=extra_layout
+        )
 
     def report_surface(
-            self,
-            title,  # type: str
-            series,  # type: str
-            matrix,  # type: np.ndarray
-            iteration=None,  # type: Optional[int]
-            xaxis=None,  # type: Optional[str]
-            yaxis=None,  # type: Optional[str]
-            zaxis=None,  # type: Optional[str]
-            xlabels=None,  # type: Optional[List[str]]
-            ylabels=None,  # type: Optional[List[str]]
-            camera=None,  # type: Optional[Sequence[float]]
-            comment=None,  # type: Optional[str]
-            extra_layout=None,  # type: Optional[dict]
+        self,
+        title,  # type: str
+        series,  # type: str
+        matrix,  # type: np.ndarray
+        iteration=None,  # type: Optional[int]
+        xaxis=None,  # type: Optional[str]
+        yaxis=None,  # type: Optional[str]
+        zaxis=None,  # type: Optional[str]
+        xlabels=None,  # type: Optional[List[str]]
+        ylabels=None,  # type: Optional[List[str]]
+        camera=None,  # type: Optional[Sequence[float]]
+        comment=None,  # type: Optional[str]
+        extra_layout=None,  # type: Optional[dict]
     ):
         """
         For explicit reporting, report a 3d surface plot.
@@ -821,16 +833,16 @@ class Logger(object):
         )
 
     def report_image(
-            self,
-            title,  # type: str
-            series,  # type: str
-            iteration=None,  # type: Optional[int]
-            local_path=None,  # type: Optional[str]
-            image=None,  # type: Optional[Union[np.ndarray, Image.Image]]
-            matrix=None,  # type: Optional[np.ndarray]
-            max_image_history=None,  # type: Optional[int]
-            delete_after_upload=False,  # type: bool
-            url=None  # type: Optional[str]
+        self,
+        title,  # type: str
+        series,  # type: str
+        iteration=None,  # type: Optional[int]
+        local_path=None,  # type: Optional[str]
+        image=None,  # type: Optional[Union[np.ndarray, Image.Image]]
+        matrix=None,  # type: Optional[np.ndarray]
+        max_image_history=None,  # type: Optional[int]
+        delete_after_upload=False,  # type: bool
+        url=None,  # type: Optional[str]
     ):
         """
         For explicit reporting, report an image and upload its contents.
@@ -875,8 +887,7 @@ class Logger(object):
           - ``False`` - Do not delete after upload. (default)
         """
         mutually_exclusive(
-            UsageError, _check_none=True,
-            local_path=local_path or None, url=url or None, image=image, matrix=matrix
+            UsageError, _check_none=True, local_path=local_path or None, url=url or None, image=image, matrix=matrix
         )
         if matrix is not None:
             warnings.warn("'matrix' variable is deprecated; use 'image' instead.", DeprecationWarning)
@@ -902,7 +913,7 @@ class Logger(object):
         else:
             upload_uri = self.get_default_upload_destination()
             if not upload_uri:
-                upload_uri = Path(get_cache_dir()) / 'debug_images'
+                upload_uri = Path(get_cache_dir()) / "debug_images"
                 upload_uri.mkdir(parents=True, exist_ok=True)
                 # Verify that we can upload to this destination
                 upload_uri = str(upload_uri)
@@ -925,16 +936,16 @@ class Logger(object):
             )
 
     def report_media(
-            self,
-            title,  # type: str
-            series,  # type: str
-            iteration=None,  # type: Optional[int]
-            local_path=None,  # type: Optional[str]
-            stream=None,  # type: Optional[Union[six.BytesIO, six.StringIO]]
-            file_extension=None,  # type: Optional[str]
-            max_history=None,  # type: Optional[int]
-            delete_after_upload=False,  # type: bool
-            url=None  # type: Optional[str]
+        self,
+        title,  # type: str
+        series,  # type: str
+        iteration=None,  # type: Optional[int]
+        local_path=None,  # type: Optional[str]
+        stream=None,  # type: Optional[Union[six.BytesIO, six.StringIO]]
+        file_extension=None,  # type: Optional[str]
+        max_history=None,  # type: Optional[int]
+        delete_after_upload=False,  # type: bool
+        url=None,  # type: Optional[str]
     ):
         """
         Report media upload its contents, including images, audio, and video.
@@ -966,8 +977,11 @@ class Logger(object):
 
         """
         mutually_exclusive(
-            UsageError, _check_none=True,
-            local_path=local_path or None, url=url or None, stream=stream,
+            UsageError,
+            _check_none=True,
+            local_path=local_path or None,
+            url=url or None,
+            stream=stream
         )
         if stream is not None and not file_extension:
             raise ValueError("No file extension provided for stream media upload")
@@ -989,7 +1003,7 @@ class Logger(object):
         else:
             upload_uri = self.get_default_upload_destination()
             if not upload_uri:
-                upload_uri = Path(get_cache_dir()) / 'debug_images'
+                upload_uri = Path(get_cache_dir()) / "debug_images"
                 upload_uri.mkdir(parents=True, exist_ok=True)
                 # Verify that we can upload to this destination
                 upload_uri = str(upload_uri)
@@ -1009,11 +1023,11 @@ class Logger(object):
             )
 
     def report_plotly(
-            self,
-            title,  # type: str
-            series,  # type: str
-            figure,  # type: Union[Dict, "Figure"]  # noqa: F821
-            iteration=None,  # type: Optional[int]
+        self,
+        title,  # type: str
+        series,  # type: str
+        figure,  # type: Union[Dict, "Figure"]  # noqa: F821
+        iteration=None,  # type: Optional[int]
     ):
         """
         Report a ``Plotly`` figure (plot) directly
@@ -1033,7 +1047,7 @@ class Logger(object):
         plot = figure if isinstance(figure, dict) else figure.to_plotly_json()
         # noinspection PyBroadException
         try:
-            plot['layout']['title'] = series
+            plot["layout"]["title"] = series
         except Exception:
             pass
         # noinspection PyProtectedMember
@@ -1045,13 +1059,13 @@ class Logger(object):
         )
 
     def report_matplotlib_figure(
-            self,
-            title,  # type: str
-            series,  # type: str
-            figure,  # type: Union[MatplotlibFigure, pyplot]
-            iteration=None,  # type: Optional[int]
-            report_image=False,  # type: bool
-            report_interactive=True,  # type: bool
+        self,
+        title,  # type: str
+        series,  # type: str
+        figure,  # type: Union[MatplotlibFigure, pyplot]
+        iteration=None,  # type: Optional[int]
+        report_image=False,  # type: bool
+        report_interactive=True,  # type: bool
     ):
         """
         Report a ``matplotlib`` figure / plot directly
@@ -1078,8 +1092,7 @@ class Logger(object):
             figure=figure,
             iter=iteration or 0,
             logger=self,
-            force_save_as_image=False if report_interactive and not report_image
-            else ('png' if report_image else True),
+            force_save_as_image=False if report_interactive and not report_image else ("png" if report_image else True),
         )
 
     def set_default_upload_destination(self, uri):
@@ -1201,21 +1214,28 @@ class Logger(object):
         return int(UploadEvent._file_history_size)
 
     def report_image_and_upload(
-            self,
-            title,  # type: str
-            series,  # type: str
-            iteration=None,  # type: Optional[int]
-            path=None,  # type: Optional[str]
-            matrix=None,  # type: Optional[Union[np.ndarray, Image.Image]]
-            max_image_history=None,  # type: Optional[int]
-            delete_after_upload=False  # type: bool
+        self,
+        title,  # type: str
+        series,  # type: str
+        iteration=None,  # type: Optional[int]
+        path=None,  # type: Optional[str]
+        matrix=None,  # type: Optional[Union[np.ndarray, Image.Image]]
+        max_image_history=None,  # type: Optional[int]
+        delete_after_upload=False,  # type: bool
     ):
         """
         .. deprecated:: 0.13.0
             Use :meth:`Logger.report_image` instead
         """
-        self.report_image(title=title, series=series, iteration=iteration or 0, local_path=path, image=matrix,
-                          max_image_history=max_image_history, delete_after_upload=delete_after_upload)
+        self.report_image(
+            title=title,
+            series=series,
+            iteration=iteration or 0,
+            local_path=path,
+            image=matrix,
+            max_image_history=max_image_history,
+            delete_after_upload=delete_after_upload
+        )
 
     def capture_logging(self):
         # type: () -> "_LoggingContext"
@@ -1224,6 +1244,7 @@ class Logger(object):
 
         :return: a ContextManager
         """
+
         class _LoggingContext(object):
             def __init__(self, a_logger):
                 self.logger = a_logger
@@ -1285,6 +1306,7 @@ class Logger(object):
         :param force: If True, all matplotlib figures are converted automatically to non-interactive plots.
         """
         from clearml.backend_interface.metrics import Reporter
+
         Reporter.matplotlib_force_report_non_interactive(force=force)
 
     @classmethod
@@ -1327,8 +1349,7 @@ class Logger(object):
         try:
             return int(level)
         except (TypeError, ValueError):
-            self._task.log.log(level=logging.ERROR,
-                               msg='Logger failed casting log level "%s" to integer' % str(level))
+            self._task.log.log(level=logging.ERROR, msg='Logger failed casting log level "%s" to integer' % str(level))
             return logging.INFO
 
     def _console(self, msg, level=logging.INFO, omit_console=False, force_send=False, *args, **_):
@@ -1356,7 +1377,7 @@ class Logger(object):
                 # noinspection PyBroadException
                 try:
                     record = self._task.log.makeRecord(
-                        "console", level=level, fn='', lno=0, func='', msg=msg, args=args, exc_info=None
+                        "console", level=level, fn="", lno=0, func="", msg=msg, args=args, exc_info=None
                     )
                     # find the task handler that matches our task
                     self._task_handler.emit(record)
@@ -1366,7 +1387,8 @@ class Logger(object):
                     try:
                         # make sure we are writing to the original stdout
                         StdStreamPatch.stderr_original_write(
-                            'clearml.Logger failed sending log [level {}]: "{}"\n'.format(level, msg))
+                            'clearml.Logger failed sending log [level {}]: "{}"\n'.format(level, msg)
+                        )
                     except Exception:
                         pass
             else:
@@ -1379,7 +1401,7 @@ class Logger(object):
                 # noinspection PyBroadException
                 try:
                     # make sure we are writing to the original stdout
-                    StdStreamPatch.stdout_original_write(str(msg) + '\n')
+                    StdStreamPatch.stdout_original_write(str(msg) + "\n")
                 except Exception:
                     pass
             else:
@@ -1389,14 +1411,14 @@ class Logger(object):
         self._start_task_if_needed()
 
     def _report_image_plot_and_upload(
-            self,
-            title,  # type: str
-            series,  # type: str
-            iteration=None,  # type: Optional[int]
-            path=None,  # type: Optional[str]
-            matrix=None,  # type: Optional[np.ndarray]
-            max_image_history=None,  # type: Optional[int]
-            delete_after_upload=False  # type: bool
+        self,
+        title,  # type: str
+        series,  # type: str
+        iteration=None,  # type: Optional[int]
+        path=None,  # type: Optional[str]
+        matrix=None,  # type: Optional[np.ndarray]
+        max_image_history=None,  # type: Optional[int]
+        delete_after_upload=False,  # type: bool
     ):
         """
         Report an image, upload its contents, and present in plots section using plotly
@@ -1418,7 +1440,7 @@ class Logger(object):
         self._start_task_if_needed()
         upload_uri = self.get_default_upload_destination()
         if not upload_uri:
-            upload_uri = Path(get_cache_dir()) / 'debug_images'
+            upload_uri = Path(get_cache_dir()) / "debug_images"
             upload_uri.mkdir(parents=True, exist_ok=True)
             # Verify that we can upload to this destination
             upload_uri = str(upload_uri)
@@ -1438,13 +1460,13 @@ class Logger(object):
         )
 
     def _report_file_and_upload(
-            self,
-            title,  # type: str
-            series,  # type: str
-            iteration=None,  # type: Optional[int]
-            path=None,  # type: Optional[str]
-            max_file_history=None,  # type: Optional[int]
-            delete_after_upload=False  # type: bool
+        self,
+        title,  # type: str
+        series,  # type: str
+        iteration=None,  # type: Optional[int]
+        path=None,  # type: Optional[str]
+        max_file_history=None,  # type: Optional[int]
+        delete_after_upload=False,  # type: bool
     ):
         """
         Upload a file and report it as link in the debug images section.
@@ -1465,7 +1487,7 @@ class Logger(object):
         self._start_task_if_needed()
         upload_uri = self.get_default_upload_destination()
         if not upload_uri:
-            upload_uri = Path(get_cache_dir()) / 'debug_images'
+            upload_uri = Path(get_cache_dir()) / "debug_images"
             upload_uri.mkdir(parents=True, exist_ok=True)
             # Verify that we can upload to this destination
             upload_uri = str(upload_uri)

@@ -69,6 +69,7 @@ class PipelineController(object):
     _final_failure = {}  # Node.name: bool
     _task_template_header = CreateFromFunction.default_task_template_header
     _default_pipeline_version = "1.0.0"
+    _project_section = ".pipelines"
 
     valid_job_status = ["failed", "cached", "completed", "aborted", "queued", "running", "skipped", "pending"]
 
@@ -176,7 +177,8 @@ class PipelineController(object):
             always_create_from_code=True,  # type: bool
             artifact_serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
             artifact_deserialization_function=None,  # type: Optional[Callable[[bytes], Any]]
-            output_uri=None  # type: Optional[Union[str, bool]]
+            output_uri=None,  # type: Optional[Union[str, bool]]
+            skip_global_imports=False  # type: bool
     ):
         # type: (...) -> None
         """
@@ -266,6 +268,9 @@ class PipelineController(object):
         :param output_uri: The storage / output url for this pipeline. This is the default location for output
             models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
             The `output_uri` of this pipeline's steps will default to this value.
+        :param skip_global_imports: If True, global imports will not be included in the steps' execution when creating
+            the steps from a functions, otherwise all global imports will be automatically imported in a safe manner at
+             the beginning of each step’s execution. Default is False
         """
         if auto_version_bump is not None:
             warnings.warn("PipelineController.auto_version_bump is deprecated. It will be ignored", DeprecationWarning)
@@ -302,10 +307,11 @@ class PipelineController(object):
         self._last_progress_update_time = 0
         self._artifact_serialization_function = artifact_serialization_function
         self._artifact_deserialization_function = artifact_deserialization_function
+        self._skip_global_imports = skip_global_imports
         if not self._task:
             task_name = name or project or '{}'.format(datetime.now())
             if self._pipeline_as_sub_project:
-                parent_project = "{}.pipelines".format(project+'/' if project else '')
+                parent_project = (project + "/" if project else "") + self._project_section
                 project_name = "{}/{}".format(parent_project, task_name)
             else:
                 parent_project = None
@@ -1422,7 +1428,7 @@ class PipelineController(object):
         mutually_exclusive(pipeline_id=pipeline_id, pipeline_project=pipeline_project, _require_at_least_one=False)
         mutually_exclusive(pipeline_id=pipeline_id, pipeline_name=pipeline_name, _require_at_least_one=False)
         if not pipeline_id:
-            pipeline_project_hidden = "{}/.pipelines/{}".format(pipeline_project, pipeline_name)
+            pipeline_project_hidden = "{}/{}/{}".format(pipeline_project, cls._project_section, pipeline_name)
             name_with_runtime_number_regex = r"^{}( #[0-9]+)*$".format(re.escape(pipeline_name))
             pipelines = Task._query_tasks(
                 pipeline_project=[pipeline_project_hidden],
@@ -1463,6 +1469,7 @@ class PipelineController(object):
         pipeline_object._task = pipeline_task
         pipeline_object._nodes = {}
         pipeline_object._running_nodes = []
+        pipeline_object._version = pipeline_task._get_runtime_properties().get("version")
         try:
             pipeline_object._deserialize(pipeline_task._get_configuration_dict(cls._config_section), force=True)
         except Exception:
@@ -1478,6 +1485,11 @@ class PipelineController(object):
     def tags(self):
         # type: () -> List[str]
         return self._task.get_tags() or []
+
+    @property
+    def version(self):
+        # type: () -> str
+        return self._version
 
     def add_tags(self, tags):
         # type: (Union[Sequence[str], str]) -> None
@@ -1520,7 +1532,8 @@ class PipelineController(object):
             dry_run=True,
             task_template_header=self._task_template_header,
             artifact_serialization_function=self._artifact_serialization_function,
-            artifact_deserialization_function=self._artifact_deserialization_function
+            artifact_deserialization_function=self._artifact_deserialization_function,
+            skip_global_imports=self._skip_global_imports
         )
         return task_definition
 
@@ -2725,7 +2738,7 @@ class PipelineController(object):
                             self._final_failure[node.name] = True
 
                     completed_jobs.append(j)
-                    node.executed = node.job.task_id() if not node_failed else False
+                    node.executed = node.job.task_id() if not (node_failed or node.job.is_aborted()) else False
                     if j in launched_nodes:
                         launched_nodes.remove(j)
                     # check if we need to stop all running steps
@@ -3315,7 +3328,8 @@ class PipelineDecorator(PipelineController):
             repo_commit=None,  # type: Optional[str]
             artifact_serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
             artifact_deserialization_function=None,  # type: Optional[Callable[[bytes], Any]]
-            output_uri=None  # type: Optional[Union[str, bool]]
+            output_uri=None,  # type: Optional[Union[str, bool]]
+            skip_global_imports=False  # type: bool
     ):
         # type: (...) -> ()
         """
@@ -3398,6 +3412,9 @@ class PipelineDecorator(PipelineController):
         :param output_uri: The storage / output url for this pipeline. This is the default location for output
             models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
             The `output_uri` of this pipeline's steps will default to this value.
+        :param skip_global_imports: If True, global imports will not be included in the steps' execution, otherwise all
+            global imports will be automatically imported in a safe manner at the beginning of each step’s execution.
+            Default is False
         """
         super(PipelineDecorator, self).__init__(
             name=name,
@@ -3419,7 +3436,8 @@ class PipelineDecorator(PipelineController):
             always_create_from_code=False,
             artifact_serialization_function=artifact_serialization_function,
             artifact_deserialization_function=artifact_deserialization_function,
-            output_uri=output_uri
+            output_uri=output_uri,
+            skip_global_imports=skip_global_imports
         )
 
         # if we are in eager execution, make sure parent class knows it
@@ -3482,7 +3500,7 @@ class PipelineDecorator(PipelineController):
                         else:
                             self._final_failure[node.name] = True
                     completed_jobs.append(j)
-                    node.executed = node.job.task_id() if not node_failed else False
+                    node.executed = node.job.task_id() if not (node_failed or node.job.is_aborted()) else False
                     if j in launched_nodes:
                         launched_nodes.remove(j)
                     # check if we need to stop all running steps
@@ -3685,7 +3703,8 @@ class PipelineDecorator(PipelineController):
             task_template_header=self._task_template_header,
             _sanitize_function=sanitize,
             artifact_serialization_function=self._artifact_serialization_function,
-            artifact_deserialization_function=self._artifact_deserialization_function
+            artifact_deserialization_function=self._artifact_deserialization_function,
+            skip_global_imports=self._skip_global_imports
         )
         return task_definition
 
@@ -3906,10 +3925,12 @@ class PipelineDecorator(PipelineController):
         :return: function wrapper
         """
         def decorator_wrap(func):
-            _name = name or str(func.__name__)
+            # noinspection PyProtectedMember
+            unwrapped_func = CreateFromFunction._deep_extract_wrapped(func)
+            _name = name or str(unwrapped_func.__name__)
             function_return = return_values if isinstance(return_values, (tuple, list)) else [return_values]
 
-            inspect_func = inspect.getfullargspec(func)
+            inspect_func = inspect.getfullargspec(unwrapped_func)
             # add default argument values
             if inspect_func.args:
                 default_values = list(inspect_func.defaults or [])
@@ -4060,6 +4081,13 @@ class PipelineDecorator(PipelineController):
                     ):
                         _node.name = "{}_{}".format(_node_name, counter)
                         counter += 1
+                    # Copy callbacks to the replicated node
+                    if cls._singleton._pre_step_callbacks.get(_node_name):
+                        cls._singleton._pre_step_callbacks[_node.name] = cls._singleton._pre_step_callbacks[_node_name]
+                    if cls._singleton._post_step_callbacks.get(_node_name):
+                        cls._singleton._post_step_callbacks[_node.name] = cls._singleton._post_step_callbacks[_node_name]
+                    if cls._singleton._status_change_callbacks.get(_node_name):
+                        cls._singleton._status_change_callbacks[_node.name] = cls._singleton._status_change_callbacks[_node_name]
                     _node_name = _node.name
                     if _node.name not in cls._singleton._nodes:
                         cls._singleton._nodes[_node.name] = _node
@@ -4127,7 +4155,7 @@ class PipelineDecorator(PipelineController):
                         return task.artifacts[return_name].get(
                             deserialization_function=cls._singleton._artifact_deserialization_function
                         )
-                    return task.get_parameters(cast=True)[CreateFromFunction.return_section + "/" + return_name]
+                    return task.get_parameters(cast=True).get(CreateFromFunction.return_section + "/" + return_name)
 
                 return_w = [LazyEvalWrapper(
                     callback=functools.partial(result_wrapper, n),
@@ -4172,7 +4200,8 @@ class PipelineDecorator(PipelineController):
             repo_commit=None,  # type: Optional[str]
             artifact_serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
             artifact_deserialization_function=None,  # type: Optional[Callable[[bytes], Any]]
-            output_uri=None  # type: Optional[Union[str, bool]]
+            output_uri=None,  # type: Optional[Union[str, bool]]
+            skip_global_imports=False  # type: bool
     ):
         # type: (...) -> Callable
         """
@@ -4286,6 +4315,9 @@ class PipelineDecorator(PipelineController):
         :param output_uri: The storage / output url for this pipeline. This is the default location for output
             models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
             The `output_uri` of this pipeline's steps will default to this value.
+        :param skip_global_imports: If True, global imports will not be included in the steps' execution, otherwise all
+            global imports will be automatically imported in a safe manner at the beginning of each step’s execution.
+            Default is False
         """
         def decorator_wrap(func):
 
@@ -4332,7 +4364,8 @@ class PipelineDecorator(PipelineController):
                         repo_commit=repo_commit,
                         artifact_serialization_function=artifact_serialization_function,
                         artifact_deserialization_function=artifact_deserialization_function,
-                        output_uri=output_uri
+                        output_uri=output_uri,
+                        skip_global_imports=skip_global_imports
                     )
                     ret_val = func(**pipeline_kwargs)
                     LazyEvalWrapper.trigger_all_remote_references()
@@ -4384,7 +4417,8 @@ class PipelineDecorator(PipelineController):
                     repo_commit=repo_commit,
                     artifact_serialization_function=artifact_serialization_function,
                     artifact_deserialization_function=artifact_deserialization_function,
-                    output_uri=output_uri
+                    output_uri=output_uri,
+                    skip_global_imports=skip_global_imports
                 )
 
                 a_pipeline._args_map = args_map or {}
@@ -4551,6 +4585,13 @@ class PipelineDecorator(PipelineController):
             _node.parents = (_node.parents or []) + [
                 x for x in cls._evaluated_return_values.get(tid, []) if x in leaves
             ]
+
+        if not cls._singleton._abort_running_steps_on_failure:
+            for parent in _node.parents:
+                if cls._singleton._nodes[parent].status in ["failed", "aborted", "skipped"]:
+                    _node.skip_job = True
+                    return
+
         for k, v in kwargs.items():
             if v is None or isinstance(v, (float, int, bool, six.string_types)):
                 _node.parameters["{}/{}".format(CreateFromFunction.kwargs_section, k)] = v

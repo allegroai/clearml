@@ -203,6 +203,10 @@ class Artifact(object):
                 with open(local_file, "rt") as f:
                     self._object = f.read()
             elif self.type == "pickle":
+                if self.hash:
+                    file_hash, _ = sha256sum(local_file, block_size=Artifacts._hash_block_size)
+                    if self.hash != file_hash:
+                        raise Exception("incorrect pickle file hash, artifact file might be corrupted")
                 with open(local_file, "rb") as f:
                     self._object = pickle.load(f)
         except Exception as e:

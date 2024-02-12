@@ -1,5 +1,6 @@
 class UsageError(RuntimeError):
-    """ An exception raised for illegal usage of clearml objects"""
+    """An exception raised for illegal usage of clearml objects"""
+
     pass
 
 
@@ -12,5 +13,5 @@ class ArtifactUriDeleteError(ValueError):
 
     @property
     def remaining_uris(self):
-        """ Remaining URIs to delete. Deletion of these URIs was aborted due to the error. """
+        """Remaining URIs to delete. Deletion of these URIs was aborted due to the error."""
         return self._remaining_uris

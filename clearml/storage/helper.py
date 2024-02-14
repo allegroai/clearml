@@ -2081,6 +2081,7 @@ class StorageHelper(object):
                 use_credentials_chain=self._conf.use_credentials_chain,
                 token=token or self._conf.token,
                 profile=profile or self._conf.profile,
+                secure=self._secure,
                 extra_args=self._conf.extra_args,
             )
 

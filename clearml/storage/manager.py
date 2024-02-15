@@ -36,6 +36,8 @@ class StorageManager(object):
         the returned link is the same, otherwise a link to a local copy of the url file is returned.
         Caching is enabled by default, cache limited by number of stored files per cache context.
         Oldest accessed files are deleted when cache is full.
+        One can also use this function to prevent the deletion of a file that has been cached,
+        as the respective file will have its timestamp refreshed
 
         :param str remote_url: remote url link (string)
         :param str cache_context: Optional caching context identifier (string), default context 'global'

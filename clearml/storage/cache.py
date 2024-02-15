@@ -208,11 +208,21 @@ class CacheManager(object):
                     new_file.touch(exist_ok=True)
                 except Exception:
                     pass
+            # if file doesn't exist, return file size None
+            # noinspection PyBroadException
+            try:
+                new_file_size = new_file.stat().st_size if new_file_exists else None
+            except Exception:
+                new_file_size = None
+
+            folder_files = list(folder.iterdir())
+            if len(folder_files) <= self._file_limit:
+                return new_file.as_posix(), new_file_size
 
             # first exclude lock files
             lock_files = dict()
             files = []
-            for f in sorted(folder.iterdir(), reverse=True, key=sort_max_access_time):
+            for f in sorted(folder_files, reverse=True, key=sort_max_access_time):
                 if f.name.startswith(CacheManager._lockfile_prefix) and f.name.endswith(
                     CacheManager._lockfile_suffix
                 ):
@@ -233,10 +243,7 @@ class CacheManager(object):
 
             # delete old files
             files = files[self._file_limit:]
-            for i, f in enumerate(files):
-                if i < self._file_limit:
-                    continue
-
+            for f in files:
                 # check if the file is in the lock folder list:
                 folder_lock = self._folder_locks.get(f.absolute().as_posix())
                 if folder_lock:
@@ -285,14 +292,7 @@ class CacheManager(object):
                     except BaseException:
                         pass
 
-            # if file doesn't exist, return file size None
-            # noinspection PyBroadException
-            try:
-                size = new_file.stat().st_size if new_file_exists else None
-            except Exception:
-                size = None
-
-            return new_file.as_posix(), size
+            return new_file.as_posix(), new_file_size
 
         def lock_cache_folder(self, local_path):
             # type: (Union[str, Path]) -> ()

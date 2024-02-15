@@ -2083,7 +2083,6 @@ class StorageHelper(object):
                 profile=profile or self._conf.profile,
                 secure=self._secure,
                 extra_args=self._conf.extra_args,
-                secure=self._conf.secure
             )
 
             if not self._conf.use_credentials_chain:

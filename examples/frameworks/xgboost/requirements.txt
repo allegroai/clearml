@@ -2,7 +2,7 @@ numpy != 1.24.0  # https://github.com/numpy/numpy/issues/22826
 matplotlib >= 3.1.1 ; python_version >= '3.6'
 matplotlib >= 2.2.4 ; python_version < '3.6'
 scikit-learn
-clearml
+clearml>=1.14.4
 xgboost>=0.90 ; python_version >= '3'
 xgboost>=0.82 ; python_version < '3'
 # sudo apt-get install graphviz

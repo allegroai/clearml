@@ -1,2 +1,2 @@
 tensorflow>=2.0
-clearml
+clearml>=1.14.4

@@ -1,4 +1,4 @@
-clearml
+clearml>=1.14.4
 jsonschema==3.2.0 ; python_version <= '3.5'
 matplotlib
 pytorch-ignite

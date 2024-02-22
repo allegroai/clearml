@@ -1,4 +1,4 @@
 keras-tuner
 tensorflow>=2.0
 tensorflow-datasets
-clearml
+clearml>=1.14.4

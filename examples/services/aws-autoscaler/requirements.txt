@@ -1,5 +1,5 @@
 boto3
 pyYaml
 six
-clearml
+clearml>=1.14.4
 pathlib2

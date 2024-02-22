@@ -1,5 +1,5 @@
 allegroai~=3.5.7
-clearml
+clearml>=1.14.4
 numpy
 Pillow
 torch

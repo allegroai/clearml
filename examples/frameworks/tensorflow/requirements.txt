@@ -2,4 +2,4 @@ numpy != 1.24.0  # https://github.com/numpy/numpy/issues/22826
 absl-py>=0.7.1
 tensorboard>=2.0
 tensorflow>=2.0
-clearml
+clearml>=1.14.4

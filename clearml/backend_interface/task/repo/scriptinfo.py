@@ -912,7 +912,7 @@ class ScriptInfo(object):
 
         # noinspection PyBroadException
         try:
-            with open(script_path, 'r') as f:
+            with open(script_path, 'r', encoding='utf-8') as f:
                 script_code = f.read()
             return script_code
         except Exception:

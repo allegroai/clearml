@@ -342,6 +342,12 @@ class BaseModel(object):
     @property
     def published(self):
         # type: () -> bool
+        """
+        Get the published state of this model.
+
+        :return:
+
+        """
         return self._get_base_model().locked
 
     @property

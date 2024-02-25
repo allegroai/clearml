@@ -1,4 +1,4 @@
 fastai >= 2.6.0
 tensorboard
 tensorboardX
-clearml
+clearml>=1.14.4

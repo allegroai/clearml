@@ -92,7 +92,6 @@ class CreateAndPopulate(object):
             repo = None
         else:
             folder = None
-
         if raise_on_missing_entries and not base_task_id:
             if not script:
                 raise ValueError("Entry point script not provided")
@@ -168,7 +167,6 @@ class CreateAndPopulate(object):
                 and not self.repo and (
                 not repo_info or not repo_info.script or not repo_info.script.get('repository')):
             raise ValueError("Standalone script detected \'{}\', but no requirements provided".format(self.script))
-
         if dry_run:
             task = None
             task_state = dict(
@@ -204,7 +202,6 @@ class CreateAndPopulate(object):
 
         # clear the script section
         task_state['script'] = {}
-
         if repo_info:
             task_state['script']['repository'] = repo_info.script['repository']
             task_state['script']['version_num'] = repo_info.script['version_num']
@@ -216,15 +213,19 @@ class CreateAndPopulate(object):
             task_state['script']['requirements'] = repo_info.script.get('requirements') or {}
             if self.cwd:
                 self.cwd = self.cwd
-                cwd = self.cwd if Path(self.cwd).is_dir() else (
-                        Path(repo_info.script['repo_root']) / self.cwd).as_posix()
+                # cwd should be relative to the repo_root, but we need the full path
+                # (repo_root + cwd) in order to resolve the entry point
+                cwd = (Path(repo_info.script['repo_root']) / self.cwd).as_posix()
+
                 if not Path(cwd).is_dir():
                     raise ValueError("Working directory \'{}\' could not be found".format(cwd))
-                cwd = Path(cwd).relative_to(repo_info.script['repo_root']).as_posix()
                 entry_point = \
                     Path(repo_info.script['repo_root']) / repo_info.script['working_dir'] / repo_info.script[
                         'entry_point']
+                # resolve entry_point relative to the current working directory
                 entry_point = entry_point.relative_to(cwd).as_posix()
+                # restore cwd - make it relative to the repo_root again
+                cwd = Path(cwd).relative_to(repo_info.script['repo_root']).as_posix()
                 task_state['script']['entry_point'] = entry_point or ""
                 task_state['script']['working_dir'] = cwd or "."
         elif self.repo:
@@ -260,7 +261,6 @@ class CreateAndPopulate(object):
             # standalone task
             task_state['script']['entry_point'] = self.script or ""
             task_state['script']['working_dir'] = '.'
-
         # update requirements
         reqs = []
         if self.requirements_file:
@@ -345,7 +345,6 @@ class CreateAndPopulate(object):
             if task_state['script']['diff'] and not task_state['script']['diff'].endswith('\n'):
                 task_state['script']['diff'] += '\n'
             task_state['script']['diff'] += task_init_patch
-
         # set base docker image if provided
         if self.docker:
             if dry_run:

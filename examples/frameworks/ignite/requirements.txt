@@ -4,4 +4,4 @@ torch>=1.1.0
 torchvision>=0.3.0
 pytorch-ignite
 tqdm
-clearml
+clearml>=1.14.4

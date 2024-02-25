@@ -1,2 +1,2 @@
 autokeras ; python_version >= '3.7'
-clearml
+clearml>=1.14.4

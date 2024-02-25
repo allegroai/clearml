@@ -34,9 +34,19 @@ class S3BucketConfig(object):
     verify = attrib(type=bool, default=None)
     use_credentials_chain = attrib(type=bool, default=False)
     extra_args = attrib(type=dict, default=None)
+    profile = attrib(type=str, default="")
 
     def update(
-        self, key, secret, multipart=True, region=None, use_credentials_chain=False, token="", extra_args=None
+        self,
+        key="",
+        secret="",
+        multipart=True,
+        region=None,
+        use_credentials_chain=False,
+        token="",
+        extra_args=None,
+        secure=True,
+        profile=""
     ):
         self.key = key
         self.secret = secret
@@ -45,6 +55,8 @@ class S3BucketConfig(object):
         self.region = region
         self.use_credentials_chain = use_credentials_chain
         self.extra_args = extra_args
+        self.secure = secure
+        self.profile = profile
 
     def is_valid(self):
         return (self.key and self.secret) or self.use_credentials_chain
@@ -107,6 +119,8 @@ class S3BucketConfigurations(BaseBucketConfigurations):
         default_token="",
         default_extra_args=None,
         default_verify=None,
+        default_profile="",
+        default_secure=True
     ):
         super(S3BucketConfigurations, self).__init__()
         self._buckets = buckets if buckets else list()
@@ -118,12 +132,12 @@ class S3BucketConfigurations(BaseBucketConfigurations):
         self._default_use_credentials_chain = default_use_credentials_chain
         self._default_extra_args = default_extra_args
         self._default_verify = default_verify
+        self._default_profile = default_profile
+        self._default_secure = default_secure
 
     @classmethod
     def from_config(cls, s3_configuration):
-        config_list = S3BucketConfig.from_list(
-            s3_configuration.get("credentials", [])
-        )
+        config_list = S3BucketConfig.from_list(s3_configuration.get("credentials", []))
 
         default_key = s3_configuration.get("key", "") or getenv("AWS_ACCESS_KEY_ID", "")
         default_secret = s3_configuration.get("secret", "") or getenv("AWS_SECRET_ACCESS_KEY", "")
@@ -132,11 +146,14 @@ class S3BucketConfigurations(BaseBucketConfigurations):
         default_use_credentials_chain = s3_configuration.get("use_credentials_chain") or False
         default_extra_args = s3_configuration.get("extra_args")
         default_verify = s3_configuration.get("verify", None)
+        default_profile = s3_configuration.get("profile", "") or getenv("AWS_PROFILE", "")
+        default_secure = s3_configuration.get("secure", True)
 
-        default_key = _none_to_empty_string(default_key)
-        default_secret = _none_to_empty_string(default_secret)
-        default_token = _none_to_empty_string(default_token)
-        default_region = _none_to_empty_string(default_region)
+        default_key = _none_to_empty_string(default_key).strip()
+        default_secret = _none_to_empty_string(default_secret).strip()
+        default_token = _none_to_empty_string(default_token).strip()
+        default_region = _none_to_empty_string(default_region).strip()
+        default_profile = _none_to_empty_string(default_profile).strip()
 
         return cls(
             config_list,
@@ -147,6 +164,8 @@ class S3BucketConfigurations(BaseBucketConfigurations):
             default_token,
             default_extra_args,
             default_verify,
+            default_profile,
+            default_secure
         )
 
     def add_config(self, bucket_config):
@@ -178,6 +197,8 @@ class S3BucketConfigurations(BaseBucketConfigurations):
             use_credentials_chain=self._default_use_credentials_chain,
             token=self._default_token,
             extra_args=self._default_extra_args,
+            profile=self._default_profile,
+            secure=self._default_secure
         )
 
     def _get_prefix_from_bucket_config(self, config):
@@ -204,7 +225,6 @@ class S3BucketConfigurations(BaseBucketConfigurations):
         :param uri: URI of bucket, directory or file
         :return: S3BucketConfig: bucket config
         """
-
         def find_match(uri):
             self._update_prefixes(refresh=False)
             uri = uri.lower()
@@ -244,6 +264,8 @@ class S3BucketConfigurations(BaseBucketConfigurations):
             host=host,
             token=self._default_token,
             extra_args=self._default_extra_args,
+            profile=self._default_profile,
+            secure=self._default_secure
         )
 
 

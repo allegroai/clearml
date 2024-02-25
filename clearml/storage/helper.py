@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from copy import copy
 from datetime import datetime
 from multiprocessing.pool import ThreadPool
-from tempfile import mktemp
+from tempfile import mkstemp
 from time import time
 from types import GeneratorType
 
@@ -461,15 +461,15 @@ class _Boto3Driver(_Driver):
                     )
                 }
                 if not cfg.use_credentials_chain:
-                    boto_kwargs["aws_access_key_id"] = cfg.key
-                    boto_kwargs["aws_secret_access_key"] = cfg.secret
+                    boto_kwargs["aws_access_key_id"] = cfg.key or None
+                    boto_kwargs["aws_secret_access_key"] = cfg.secret or None
                     if cfg.token:
                         boto_kwargs["aws_session_token"] = cfg.token
 
-                self.resource = boto3.resource(
-                    "s3",
-                    **boto_kwargs
+                boto_session = boto3.Session(
+                    profile_name=cfg.profile or None,
                 )
+                self.resource = boto_session.resource("s3", **boto_kwargs)
 
                 self.config = cfg
                 bucket_name = self.name[len(cfg.host) + 1:] if cfg.host else self.name
@@ -683,7 +683,12 @@ class _Boto3Driver(_Driver):
                 'time': datetime.utcnow().isoformat()
             }
 
-            boto_session = boto3.Session(conf.key, conf.secret, aws_session_token=conf.token)
+            boto_session = boto3.Session(
+                aws_access_key_id=conf.key or None,
+                aws_secret_access_key=conf.secret or None,
+                aws_session_token=conf.token or None,
+                profile_name=conf.profile or None
+            )
             endpoint = (('https://' if conf.secure else 'http://') + conf.host) if conf.host else None
             boto_resource = boto_session.resource('s3', region_name=conf.region or None, endpoint_url=endpoint)
             bucket = boto_resource.Bucket(bucket_name)
@@ -738,7 +743,9 @@ class _Boto3Driver(_Driver):
                 cls._bucket_location_failure_reported.add(conf.get_bucket_host())
 
         try:
-            boto_session = boto3.Session(conf.key, conf.secret, aws_session_token=conf.token)
+            boto_session = boto3.Session(
+                conf.key, conf.secret, aws_session_token=conf.token, profile_name=conf.profile_name or None
+            )
             boto_resource = boto_session.resource('s3')
             return boto_resource.meta.client.get_bucket_location(Bucket=conf.bucket)["LocationConstraint"]
 
@@ -2004,7 +2011,7 @@ class StorageHelper(object):
             return None
         # create temp file with the requested file name
         file_name = '.' + remote_url.split('/')[-1].split(os.path.sep)[-1]
-        local_path = mktemp(suffix=file_name)
+        _, local_path = mkstemp(suffix=file_name)
         return helper.download_to_file(remote_url, local_path, skip_zero_size_check=skip_zero_size_check)
 
     def __init__(
@@ -2018,6 +2025,7 @@ class StorageHelper(object):
         logger=None,
         retries=5,
         token=None,
+        profile=None,
         **kwargs
     ):
         level = config.get("storage.log.level", None)
@@ -2072,6 +2080,8 @@ class StorageHelper(object):
                 region=final_region,
                 use_credentials_chain=self._conf.use_credentials_chain,
                 token=token or self._conf.token,
+                profile=profile or self._conf.profile,
+                secure=self._secure,
                 extra_args=self._conf.extra_args,
             )
 
@@ -2614,7 +2624,9 @@ class StorageHelper(object):
         try:
             if verbose:
                 self._log.info("Start downloading from {}".format(remote_path))
-            if not overwrite_existing and Path(local_path).is_file():
+            # check for 0 sized files as well - we want to override empty files that were created
+            # via mkstemp or similar functions
+            if not overwrite_existing and Path(local_path).is_file() and Path(local_path).stat().st_size != 0:
                 self._log.debug(
                     'File {} already exists, no need to download, thread id = {}'.format(
                         local_path,

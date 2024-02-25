@@ -1932,8 +1932,8 @@ class InputModel(Model):
         # type: () -> str
         return self._base_model_id
 
-    def connect(self, task, name=None):
-        # type: (Task, Optional[str]) -> None
+    def connect(self, task, name=None, ignore_remote_overrides=False):
+        # type: (Task, Optional[str], bool) -> None
         """
         Connect the current model to a Task object, if the model is preexisting. Preexisting models include:
 
@@ -1943,24 +1943,31 @@ class InputModel(Model):
         - Models whose origin is not ClearML that are used to create an InputModel object. For example,
           models created using TensorFlow models.
 
-        When the experiment is executed remotely in a worker, the input model already specified in the experiment is
-        used.
+        When the experiment is executed remotely in a worker, the input model specified in the experiment UI/backend
+        is used, unless `ignore_remote_overrides` is set to True.
 
         .. note::
            The **ClearML Web-App** allows you to switch one input model for another and then enqueue the experiment
            to execute in a worker.
 
         :param object task: A Task object.
+        :param ignore_remote_overrides: If True, changing the model in the UI/backend will have no
+            effect when running remotely.
+            Default is False, meaning that any changes made in the UI/backend will be applied in remote execution.
         :param str name: The model name to be stored on the Task
-            (default to filename of the model weights, without the file extension, or to `Input Model` if that is not found)
+            (default to filename of the model weights, without the file extension, or to `Input Model`
+            if that is not found)
         """
         self._set_task(task)
         name = name or InputModel._get_connect_name(self)
         InputModel._warn_on_same_name_connect(name)
+        ignore_remote_overrides = task._handle_ignore_remote_overrides(
+            name + "/_ignore_remote_overrides_input_model_", ignore_remote_overrides
+        )
 
         model_id = None
         # noinspection PyProtectedMember
-        if running_remotely() and (task.is_main_task() or task._is_remote_main_task()):
+        if running_remotely() and (task.is_main_task() or task._is_remote_main_task()) and not ignore_remote_overrides:
             input_models = task.input_models_id
             # noinspection PyBroadException
             try:
@@ -2245,7 +2252,7 @@ class OutputModel(BaseModel):
             pass
         self.connect(task, name=name)
 
-    def connect(self, task, name=None):
+    def connect(self, task, name=None, **kwargs):
         # type: (Task, Optional[str]) -> None
         """
         Connect the current model to a Task object, if the model is a preexisting model. Preexisting models include:

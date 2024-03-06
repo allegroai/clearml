@@ -2267,6 +2267,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Alternatively, you can add all requirements from a file.
         Example: Task.add_requirements('/path/to/your/project/requirements.txt')
 
+        .. note::
+            Task.add_requirements does not directly modify the task's requirements. Instead, it improves the accuracy
+            of capturing a task's Python packages. To explicitly change task requirements, use
+            Task.set_packages, which overwrites existing packages with the specified ones.
+
         :param str package_name: The package name or path to a requirements file
             to add to the "Installed Packages" section of the task.
         :param package_version: The package version requirements. If ``None``, then  use the installed version.

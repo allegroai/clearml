@@ -2305,7 +2305,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def force_requirements_env_freeze(cls, force=True, requirements_file=None):
         # type: (bool, Optional[Union[str, Path]]) -> None
         """
-        Force the use of 'pip freeze' or 'conda list' to capture the requirements from the active
+        Force the use of ``pip freeze`` or ``conda list`` to capture the requirements from the active
         environment (instead of statically analyzing the running code and listing directly imported packages).
         Notice: Must be called before `Task.init` !
 

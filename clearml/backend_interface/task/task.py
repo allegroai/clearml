@@ -2312,7 +2312,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param force: If ``True`` (default), force the use of ``pip freeze`` or ``conda list`` to capture the
             requirements. If ``False``, ClearML statistically analyzes the code for requirements.
         :param requirements_file: (Optional) Pass a requirements.txt file to specify the required packages (instead of
-            ``pip freeze`` or automatic analysis). This will override any existing requirement listing.
+            ``pip freeze`` or automatic analysis). This will overwrite any existing requirement listing.
         """
         cls._force_use_pip_freeze = requirements_file if requirements_file else bool(force)
 

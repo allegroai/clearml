@@ -52,7 +52,7 @@ class ResourceMonitor(BackgroundMonitor):
             try:
                 active_gpus = os.environ.get('NVIDIA_VISIBLE_DEVICES', '') or \
                     os.environ.get('CUDA_VISIBLE_DEVICES', '')
-                if active_gpus != "all":
+                if active_gpus and active_gpus != "all":
                     self._active_gpus = [g.strip() for g in active_gpus.split(',')]
             except Exception:
                 pass
@@ -389,7 +389,7 @@ class ResourceMonitor(BackgroundMonitor):
             if self._gpustat:
                 gpu_stat = self._gpustat.new_query(shutdown=True, get_driver_info=True)
                 if gpu_stat.gpus:
-                    gpus = [g for i, g in enumerate(gpu_stat.gpus) if not self._active_gpus or i in self._active_gpus]
+                    gpus = [g for i, g in enumerate(gpu_stat.gpus) if not self._skip_nonactive_gpu(i, g)]
                     specs.update(
                         gpu_count=int(len(gpus)),
                         gpu_type=', '.join(g.name for g in gpus),

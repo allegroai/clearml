@@ -342,11 +342,22 @@ class BaseModel(object):
     @property
     def published(self):
         # type: () -> bool
+        """
+        Get the published state of this model.
+
+        :return:
+
+        """
         return self._get_base_model().locked
 
     @property
     def framework(self):
         # type: () -> str
+        """
+        The ML framework of the model (for example: PyTorch, TensorFlow, XGBoost, etc.).
+
+        :return: The model's framework
+        """
         return self._get_model_data().framework
 
     def __init__(self, task=None):
@@ -2136,6 +2147,11 @@ class OutputModel(BaseModel):
     @property
     def upload_storage_uri(self):
         # type: () -> str
+        """
+        The URI of the storage destination for uploaded model weight files.
+
+        :return: The URI string
+        """
         return self._get_base_model().upload_storage_uri
 
     def __init__(

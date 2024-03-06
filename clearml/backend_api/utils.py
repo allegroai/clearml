@@ -6,6 +6,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util import Retry
 from urllib3 import PoolManager
+import urllib3
 import six
 
 from .session.defs import ENV_HOST_VERIFY_CERT
@@ -58,10 +59,21 @@ def urllib_log_warning_setup(total_retries=10, display_warning_after=5):
 
 class TLSv1HTTPAdapter(HTTPAdapter):
     def init_poolmanager(self, connections, maxsize, block=False, **pool_kwargs):
-        self.poolmanager = PoolManager(num_pools=connections,
-                                       maxsize=maxsize,
-                                       block=block,
-                                       ssl_version=ssl.PROTOCOL_TLSv1_2)
+        # noinspection PyBroadException
+        try:
+            if "ssl_minimum_version" in urllib3.poolmanager.SSL_KEYWORDS:
+                self.poolmanager = PoolManager(
+                    num_pools=connections, maxsize=maxsize, block=block, ssl_minimum_version=ssl.TLSVersion.TLSv1_2
+                )
+            else:
+                self.poolmanager = PoolManager(
+                    num_pools=connections, maxsize=maxsize, block=block, ssl_version=ssl.PROTOCOL_TLSv1_2
+                )
+        except AttributeError:
+            # just in case some attributes were not found in urrlib3 older versions
+            self.poolmanager = PoolManager(
+                num_pools=connections, maxsize=maxsize, block=block, ssl_version=ssl.PROTOCOL_TLSv1_2
+            )
 
 
 class SessionWithTimeout(requests.Session):

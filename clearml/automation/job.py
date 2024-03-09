@@ -304,7 +304,7 @@ class BaseJob(object):
     def is_completed(self):
         # type: () -> bool
         """
-        Return True, if job is has executed and completed successfully
+        Return True, if job was executed and completed successfully
 
         :return: True the task is currently in completed or published state
         """
@@ -313,7 +313,7 @@ class BaseJob(object):
     def is_aborted(self):
         # type: () -> bool
         """
-        Return True, if job is has executed and aborted
+        Return True, if job was executed and aborted
 
         :return: True the task is currently in aborted state
         """

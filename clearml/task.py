@@ -1580,7 +1580,8 @@ class Task(_Task):
     def set_packages(self, packages):
         # type: (Union[str, Path, Sequence[str]]) -> ()
         """
-        Manually specify a list of required packages or a local requirements.txt file.
+        Manually specify a list of required packages or a local requirements.txt file. Note that this will
+        overwrite all existing packages.
 
         When running remotely this call is ignored
 

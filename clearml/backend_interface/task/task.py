@@ -2305,13 +2305,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def force_requirements_env_freeze(cls, force=True, requirements_file=None):
         # type: (bool, Optional[Union[str, Path]]) -> None
         """
-        Force using `pip freeze` / `conda list` to store the full requirements of the active environment
-        (instead of statically analyzing the running code and listing directly imported packages)
+        Force the use of ``pip freeze`` or ``conda list`` to capture the requirements from the active
+        environment (instead of statically analyzing the running code and listing directly imported packages).
         Notice: Must be called before `Task.init` !
 
-        :param force: Set force using `pip freeze` flag on/off
-        :param requirements_file: Optional pass requirements.txt file to use (instead of `pip freeze` or automatic
-            analysis)
+        :param force: If ``True`` (default), force the use of ``pip freeze`` or ``conda list`` to capture the
+            requirements. If ``False``, ClearML statistically analyzes the code for requirements.
+        :param requirements_file: (Optional) Pass a requirements.txt file to specify the required packages (instead of
+            ``pip freeze`` or automatic analysis). This will overwrite any existing requirement listing.
         """
         cls._force_use_pip_freeze = requirements_file if requirements_file else bool(force)
 

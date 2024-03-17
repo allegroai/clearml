@@ -325,12 +325,12 @@ class CreateAndPopulate(object):
                     "+++ b{script_entry}\n" \
                     "@@ -{idx_a},0 +{idx_b},3 @@\n" \
                     "+from clearml import Task\n" \
-                    "+Task.init()\n" \
+                    "+(__name__ != \"__main__\") or Task.init()\n" \
                     "+\n".format(
                         script_entry=script_entry, idx_a=idx_a, idx_b=idx_a + 1)
             elif local_entry_file and lines:
                 # if we are here it means we do not have a git diff, but a single script file
-                init_lines = ["from clearml import Task\n", "Task.init()\n\n"]
+                init_lines = ["from clearml import Task\n", "(__name__ != \"__main__\") or Task.init()\n\n"]
                 task_state['script']['diff'] = ''.join(lines[:idx_a] + init_lines + lines[idx_a:])
                 # no need to add anything, we patched it.
                 task_init_patch = ""
@@ -338,7 +338,7 @@ class CreateAndPopulate(object):
                 # Add Task.init call
                 task_init_patch += \
                     "from clearml import Task\n" \
-                    "Task.init()\n\n"
+                    "(__name__ != \"__main__\") or Task.init()\n\n"
 
             # make sure we add the diff at the end of the current diff
             task_state['script']['diff'] = task_state['script'].get('diff', '')

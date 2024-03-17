@@ -106,12 +106,12 @@ task.set_model_label_enumeration(labels)
 output_folder = os.path.join(tempfile.gettempdir(), 'keras_example')
 
 board = TensorBoard(histogram_freq=1, log_dir=output_folder, write_images=False)
-model_store = ModelCheckpoint(filepath=os.path.join(output_folder, 'weight.{epoch}.hdf5'))
+model_store = ModelCheckpoint(filepath=os.path.join(output_folder, 'weight.{epoch}.keras'))
 
 # load previous model, if it is there
 # noinspection PyBroadException
 try:
-    model.load_weights(os.path.join(output_folder, 'weight.1.hdf5'))
+    model.load_weights(os.path.join(output_folder, 'weight.1.keras'))
 except Exception:
     pass
 

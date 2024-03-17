@@ -93,7 +93,7 @@ train_summary_writer = tf.summary.create_file_writer(train_log_dir)
 test_summary_writer = tf.summary.create_file_writer(test_log_dir)
 
 # Set up checkpoints manager
-ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=model)
+ckpt = tf.train.Checkpoint(step=tf.Variable(1), net=model)
 manager = tf.train.CheckpointManager(ckpt, os.path.join(gettempdir(), 'tf_ckpts'), max_to_keep=3)
 ckpt.restore(manager.latest_checkpoint)
 if manager.latest_checkpoint:
@@ -129,7 +129,13 @@ for epoch in range(EPOCHS):
                           test_accuracy.result()*100))
 
     # Reset the metrics for the next epoch
-    train_loss.reset_states()
-    train_accuracy.reset_states()
-    test_loss.reset_states()
-    test_accuracy.reset_states()
+    try:
+        train_loss.reset_states()
+        train_accuracy.reset_states()
+        test_loss.reset_states()
+        test_accuracy.reset_states()
+    except AttributeError: 
+        train_loss.reset_state()
+        train_accuracy.reset_state()
+        test_loss.reset_state()
+        test_accuracy.reset_state()

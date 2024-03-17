@@ -464,6 +464,10 @@ class Artifacts(object):
                 artifact_type_data.content_type = "text/csv"
                 np.savetxt(local_filename, artifact_object, delimiter=",")
             delete_after_upload = True
+        elif pd and isinstance(artifact_object, pd.DataFrame) \
+                and (isinstance(artifact_object.index, pd.MultiIndex) or
+                     isinstance(artifact_object.columns, pd.MultiIndex)):
+            store_as_pickle = True
         elif pd and isinstance(artifact_object, pd.DataFrame):
             artifact_type = "pandas"
             artifact_type_data.preview = preview or str(artifact_object.__repr__())

@@ -610,9 +610,15 @@ class ScriptInfo(object):
             except Exception:
                 pass
 
-        if not (sys.argv[0].endswith(os.path.sep + 'ipykernel_launcher.py') or
-                sys.argv[0].endswith(os.path.join(os.path.sep, 'ipykernel', '__main__.py'))) \
-                or len(sys.argv) < 3 or not sys.argv[2].endswith('.json'):
+        if (
+            not (
+                sys.argv[0].endswith(os.path.sep + "ipykernel_launcher.py")
+                or sys.argv[0].endswith(os.path.join(os.path.sep, "ipykernel", "__main__.py"))
+                or sys.argv[0].endswith(os.path.sep + "colab_kernel_launcher.py")
+            )
+            or len(sys.argv) < 3
+            or not sys.argv[2].endswith(".json")
+        ):
             return None
 
         # we can safely assume that we can import the notebook package here

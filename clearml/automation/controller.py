@@ -103,7 +103,7 @@ class PipelineController(object):
         recursively_parse_parameters = attrib(type=bool, default=False)  # if True, recursively parse parameters in
         # lists, dicts, or tuples
         output_uri = attrib(type=Union[bool, str], default=None)  # The default location for output models and other artifacts
-        draft = attrib(type=bool, default=False) # Specify whether to create the Task as a draft
+        draft = attrib(type=bool, default=False)  # Specify whether to create the Task as a draft
 
         def __attrs_post_init__(self):
             if self.parents is None:
@@ -672,7 +672,7 @@ class PipelineController(object):
             status_change_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node, str], None]]  # noqa
             tags=None,  # type: Optional[Union[str, Sequence[str]]]
             output_uri=None,  # type: Optional[Union[str, bool]]
-            draft=False,  # type: Optional[bool]
+            draft=False  # type: Optional[bool]
     ):
         # type: (...) -> bool
         """
@@ -841,7 +841,8 @@ class PipelineController(object):
             (i.e. launching the pipeline from the UI/enqueuing it), this method has no effect.
         :param output_uri: The storage / output url for this step. This is the default location for output
             models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
-        : param: (default False). If True, the Task will be created as a draft.
+        :param draft: (default False). If True, the Task will be created as a draft task.
+
         :return: True if successful
         """
         function_kwargs = function_kwargs or {}
@@ -1985,7 +1986,7 @@ class PipelineController(object):
             status_change_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node, str], None]]  # noqa
             tags=None,  # type: Optional[Union[str, Sequence[str]]]
             output_uri=None,  # type: Optional[Union[str, bool]]
-            draft=False,  # type: Optional[bool]
+            draft=False  # type: Optional[bool]
     ):
         # type: (...) -> bool
         """
@@ -2154,7 +2155,7 @@ class PipelineController(object):
             (i.e. launching the pipeline from the UI/enqueuing it), this method has no effect.
         :param output_uri: The storage / output url for this step. This is the default location for output
             models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
-        : param: (default False). If True, the Task will be created as a draft.
+        :param draft: (default False). If True, the Task will be created as a draft task.
 
         :return: True if successful
         """
@@ -3790,7 +3791,7 @@ class PipelineDecorator(PipelineController):
             status_change_callback=None,  # type: Optional[Callable[[PipelineController, PipelineController.Node, str], None]]  # noqa
             tags=None,  # type: Optional[Union[str, Sequence[str]]]
             output_uri=None,  # type: Optional[Union[str, bool]]
-            draft=False,  # type: Optional[bool]
+            draft=False  # type: Optional[bool]
     ):
         # type: (...) -> Callable
         """
@@ -3930,7 +3931,7 @@ class PipelineDecorator(PipelineController):
             (i.e. launching the pipeline from the UI/enqueuing it), this method has no effect.
         :param output_uri: The storage / output url for this step. This is the default location for output
             models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
-        : param: (default False). If True, the Task will be created as a draft.
+        :param draft: (default False). If True, the Task will be created as a draft task.
 
         :return: function wrapper
         """

@@ -1360,13 +1360,19 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 "Delete hyper-parameter is not supported by your clearml-server, "
                 "upgrade to the latest version")
 
+        force_kwargs = {}
+        if Session.check_min_api_version("2.13"):
+            force_kwargs["force"] = force
+
         with self._edit_lock:
-            paramkey = tasks.ParamKey(section=name.split('/', 1)[0], name=name.split('/', 1)[1])
-            res = self.send(tasks.DeleteHyperParamsRequest(
-                task=self.id, hyperparams=[paramkey], force=force), raise_on_errors=False)
+            paramkey = tasks.ParamKey(section=name.split("/", 1)[0], name=name.split("/", 1)[1])
+            res = self.send(
+                tasks.DeleteHyperParamsRequest(task=self.id, hyperparams=[paramkey], **force_kwargs),
+                raise_on_errors=False,
+            )
             self.reload()
 
-        return res.ok()
+        return res.ok() if not self._offline_mode else True
 
     def update_parameters(self, *args, **kwargs):
         # type: (*dict, **Any) -> ()

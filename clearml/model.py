@@ -3,6 +3,7 @@ import os
 import zipfile
 import shutil
 from tempfile import mkstemp
+from uuid import uuid4
 
 import six
 import math
@@ -1069,6 +1070,10 @@ class BaseModel(object):
             self._get_base_model().unarchive()
         except Exception:
             pass
+
+    def get_offline_mode_folder(self):
+        from clearml import Task as OfflineTask
+        return OfflineTask.current_task().get_offline_mode_folder()
 
     def _init_reporter(self):
         if self._reporter:
@@ -2154,6 +2159,16 @@ class OutputModel(BaseModel):
         """
         return self._get_base_model().upload_storage_uri
 
+    @property
+    def id(self):
+        # type: () -> str
+        from clearml import Task as OfflineTask
+        if OfflineTask.is_offline():
+            if not self._base_model_id:
+                self._base_model_id = "offline-{}".format(str(uuid4()).replace("-", ""))
+            return self._base_model_id
+        return super(OutputModel, self).id
+
     def __init__(
         self,
         task=None,  # type: Optional[Task]
@@ -2810,7 +2825,8 @@ class OutputModel(BaseModel):
                     update_comment=update_comment,
                     is_package=is_package
                 ),
-                output_uri=self._get_base_model().upload_storage_uri or self._default_output_uri
+                output_uri=self._get_base_model().upload_storage_uri or self._default_output_uri,
+                id=self.id
             )
         )
         return weights_filename_offline or register_uri

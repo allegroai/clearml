@@ -222,7 +222,13 @@ class Metrics(InterfaceBase):
             if batched_requests:
                 if self._offline_mode:
                     with open(self._offline_log_filename.as_posix(), 'at') as f:
-                        f.write(json.dumps([b.to_dict() for b in batched_requests])+'\n')
+                        requests = []
+                        for b in batched_requests:
+                            request = b.to_dict()
+                            if self._for_model:
+                                request["model_event"] = True
+                            requests.append(request)
+                        f.write(json.dumps(requests)+'\n')
                     return
 
                 req = api_events.AddBatchRequest(requests=batched_requests)
@@ -262,13 +268,16 @@ class Metrics(InterfaceBase):
                 pass
 
     @classmethod
-    def report_offline_session(cls, task, folder, iteration_offset=0):
+    def report_offline_session(cls, task, folder, iteration_offset=0, remote_url=None, only_with_id=None, session=None):
         from ... import StorageManager
         filename = Path(folder) / cls.__offline_filename
         if not filename.is_file():
             return False
-        # noinspection PyProtectedMember
-        remote_url = task._get_default_report_storage_uri()
+        if not remote_url:
+            # noinspection PyProtectedMember
+            remote_url = task._get_default_report_storage_uri()
+        if not session:
+            session = task.session
         if remote_url and remote_url.endswith('/'):
             remote_url = remote_url[:-1]
         uploaded_files = set()
@@ -281,6 +290,8 @@ class Metrics(InterfaceBase):
                     if not line:
                         break
                     list_requests = json.loads(line)
+                    if only_with_id:
+                        list_requests = [r for r in list_requests if r["task"] == only_with_id]
                     for r in list_requests:
                         # noinspection PyBroadException
                         try:
@@ -327,7 +338,7 @@ class Metrics(InterfaceBase):
                     warning('Failed reporting metric, line {} [{}]'.format(i, ex))
                 batch_requests = api_events.AddBatchRequest(requests=list_requests)
                 if batch_requests.requests:
-                    res = task.session.send(batch_requests)
+                    res = session.send(batch_requests)
                     if res and not res.ok():
                         warning("failed logging metric task to backend ({:d} lines, {})".format(
                             len(batch_requests.requests), str(res.meta)))

@@ -3336,10 +3336,24 @@ class Task(_Task):
             if output_model.get("output_uri"):
                 model.set_upload_destination(output_model.get("output_uri"))
             model.update_weights(auto_delete_file=False, **output_model["weights"])
+            Metrics.report_offline_session(
+                model,
+                session_folder,
+                iteration_offset=iteration_offset,
+                remote_url=task_holding_reports._get_default_report_storage_uri(),
+                only_with_id=output_model["id"],
+                session=task_holding_reports.session
+            )
         # logs
         TaskHandler.report_offline_session(task_holding_reports, session_folder, iteration_offset=iteration_offset)
         # metrics
-        Metrics.report_offline_session(task_holding_reports, session_folder, iteration_offset=iteration_offset)
+        Metrics.report_offline_session(
+            task_holding_reports,
+            session_folder,
+            iteration_offset=iteration_offset,
+            only_with_id=export_data["id"],
+            session=task_holding_reports.session,
+        )
         # print imported results page
         print('ClearML results page: {}'.format(task_holding_reports.get_output_log_web_page()))
         task_holding_reports.mark_completed()

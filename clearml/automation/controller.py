@@ -3758,7 +3758,7 @@ class PipelineDecorator(PipelineController):
                     elif c == "(":
                         open_parenthesis += 1
                 if last_index >= 0:
-                    function_source = function_source[last_index + 1 :].lstrip()
+                    function_source = function_source[last_index + 1:].lstrip()
             return function_source
 
         task_definition = CreateFromFunction.create_task_from_function(

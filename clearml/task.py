@@ -91,7 +91,7 @@ from .utilities.config import verify_basic_value
 from .binding.args import (
     argparser_parseargs_called, get_argparser_last_args,
     argparser_update_currenttask, )
-from .utilities.dicts import ReadOnlyDict, merge_dicts
+from .utilities.dicts import ReadOnlyDict, merge_dicts, RequirementsDict
 from .utilities.proxy_object import (
     ProxyDictPreWrite, ProxyDictPostWrite, flatten_dictionary,
     nested_from_flat_dictionary, naive_nested_from_flat_dictionary, StubObject as _TaskStub)
@@ -1640,6 +1640,19 @@ class Task(_Task):
                 # we cannot have None on the value itself
                 self.data.script.version_num = commit or ""
             self._edit(script=self.data.script)
+
+    def get_requirements(self):
+        # type: () -> RequirementsDict
+        """
+        Get the task's requirements
+
+        :return: A `RequirementsDict` object that holds the `pip`, `conda`, `orig_pip` requirements.
+        """
+        if not running_remotely() and self.is_main_task():
+            self._wait_for_repo_detection(timeout=300.)
+        requirements_dict = RequirementsDict()
+        requirements_dict.update(self.data.script.requirements)
+        return requirements_dict
 
     def connect_configuration(self, configuration, name=None, description=None, ignore_remote_overrides=False):
         # type: (Union[Mapping, list, Path, str], Optional[str], Optional[str], bool) -> Union[dict, Path, str]

@@ -574,7 +574,8 @@ if __name__ == '__main__':
             artifact_deserialization_function=None,  # type: Optional[Callable[[bytes], Any]]
             _sanitize_function=None,  # type: Optional[Callable[[str], str]]
             _sanitize_helper_functions=None,  # type: Optional[Callable[[str], str]]
-            skip_global_imports=False  # type: bool
+            skip_global_imports=False,  # type: bool
+            working_dir=None  # type: Optional[str]
     ):
         # type: (...) -> Optional[Dict, Task]
         """
@@ -660,6 +661,8 @@ if __name__ == '__main__':
         :param skip_global_imports: If True, the global imports will not be fetched from the function's file, otherwise
             all global imports will be automatically imported in a safe manner at the beginning of the function's
             execution. Default is False
+        :param working_dir: Optional, Working directory to launch the script from.
+
         :return: Newly created Task object
         """
         # not set -> equals True
@@ -774,6 +777,7 @@ if __name__ == '__main__':
                 docker_bash_setup_script=docker_bash_setup_script,
                 output_uri=output_uri,
                 add_task_init_call=False,
+                working_directory=working_dir
             )
             entry_point = '{}.py'.format(function_name)
             task = populate.create_task(dry_run=dry_run)
@@ -781,7 +785,7 @@ if __name__ == '__main__':
             if dry_run:
                 task['script']['diff'] = task_template
                 task['script']['entry_point'] = entry_point
-                task['script']['working_dir'] = '.'
+                task['script']['working_dir'] = working_dir or '.'
                 task['hyperparams'] = {
                     cls.kwargs_section: {
                         k: dict(section=cls.kwargs_section, name=k,

@@ -1676,6 +1676,10 @@ class Dataset(object):
 
         def get_instance(dataset_id_):
             task = Task.get_task(task_id=dataset_id_)
+
+            if cls.__tag not in task.get_system_tags():
+                raise ValueError("Provided id={} is not a Dataset ID".format(task.id))
+
             if task.status == "created":
                 raise ValueError("Dataset id={} is in draft mode, delete and recreate it".format(task.id))
             force_download = False if task.status in ("stopped", "published", "closed", "completed") else True

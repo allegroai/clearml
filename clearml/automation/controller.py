@@ -3745,7 +3745,7 @@ class PipelineDecorator(PipelineController):
         def sanitize(function_source):
             matched = re.match(r"[\s]*@[\w]*.component[\s\\]*\(", function_source)
             if matched:
-                function_source = function_source[matched.span()[1] :]
+                function_source = function_source[matched.span()[1]:]
                 # find the last ")"
                 open_parenthesis = 0
                 last_index = -1

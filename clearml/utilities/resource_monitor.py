@@ -45,6 +45,12 @@ class ResourceMonitor(BackgroundMonitor):
         self._last_process_id_list = []
         self._gpu_memory_per_process = True
 
+        # noinspection PyBroadException
+        try:
+            self._debug_mode = bool(os.getenv("CLEARML_RESMON_DEBUG", ""))
+        except Exception:
+            self._debug_mode = False
+
         if not self._gpustat:
             self._task.get_logger().report_text('ClearML Monitor: GPU monitoring is not available')
         else:  # if running_remotely():
@@ -247,8 +253,11 @@ class ResourceMonitor(BackgroundMonitor):
                 # something happened and we can't use gpu stats,
                 self._gpustat_fail += 1
                 if self._gpustat_fail >= 3:
-                    self._task.get_logger().report_text('ClearML Monitor: GPU monitoring failed getting GPU reading, '
-                                                        'switching off GPU monitoring')
+                    msg = 'ClearML Monitor: GPU monitoring failed getting GPU reading, switching off GPU monitoring'
+                    if self._debug_mode:
+                        import traceback
+                        msg += "\n" + traceback.format_exc()
+                    self._task.get_logger().report_text(msg)
                     self._gpustat = None
 
         return stats
@@ -366,7 +375,7 @@ class ResourceMonitor(BackgroundMonitor):
             # already in MBs
             stats["gpu_%d_mem_free_gb" % i] = float(g["memory.total"] - g["memory.used"]) / 1024
             # use previously sampled process gpu memory, or global if it does not exist
-            stats["gpu_%d_mem_used_gb" % i] = float(gpu_mem[i] if gpu_mem else g["memory.used"]) / 1024
+            stats["gpu_%d_mem_used_gb" % i] = float(gpu_mem[i] if gpu_mem and i in gpu_mem else g["memory.used"]) / 1024
 
         return stats
 

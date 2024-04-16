@@ -733,6 +733,10 @@ class Task(_Task):
                     task,
                     report_mem_used_per_process=not config.get('development.worker.report_global_mem_used', False),
                     first_report_sec=config.get('development.worker.report_start_sec', None),
+                    wait_for_first_iteration_to_start_sec=config.get(
+                        'development.worker.wait_for_first_iteration_to_start_sec', None),
+                    max_wait_for_first_iteration_to_start_sec=config.get(
+                        'development.worker.max_wait_for_first_iteration_to_start_sec', None),
                 )
                 task._resource_monitor.start()
 

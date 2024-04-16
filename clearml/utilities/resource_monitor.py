@@ -31,8 +31,10 @@ class ResourceMonitor(BackgroundMonitor):
         self._sample_frequency = sample_frequency_per_sec
         self._report_frequency = report_frequency_sec
         self._first_report_sec = first_report_sec or report_frequency_sec
-        self.wait_for_first_iteration = wait_for_first_iteration_to_start_sec
-        self.max_check_first_iteration = max_wait_for_first_iteration_to_start_sec
+        self.wait_for_first_iteration = 180. if wait_for_first_iteration_to_start_sec is None \
+            else wait_for_first_iteration_to_start_sec
+        self.max_check_first_iteration = 1800. if max_wait_for_first_iteration_to_start_sec is None \
+            else max_wait_for_first_iteration_to_start_sec
         self._num_readouts = 0
         self._readouts = {}
         self._previous_readouts = {}

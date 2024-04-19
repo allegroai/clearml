@@ -348,6 +348,12 @@ class _JupyterObserver(object):
 
         except Exception as ex:
             cls._get_logger().warning('Could not read Jupyter Notebook: {}'.format(ex))
+            if isinstance(ex, ImportError):
+                module_name = getattr(ex, "name", None)
+                if module_name:
+                    cls._get_logger().warning(
+                        'Please install {name} using "pip install {name}"'.format(name=module_name)
+                    )
             _script_exporter = None
 
         # load pigar

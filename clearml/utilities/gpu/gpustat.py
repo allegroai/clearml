@@ -57,6 +57,21 @@ class GPUStat(object):
         return self.entry['uuid']
 
     @property
+    def mig_index(self):
+        """
+        Returns the index of the MIG partition (as in nvidia-smi).
+        """
+        return self.entry.get("mig_index")
+
+    @property
+    def mig_uuid(self):
+        """
+        Returns the uuid of the MIG partition returned by nvidia-smi when running in MIG mode,
+        e.g. MIG-12345678-abcd-abcd-uuid-123456abcdef
+        """
+        return self.entry.get("mig_uuid")
+
+    @property
     def name(self):
         """
         Returns the name of GPU card (e.g. Geforce Titan X)
@@ -160,6 +175,7 @@ class GPUStatCollection(object):
     _initialized = False
     _device_count = None
     _gpu_device_info = {}
+    _mig_device_info = {}
 
     def __init__(self, gpu_list, driver_version=None, driver_cuda_version=None):
         self.gpus = gpu_list
@@ -190,7 +206,7 @@ class GPUStatCollection(object):
                 return b.decode()  # for python3, to unicode
             return b
 
-        def get_gpu_info(index, handle):
+        def get_gpu_info(index, handle, is_mig=False):
             """Get one GPU information specified by nvml handle"""
 
             def get_process_info(nv_process):
@@ -226,12 +242,13 @@ class GPUStatCollection(object):
                     pass
                 return process
 
-            if not GPUStatCollection._gpu_device_info.get(index):
+            device_info = GPUStatCollection._mig_device_info if is_mig else GPUStatCollection._gpu_device_info
+            if not device_info.get(index):
                 name = _decode(N.nvmlDeviceGetName(handle))
                 uuid = _decode(N.nvmlDeviceGetUUID(handle))
-                GPUStatCollection._gpu_device_info[index] = (name, uuid)
+                device_info[index] = (name, uuid)
 
-            name, uuid = GPUStatCollection._gpu_device_info[index]
+            name, uuid = device_info[index]
 
             try:
                 temperature = N.nvmlDeviceGetTemperature(
@@ -327,8 +344,36 @@ class GPUStatCollection(object):
         for index in range(GPUStatCollection._device_count):
             handle = N.nvmlDeviceGetHandleByIndex(index)
             gpu_info = get_gpu_info(index, handle)
-            gpu_stat = GPUStat(gpu_info)
-            gpu_list.append(gpu_stat)
+            mig_cnt = 0
+            # noinspection PyBroadException
+            try:
+                mig_cnt = N.nvmlDeviceGetMaxMigDeviceCount(handle)
+            except Exception:
+                pass
+
+            if mig_cnt <= 0:
+                gpu_list.append(GPUStat(gpu_info))
+                continue
+
+            got_mig_info = False
+            for mig_index in range(mig_cnt):
+                try:
+                    mig_handle = N.nvmlDeviceGetMigDeviceHandleByIndex(handle, mig_index)
+                    mig_info = get_gpu_info(mig_index, mig_handle, is_mig=True)
+                    mig_info["mig_name"] = mig_info["name"]
+                    mig_info["name"] = gpu_info["name"]
+                    mig_info["mig_index"] = mig_info["index"]
+                    mig_info["mig_uuid"] = mig_info["uuid"]
+                    mig_info["index"] = gpu_info["index"]
+                    mig_info["uuid"] = gpu_info["uuid"]
+                    mig_info["temperature.gpu"] = gpu_info["temperature.gpu"]
+                    mig_info["fan.speed"] = gpu_info["fan.speed"]
+                    gpu_list.append(GPUStat(mig_info))
+                    got_mig_info = True
+                except Exception as e:
+                    pass
+            if not got_mig_info:
+                gpu_list.append(GPUStat(gpu_info))
 
         # 2. additional info (driver version, etc).
         if get_driver_info:

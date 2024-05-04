@@ -136,6 +136,15 @@ class Metrics(InterfaceBase):
             kwargs = {}
             if entry:
                 key, url = ev.get_target_full_upload_uri(storage_uri, self.storage_key_prefix, quote_uri=False)
+
+                orig_url = url
+                try:
+                    storage = self._get_storage(url)
+                    if storage:
+                        url = storage._apply_url_substitutions(url)
+                except Exception as err:
+                    self._get_logger().warning("Failed applying URL substitutions on {} ({})".format(orig_url, err))
+
                 kwargs[entry.key_prop] = key
                 kwargs[entry.url_prop] = url
                 if not entry.stream:

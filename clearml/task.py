@@ -37,7 +37,7 @@ import six
 from pathlib2 import Path
 
 from .backend_config.defs import get_active_config_file, get_config_file
-from .backend_api.services import tasks, projects, events
+from .backend_api.services import tasks, projects, events, queues
 from .backend_api.session.session import (
     Session, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_HOST, ENV_WEB_HOST, ENV_FILES_HOST, )
 from .backend_api.session.defs import (ENV_DEFERRED_TASK_INIT, ENV_IGNORE_MISSING_CONFIG,
@@ -3495,6 +3495,29 @@ class Task(_Task):
         override_current_task_id(task_id)
         LOG_TO_BACKEND_ENV_VAR.set(True)
         DEBUG_SIMULATE_REMOTE_TASK.set(True)
+
+    def get_executed_queue(self, return_name=False):
+        # type: (bool) -> Optional[str]
+        """
+        Get the queue the task was executed on.
+
+        :param return_name: If True, return the name of the queue. Otherwise, return its ID
+
+        :return: Return the ID or name of the queue the task was executed on.
+            If no queue was found, return None
+        """
+        queue_id = self.data.execution.queue
+        if not return_name or not queue_id:
+            return queue_id
+        try:
+            queue_name_result = Task._send(
+                Task._get_default_session(),
+                queues.GetByIdRequest(queue_id)
+            )
+            return queue_name_result.response.queue.name
+        except Exception as e:
+            getLogger().warning("Could not get name of queue with ID '{}': {}".format(queue_id, e))
+            return None
 
     @classmethod
     def _create(cls, project_name=None, task_name=None, task_type=TaskTypes.training):

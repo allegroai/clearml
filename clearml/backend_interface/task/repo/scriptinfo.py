@@ -700,28 +700,13 @@ class ScriptInfo(object):
                 cookies = None
                 password = None
                 if server_info and server_info.get("password"):
-                    # we need to get the password
-                    from ....config import config
-
-                    password = config.get("development.jupyter_server_password", "")
+                    password, cookies = cls._authenticate_jupyter(server_info)
                     if not password:
-                        cls._get_logger().warning(
-                            "Password protected Jupyter Notebook server was found! "
-                            "Add `sdk.development.jupyter_server_password=<jupyter_password>` to ~/clearml.conf"
-                        )
                         return os.path.join(os.getcwd(), "error_notebook_not_found.py")
-
-                    r = requests.get(url=server_info["url"] + "login")
-                    cookies = {"_xsrf": r.cookies.get("_xsrf", "")}
-                    r = requests.post(
-                        server_info["url"] + "login?next",
-                        cookies=cookies,
-                        data={"_xsrf": cookies["_xsrf"], "password": password},
-                    )
-                    cookies.update(r.cookies)
 
                 # get api token from ENV - if not defined then from server info
                 auth_token = os.getenv("JUPYTERHUB_API_TOKEN") or server_info.get("token") or ""
+                verify = True
                 try:
                     r = requests.get(
                         url=server_info["url"] + "api/sessions",
@@ -729,8 +714,10 @@ class ScriptInfo(object):
                         headers={
                             "Authorization": "token {}".format(auth_token),
                         },
+                        verify=verify
                     )
                 except requests.exceptions.SSLError:
+                    verify = False
                     # disable SSL check warning
                     from urllib3.exceptions import InsecureRequestWarning
 
@@ -743,12 +730,27 @@ class ScriptInfo(object):
                         headers={
                             "Authorization": "token {}".format(auth_token),
                         },
-                        verify=False,
+                        verify=verify,
                     )
                     # enable SSL check warning
                     import warnings
 
                     warnings.simplefilter("default", InsecureRequestWarning)
+
+                if r.status_code == 403 and server_info.get("password", False) is False:
+                    # server info json might set password=False even tho that is not the case
+                    # retry the request
+                    password, cookies = cls._authenticate_jupyter(server_info)
+                    if not password:
+                        return os.path.join(os.getcwd(), "error_notebook_not_found.py")
+                    r = requests.get(
+                        url=server_info["url"] + "api/sessions",
+                        cookies=cookies,
+                        headers={
+                            "Authorization": "token {}".format(auth_token),
+                        },
+                        verify=verify
+                    )
 
                 # send request to the jupyter server
                 try:
@@ -853,7 +855,46 @@ class ScriptInfo(object):
 
             return script_entry_point
         except Exception:
+
             return None
+
+    @classmethod
+    def _authenticate_jupyter(cls, server_info):
+        """
+        Authenticate to the Jupyter server using a password.
+        The password is fetched from `CLEARML_JUPYTER_PASSWORD` env var or the
+        `sdk.development.jupyter_server_password` configuration entry. The env var
+        has a higher priority than the configuration entry.
+
+        :param server_info: A dictionary containing Jupyter server information
+
+        :return: If the authentication succeded, return a tuple contain the password used
+            for authentication and the cookies obtained after authenticating. Otherwise,
+            return a tuple of Nones
+        """
+        cookies = None
+        password = None
+        # we need to get the password
+        from ....config import config
+        from ....config.defs import JUPYTER_PASSWORD
+
+        password = JUPYTER_PASSWORD.get(default=config.get("development.jupyter_server_password", ""))
+        if not password:
+            cls._get_logger().warning(
+                "Password protected Jupyter Notebook server was found! "
+                "Add `sdk.development.jupyter_server_password=<jupyter_password>` to ~/clearml.conf"
+            )
+            return None, None
+
+        r = requests.get(url=server_info["url"] + "login")
+        cookies = {"_xsrf": r.cookies.get("_xsrf", "")}
+        r = requests.post(
+            server_info["url"] + "login?next",
+            cookies=cookies,
+            data={"_xsrf": cookies["_xsrf"], "password": password},
+        )
+        cookies.update(r.cookies)
+        return password, cookies
 
     @classmethod
     def is_sagemaker(cls):

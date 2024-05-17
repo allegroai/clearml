@@ -23,19 +23,47 @@ except ImportError:
 class ResourceMonitor(BackgroundMonitor):
     _title_machine = ':monitor:machine'
     _title_gpu = ':monitor:gpu'
+    _first_report_sec_default = 30.0
+    _wait_for_first_iteration_to_start_sec_default = 180.0
+    _max_wait_for_first_iteration_to_start_sec_default = 1800.0
+    _resource_monitor_instances = []
 
     def __init__(self, task, sample_frequency_per_sec=2., report_frequency_sec=30.,
-                 first_report_sec=None, wait_for_first_iteration_to_start_sec=180.0,
-                 max_wait_for_first_iteration_to_start_sec=1800., report_mem_used_per_process=True):
+                 first_report_sec=None, wait_for_first_iteration_to_start_sec=None,
+                 max_wait_for_first_iteration_to_start_sec=None, report_mem_used_per_process=True):
         super(ResourceMonitor, self).__init__(task=task, wait_period=sample_frequency_per_sec)
+        # noinspection PyProtectedMember
+        ResourceMonitor._resource_monitor_instances.append(self)
         self._task = task
         self._sample_frequency = sample_frequency_per_sec
         self._report_frequency = report_frequency_sec
-        self._first_report_sec = first_report_sec or report_frequency_sec
-        self.wait_for_first_iteration = 180. if wait_for_first_iteration_to_start_sec is None \
-            else wait_for_first_iteration_to_start_sec
-        self.max_check_first_iteration = 1800. if max_wait_for_first_iteration_to_start_sec is None \
-            else max_wait_for_first_iteration_to_start_sec
+        # noinspection PyProtectedMember
+        self._first_report_sec = next(
+            value
+            # noinspection PyProtectedMember
+            for value in (first_report_sec, ResourceMonitor._first_report_sec_default, report_frequency_sec)
+            if value is not None
+        )
+        self.wait_for_first_iteration = next(
+            value
+            for value in (
+                wait_for_first_iteration_to_start_sec,
+                # noinspection PyProtectedMember
+                ResourceMonitor._wait_for_first_iteration_to_start_sec_default,
+                0.0
+            )
+            if value is not None
+        )
+        self.max_check_first_iteration = next(
+            value
+            for value in (
+                max_wait_for_first_iteration_to_start_sec,
+                # noinspection PyProtectedMember
+                ResourceMonitor._max_wait_for_first_iteration_to_start_sec_default,
+                0.0
+            )
+            if value is not None
+        )
         self._num_readouts = 0
         self._readouts = {}
         self._previous_readouts = {}

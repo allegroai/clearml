@@ -980,6 +980,8 @@ class ScriptInfo(object):
     @classmethod
     def _get_working_dir(cls, repo_root, return_abs=False):
         if VCS_WORK_DIR.get():
+            if return_abs and repo_root:
+                return (Path(repo_root) / VCS_WORK_DIR.get()).absolute().as_posix()
             return VCS_WORK_DIR.get()
 
         # get the repository working directory (might be different from actual cwd)

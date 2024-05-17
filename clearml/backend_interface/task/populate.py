@@ -524,7 +524,7 @@ if __name__ == '__main__':
         if artifact_name in parent_task.artifacts:
             kwargs[k] = parent_task.artifacts[artifact_name].get(deserialization_function={artifact_deserialization_function_name})
         else:
-            kwargs[k] = parent_task.get_parameters(cast=True)[return_section + '/' + artifact_name]
+            kwargs[k] = parent_task.get_parameters(cast=True).get(return_section + '/' + artifact_name)
     results = {function_name}(**kwargs)
     result_names = {function_return}
     if result_names:

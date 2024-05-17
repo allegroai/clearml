@@ -4356,7 +4356,7 @@ class PipelineDecorator(PipelineController):
 
                     cls._wait_for_node(_node)
                     if (_node.job.is_failed() and not _node.continue_on_fail) or \
-                            (_node.job.is_aborted() and not _node.job.continue_on_abort):
+                            (_node.job.is_aborted() and not _node.continue_on_abort):
                         raise ValueError(
                             'Pipeline step "{}", Task ID={} failed'.format(_node.name, _node.job.task_id())
                         )

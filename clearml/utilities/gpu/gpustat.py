@@ -537,6 +537,7 @@ class GPUStatCollection(object):
 
             got_mig_info = False
             for mig_index in range(mig_cnt):
+                # noinspection PyBroadException
                 try:
                     mig_handle = N.nvmlDeviceGetMigDeviceHandleByIndex(handle, mig_index)
                     mig_info = get_gpu_info(mig_index, mig_handle, is_mig=True)
@@ -550,7 +551,7 @@ class GPUStatCollection(object):
                     mig_info["fan.speed"] = gpu_info["fan.speed"]
                     gpu_list.append(GPUStat(mig_info))
                     got_mig_info = True
-                except Exception as e:
+                except Exception:
                     pass
             if not got_mig_info:
                 gpu_list.append(GPUStat(gpu_info))

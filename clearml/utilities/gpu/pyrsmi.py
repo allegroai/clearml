@@ -20,6 +20,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# flake8: noqa
+# This is only to ignore all flake8 errors in this file
+
 # Python bindings for ROCm-SMI library
 from ctypes import *
 from os.path import join, realpath, isfile
@@ -281,7 +284,7 @@ def _find_lib_rocm():
     if search fails, returns empty string
     """
     rocm_path = os.environ.get('ROCM_PATH', '/opt/rocm')
-    rocm_lib_path = join(rocm_path, f'lib/{LIBROCM_NAME}')
+    rocm_lib_path = join(rocm_path, 'lib/{}'.format(LIBROCM_NAME))
     return rocm_lib_path if isfile(rocm_lib_path) else ''
 
 
@@ -303,7 +306,7 @@ def smi_initialize():
     if _driver_initialized():
         ret_init = rocm_lib.rsmi_init(0)
         if ret_init != 0:
-            logging.error(f'ROCm SMI init returned value {ret_init}')
+            logging.error('ROCm SMI init returned value {}'.format(ret_init))
             raise RuntimeError('ROCm SMI initialization failed')
     else:
         raise RuntimeError('ROCm driver initilization failed')
@@ -583,7 +586,7 @@ B1 = '%02x'
 B2 = B1 * 2
 B4 = B1 * 4
 B6 = B1 * 6
-nv_fmt = f'GPU-{B4}-{B2}-{B2}-{B2}-{B6}'
+nv_fmt = 'GPU-{b4}-{b2}-{b2}-{b2}-{b6}'.format(b2=B2, b4=B4, b6=B6)
 
 # UUID function
 def smi_get_device_uuid(dev, format='roc'):
@@ -595,11 +598,11 @@ def smi_get_device_uuid(dev, format='roc'):
 
     if format == 'roc':
         # use hex strings
-        return f'GPU-{u_s}'
+        return 'GPU-{}'.format(u_s)
     elif format == 'nv':
         # break down to ASCII strings according to the format
         b_a = bytearray()
         b_a.extend(map(ord, u_s))
         return nv_fmt % tuple(b_a)
     else:
-        raise ValueError(f'Invalid format: \'{format}\'; use \'roc\' or \'nv\'')
+        raise ValueError('Invalid format: \'{}\'; use \'roc\' or \'nv\''.format(format))

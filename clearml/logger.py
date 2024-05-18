@@ -930,7 +930,8 @@ class Logger(object):
                 image=image,
                 iter=iteration or 0,
                 upload_uri=upload_uri,
-                max_image_history=max_image_history if max_image_history is not None
+                max_image_history=max_image_history
+                if max_image_history is not None
                 else self._default_max_sample_history,
                 delete_after_upload=delete_after_upload,
             )
@@ -976,13 +977,7 @@ class Logger(object):
             - ``False`` - Do not delete
 
         """
-        mutually_exclusive(
-            UsageError,
-            _check_none=True,
-            local_path=local_path or None,
-            url=url or None,
-            stream=stream
-        )
+        mutually_exclusive(UsageError, _check_none=True, local_path=local_path or None, url=url or None, stream=stream)
         if stream is not None and not file_extension:
             raise ValueError("No file extension provided for stream media upload")
 

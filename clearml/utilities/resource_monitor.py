@@ -12,6 +12,7 @@ from typing import Text
 from .process.mp import BackgroundMonitor
 from ..backend_api import Session
 from ..binding.frameworks.tensorflow_bind import IsTensorboardInit
+from ..config import config
 
 try:
     from .gpu import gpustat
@@ -22,17 +23,47 @@ except ImportError:
 class ResourceMonitor(BackgroundMonitor):
     _title_machine = ':monitor:machine'
     _title_gpu = ':monitor:gpu'
+    _first_report_sec_default = 30.0
+    _wait_for_first_iteration_to_start_sec_default = 180.0
+    _max_wait_for_first_iteration_to_start_sec_default = 1800.0
+    _resource_monitor_instances = []
 
     def __init__(self, task, sample_frequency_per_sec=2., report_frequency_sec=30.,
-                 first_report_sec=None, wait_for_first_iteration_to_start_sec=180.0,
-                 max_wait_for_first_iteration_to_start_sec=1800., report_mem_used_per_process=True):
+                 first_report_sec=None, wait_for_first_iteration_to_start_sec=None,
+                 max_wait_for_first_iteration_to_start_sec=None, report_mem_used_per_process=True):
         super(ResourceMonitor, self).__init__(task=task, wait_period=sample_frequency_per_sec)
+        # noinspection PyProtectedMember
+        ResourceMonitor._resource_monitor_instances.append(self)
         self._task = task
         self._sample_frequency = sample_frequency_per_sec
         self._report_frequency = report_frequency_sec
-        self._first_report_sec = first_report_sec or report_frequency_sec
-        self.wait_for_first_iteration = wait_for_first_iteration_to_start_sec
-        self.max_check_first_iteration = max_wait_for_first_iteration_to_start_sec
+        # noinspection PyProtectedMember
+        self._first_report_sec = next(
+            value
+            # noinspection PyProtectedMember
+            for value in (first_report_sec, ResourceMonitor._first_report_sec_default, report_frequency_sec)
+            if value is not None
+        )
+        self.wait_for_first_iteration = next(
+            value
+            for value in (
+                wait_for_first_iteration_to_start_sec,
+                # noinspection PyProtectedMember
+                ResourceMonitor._wait_for_first_iteration_to_start_sec_default,
+                0.0
+            )
+            if value is not None
+        )
+        self.max_check_first_iteration = next(
+            value
+            for value in (
+                max_wait_for_first_iteration_to_start_sec,
+                # noinspection PyProtectedMember
+                ResourceMonitor._max_wait_for_first_iteration_to_start_sec_default,
+                0.0
+            )
+            if value is not None
+        )
         self._num_readouts = 0
         self._readouts = {}
         self._previous_readouts = {}
@@ -44,6 +75,17 @@ class ResourceMonitor(BackgroundMonitor):
         self._last_process_pool = {}
         self._last_process_id_list = []
         self._gpu_memory_per_process = True
+        self._default_gpu_utilization = config.get("resource_monitoring.default_gpu_utilization", 100)
+        # allow default_gpu_utilization as null in the config, in which case we don't log anything
+        if self._default_gpu_utilization is not None:
+            self._default_gpu_utilization = int(self._default_gpu_utilization)
+        self._gpu_utilization_warning_sent = False
+
+        # noinspection PyBroadException
+        try:
+            self._debug_mode = bool(os.getenv("CLEARML_RESMON_DEBUG", ""))
+        except Exception:
+            self._debug_mode = False
 
         if not self._gpustat:
             self._task.get_logger().report_text('ClearML Monitor: GPU monitoring is not available')
@@ -247,8 +289,11 @@ class ResourceMonitor(BackgroundMonitor):
                 # something happened and we can't use gpu stats,
                 self._gpustat_fail += 1
                 if self._gpustat_fail >= 3:
-                    self._task.get_logger().report_text('ClearML Monitor: GPU monitoring failed getting GPU reading, '
-                                                        'switching off GPU monitoring')
+                    msg = 'ClearML Monitor: GPU monitoring failed getting GPU reading, switching off GPU monitoring'
+                    if self._debug_mode:
+                        import traceback
+                        msg += "\n" + traceback.format_exc()
+                    self._task.get_logger().report_text(msg)
                     self._gpustat = None
 
         return stats
@@ -303,13 +348,18 @@ class ResourceMonitor(BackgroundMonitor):
 
         return mem_size
 
-    def _skip_nonactive_gpu(self, idx, gpu):
+    def _skip_nonactive_gpu(self, gpu):
         if not self._active_gpus:
             return False
         # noinspection PyBroadException
         try:
             uuid = getattr(gpu, "uuid", None)
-            return str(idx) not in self._active_gpus and (not uuid or uuid not in self._active_gpus)
+            mig_uuid = getattr(gpu, "mig_uuid", None)
+            return (
+                str(gpu.index) not in self._active_gpus
+                and (not uuid or uuid not in self._active_gpus)
+                and (not mig_uuid or mig_uuid not in self._active_gpus)
+            )
         except Exception:
             pass
         return False
@@ -338,7 +388,7 @@ class ResourceMonitor(BackgroundMonitor):
                     self._gpu_memory_per_process = False
                     break
                 # only monitor the active gpu's, if none were selected, monitor everything
-                if self._skip_nonactive_gpu(i, g):
+                if self._skip_nonactive_gpu(g):
                     continue
 
                 gpu_mem[i] = 0
@@ -358,15 +408,32 @@ class ResourceMonitor(BackgroundMonitor):
 
         for i, g in enumerate(gpu_stat.gpus):
             # only monitor the active gpu's, if none were selected, monitor everything
-            if self._skip_nonactive_gpu(i, g):
+            if self._skip_nonactive_gpu(g):
                 continue
             stats["gpu_%d_temperature" % i] = float(g["temperature.gpu"])
-            stats["gpu_%d_utilization" % i] = float(g["utilization.gpu"])
+            if g["utilization.gpu"] is not None:
+                stats["gpu_%d_utilization" % i] = float(g["utilization.gpu"])
+            else:
+                stats["gpu_%d_utilization" % i] = self._default_gpu_utilization
+                if not self._gpu_utilization_warning_sent:
+                    if g.mig_index is not None:
+                        self._task.get_logger().report_text(
+                            "Running inside MIG, Nvidia driver cannot export utilization, pushing fixed value {}".format(  # noqa
+                                self._default_gpu_utilization
+                            )
+                        )
+                    else:
+                        self._task.get_logger().report_text(
+                            "Nvidia driver cannot export utilization, pushing fixed value {}".format(
+                                self._default_gpu_utilization
+                            )
+                        )
+                    self._gpu_utilization_warning_sent = True
             stats["gpu_%d_mem_usage" % i] = 100. * float(g["memory.used"]) / float(g["memory.total"])
             # already in MBs
             stats["gpu_%d_mem_free_gb" % i] = float(g["memory.total"] - g["memory.used"]) / 1024
             # use previously sampled process gpu memory, or global if it does not exist
-            stats["gpu_%d_mem_used_gb" % i] = float(gpu_mem[i] if gpu_mem else g["memory.used"]) / 1024
+            stats["gpu_%d_mem_used_gb" % i] = float(gpu_mem[i] if gpu_mem and i in gpu_mem else g["memory.used"]) / 1024
 
         return stats
 
@@ -389,7 +456,7 @@ class ResourceMonitor(BackgroundMonitor):
             if self._gpustat:
                 gpu_stat = self._gpustat.new_query(shutdown=True, get_driver_info=True)
                 if gpu_stat.gpus:
-                    gpus = [g for i, g in enumerate(gpu_stat.gpus) if not self._skip_nonactive_gpu(i, g)]
+                    gpus = [g for i, g in enumerate(gpu_stat.gpus) if not self._skip_nonactive_gpu(g)]
                     specs.update(
                         gpu_count=int(len(gpus)),
                         gpu_type=', '.join(g.name for g in gpus),

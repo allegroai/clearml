@@ -492,20 +492,28 @@ class Task(_Task):
                 cls.__main_task._detect_repo_async_thread = None
                 cls.__main_task._dev_worker = None
                 cls.__main_task._resource_monitor = None
-                # remove the logger from the previous process
-                cls.__main_task.get_logger()
-                # create a new logger (to catch stdout/err)
-                cls.__main_task._logger = None
-                cls.__main_task.__reporter = None
-                # noinspection PyProtectedMember
-                cls.__main_task._get_logger(auto_connect_streams=auto_connect_streams)
-                cls.__main_task._artifacts_manager = Artifacts(cls.__main_task)
+
+                # if we are using threads to send the reports,
+                # after forking there are no threads, so we will need to recreate them
+                if not getattr(cls, '_report_subprocess_enabled'):
+                    # remove the logger from the previous process
+                    cls.__main_task.get_logger()
+                    # create a new logger (to catch stdout/err)
+                    cls.__main_task._logger = None
+                    cls.__main_task.__reporter = None
+                    # noinspection PyProtectedMember
+                    cls.__main_task._get_logger(auto_connect_streams=auto_connect_streams)
+                    cls.__main_task._artifacts_manager = Artifacts(cls.__main_task)
+
                 # unregister signal hooks, they cause subprocess to hang
                 # noinspection PyProtectedMember
                 cls.__main_task.__register_at_exit(cls.__main_task._at_exit)
 
-                # start all reporting threads
-                BackgroundMonitor.start_all(task=cls.__main_task)
+                # if we are using threads to send the reports,
+                # after forking there are no threads, so we will need to recreate them
+                if not getattr(cls, '_report_subprocess_enabled'):
+                    # start all reporting threads
+                    BackgroundMonitor.start_all(task=cls.__main_task)
 
             if not running_remotely():
                 verify_defaults_match()
@@ -556,6 +564,7 @@ class Task(_Task):
 
                 if not is_sub_process_task_id and deferred_init and deferred_init != cls.__nested_deferred_init_flag:
                     def completed_cb(x):
+                        Task.__forked_proc_main_pid = os.getpid()
                         Task.__main_task = x
 
                     getLogger().warning("ClearML initializing Task in the background")
@@ -656,6 +665,7 @@ class Task(_Task):
         except Exception:
             raise
         else:
+            Task.__forked_proc_main_pid = os.getpid()
             Task.__main_task = task
 
             # register at exist only on the real (none deferred) Task
@@ -3658,6 +3668,7 @@ class Task(_Task):
             return
         task = cls.__main_task
         cls.__main_task = None
+        cls.__forked_proc_main_pid = None
         if task._dev_worker:
             task._dev_worker.unregister()
             task._dev_worker = None
@@ -3794,6 +3805,7 @@ class Task(_Task):
 
         # mark us as the main Task, there should only be one dev Task at a time.
         if not Task.__main_task:
+            Task.__forked_proc_main_pid = os.getpid()
             Task.__main_task = task
 
         # mark the task as started
@@ -4364,6 +4376,7 @@ class Task(_Task):
             # this is so in theory we can close a main task and start a new one
             if self.is_main_task():
                 Task.__main_task = None
+                Task.__forked_proc_main_pid = None
                 Task.__update_master_pid_task(task=None)
         except Exception:
             # make sure we do not interrupt the exit process

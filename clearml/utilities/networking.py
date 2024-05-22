@@ -34,7 +34,13 @@ def get_public_ip():
 
     :return: A string representing the IP of this machine or `None` if getting the IP failed
     """
-    for external_service in ["https://api.ipify.org", "https://ident.me"]:
+    from ..config import config_obj
+    # todo: add documentation in api section in conf file
+    public_ip_service_urls = (
+            config_obj.get("api.public_ip_service_urls", None)
+            or ["https://api.ipify.org", "https://ident.me"]
+    )
+    for external_service in public_ip_service_urls:
         ip = get_public_ip_from_external_service(external_service)
         if ip:
             return ip
@@ -72,10 +78,14 @@ def get_public_ip_from_external_service(external_service, timeout=5):
 
 
 def _get_private_ip_from_socket():
+    from ..config import config_obj
+    # todo: add documentation in api section in conf file
+    public_ip_ping = config_obj.get("api.public_ip_ping", None) or "8.8.8.8"
+
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.settimeout(0)
     try:
-        s.connect(("8.8.8.8", 1))
+        s.connect((public_ip_ping, 1))
         ip = s.getsockname()[0]
     except Exception as e:
         raise e

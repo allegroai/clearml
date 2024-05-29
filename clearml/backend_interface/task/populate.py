@@ -325,12 +325,12 @@ class CreateAndPopulate(object):
                     "+++ b{script_entry}\n" \
                     "@@ -{idx_a},0 +{idx_b},3 @@\n" \
                     "+from clearml import Task\n" \
-                    "+Task.init()\n" \
+                    "+(__name__ != \"__main__\") or Task.init()\n" \
                     "+\n".format(
                         script_entry=script_entry, idx_a=idx_a, idx_b=idx_a + 1)
             elif local_entry_file and lines:
                 # if we are here it means we do not have a git diff, but a single script file
-                init_lines = ["from clearml import Task\n", "Task.init()\n\n"]
+                init_lines = ["from clearml import Task\n", "(__name__ != \"__main__\") or Task.init()\n\n"]
                 task_state['script']['diff'] = ''.join(lines[:idx_a] + init_lines + lines[idx_a:])
                 # no need to add anything, we patched it.
                 task_init_patch = ""
@@ -338,7 +338,7 @@ class CreateAndPopulate(object):
                 # Add Task.init call
                 task_init_patch += \
                     "from clearml import Task\n" \
-                    "Task.init()\n\n"
+                    "(__name__ != \"__main__\") or Task.init()\n\n"
 
             # make sure we add the diff at the end of the current diff
             task_state['script']['diff'] = task_state['script'].get('diff', '')
@@ -524,7 +524,7 @@ if __name__ == '__main__':
         if artifact_name in parent_task.artifacts:
             kwargs[k] = parent_task.artifacts[artifact_name].get(deserialization_function={artifact_deserialization_function_name})
         else:
-            kwargs[k] = parent_task.get_parameters(cast=True)[return_section + '/' + artifact_name]
+            kwargs[k] = parent_task.get_parameters(cast=True).get(return_section + '/' + artifact_name)
     results = {function_name}(**kwargs)
     result_names = {function_return}
     if result_names:
@@ -574,7 +574,8 @@ if __name__ == '__main__':
             artifact_deserialization_function=None,  # type: Optional[Callable[[bytes], Any]]
             _sanitize_function=None,  # type: Optional[Callable[[str], str]]
             _sanitize_helper_functions=None,  # type: Optional[Callable[[str], str]]
-            skip_global_imports=False  # type: bool
+            skip_global_imports=False,  # type: bool
+            working_dir=None  # type: Optional[str]
     ):
         # type: (...) -> Optional[Dict, Task]
         """
@@ -660,6 +661,8 @@ if __name__ == '__main__':
         :param skip_global_imports: If True, the global imports will not be fetched from the function's file, otherwise
             all global imports will be automatically imported in a safe manner at the beginning of the function's
             execution. Default is False
+        :param working_dir: Optional, Working directory to launch the script from.
+
         :return: Newly created Task object
         """
         # not set -> equals True
@@ -774,6 +777,7 @@ if __name__ == '__main__':
                 docker_bash_setup_script=docker_bash_setup_script,
                 output_uri=output_uri,
                 add_task_init_call=False,
+                working_directory=working_dir
             )
             entry_point = '{}.py'.format(function_name)
             task = populate.create_task(dry_run=dry_run)
@@ -781,7 +785,7 @@ if __name__ == '__main__':
             if dry_run:
                 task['script']['diff'] = task_template
                 task['script']['entry_point'] = entry_point
-                task['script']['working_dir'] = '.'
+                task['script']['working_dir'] = working_dir or '.'
                 task['hyperparams'] = {
                     cls.kwargs_section: {
                         k: dict(section=cls.kwargs_section, name=k,

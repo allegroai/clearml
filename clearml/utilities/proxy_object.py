@@ -39,6 +39,9 @@ class ProxyDictPostWrite(dict):
                 a_dict[k] = i
         return a_dict
 
+    def to_dict(self):
+        return self._to_dict()
+
     def update(self, E=None, **F):
         res = self._do_update(E, **F)
         self._set_callback()

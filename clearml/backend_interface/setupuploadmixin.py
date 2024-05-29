@@ -42,7 +42,7 @@ class SetupUploadMixin(object):
         warnings.warn(
             "Warning: 'Task.setup_upload' is deprecated. "
             "Use 'setup_aws_upload', 'setup_gcp_upload' or 'setup_azure_upload' instead",
-            DeprecationWarning
+            DeprecationWarning,
         )
         self.setup_aws_upload(
             bucket_name,
@@ -100,7 +100,7 @@ class SetupUploadMixin(object):
             multipart=multipart,
             secure=secure,
             verify=verify,
-            profile=profile
+            profile=profile,
         )
         StorageHelper.add_aws_configuration(self._bucket_config, log=self.log)
         self.storage_uri = StorageHelper.get_aws_storage_uri_from_config(self._bucket_config)

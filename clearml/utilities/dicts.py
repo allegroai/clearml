@@ -115,6 +115,20 @@ class NestedBlobsDict(BlobsDict):
         return self._keys(self, '')
 
 
+class RequirementsDict(dict):
+    @property
+    def pip(self):
+        return self.get("pip")
+
+    @property
+    def conda(self):
+        return self.get("conda")
+
+    @property
+    def orig_pip(self):
+        return self.get("orig_pip")
+
+
 def merge_dicts(dict1, dict2):
     """ Recursively merges dict2 into dict1 """
     if not isinstance(dict1, dict) or not isinstance(dict2, dict):

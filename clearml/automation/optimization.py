@@ -2034,7 +2034,10 @@ class HyperParameterOptimizer(object):
                 if job_id in completed_jobs:
                     if value != completed_jobs[job_id][0]:
                         iteration_value = self._objective_metric.get_current_raw_objective(job_id)
-                        iteration = [it_[0] if it_ else -1 for it_ in iteration_value]
+                        if iteration_value:
+                            iteration = [it_[0] if it_ else -1 for it_ in iteration_value]
+                        else:
+                            iteration = [-1]
                         completed_jobs[job_id] = (
                             value,
                             iteration,
@@ -2049,7 +2052,10 @@ class HyperParameterOptimizer(object):
                     pairs.append((i, value))
                     labels.append(str(params)[1:-1])
                     iteration_value = self._objective_metric.get_current_raw_objective(job_id)
-                    iteration = [it_[0] if it_ else -1 for it_ in iteration_value]
+                    if iteration_value:
+                        iteration = [it_[0] if it_ else -1 for it_ in iteration_value]
+                    else:
+                        iteration = [-1]
                     completed_jobs[job_id] = (
                         value,
                         iteration,

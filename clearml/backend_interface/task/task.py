@@ -1360,13 +1360,19 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 "Delete hyper-parameter is not supported by your clearml-server, "
                 "upgrade to the latest version")
 
+        force_kwargs = {}
+        if Session.check_min_api_version("2.13"):
+            force_kwargs["force"] = force
+
         with self._edit_lock:
-            paramkey = tasks.ParamKey(section=name.split('/', 1)[0], name=name.split('/', 1)[1])
-            res = self.send(tasks.DeleteHyperParamsRequest(
-                task=self.id, hyperparams=[paramkey], force=force), raise_on_errors=False)
+            paramkey = tasks.ParamKey(section=name.split("/", 1)[0], name=name.split("/", 1)[1])
+            res = self.send(
+                tasks.DeleteHyperParamsRequest(task=self.id, hyperparams=[paramkey], **force_kwargs),
+                raise_on_errors=False,
+            )
             self.reload()
 
-        return res.ok()
+        return res.ok() if not self._offline_mode else True
 
     def update_parameters(self, *args, **kwargs):
         # type: (*dict, **Any) -> ()
@@ -2267,6 +2273,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Alternatively, you can add all requirements from a file.
         Example: Task.add_requirements('/path/to/your/project/requirements.txt')
 
+        .. note::
+            Task.add_requirements does not directly modify the task's requirements. Instead, it improves the accuracy
+            of capturing a task's Python packages. To explicitly change task requirements, use
+            Task.set_packages, which overwrites existing packages with the specified ones.
+
         :param str package_name: The package name or path to a requirements file
             to add to the "Installed Packages" section of the task.
         :param package_version: The package version requirements. If ``None``, then  use the installed version.
@@ -2305,13 +2316,14 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
     def force_requirements_env_freeze(cls, force=True, requirements_file=None):
         # type: (bool, Optional[Union[str, Path]]) -> None
         """
-        Force using `pip freeze` / `conda list` to store the full requirements of the active environment
-        (instead of statically analyzing the running code and listing directly imported packages)
+        Force the use of ``pip freeze`` or ``conda list`` to capture the requirements from the active
+        environment (instead of statically analyzing the running code and listing directly imported packages).
         Notice: Must be called before `Task.init` !
 
-        :param force: Set force using `pip freeze` flag on/off
-        :param requirements_file: Optional pass requirements.txt file to use (instead of `pip freeze` or automatic
-            analysis)
+        :param force: If ``True`` (default), force the use of ``pip freeze`` or ``conda list`` to capture the
+            requirements. If ``False``, ClearML statistically analyzes the code for requirements.
+        :param requirements_file: (Optional) Pass a requirements.txt file to specify the required packages (instead of
+            ``pip freeze`` or automatic analysis). This will overwrite any existing requirement listing.
         """
         cls._force_use_pip_freeze = requirements_file if requirements_file else bool(force)
 

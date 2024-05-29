@@ -276,17 +276,6 @@ class PatchFastaiV2(object):
                         value=metric.value,
                         iteration=self.__train_iter,
                     )
-            except Exception:
-                pass
-
-        def before_step(self):
-            # noinspection PyBroadException
-            try:
-                if hasattr(fastai.learner.Recorder, "before_step"):
-                    super().before_step()  # noqa
-                if not PatchFastaiV2._current_task:
-                    return
-                logger = PatchFastaiV2._current_task.get_logger()
                 gradients = [
                     x.grad.clone().detach().cpu() for x in self.learn.model.parameters() if x.grad is not None
                 ]  # noqa

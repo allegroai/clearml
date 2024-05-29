@@ -37,7 +37,7 @@ import six
 from pathlib2 import Path
 
 from .backend_config.defs import get_active_config_file, get_config_file
-from .backend_api.services import tasks, projects, events
+from .backend_api.services import tasks, projects, events, queues
 from .backend_api.session.session import (
     Session, ENV_ACCESS_KEY, ENV_SECRET_KEY, ENV_HOST, ENV_WEB_HOST, ENV_FILES_HOST, )
 from .backend_api.session.defs import (ENV_DEFERRED_TASK_INIT, ENV_IGNORE_MISSING_CONFIG,
@@ -91,7 +91,7 @@ from .utilities.config import verify_basic_value
 from .binding.args import (
     argparser_parseargs_called, get_argparser_last_args,
     argparser_update_currenttask, )
-from .utilities.dicts import ReadOnlyDict, merge_dicts
+from .utilities.dicts import ReadOnlyDict, merge_dicts, RequirementsDict
 from .utilities.proxy_object import (
     ProxyDictPreWrite, ProxyDictPostWrite, flatten_dictionary,
     nested_from_flat_dictionary, naive_nested_from_flat_dictionary, StubObject as _TaskStub)
@@ -248,7 +248,7 @@ class Task(_Task):
             output_uri=None,  # type: Optional[Union[str, bool]]
             auto_connect_arg_parser=True,  # type: Union[bool, Mapping[str, bool]]
             auto_connect_frameworks=True,  # type: Union[bool, Mapping[str, Union[bool, str, list]]]
-            auto_resource_monitoring=True,  # type: bool
+            auto_resource_monitoring=True,  # type: Union[bool, Mapping[str, Any]]
             auto_connect_streams=True,  # type: Union[bool, Mapping[str, bool]]
             deferred_init=False,  # type: bool
     ):
@@ -411,6 +411,19 @@ class Task(_Task):
           - ``True`` - Automatically create resource monitoring plots. (default)
           - ``False`` - Do not automatically create.
           - Class Type - Create ResourceMonitor object of the specified class type.
+          - dict - Dictionary of kwargs to be passed to the ResourceMonitor instance.
+              The keys can be:
+              - `report_start_sec` OR `first_report_sec` OR `seconds_from_start` - Maximum number of seconds
+                  to wait for scalar/plot reporting before defaulting
+                  to machine statistics reporting based on seconds from experiment start time
+              - `wait_for_first_iteration_to_start_sec` - Set the initial time (seconds) to wait for iteration
+                   reporting to be used as x-axis for the resource monitoring,
+                   if timeout exceeds then reverts to `seconds_from_start`
+              - `max_wait_for_first_iteration_to_start_sec` - Set the maximum time (seconds) to allow the resource
+                  monitoring to revert back to iteration reporting x-axis after starting to report `seconds_from_start`
+              - `report_mem_used_per_process` OR `report_global_mem_used` - Compatibility feature,
+                  report memory usage for the entire machine
+                  default (false), report only on the running process and its sub-processes
 
         :param auto_connect_streams: Control the automatic logging of stdout and stderr.
             The values are:
@@ -479,20 +492,28 @@ class Task(_Task):
                 cls.__main_task._detect_repo_async_thread = None
                 cls.__main_task._dev_worker = None
                 cls.__main_task._resource_monitor = None
-                # remove the logger from the previous process
-                cls.__main_task.get_logger()
-                # create a new logger (to catch stdout/err)
-                cls.__main_task._logger = None
-                cls.__main_task.__reporter = None
-                # noinspection PyProtectedMember
-                cls.__main_task._get_logger(auto_connect_streams=auto_connect_streams)
-                cls.__main_task._artifacts_manager = Artifacts(cls.__main_task)
+
+                # if we are using threads to send the reports,
+                # after forking there are no threads, so we will need to recreate them
+                if not getattr(cls, '_report_subprocess_enabled'):
+                    # remove the logger from the previous process
+                    cls.__main_task.get_logger()
+                    # create a new logger (to catch stdout/err)
+                    cls.__main_task._logger = None
+                    cls.__main_task.__reporter = None
+                    # noinspection PyProtectedMember
+                    cls.__main_task._get_logger(auto_connect_streams=auto_connect_streams)
+                    cls.__main_task._artifacts_manager = Artifacts(cls.__main_task)
+
                 # unregister signal hooks, they cause subprocess to hang
                 # noinspection PyProtectedMember
                 cls.__main_task.__register_at_exit(cls.__main_task._at_exit)
 
-                # start all reporting threads
-                BackgroundMonitor.start_all(task=cls.__main_task)
+                # if we are using threads to send the reports,
+                # after forking there are no threads, so we will need to recreate them
+                if not getattr(cls, '_report_subprocess_enabled'):
+                    # start all reporting threads
+                    BackgroundMonitor.start_all(task=cls.__main_task)
 
             if not running_remotely():
                 verify_defaults_match()
@@ -543,6 +564,7 @@ class Task(_Task):
 
                 if not is_sub_process_task_id and deferred_init and deferred_init != cls.__nested_deferred_init_flag:
                     def completed_cb(x):
+                        Task.__forked_proc_main_pid = os.getpid()
                         Task.__main_task = x
 
                     getLogger().warning("ClearML initializing Task in the background")
@@ -643,6 +665,7 @@ class Task(_Task):
         except Exception:
             raise
         else:
+            Task.__forked_proc_main_pid = os.getpid()
             Task.__main_task = task
 
             # register at exist only on the real (none deferred) Task
@@ -729,10 +752,31 @@ class Task(_Task):
             if auto_resource_monitoring and not is_sub_process_task_id:
                 resource_monitor_cls = auto_resource_monitoring \
                     if isinstance(auto_resource_monitoring, six.class_types) else ResourceMonitor
+                resource_monitor_kwargs = dict(
+                    report_mem_used_per_process=not config.get("development.worker.report_global_mem_used", False),
+                    first_report_sec=config.get("development.worker.report_start_sec", None),
+                    wait_for_first_iteration_to_start_sec=config.get(
+                        "development.worker.wait_for_first_iteration_to_start_sec", None
+                    ),
+                    max_wait_for_first_iteration_to_start_sec=config.get(
+                        "development.worker.max_wait_for_first_iteration_to_start_sec", None
+                    ),
+                )
+                if isinstance(auto_resource_monitoring, dict):
+                    if "report_start_sec" in auto_resource_monitoring:
+                        auto_resource_monitoring["first_report_sec"] = auto_resource_monitoring.pop("report_start_sec")
+                    if "seconds_from_start" in auto_resource_monitoring:
+                        auto_resource_monitoring["first_report_sec"] = auto_resource_monitoring.pop(
+                            "seconds_from_start"
+                        )
+                    if "report_global_mem_used" in auto_resource_monitoring:
+                        auto_resource_monitoring["report_mem_used_per_process"] = auto_resource_monitoring.pop(
+                            "report_global_mem_used"
+                        )
+                    resource_monitor_kwargs.update(auto_resource_monitoring)
                 task._resource_monitor = resource_monitor_cls(
                     task,
-                    report_mem_used_per_process=not config.get('development.worker.report_global_mem_used', False),
-                    first_report_sec=config.get('development.worker.report_start_sec', None),
+                    **resource_monitor_kwargs
                 )
                 task._resource_monitor.start()
 
@@ -1580,7 +1624,8 @@ class Task(_Task):
     def set_packages(self, packages):
         # type: (Union[str, Path, Sequence[str]]) -> ()
         """
-        Manually specify a list of required packages or a local requirements.txt file.
+        Manually specify a list of required packages or a local requirements.txt file. Note that this will
+        overwrite all existing packages.
 
         When running remotely this call is ignored
 
@@ -1639,6 +1684,19 @@ class Task(_Task):
                 # we cannot have None on the value itself
                 self.data.script.version_num = commit or ""
             self._edit(script=self.data.script)
+
+    def get_requirements(self):
+        # type: () -> RequirementsDict
+        """
+        Get the task's requirements
+
+        :return: A `RequirementsDict` object that holds the `pip`, `conda`, `orig_pip` requirements.
+        """
+        if not running_remotely() and self.is_main_task():
+            self._wait_for_repo_detection(timeout=300.)
+        requirements_dict = RequirementsDict()
+        requirements_dict.update(self.data.script.requirements)
+        return requirements_dict
 
     def connect_configuration(self, configuration, name=None, description=None, ignore_remote_overrides=False):
         # type: (Union[Mapping, list, Path, str], Optional[str], Optional[str], bool) -> Union[dict, Path, str]
@@ -2823,21 +2881,47 @@ class Task(_Task):
             docker_setup_bash_script=docker_setup_bash_script
         )
 
-    def set_resource_monitor_iteration_timeout(self, seconds_from_start=1800):
-        # type: (float) -> bool
+    @classmethod
+    def set_resource_monitor_iteration_timeout(
+        cls,
+        seconds_from_start=30.0,
+        wait_for_first_iteration_to_start_sec=180.0,
+        max_wait_for_first_iteration_to_start_sec=1800.0,
+    ):
+        # type: (float, float, float) -> bool
         """
         Set the ResourceMonitor maximum duration (in seconds) to wait until first scalar/plot is reported.
         If timeout is reached without any reporting, the ResourceMonitor will start reporting machine statistics based
-        on seconds from Task start time (instead of based on iteration)
+        on seconds from Task start time (instead of based on iteration).
+        Notice! Should be called before `Task.init`.
 
         :param seconds_from_start: Maximum number of seconds to wait for scalar/plot reporting before defaulting
             to machine statistics reporting based on seconds from experiment start time
+        :param wait_for_first_iteration_to_start_sec: Set the initial time (seconds) to wait for iteration reporting
+            to be used as x-axis for the resource monitoring, if timeout exceeds then reverts to `seconds_from_start`
+        :param max_wait_for_first_iteration_to_start_sec: Set the maximum time (seconds) to allow the resource
+            monitoring to revert back to iteration reporting x-axis after starting to report `seconds_from_start`
+
         :return: True if success
         """
-        if not self._resource_monitor:
-            return False
-        self._resource_monitor.wait_for_first_iteration = seconds_from_start
-        self._resource_monitor.max_check_first_iteration = seconds_from_start
+        if ResourceMonitor._resource_monitor_instances:
+            getLogger().warning(
+                "Task.set_resource_monitor_iteration_timeout called after Task.init."
+                " This might not work since the values might not be used in forked processes"
+            )
+        # noinspection PyProtectedMember
+        for instance in ResourceMonitor._resource_monitor_instances:
+            # noinspection PyProtectedMember
+            instance._first_report_sec = seconds_from_start
+            instance.wait_for_first_iteration = wait_for_first_iteration_to_start_sec
+            instance.max_check_first_iteration = max_wait_for_first_iteration_to_start_sec
+
+        # noinspection PyProtectedMember
+        ResourceMonitor._first_report_sec_default = seconds_from_start
+        # noinspection PyProtectedMember
+        ResourceMonitor._wait_for_first_iteration_to_start_sec_default = wait_for_first_iteration_to_start_sec
+        # noinspection PyProtectedMember
+        ResourceMonitor._max_wait_for_first_iteration_to_start_sec_default = max_wait_for_first_iteration_to_start_sec
         return True
 
     def execute_remotely(self, queue_name=None, clone=False, exit_process=True):
@@ -3335,10 +3419,24 @@ class Task(_Task):
             if output_model.get("output_uri"):
                 model.set_upload_destination(output_model.get("output_uri"))
             model.update_weights(auto_delete_file=False, **output_model["weights"])
+            Metrics.report_offline_session(
+                model,
+                session_folder,
+                iteration_offset=iteration_offset,
+                remote_url=task_holding_reports._get_default_report_storage_uri(),
+                only_with_id=output_model["id"],
+                session=task_holding_reports.session
+            )
         # logs
         TaskHandler.report_offline_session(task_holding_reports, session_folder, iteration_offset=iteration_offset)
         # metrics
-        Metrics.report_offline_session(task_holding_reports, session_folder, iteration_offset=iteration_offset)
+        Metrics.report_offline_session(
+            task_holding_reports,
+            session_folder,
+            iteration_offset=iteration_offset,
+            only_with_id=export_data["id"],
+            session=task_holding_reports.session,
+        )
         # print imported results page
         print('ClearML results page: {}'.format(task_holding_reports.get_output_log_web_page()))
         task_holding_reports.mark_completed()
@@ -3464,6 +3562,29 @@ class Task(_Task):
         LOG_TO_BACKEND_ENV_VAR.set(True)
         DEBUG_SIMULATE_REMOTE_TASK.set(True)
 
+    def get_executed_queue(self, return_name=False):
+        # type: (bool) -> Optional[str]
+        """
+        Get the queue the task was executed on.
+
+        :param return_name: If True, return the name of the queue. Otherwise, return its ID
+
+        :return: Return the ID or name of the queue the task was executed on.
+            If no queue was found, return None
+        """
+        queue_id = self.data.execution.queue
+        if not return_name or not queue_id:
+            return queue_id
+        try:
+            queue_name_result = Task._send(
+                Task._get_default_session(),
+                queues.GetByIdRequest(queue_id)
+            )
+            return queue_name_result.response.queue.name
+        except Exception as e:
+            getLogger().warning("Could not get name of queue with ID '{}': {}".format(queue_id, e))
+            return None
+
     @classmethod
     def _create(cls, project_name=None, task_name=None, task_type=TaskTypes.training):
         # type: (Optional[str], Optional[str], Task.TaskTypes) -> TaskInstance
@@ -3547,6 +3668,7 @@ class Task(_Task):
             return
         task = cls.__main_task
         cls.__main_task = None
+        cls.__forked_proc_main_pid = None
         if task._dev_worker:
             task._dev_worker.unregister()
             task._dev_worker = None
@@ -3683,6 +3805,7 @@ class Task(_Task):
 
         # mark us as the main Task, there should only be one dev Task at a time.
         if not Task.__main_task:
+            Task.__forked_proc_main_pid = os.getpid()
             Task.__main_task = task
 
         # mark the task as started
@@ -4253,6 +4376,7 @@ class Task(_Task):
             # this is so in theory we can close a main task and start a new one
             if self.is_main_task():
                 Task.__main_task = None
+                Task.__forked_proc_main_pid = None
                 Task.__update_master_pid_task(task=None)
         except Exception:
             # make sure we do not interrupt the exit process

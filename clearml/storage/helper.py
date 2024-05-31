@@ -2815,7 +2815,7 @@ class StorageHelper(object):
         :param str path: file path to check access to
         :return: Return the string representation of the file as path if have access to it, else None
         """
-
+        path = self._canonize_url(path)
         return self._driver.get_direct_access(path)
 
     @classmethod

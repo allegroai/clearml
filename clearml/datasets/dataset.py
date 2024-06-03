@@ -962,8 +962,10 @@ class Dataset(object):
     ):
         # type: (Union[Path, _Path, str], bool, Optional[int], Optional[int], bool, Optional[int]) -> Optional[str]
         """
-        return a base folder with a writable (mutable) local copy of the entire dataset
-        download and copy / soft-link, files from all the parent dataset versions
+        Return a base folder with a writable (mutable) local copy of the entire dataset.
+        Download and copy / soft-link, files from all the parent dataset versions. Note that the method initially
+        downloads the local copy into a cache directory before moving it to the `target_folder`. Make sure the default
+        cache directory has sufficient disk space.
 
         :param target_folder: Target folder for the writable copy
         :param overwrite: If True, recursively delete the target folder before creating a copy.

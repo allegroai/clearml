@@ -162,7 +162,7 @@ class PatchFire:
 
     @staticmethod
     def __CallAndUpdateTrace(  # noqa
-        original_fn, component, args_, component_trace, treatment, target, *args, **kwargs
+        original_fn, component, args_, component_trace, treatment, target=None, *args, **kwargs
     ):
         if running_remotely():
             return original_fn(component, args_, component_trace, treatment, target, *args, **kwargs)

@@ -636,6 +636,7 @@ class Dataset(object):
         chunk_size=None,
         max_workers=None,
         retries=3,
+        preview=True
     ):
         # type: (bool, bool, Optional[str], Optional[str], int, Optional[int], int) -> ()
         """
@@ -655,10 +656,13 @@ class Dataset(object):
           - 1: if the upload destination is a cloud provider ('s3', 'gs', 'azure')
           - number of logical cores: otherwise
         :param int retries: Number of retries before failing to upload each zip. If 0, the upload is not retried.
+        :param preview: If True (defaul) the dataset preview is uploaded and shown in the UI.
 
         :raise: If the upload failed (i.e. at least one zip failed to upload), raise a `ValueError`
         """
-        self._report_dataset_preview()
+        if preview:
+            self._report_dataset_preview()
+
         if Dataset.is_offline():
             self._serialize()
             return

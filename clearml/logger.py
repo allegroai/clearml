@@ -412,7 +412,13 @@ class Logger(object):
             reporter_table = table.fillna(str(np.nan))
             replace("NaN", np.nan, math.nan if six.PY3 else float("nan"))
             replace("Inf", np.inf, math.inf if six.PY3 else float("inf"))
-            replace("-Inf", -np.inf, np.NINF, -math.inf if six.PY3 else -float("inf"))
+            minus_inf = [-np.inf, -math.inf if six.PY3 else -float("inf")]
+            try:
+                minus_inf.append(np.NINF)
+            except AttributeError:
+                # NINF has been removed in numpy>2.0
+                pass
+            replace("-Inf", *minus_inf)
         # noinspection PyProtectedMember
         return self._task._reporter.report_table(
             title=title,

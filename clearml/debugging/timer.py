@@ -6,23 +6,23 @@ import six
 
 
 class Timer(object):
-    """A class implementing a simple timer, with a reset option """
+    """A class implementing a simple timer, with a reset option"""
 
     def __init__(self):
-        self._start_time = 0.
-        self._diff = 0.
-        self._total_time = 0.
-        self._average_time = 0.
+        self._start_time = 0.0
+        self._diff = 0.0
+        self._total_time = 0.0
+        self._average_time = 0.0
         self._calls = 0
         self.tic()
 
     def reset(self):
-        self._start_time = 0.
-        self._diff = 0.
+        self._start_time = 0.0
+        self._diff = 0.0
         self.reset_average()
 
     def reset_average(self):
-        """ Reset average counters (does not change current timer) """
+        """Reset average counters (does not change current timer)"""
         self._total_time = 0
         self._average_time = 0
         self._calls = 0
@@ -54,7 +54,7 @@ class Timer(object):
         return self._total_time
 
     def toc_with_reset(self, average=True, reset_if_calls=1000):
-        """ Enable toc with reset (slightly inaccurate if reset event occurs) """
+        """Enable toc with reset (slightly inaccurate if reset event occurs)"""
         if self._calls > reset_if_calls:
             last_diff = time.time() - self._start_time
             self._start_time = time.time()
@@ -75,7 +75,7 @@ class TimersMixin(object):
 
     def add_timer(self, name, timer=None):
         if name in self._timers:
-            raise ValueError('timer %s already exists' % name)
+            raise ValueError("timer %s already exists" % name)
         timer = timer or Timer()
         self._timers[name] = timer
         return timer

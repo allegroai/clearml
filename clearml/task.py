@@ -336,7 +336,7 @@ class Task(_Task):
             files_server will be used for model storage. In the default location, ClearML creates a subfolder for the
             output. If set to False, local runs will not upload output models and artifacts,
             and remote runs will not use any default values provided using ``default_output_uri``.
-            The subfolder structure is the following: `<output destination name> / <project name> / <task name>.<Task ID>`.
+            The subfolder structure is the following: \<output destination name\> / \<project name\> / \<task name\>.\<Task ID\>.
             Note that for cloud storage, you must install the **ClearML** package for your cloud storage type,
             and then configure your storage credentials. For detailed information, see "Storage" in the ClearML
             Documentation.
@@ -384,9 +384,9 @@ class Task(_Task):
               frameworks. The dictionary keys are frameworks and the values are booleans, other dictionaries used for
               finer control or wildcard strings.
               In case of wildcard strings, the local path of a model file has to match at least one wildcard to be
-              saved/loaded by ClearML. Example: {'pytorch' : '*.pt', 'tensorflow': ['*.h5', '*']}
+              saved/loaded by ClearML. Example: ``{'pytorch' : '*.pt', 'tensorflow': ['*.h5', '*']}``
               Keys missing from the dictionary default to ``True``, and an empty dictionary defaults to ``False``.
-              Supported keys for finer control: {'tensorboard': {'report_hparams': bool}}  # whether to report TensorBoard hyperparameters
+              Supported keys for finer control: ``{'tensorboard': {'report_hparams': bool}}``  # whether to report TensorBoard hyperparameters
 
               For example:
 
@@ -887,7 +887,7 @@ class Task(_Task):
             direct path to a file inside the local repository itself, for example: '~/project/source/train.py'
         :param working_directory: Working directory to launch the script from. Default: repository root folder.
             Relative to repo root or local folder.
-        :param packages: Manually specify a list of required packages. Example: ["tqdm>=2.1", "scikit-learn"]
+        :param packages: Manually specify a list of required packages. Example: ``["tqdm>=2.1", "scikit-learn"]``
             or `True` to automatically create requirements
             based on locally installed packages (repository must be local).
         :param requirements_file: Specify requirements.txt file to install when setting the session.
@@ -1370,7 +1370,7 @@ class Task(_Task):
 
         .. note::
            A worker daemon must be listening at the queue for the worker to fetch the Task and execute it,
-           see `ClearML Agent <../clearml_agent>`_ in the ClearML Documentation.
+           see "ClearML Agent" in the ClearML Documentation.
 
         :param Task/str task: The Task to enqueue. Specify a Task object or  Task ID.
         :param str queue_name: The name of the queue. If not specified, then ``queue_id`` must be specified.
@@ -1631,7 +1631,7 @@ class Task(_Task):
 
         :param packages: The list of packages or the path to the requirements.txt file.
 
-            Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt" or ""
+            Example: ``["tqdm>=2.1", "scikit-learn"]`` or ``"./requirements.txt"`` or ``""``
             Use an empty string (packages="") to clear the requirements section (remote execution will use
                 requirements.txt from the git repository if the file exists)
         """
@@ -1657,7 +1657,7 @@ class Task(_Task):
         Supports both git repo url link, and local repository path (automatically converted into the remote
         git/commit as is currently checkout).
         Example remote url: "https://github.com/user/repo.git".
-        Example local repo copy: "./repo" -> will automatically store the remote
+        Example local repo copy: "./repo" - will automatically store the remote
         repo url and commit ID based on the locally cloned copy.
         When executing remotely, this call will not override the repository data (it is ignored)
 
@@ -2470,7 +2470,7 @@ class Task(_Task):
     def get_models(self):
         # type: () -> Mapping[str, Sequence[Model]]
         """
-        Return a dictionary with {'input': [], 'output': []} loaded/stored models of the current Task
+        Return a dictionary with ``{'input': [], 'output': []}`` loaded/stored models of the current Task
         Input models are files loaded in the task, either manually or automatically logged
         Output models are files stored in the task, either manually or automatically logged.
         Automatically logged frameworks are for example: TensorFlow, Keras, PyTorch, ScikitLearn(joblib) etc.
@@ -3106,7 +3106,7 @@ class Task(_Task):
             Defaults to ('failed').
         :param check_interval_sec: Interval in seconds between two checks. Defaults to 60 seconds.
 
-        :raise: RuntimeError if the status is one of {raise_on_status}.
+        :raise: RuntimeError if the status is one of ``{raise_on_status}``.
         """
         stopped_status = list(status) + (list(raise_on_status) if raise_on_status else [])
         while self.status not in stopped_status:

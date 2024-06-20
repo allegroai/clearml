@@ -480,7 +480,7 @@ class PipelineController(object):
             The current step in the pipeline will be sent for execution only after all the parent nodes
             have been executed successfully.
         :param parameter_override: Optional parameter overriding dictionary.
-            The dict values can reference a previously executed step using the following form '${step_name}'. Examples:
+            The dict values can reference a previously executed step using the following form ``'${step_name}'``. Examples:
 
           - Artifact access ``parameter_override={'Args/input_file': '${<step_name>.artifacts.<artifact_name>.url}' }``
           - Model access (last model used) ``parameter_override={'Args/input_file': '${<step_name>.models.output.-1.url}' }``
@@ -494,11 +494,11 @@ class PipelineController(object):
         :param configuration_overrides: Optional, override Task configuration objects.
             Expected dictionary of configuration object name and configuration object content.
             Examples:
-                {'General': dict(key='value')}
-                {'General': 'configuration file content'}
-                {'OmegaConf': YAML.dumps(full_hydra_dict)}
+                ``{'General': dict(key='value')}``
+                ``{'General': 'configuration file content'}``
+                ``{'OmegaConf': YAML.dumps(full_hydra_dict)}``
         :param task_overrides: Optional task section overriding dictionary.
-            The dict values can reference a previously executed step using the following form '${step_name}'. Examples:
+            The dict values can reference a previously executed step using the following form ``'${step_name}'``. Examples:
 
           - get the latest commit from a specific branch ``task_overrides={'script.version_num': '', 'script.branch': 'main'}``
           - match git repository branch to a previous step ``task_overrides={'script.branch': '${stage1.script.branch}', 'script.version_num': ''}``
@@ -549,7 +549,7 @@ class PipelineController(object):
             the Node is skipped and so is any node in the DAG that relies on this node.
 
             Notice the `parameters` are already parsed,
-            e.g. `${step1.parameters.Args/param}` is replaced with relevant value.
+            e.g. ``${step1.parameters.Args/param}`` is replaced with relevant value.
 
             .. code-block:: py
 
@@ -774,7 +774,7 @@ class PipelineController(object):
             If not provided automatically take all function arguments & defaults
             Optional, pass input arguments to the function from other Tasks' output artifact.
             Example argument named `numpy_matrix` from Task ID `aabbcc` artifact name `answer`:
-            {'numpy_matrix': 'aabbcc.answer'}
+            ``{'numpy_matrix': 'aabbcc.answer'}``
         :param function_return: Provide a list of names for all the results.
             If not provided, no results will be stored as artifacts.
         :param project_name: Set the project name for the task. Required if base_task_id is None.
@@ -842,7 +842,7 @@ class PipelineController(object):
             the Node is skipped and so is any node in the DAG that relies on this node.
 
             Notice the `parameters` are already parsed,
-            e.g. `${step1.parameters.Args/param}` is replaced with relevant value.
+            e.g. ``${step1.parameters.Args/param}`` is replaced with relevant value.
 
             .. code-block:: py
 
@@ -991,7 +991,7 @@ class PipelineController(object):
             the Node is skipped and so is any node in the DAG that relies on this node.
 
             Notice the `parameters` are already parsed,
-            e.g. `${step1.parameters.Args/param}` is replaced with relevant value.
+            e.g. ``${step1.parameters.Args/param}`` is replaced with relevant value.
 
             .. code-block:: py
 
@@ -1416,7 +1416,7 @@ class PipelineController(object):
         The parameter can be used as input parameter for any step in the pipeline.
         Notice all parameters will appear under the PipelineController Task's Hyper-parameters -> Pipeline section
         Example: pipeline.add_parameter(name='dataset', description='dataset ID to process the pipeline')
-        Then in one of the steps we can refer to the value of the parameter with '${pipeline.dataset}'
+        Then in one of the steps we can refer to the value of the parameter with ``'${pipeline.dataset}'``
 
         :param name: String name of the parameter.
         :param default: Default value to be put as the default value (can be later changed in the UI)
@@ -1445,7 +1445,7 @@ class PipelineController(object):
 
         .. note::
            A worker daemon must be listening at the queue for the worker to fetch the Task and execute it,
-           see `ClearML Agent <../clearml_agent>`_ in the ClearML Documentation.
+           see "ClearML Agent" in the ClearML Documentation.
 
         :param pipeline_controller: The PipelineController to enqueue. Specify a PipelineController object or PipelineController ID
         :param queue_name: The name of the queue. If not specified, then ``queue_id`` must be specified.
@@ -1661,7 +1661,7 @@ class PipelineController(object):
             the Node is skipped and so is any node in the DAG that relies on this node.
 
             Notice the `parameters` are already parsed,
-            e.g. `${step1.parameters.Args/param}` is replaced with relevant value.
+            e.g. ``${step1.parameters.Args/param}`` is replaced with relevant value.
 
             .. code-block:: py
 
@@ -2127,7 +2127,7 @@ class PipelineController(object):
             If not provided automatically take all function arguments & defaults
             Optional, pass input arguments to the function from other Tasks's output artifact.
             Example argument named `numpy_matrix` from Task ID `aabbcc` artifact name `answer`:
-            {'numpy_matrix': 'aabbcc.answer'}
+            ``{'numpy_matrix': 'aabbcc.answer'}``
         :param function_return: Provide a list of names for all the results.
             If not provided, no results will be stored as artifacts.
         :param project_name: Set the project name for the task. Required if base_task_id is None.
@@ -2195,7 +2195,7 @@ class PipelineController(object):
             the Node is skipped and so is any node in the DAG that relies on this node.
 
             Notice the `parameters` are already parsed,
-            e.g. `${step1.parameters.Args/param}` is replaced with relevant value.
+            e.g. ``${step1.parameters.Args/param}`` is replaced with relevant value.
 
             .. code-block:: py
 
@@ -3015,7 +3015,7 @@ class PipelineController(object):
     def _parse_step_ref(self, value, recursive=False):
         # type: (Any) -> Optional[str]
         """
-        Return the step reference. For example "${step1.parameters.Args/param}"
+        Return the step reference. For example ``"${step1.parameters.Args/param}"``
         :param value: string
         :param recursive: if True, recursively parse all values in the dict, list or tuple
         :return:
@@ -3047,7 +3047,7 @@ class PipelineController(object):
     def _parse_task_overrides(self, task_overrides):
         # type: (dict) -> dict
         """
-        Return the step reference. For example "${step1.parameters.Args/param}"
+        Return the step reference. For example ``"${step1.parameters.Args/param}"``
         :param task_overrides: string
         :return:
         """
@@ -3265,11 +3265,11 @@ class PipelineController(object):
     def __verify_step_reference(self, node, step_ref_string):
         # type: (PipelineController.Node, str) -> Optional[str]
         """
-        Verify the step reference. For example "${step1.parameters.Args/param}"
+        Verify the step reference. For example ``"${step1.parameters.Args/param}"``
         Raise ValueError on misconfiguration
 
         :param Node node: calling reference node (used for logging)
-        :param str step_ref_string: For example "${step1.parameters.Args/param}"
+        :param str step_ref_string: For example ``"${step1.parameters.Args/param}"``
         :return: If step reference is used, return the pipeline step name, otherwise return None
         """
         parts = step_ref_string[2:-1].split('.')
@@ -4076,7 +4076,7 @@ class PipelineDecorator(PipelineController):
             the Node is skipped and so is any node in the DAG that relies on this node.
 
             Notice the `parameters` are already parsed,
-            e.g. `${step1.parameters.Args/param}` is replaced with relevant value.
+            e.g. ``${step1.parameters.Args/param}`` is replaced with relevant value.
 
             .. code-block:: py
 

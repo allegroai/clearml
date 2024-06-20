@@ -531,13 +531,13 @@ class ClearmlJob(BaseJob):
         :param str base_task_id: base task ID to clone from
         :param dict parameter_override: dictionary of parameters and values to set fo the cloned task
         :param dict task_overrides:  Task object specific overrides.
-            for example {'script.version_num': None, 'script.branch': 'main'}
+            for example ``{'script.version_num': None, 'script.branch': 'main'}``
         :param configuration_overrides: Optional, override Task configuration objects.
             Expected dictionary of configuration object name and configuration object content.
             Examples:
-                {'config_section': dict(key='value')}
-                {'config_file': 'configuration file content'}
-                {'OmegaConf': YAML.dumps(full_hydra_dict)}
+                ``{'config_section': dict(key='value')}``
+                ``{'config_file': 'configuration file content'}``
+                ``{'OmegaConf': YAML.dumps(full_hydra_dict)}``
         :param list tags: additional tags to add to the newly cloned task
         :param str parent: Set newly created Task parent task field, default: base_tak_id.
         :param dict kwargs: additional Task creation parameters

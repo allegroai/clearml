@@ -1917,7 +1917,7 @@ class Dataset(object):
             If False, don't search inside subprojects (except for the special `.datasets` subproject)
         :param include_archived: If True, include archived datasets as well.
         :return: List of dictionaries with dataset information
-            Example: [{'name': name, 'project': project name, 'id': dataset_id, 'created': date_created},]
+            Example: ``[{'name': name, 'project': project name, 'id': dataset_id, 'created': date_created},]``
         """
         # if include_archived is False, we need to add the system tag __$not:archived to filter out archived datasets
         if not include_archived:

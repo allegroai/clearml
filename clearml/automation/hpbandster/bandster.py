@@ -135,16 +135,17 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         Optimization. Instead of sampling new configurations at random,
         BOHB uses kernel density estimators to select promising candidates.
 
-        .. note::
+        .. code-block::
 
             For reference:
             @InProceedings{falkner-icml-18,
-                title =        {{BOHB}: Robust and Efficient Hyperparameter Optimization at Scale},
-                author =       {Falkner, Stefan and Klein, Aaron and Hutter, Frank},
-                booktitle =    {Proceedings of the 35th International Conference on Machine Learning},
-                pages =        {1436--1445},
-                year =         {2018},
+                 title =        {{BOHB}: Robust and Efficient Hyperparameter Optimization at Scale},
+                 author =       {Falkner, Stefan and Klein, Aaron and Hutter, Frank},
+                 booktitle =    {Proceedings of the 35th International Conference on Machine Learning},
+                 pages =        {1436--1445},
+                 year =         {2018},
             }
+
 
         :param str base_task_id: Task ID (str)
         :param list hyper_parameters: list of Parameter objects to optimize over
@@ -218,17 +219,16 @@ class OptimizerBOHB(SearchStrategy, RandomSeed):
         Optimization. Instead of sampling new configurations at random,
         BOHB uses kernel density estimators to select promising candidates.
 
-        .. note::
+        .. code-block::
 
             For reference:
             @InProceedings{falkner-icml-18,
-              title =        {{BOHB}: Robust and Efficient Hyperparameter Optimization at Scale},
-              author =       {Falkner, Stefan and Klein, Aaron and Hutter, Frank},
-              booktitle =    {Proceedings of the 35th International Conference on Machine Learning},
-              pages =        {1436--1445},
-              year =         {2018},
+                 title =        {{BOHB}: Robust and Efficient Hyperparameter Optimization at Scale},
+                 author =       {Falkner, Stefan and Klein, Aaron and Hutter, Frank},
+                 booktitle =    {Proceedings of the 35th International Conference on Machine Learning},
+                 pages =        {1436--1445},
+                 year =         {2018},
             }
-
 
         :param eta: float (3)
             In each iteration, a complete run of sequential halving is executed. In it,

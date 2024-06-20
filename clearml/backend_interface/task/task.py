@@ -93,6 +93,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         def __eq__(self, other):
             return str(self) == str(other)
 
+        def __repr__(self):
+            return f"TaskTypes.{self.value}"
+
         training = 'training'
         testing = 'testing'
         inference = "inference"
@@ -111,6 +114,9 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         def __eq__(self, other):
             return str(self) == str(other)
+
+        def __repr__(self):
+            return f"TaskTypes.{self.value}"
 
         created = "created"
         queued = "queued"
@@ -1119,10 +1125,10 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Get the parameters for a Task. This method returns a complete group of key-value parameter pairs, but does not
         support parameter descriptions (the result is a dictionary of key-value pairs).
         Notice the returned parameter dict is flat:
-        i.e. {'Args/param': 'value'} is the argument "param" from section "Args"
+        i.e. ``{'Args/param': 'value'}`` is the argument "param" from section "Args"
 
         :param backwards_compatibility: If True (default), parameters without section name
-            (API version < 2.9, clearml-server < 0.16) will be at dict root level.
+            (API version ``<2.9``, clearml-server ``<0.16``) will be at dict root level.
             If False, parameters without section name, will be nested under "Args/" key.
         :param cast: If True, cast the parameter to the original type. Default False,
             values are returned in their string representation
@@ -1158,7 +1164,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Set the parameters for a Task. This method sets a complete group of key-value parameter pairs, but does not
         support parameter descriptions (the input is a dictionary of key-value pairs).
         Notice the parameter dict is flat:
-        i.e. {'Args/param': 'value'} will set the argument "param" in section "Args" to "value"
+        i.e. ``{'Args/param': 'value'}`` will set the argument "param" in section "Args" to "value"
 
         :param args: Positional arguments, which are one or more dictionaries or (key, value) iterable. They are
             merged into a single key-value pair dictionary.
@@ -1380,7 +1386,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Update the parameters for a Task. This method updates a complete group of key-value parameter pairs, but does
         not support parameter descriptions (the input is a dictionary of key-value pairs).
         Notice the parameter dict is flat:
-        i.e. {'Args/param': 'value'} will set the argument "param" in section "Args" to "value"
+        i.e. ``{'Args/param': 'value'}`` will set the argument "param" in section "Args" to "value"
 
         :param args: Positional arguments, which are one or more dictionaries or (key, value) iterable. They are
             merged into a single key-value pair dictionary.

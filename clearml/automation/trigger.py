@@ -223,7 +223,7 @@ class TriggerScheduler(BaseScheduler):
         Notice it is recommended to give the trigger a descriptive unique name, if not provided a task ID is used.
 
         Notice `task_overrides` can except reference to the trigger model ID:
-        example: task_overrides={'Args/model_id': '${model.id}'}
+        example: ``task_overrides={'Args/model_id': '${model.id}'}``
         Notice if schedule_function is passed, use the following function interface:
 
         .. code-block:: py
@@ -251,9 +251,9 @@ class TriggerScheduler(BaseScheduler):
             (skip until the next scheduled time period). Default False.
         :param reuse_task: If True, re-enqueue the same Task (i.e. do not clone it) every time, default False.
         :param task_parameters: Configuration parameters to the executed Task.
-            for example: {'Args/batch': '12'} Notice: not available when reuse_task=True
+            for example: ``{'Args/batch': '12'}`` Notice: not available when reuse_task=True
         :param task_overrides: Change task definition.
-            for example {'script.version_num': None, 'script.branch': 'main'} Notice: not available when reuse_task=True
+            for example ``{'script.version_num': None, 'script.branch': 'main'}`` Notice: not available when reuse_task=True
         :return: True if job is successfully added to the scheduling list
         """
         trigger = ModelTrigger(
@@ -303,7 +303,7 @@ class TriggerScheduler(BaseScheduler):
         Notice, it is recommended to give the trigger a descriptive unique name. If not provided, a task ID is used.
 
         Notice `task_overrides` can except reference to the trigger model ID:
-        example: task_overrides={'Args/dataset_id': '${dataset.id}'}.
+        example: ``task_overrides={'Args/dataset_id': '${dataset.id}'}``.
 
         Notice if schedule_function is passed, use the following function interface:
 
@@ -333,9 +333,9 @@ class TriggerScheduler(BaseScheduler):
             (skip until the next scheduled time period). Default False.
         :param reuse_task: If True, re-enqueue the same Task (i.e. do not clone it) every time, default False.
         :param task_parameters: Configuration parameters to the executed Task.
-            For example: {'Args/batch': '12'} Notice: not available when reuse_task=True/
+            For example: ``{'Args/batch': '12'}``. Notice: not available when reuse_task=True/
         :param task_overrides: Change task definition.
-            For example {'script.version_num': None, 'script.branch': 'main'}. Notice: not available when reuse_task=True
+            For example ``{'script.version_num': None, 'script.branch': 'main'}``. Notice: not available when reuse_task=True
         :return: True if job is successfully added to the scheduling list
         """
         if trigger_project:
@@ -414,7 +414,7 @@ class TriggerScheduler(BaseScheduler):
         Notice it is recommended to give the trigger a descriptive unique name, if not provided a task ID is used.
 
         Notice `task_overrides` can except reference to the trigger model ID:
-        example: task_overrides={'Args/task_id': '${task.id}'}
+        example: ``task_overrides={'Args/task_id': '${task.id}'}``
         Notice if schedule_function is passed, use the following function interface:
 
         .. code-block:: py
@@ -448,9 +448,9 @@ class TriggerScheduler(BaseScheduler):
             (skip until the next scheduled time period). Default False.
         :param reuse_task: If True, re-enqueue the same Task (i.e. do not clone it) every time, default False.
         :param task_parameters: Configuration parameters to the executed Task.
-            for example: {'Args/batch': '12'} Notice: not available when reuse_task=True/
+            for example: ``{'Args/batch': '12'}`` Notice: not available when reuse_task=True/
         :param task_overrides: Change task definition.
-            for example {'script.version_num': None, 'script.branch': 'main'} Notice: not available when reuse_task=True
+            for example ``{'script.version_num': None, 'script.branch': 'main'}``. Notice: not available when reuse_task=True
         :return: True if job is successfully added to the scheduling list
         """
         trigger = TaskTrigger(

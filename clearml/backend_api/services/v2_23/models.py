@@ -2179,7 +2179,7 @@ class GetAllRequest(Request):
     :param uri: List of model URIs
     :type uri: Sequence[str]
     :param last_update: List of last_update constraint strings (utcformat, epoch)
-        with an optional prefix modifier (>, >=, <, <=)
+        with an optional prefix modifier (\>,\>=, \<, \<=)
     :type last_update: Sequence[str]
     :param _all_: Multi-field pattern condition (all fields match pattern)
     :type _all_: MultiFieldPatternData
@@ -2243,7 +2243,7 @@ class GetAllRequest(Request):
             "last_update": {
                 "description": (
                     "List of last_update constraint strings, or a single string (utcformat, epoch) with an optional prefix "
-                    "modifier (>, >=, <, <=)"
+                    "modifier (\>,\>=, \<, \<=)"
                 ),
                 "items": {"pattern": "^(>=|>|<=|<)?.*$", "type": "string"},
                 "type": ["string", "array", "null"],

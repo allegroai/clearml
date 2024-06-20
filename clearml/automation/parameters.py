@@ -69,7 +69,7 @@ class Parameter(RandomSeed):
         """
         Return a list of all the valid values of the Parameter.
 
-        :return: List of dicts {name: value}
+        :return: List of dicts ``{name: value}``
         """
         pass
 
@@ -147,7 +147,7 @@ class UniformParameterRange(Parameter):
         """
         Return uniformly sampled value based on object sampling definitions.
 
-        :return: {self.name: random value [self.min_value, self.max_value)}
+        :return: ``{self.name: random value [self.min_value, self.max_value)}``
         """
         if not self.step_size:
             return {self.name: self._random.uniform(self.min_value, self.max_value)}
@@ -160,7 +160,7 @@ class UniformParameterRange(Parameter):
         Return a list of all the valid values of the Parameter. If ``self.step_size`` is not defined, return 100 points
         between min/max values.
 
-        :return: list of dicts {name: float}
+        :return: list of dicts ``{name: float}``
         """
         step_size = self.step_size or (self.max_value - self.min_value) / 100.
         steps = (self.max_value - self.min_value) / step_size
@@ -208,7 +208,7 @@ class LogUniformParameterRange(UniformParameterRange):
         """
         Return uniformly logarithmic sampled value based on object sampling definitions.
 
-        :return: {self.name: random value self.base^[self.min_value, self.max_value)}
+        :return: ``{self.name: random value self.base^[self.min_value, self.max_value)}``
         """
         values_dict = super().get_value()
         return {self.name: self.base**v for v in values_dict.values()}
@@ -250,7 +250,7 @@ class UniformIntegerParameterRange(Parameter):
         """
         Return uniformly sampled value based on object sampling definitions.
 
-        :return: {self.name: random value [self.min_value, self.max_value)}
+        :return: ``{self.name: random value [self.min_value, self.max_value)}``
         """
         return {self.name: self._random.randrange(
             start=self.min_value, step=self.step_size,
@@ -262,7 +262,7 @@ class UniformIntegerParameterRange(Parameter):
         Return a list of all the valid values of the Parameter. If ``self.step_size`` is not defined, return 100 points
         between minmax values.
 
-        :return: list of dicts {name: int}
+        :return: list of dicts ``{name: int}``
         """
         values = list(range(self.min_value, self.max_value, self.step_size))
         if self.include_max and (not values or values[-1] < self.max_value):
@@ -291,7 +291,7 @@ class DiscreteParameterRange(Parameter):
         """
         Return uniformly sampled value from the valid list of values.
 
-        :return: {self.name: random entry from self.value}
+        :return: ``{self.name: random entry from self.value}``
         """
         return {self.name: self._random.choice(self.values)}
 
@@ -300,7 +300,7 @@ class DiscreteParameterRange(Parameter):
         """
         Return a list of all the valid values of the Parameter.
 
-        :return: list of dicts {name: value}
+        :return: list of dicts ``{name: value}``
         """
         return [{self.name: v} for v in self.values]
 
@@ -321,15 +321,19 @@ class ParameterSet(Parameter):
 
             .. code-block:: javascript
 
-               [ {"opt1": 10, "arg2": 20, "arg2": 30},
-                 {"opt2": 11, "arg2": 22, "arg2": 33} ]
+               [
+                 {"opt1": 10, "arg2": 20, "arg2": 30},
+                 {"opt2": 11, "arg2": 22, "arg2": 33}
+               ]
 
             Two complex combination each one sampled from a different range:
 
             .. code-block:: javascript
 
-               [ {"opt1": UniformParameterRange('arg1',0,1) , "arg2": 20},
-                 {"opt2": UniformParameterRange('arg1',11,12), "arg2": 22},]
+               [
+                 {"opt1": UniformParameterRange('arg1',0,1) , "arg2": 20},
+                 {"opt2": UniformParameterRange('arg1',11,12), "arg2": 22},
+               ]
         """
         super(ParameterSet, self).__init__(name=None)
         self.values = parameter_combinations
@@ -339,7 +343,7 @@ class ParameterSet(Parameter):
         """
         Return uniformly sampled value from the valid list of values.
 
-        :return: {self.name: random entry from self.value}
+        :return: ``{self.name: random entry from self.value}``
         """
         return self._get_value(self._random.choice(self.values))
 
@@ -348,7 +352,7 @@ class ParameterSet(Parameter):
         """
         Return a list of all the valid values of the Parameter.
 
-        :return: list of dicts {name: value}
+        :return: list of dicts ``{name: value}``
         """
         combinations = []
         for combination in self.values:

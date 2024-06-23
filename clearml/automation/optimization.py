@@ -638,7 +638,7 @@ class SearchStrategy(object):
         :param all_hyper_parameters: Default False. If True, return all the hyperparameters from all the sections.
         :param only_completed: return only completed Tasks. Default False.
 
-        :return: A list of dictionaries ({task_id: '', hyper_parameters: {}, metrics: {}}), ordered by performance,
+        :return: A list of dictionaries ``({task_id: '', hyper_parameters: {}, metrics: {}})``, ordered by performance,
             where index 0 is the best performing Task.
             Example w/ all_metrics=False:
 
@@ -1733,7 +1733,7 @@ class HyperParameterOptimizer(object):
         :param all_hyper_parameters: Default False. If True, return all the hyperparameters from all the sections.
         :param only_completed: return only completed Tasks. Default False.
 
-        :return: A list of dictionaries ({task_id: '', hyper_parameters: {}, metrics: {}}), ordered by performance,
+        :return: A list of dictionaries ``({task_id: '', hyper_parameters: {}, metrics: {}})``, ordered by performance,
             where index 0 is the best performing Task.
             Example w/ all_metrics=False:
 

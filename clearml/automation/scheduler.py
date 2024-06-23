@@ -628,9 +628,9 @@ class TaskScheduler(BaseScheduler):
             then recurring based on the timing schedule arguments. Default False.
         :param reuse_task: If True, re-enqueue the same Task (i.e. do not clone it) every time, default False.
         :param task_parameters: Configuration parameters to the executed Task.
-            for example: {'Args/batch': '12'} Notice: not available when reuse_task=True
+            for example: ``{'Args/batch': '12'}`` Notice: not available when reuse_task=True
         :param task_overrides: Change task definition.
-            for example {'script.version_num': None, 'script.branch': 'main'} Notice: not available when reuse_task=True
+            for example ``{'script.version_num': None, 'script.branch': 'main'}`` Notice: not available when reuse_task=True
 
         :return: True if job is successfully added to the scheduling list
         """

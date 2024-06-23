@@ -43,8 +43,8 @@ class Logger(object):
     methods include scalar plots, line plots, histograms, confusion matrices, 2D and 3D scatter
     diagrams, text logging, tables, and image uploading and reporting.
 
-    In the **ClearML Web-App (UI)**, ``Logger`` output appears in the **RESULTS** tab, **CONSOLE**, **SCALARS**,
-    **PLOTS**, and **DEBUG SAMPLES** sub-tabs. When you compare experiments, ``Logger`` output appears in the
+    In the ClearML Web-App (UI), ``Logger`` output appears in CONSOLE, SCALARS,
+    PLOTS, and DEBUG SAMPLES tabs. When you compare experiments, ``Logger`` output appears in the
     comparisons.
 
     .. warning::
@@ -52,7 +52,7 @@ class Logger(object):
        Do not construct Logger objects directly.
 
     You must get a Logger object before calling any of the other ``Logger`` class methods by calling
-    :meth:`.Task.get_logger` or :meth:`Logger.current_logger`.
+    ``Task.get_logger`` or ``Logger.current_logger``.
 
 
     """
@@ -232,7 +232,7 @@ class Logger(object):
         :param mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
         :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
             See full details on the supported configuration: https://plotly.com/javascript/reference/layout/
-            example: extra_layout={'showlegend': False, 'plot_bgcolor': 'yellow'}
+            example: ``extra_layout={'showlegend': False, 'plot_bgcolor': 'yellow'}``
         """
         warnings.warn(
             ":meth:`Logger.report_vector` is deprecated; use :meth:`Logger.report_histogram` instead.",
@@ -294,10 +294,10 @@ class Logger(object):
         :param mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
         :param data_args: optional dictionary for data configuration, passed directly to plotly
             See full details on the supported configuration: https://plotly.com/javascript/reference/bar/
-            example: data_args={'orientation': 'h', 'marker': {'color': 'blue'}}
+            example: ``data_args={'orientation': 'h', 'marker': {'color': 'blue'}}``
         :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
             See full details on the supported configuration: https://plotly.com/javascript/reference/bar/
-            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+            example: ``extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}``
         """
 
         if not isinstance(values, np.ndarray):
@@ -465,7 +465,7 @@ class Logger(object):
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
             See full details on the supported configuration: https://plotly.com/javascript/reference/scatter/
-            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+            example: ``extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}``
 
         .. note::
             This method is the same as :meth:`Logger.report_scatter2d` with :param:`mode='lines'`.
@@ -550,7 +550,7 @@ class Logger(object):
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
             See full details on the supported configuration: https://plotly.com/javascript/reference/scatter/
-            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+            example: ``extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}``
         """
 
         if not isinstance(scatter, np.ndarray):
@@ -620,7 +620,7 @@ class Logger(object):
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
             See full details on the supported configuration: https://plotly.com/javascript/reference/scatter3d/
-            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+            example: ``extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}``
         """
         # check if multiple series
         multi_series = isinstance(scatter, list) and (
@@ -694,7 +694,7 @@ class Logger(object):
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
             See full details on the supported configuration: https://plotly.com/javascript/reference/heatmap/
-            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+            example: ``extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}``
         """
 
         if not isinstance(matrix, np.ndarray):
@@ -752,7 +752,7 @@ class Logger(object):
         :param bool yaxis_reversed: If False, 0,0 is in the bottom left corner. If True, 0,0 is in the top left corner
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
             See full details on the supported configuration: https://plotly.com/javascript/reference/heatmap/
-            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+            example: ``extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}``
         """
         warnings.warn(
             ":meth:`Logger.report_matrix` is deprecated;" "use :meth:`Logger.report_confusion_matrix` instead.",
@@ -813,7 +813,7 @@ class Logger(object):
         :param str comment: A comment displayed with the plot, underneath the title.
         :param dict extra_layout: optional dictionary for layout configuration, passed directly to plotly
             See full details on the supported configuration: https://plotly.com/javascript/reference/surface/
-            example: extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}
+            example: ``extra_layout={'xaxis': {'type': 'date', 'range': ['2020-01-01', '2020-01-31']}}``
         """
 
         if not isinstance(matrix, np.ndarray):

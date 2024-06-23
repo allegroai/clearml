@@ -124,7 +124,7 @@ class Monitor(object):
         Return the query parameters for the monitoring.
         This should be overloaded with specific implementation query
 
-        :return dict: Example dictionary: {'status': ['failed'], 'order_by': ['-last_update']}
+        :return dict: Example dictionary: ``{'status': ['failed'], 'order_by': ['-last_update']}``
         """
         return dict(status=['failed'], order_by=['-last_update'])
 

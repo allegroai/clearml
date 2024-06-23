@@ -5371,7 +5371,7 @@ class GetAllRequest(Request):
     :param parent: Parent ID
     :type parent: str
     :param status_changed: List of status changed constraint strings (utcformat,
-        epoch) with an optional prefix modifier (>, >=, <, <=)
+        epoch) with an optional prefix modifier (\>,\>=, \<, \<=)
     :type status_changed: Sequence[str]
     :param search_text: Free text search query
     :type search_text: str
@@ -5477,7 +5477,7 @@ class GetAllRequest(Request):
                 'type': ['array', 'null'],
             },
             'status_changed': {
-                'description': 'List of status changed constraint strings (utcformat, epoch) with an optional prefix modifier (>, >=, <, <=)',
+                'description': 'List of status changed constraint strings (utcformat, epoch) with an optional prefix modifier (\>,\>=, \<, \<=)',
                 'items': {'pattern': '^(>=|>|<=|<)?.*$', 'type': 'string'},
                 'type': ['array', 'null'],
             },

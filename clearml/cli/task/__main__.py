@@ -19,6 +19,9 @@ def setup_parser(parser):
                              'If --base-task-id is used, this arguments is optional.')
     parser.add_argument('--name', type=str, default=None,
                         help='Required: select a name for the remote task')
+    parser.add_argument('--tags', default=None, nargs='*',
+                        help='Optional: add tags to the newly created Task. '
+                             'Example: --tags "base" "job"')
     parser.add_argument('--repo', type=str, default=None,
                         help='remote URL for the repository to use. '
                              'Example: --repo https://github.com/allegroai/clearml.git')
@@ -140,6 +143,9 @@ def cli():
         create_populate.create_task()
         # update Task args
         create_populate.update_task_args(args.args)
+        # set tags
+        if args.tags:
+            create_populate.task.add_tags(args.tags)
 
         # noinspection PyProtectedMember
         create_populate.task._set_runtime_properties({"_CLEARML_TASK": True})

@@ -1052,7 +1052,7 @@ class ScriptInfo(object):
 
                 raise ScriptInfoError("Script file {} could not be found".format(filepaths))
 
-        scripts_dir = [f.parent for f in scripts_path]
+        scripts_dir = [f if f.is_dir() else f.parent for f in scripts_path]
 
         def _log(msg, *args, **kwargs):
             if not log:

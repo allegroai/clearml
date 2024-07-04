@@ -2045,7 +2045,7 @@ class Task(_Task):
             set_launch_multi_node_runtime_props(self, master_conf)
             current_conf = master_conf
             for node_rank in range(1, master_conf.get("total_num_nodes", total_num_nodes)):
-                node = self.clone(source_task=self)
+                node = self.clone(source_task=self, parent=self.id)
                 node_conf = copy.deepcopy(master_conf)
                 node_conf["node_rank"] = node_rank
                 set_launch_multi_node_runtime_props(node, node_conf)

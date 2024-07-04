@@ -28,6 +28,9 @@ SUPPRESS_UPDATE_MESSAGE_ENV_VAR = EnvEntry("CLEARML_SUPPRESS_UPDATE_MESSAGE", "T
 
 MAX_SERIES_PER_METRIC = EnvEntry("CLEARML_MAX_SERIES_PER_METRIC", default=100, type=int)
 
+# values are 0/None (task per node), 1/2 (multi-node reporting, colored console), -1 (only report rank 0 node)
+ENV_MULTI_NODE_SINGLE_TASK = EnvEntry("CLEARML_MULTI_NODE_SINGLE_TASK", type=int, default=None)
+
 JUPYTER_PASSWORD = EnvEntry("CLEARML_JUPYTER_PASSWORD")
 
 # Repository detection

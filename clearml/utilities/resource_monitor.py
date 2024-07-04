@@ -3,6 +3,7 @@ import os
 import platform
 import sys
 import warnings
+from math import ceil, log10
 from time import time
 
 import psutil
@@ -12,7 +13,7 @@ from typing import Text
 from .process.mp import BackgroundMonitor
 from ..backend_api import Session
 from ..binding.frameworks.tensorflow_bind import IsTensorboardInit
-from ..config import config
+from ..config import config, ENV_MULTI_NODE_SINGLE_TASK
 
 try:
     from .gpu import gpustat
@@ -102,6 +103,31 @@ class ResourceMonitor(BackgroundMonitor):
     def daemon(self):
         if self._is_thread_mode_and_not_main_process():
             return
+
+        multi_node_single_task_reporting = False
+        report_node_as_series = False
+        rank = 0
+        world_size_digits = 0
+        # check if we are in multi-node reporting to the same Task
+        if ENV_MULTI_NODE_SINGLE_TASK.get():
+            # if resource monitoring is disabled, do nothing
+            if ENV_MULTI_NODE_SINGLE_TASK.get() < 0:
+                return
+            # we are reporting machines stats on a different machine over the same Task
+            multi_node_single_task_reporting = True
+            if ENV_MULTI_NODE_SINGLE_TASK.get() == 1:
+                # report per machine graph (unique title)
+                report_node_as_series = False
+            elif ENV_MULTI_NODE_SINGLE_TASK.get() == 2:
+                # report per machine series (i.e. merge title+series resource and have "node X" as different series)
+                report_node_as_series = True
+
+            # noinspection PyBroadException
+            try:
+                rank = int(os.environ.get("RANK") or 0)
+                world_size_digits = ceil(log10(int(os.environ.get("WORLD_SIZE") or 0)))
+            except Exception:
+                pass
 
         seconds_since_started = 0
         reported = 0
@@ -196,9 +222,19 @@ class ResourceMonitor(BackgroundMonitor):
                     # noinspection PyBroadException
                     try:
                         title = self._title_gpu if k.startswith('gpu_') else self._title_machine
+                        series = k
                         # 3 points after the dot
+                        if multi_node_single_task_reporting:
+                            if report_node_as_series:
+                                title = "{}:{}".format(":".join(title.split(":")[:-1]), series)
+                                series = "rank {:0{world_size_digits}d}".format(
+                                    rank, world_size_digits=world_size_digits)
+                            else:
+                                title = "{}:rank{:0{world_size_digits}d}".format(
+                                    title, rank, world_size_digits=world_size_digits)
+
                         value = round(v * 1000) / 1000.
-                        self._task.get_logger().report_scalar(title=title, series=k, iteration=iteration, value=value)
+                        self._task.get_logger().report_scalar(title=title, series=series, iteration=iteration, value=value)
                     except Exception:
                         pass
                 # clear readouts if this is update is not averaged

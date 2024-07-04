@@ -33,7 +33,7 @@ from six import binary_type, StringIO
 from six.moves.queue import Queue, Empty
 from six.moves.urllib.parse import urlparse
 
-from clearml.utilities.requests_toolbelt import MultipartEncoder
+from clearml.utilities.requests_toolbelt import MultipartEncoderMonitor, MultipartEncoder
 from .callbacks import UploadProgressReport, DownloadProgressReport
 from .util import quote_url
 from ..backend_api.session import Session
@@ -180,6 +180,14 @@ class _HttpDriver(_Driver):
         return self._containers[container_name]
 
     def upload_object_via_stream(self, iterator, container, object_name, extra=None, callback=None, **kwargs):
+        def monitor_callback(monitor):
+            new_chunk = monitor.bytes_read - monitor.previous_read
+            monitor.previous_read = monitor.bytes_read
+            try:
+                callback(new_chunk)
+            except Exception as ex:
+                self.get_logger().debug('Exception raised when running callback function: {}'.format(ex))
+
         # when sending data in post, there is no connection timeout, just an entire upload timeout
         timeout = int(self.timeout_total)
         url = container.name
@@ -188,21 +196,23 @@ class _HttpDriver(_Driver):
             host, _, path = object_name.partition('/')
             url += host + '/'
 
-        m = MultipartEncoder(fields={
-            path: (path, iterator, get_file_mimetype(object_name))
-        })
-
-        headers = {
-            'Content-Type': m.content_type,
-        }
-        headers.update(container.get_headers(url) or {})
-
+        stream_size = None
         if hasattr(iterator, 'tell') and hasattr(iterator, 'seek'):
             pos = iterator.tell()
             iterator.seek(0, 2)
             stream_size = iterator.tell() - pos
             iterator.seek(pos, 0)
             timeout = max(timeout, (stream_size / 1024) / float(self.min_kbps_speed))
+
+        m = MultipartEncoder(fields={path: (path, iterator, get_file_mimetype(object_name))})
+        if callback and stream_size:
+            m = MultipartEncoderMonitor(m, callback=monitor_callback)
+            m.previous_read = 0
+
+        headers = {
+            'Content-Type': m.content_type,
+        }
+        headers.update(container.get_headers(url) or {})
 
         res = container.session.post(
             url, data=m, timeout=timeout, headers=headers
@@ -211,12 +221,6 @@ class _HttpDriver(_Driver):
             raise ValueError('Failed uploading object %s (%d): %s' % (object_name, res.status_code, res.text))
 
         # call back is useless because we are not calling it while uploading...
-
-        # if callback and stream_size:
-        #     try:
-        #         callback(stream_size)
-        #     except Exception as ex:
-        #         log.debug('Exception raised when running callback function: %s' % ex)
         return res
 
     def list_container_objects(self, *args, **kwargs):

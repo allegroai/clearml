@@ -66,7 +66,7 @@ class ProgressReport(object):
                     unit="MB",
                     unit_scale=False,
                     ncols=80,
-                    bar_format="{bar} {percentage:3.0f}% | {n_fmt}/{total_fmt} MB "
+                    bar_format="{bar} {percentage:3.0f}% | {n:.2f}/{total_fmt} MB "
                                "[{elapsed}<{remaining}, {rate_fmt}{postfix}]: {desc}",
                 )
             except Exception:

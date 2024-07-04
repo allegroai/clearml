@@ -37,10 +37,15 @@ def setup_parser(parser):
                              'and will be replicated on the remote machine')
     parser.add_argument('--script', type=str, default=None,
                         help='Specify the entry point script for the remote execution. '
+                             'Currently support .py .ipynb and .sh scripts (python, jupyter notebook, bash) '
                              'When used in tandem with --repo the script should be a relative path inside '
-                             'the repository, for example: --script source/train.py .'
+                             'the repository, for example: --script source/train.py '
                              'When used with --folder it supports a direct path to a file inside the local '
                              'repository itself, for example: --script ~/project/source/train.py')
+    parser.add_argument('--module', type=str, default=None,
+                        help='Instead of a script entry point, specify a python module to be remotely executed. '
+                             'Notice: It cannot be used with --script at the same time. '
+                             'for example: --module "torch.distributed.launch train_script.py"')
     parser.add_argument('--cwd', type=str, default=None,
                         help='Working directory to launch the script from. Default: repository root folder. '
                              'Relative to repo root or local folder')
@@ -125,6 +130,7 @@ def cli():
             branch=args.branch,
             commit=args.commit,
             script=args.script,
+            module=args.module,
             working_directory=args.cwd,
             packages=args.packages,
             requirements_file=args.requirements,

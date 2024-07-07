@@ -109,25 +109,29 @@ class ResourceMonitor(BackgroundMonitor):
         rank = 0
         world_size_digits = 0
         # check if we are in multi-node reporting to the same Task
-        if ENV_MULTI_NODE_SINGLE_TASK.get():
-            # if resource monitoring is disabled, do nothing
-            if ENV_MULTI_NODE_SINGLE_TASK.get() < 0:
-                return
-            # we are reporting machines stats on a different machine over the same Task
-            multi_node_single_task_reporting = True
-            if ENV_MULTI_NODE_SINGLE_TASK.get() == 1:
-                # report per machine graph (unique title)
-                report_node_as_series = False
-            elif ENV_MULTI_NODE_SINGLE_TASK.get() == 2:
-                # report per machine series (i.e. merge title+series resource and have "node X" as different series)
-                report_node_as_series = True
+        # noinspection PyBroadException
+        try:
+            if ENV_MULTI_NODE_SINGLE_TASK.get():
+                # if resource monitoring is disabled, do nothing
+                if ENV_MULTI_NODE_SINGLE_TASK.get() < 0:
+                    return
+                # we are reporting machines stats on a different machine over the same Task
+                multi_node_single_task_reporting = True
+                if ENV_MULTI_NODE_SINGLE_TASK.get() == 1:
+                    # report per machine graph (unique title)
+                    report_node_as_series = False
+                elif ENV_MULTI_NODE_SINGLE_TASK.get() == 2:
+                    # report per machine series (i.e. merge title+series resource and have "node X" as different series)
+                    report_node_as_series = True
 
-            # noinspection PyBroadException
-            try:
-                rank = int(os.environ.get("RANK") or 0)
-                world_size_digits = ceil(log10(int(os.environ.get("WORLD_SIZE") or 0)))
-            except Exception:
-                pass
+                # noinspection PyBroadException
+                try:
+                    rank = int(os.environ.get("RANK", os.environ.get('SLURM_PROCID')) or 0)
+                    world_size_digits = ceil(log10(int(os.environ.get("WORLD_SIZE") or 0)))
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
         seconds_since_started = 0
         reported = 0
@@ -342,14 +346,35 @@ class ResourceMonitor(BackgroundMonitor):
     def get_logger_reported_titles(cls, task):
         # noinspection PyProtectedMember
         titles = list(task.get_logger()._get_used_title_series().keys())
+
+        # noinspection PyBroadException
         try:
-            titles.remove(cls._title_machine)
-        except ValueError:
-            pass
-        try:
-            titles.remove(cls._title_gpu)
-        except ValueError:
-            pass
+            multi_node = ENV_MULTI_NODE_SINGLE_TASK.get() is not None
+        except Exception:
+            multi_node = False
+
+        if multi_node:
+            title_machine = ":".join(cls._title_machine.split(":")[:-1])
+            title_gpu = ":".join(cls._title_gpu.split(":")[:-1])
+            if not title_machine:
+                title_machine = cls._title_machine
+            if not title_gpu:
+                title_gpu = cls._title_gpu
+
+            try:
+                titles = [t for t in titles if not t.startswith(title_machine) and not t.startswith(title_gpu)]
+            except ValueError:
+                pass
+        else:
+            try:
+                titles.remove(cls._title_machine)
+            except ValueError:
+                pass
+            try:
+                titles.remove(cls._title_gpu)
+            except ValueError:
+                pass
+
         return titles
 
     def _get_process_used_memory(self):

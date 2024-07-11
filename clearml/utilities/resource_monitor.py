@@ -28,6 +28,7 @@ class ResourceMonitor(BackgroundMonitor):
     _wait_for_first_iteration_to_start_sec_default = 180.0
     _max_wait_for_first_iteration_to_start_sec_default = 1800.0
     _resource_monitor_instances = []
+    _multi_node_single_task = None
 
     def __init__(self, task, sample_frequency_per_sec=2., report_frequency_sec=30.,
                  first_report_sec=None, wait_for_first_iteration_to_start_sec=None,
@@ -35,6 +36,7 @@ class ResourceMonitor(BackgroundMonitor):
         super(ResourceMonitor, self).__init__(task=task, wait_period=sample_frequency_per_sec)
         # noinspection PyProtectedMember
         ResourceMonitor._resource_monitor_instances.append(self)
+        ResourceMonitor._multi_node_single_task = ENV_MULTI_NODE_SINGLE_TASK.get()
         self._task = task
         self._sample_frequency = sample_frequency_per_sec
         self._report_frequency = report_frequency_sec
@@ -111,16 +113,16 @@ class ResourceMonitor(BackgroundMonitor):
         # check if we are in multi-node reporting to the same Task
         # noinspection PyBroadException
         try:
-            if ENV_MULTI_NODE_SINGLE_TASK.get():
+            if self._multi_node_single_task:
                 # if resource monitoring is disabled, do nothing
-                if ENV_MULTI_NODE_SINGLE_TASK.get() < 0:
+                if self._multi_node_single_task < 0:
                     return
                 # we are reporting machines stats on a different machine over the same Task
                 multi_node_single_task_reporting = True
-                if ENV_MULTI_NODE_SINGLE_TASK.get() == 1:
+                if self._multi_node_single_task == 1:
                     # report per machine graph (unique title)
                     report_node_as_series = False
-                elif ENV_MULTI_NODE_SINGLE_TASK.get() == 2:
+                elif self._multi_node_single_task == 2:
                     # report per machine series (i.e. merge title+series resource and have "node X" as different series)
                     report_node_as_series = True
 
@@ -225,20 +227,33 @@ class ResourceMonitor(BackgroundMonitor):
                 for k, v in average_readouts.items():
                     # noinspection PyBroadException
                     try:
+                        # 3 digits after the dot
+                        value = round(v * 1000) / 1000.
                         title = self._title_gpu if k.startswith('gpu_') else self._title_machine
                         series = k
-                        # 3 points after the dot
                         if multi_node_single_task_reporting:
                             if report_node_as_series:
+                                # for rank 0 we keep the same original report so that external services
+                                # can always check the default cpu/gpu utilization
+                                if rank == 0:
+                                    self._task.get_logger().report_scalar(
+                                        title=title, series=series,
+                                        iteration=iteration, value=value)
+
+                                # now let's create an additional report
                                 title = "{}:{}".format(":".join(title.split(":")[:-1]), series)
                                 series = "rank {:0{world_size_digits}d}".format(
                                     rank, world_size_digits=world_size_digits)
-                            else:
+                            elif rank > 0:
                                 title = "{}:rank{:0{world_size_digits}d}".format(
                                     title, rank, world_size_digits=world_size_digits)
+                            else:
+                                # for rank 0 we keep the same original report so that external services
+                                # can always check the default cpu/gpu utilization
+                                pass
 
-                        value = round(v * 1000) / 1000.
                         self._task.get_logger().report_scalar(title=title, series=series, iteration=iteration, value=value)
+
                     except Exception:
                         pass
                 # clear readouts if this is update is not averaged
@@ -349,7 +364,7 @@ class ResourceMonitor(BackgroundMonitor):
 
         # noinspection PyBroadException
         try:
-            multi_node = ENV_MULTI_NODE_SINGLE_TASK.get() is not None
+            multi_node = cls._multi_node_single_task is not None
         except Exception:
             multi_node = False
 

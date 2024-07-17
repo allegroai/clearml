@@ -1,4 +1,4 @@
-import json
+eyimport json
 import sys
 from argparse import ArgumentParser, RawTextHelpFormatter
 
@@ -143,8 +143,10 @@ def setup_parser(parser):
         help="The maximum compute time in minutes. When time limit is exceeded, all jobs aborted",
     )
     parser.add_argument(
-        "--pool-period-min", type=float, default=0.2,
-        help="The time between two consecutive pools (minutes) default 0.2 min"
+        "--pool-period-min",
+        type=float,
+        default=0.2,
+        help="The time between two consecutive pools (minutes) default 0.2 min",
     )
     parser.add_argument(
         "--total-max-jobs",
@@ -186,14 +188,19 @@ def setup_parser(parser):
         help="The maximum number of concurrent Tasks (experiments) running at the same time.",
     )
     parser.add_argument(
-        '--args', default=None, nargs='*',
-        help='Arguments to pass to the remote execution, list of <argument>=<value> strings.'
-             'Currently only argparse/click/hydra/fire arguments are supported. '
-             'Example: --args lr=0.003 batch_size=64')
+        "--args",
+        default=None,
+        nargs="*",
+        help="Arguments to pass to the remote execution, list of <argument>=<value> strings."
+        "Currently only argparse/click/hydra/fire arguments are supported. "
+        "Example: --args lr=0.003 batch_size=64",
+    )
     parser.add_argument(
-        "--local", action='store_true', default=False,
+        "--local",
+        action="store_true",
+        default=False,
         help="If set, run the experiments locally, Notice no new python environment will be created, "
-             "--script must point to a local file entrypoint and all arguments must be passed with --args",
+        "--script must point to a local file entrypoint and all arguments must be passed with --args",
     )
 
 
@@ -261,7 +268,7 @@ def build_opt_kwargs(args):
         "total_max_jobs",
         "min_iteration_per_job",
         "max_iteration_per_job",
-        "max_number_of_concurrent_tasks"
+        "max_number_of_concurrent_tasks",
     ]
     for arg_name in optional_arg_names:
         arg_val = getattr(args, arg_name)
@@ -293,7 +300,7 @@ def cli():
     if not task_id:
         create_populate = CreateAndPopulate(script=args.script)
         create_populate.update_task_args(args.args)
-        print('Creating new task')
+        print("Creating new task")
         create_populate.create_task()
         # update Task args
         create_populate.update_task_args(args.args)

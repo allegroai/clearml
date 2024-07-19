@@ -1,4 +1,4 @@
-eyimport json
+import json
 import sys
 from argparse import ArgumentParser, RawTextHelpFormatter
 

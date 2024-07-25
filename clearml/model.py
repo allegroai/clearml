@@ -324,11 +324,22 @@ class BaseModel(object):
     def task(self):
         # type: () -> str
         """
-        Return the creating task ID
+        Return the task ID connected to this model. If not task is connected,
+        return the ID of the task that originally created this model.
 
         :return: The Task ID (str)
         """
-        return self._task.id if self._task else self._get_base_model().task
+        return self._task.id if self._task else self.original_task
+
+    @property
+    def original_task(self):
+        # type: () -> str
+        """
+        Return the ID of the task that created this model.
+
+        :return: The Task ID (str)
+        """
+        return self._get_base_model().task
 
     @property
     def url(self):

@@ -15,36 +15,35 @@ clearml.backend_api.session.Session.add_client("clearml-data", __version__)
 
 
 def check_null_id(args):
-    if not getattr(args, 'id', None):
+    if not getattr(args, "id", None):
         raise ValueError("Dataset ID not specified, add --id <dataset_id>")
 
 
-def print_args(args, exclude=('command', 'func', 'verbose')):
+def print_args(args, exclude=("command", "func", "verbose")):
     # type: (object, Sequence[str]) -> ()
-    if not getattr(args, 'verbose', None):
+    if not getattr(args, "verbose", None):
         return
     for arg in args.__dict__:
         if arg in exclude or args.__dict__.get(arg) is None:
             continue
-        print('{}={}'.format(arg, args.__dict__[arg]))
+        print("{}={}".format(arg, args.__dict__[arg]))
 
 
 def restore_state(args):
-    session_state_file = os.path.expanduser('~/.clearml_data.json')
+    session_state_file = os.path.expanduser("~/.clearml_data.json")
     # noinspection PyBroadException
     try:
-        with open(session_state_file, 'rt') as f:
+        with open(session_state_file, "rt") as f:
             state = json.load(f)
     except Exception:
         state = {}
 
-    args.id = getattr(args, 'id', None) or state.get('id')
+    args.id = getattr(args, "id", None) or state.get("id")
 
-    state = {str(k): str(v) if v is not None else None
-             for k, v in args.__dict__.items() if not str(k).startswith('_')}
+    state = {str(k): str(v) if v is not None else None for k, v in args.__dict__.items() if not str(k).startswith("_")}
     # noinspection PyBroadException
     try:
-        with open(session_state_file, 'wt') as f:
+        with open(session_state_file, "wt") as f:
             json.dump(state, f, sort_keys=True)
     except Exception:
         pass
@@ -53,10 +52,10 @@ def restore_state(args):
 
 
 def clear_state(state=None):
-    session_state_file = os.path.expanduser('~/.clearml_data.json')
+    session_state_file = os.path.expanduser("~/.clearml_data.json")
     # noinspection PyBroadException
     try:
-        with open(session_state_file, 'wt') as f:
+        with open(session_state_file, "wt") as f:
             json.dump(state or dict(), f, sort_keys=True)
     except Exception:
         pass
@@ -64,21 +63,25 @@ def clear_state(state=None):
 
 def cli():
     # type: () -> int
-    title = 'clearml-data - Dataset Management & Versioning CLI'
+    title = "clearml-data - Dataset Management & Versioning CLI"
     print(title)
     parser = ArgumentParser(  # noqa
         description=title,
-        prog='clearml-data',
+        prog="clearml-data",
         formatter_class=partial(HelpFormatter, indent_increment=0, max_help_position=10),
     )
-    subparsers = parser.add_subparsers(help='Dataset actions', dest='command')
+    subparsers = parser.add_subparsers(help="Dataset actions", dest="command")
 
-    create = subparsers.add_parser('create', help='Create a new dataset')
-    create.add_argument('--parents', type=str, nargs='*',
-                        help='[Optional] Specify dataset parents IDs (i.e. merge all parents). '
-                             'Example: a17b4fID1 f0ee5ID2 a17b4f09eID3')
-    create.add_argument('--project', type=str, required=False, default=None, help='Dataset project name')
-    create.add_argument('--name', type=str, required=True, default=None, help='Dataset name')
+    create = subparsers.add_parser("create", help="Create a new dataset")
+    create.add_argument(
+        "--parents",
+        type=str,
+        nargs="*",
+        help="[Optional] Specify dataset parents IDs (i.e. merge all parents). "
+        "Example: a17b4fID1 f0ee5ID2 a17b4f09eID3",
+    )
+    create.add_argument("--project", type=str, required=False, default=None, help="Dataset project name")
+    create.add_argument("--name", type=str, required=True, default=None, help="Dataset name")
     create.add_argument("--version", type=str, required=False, default=None, help="Dataset version")
     create.add_argument(
         "--output-uri",
@@ -95,14 +98,22 @@ def cli():
         "Examples: 's3://bucket/data', 'gs://bucket/data', 'azure://bucket/data', "
         "'/mnt/shared/folder/data'",
     )
-    create.add_argument('--tags', type=str, nargs='*', help='Dataset user Tags')
+    create.add_argument("--tags", type=str, nargs="*", help="Dataset user Tags")
     create.set_defaults(func=ds_create)
 
-    add = subparsers.add_parser('add', help='Add files or links to the dataset')
-    add.add_argument('--id', type=str, required=False,
-                     help='Previously created dataset id. Default: previously created/accessed dataset')
-    add.add_argument('--dataset-folder', type=str, default=None,
-                     help='Dataset base folder to add the files to (default: Dataset root)')
+    add = subparsers.add_parser("add", help="Add files or links to the dataset")
+    add.add_argument(
+        "--id",
+        type=str,
+        required=False,
+        help="Previously created dataset id. Default: previously created/accessed dataset",
+    )
+    add.add_argument(
+        "--dataset-folder",
+        type=str,
+        default=None,
+        help="Dataset base folder to add the files to (default: Dataset root)",
+    )
     add.add_argument("--files", type=str, nargs="*", help="Files / folders to add.")
     add.add_argument(
         "--wildcard",
@@ -119,9 +130,8 @@ def cli():
             "Example: s3://bucket/data azure://bucket/folder"
         ),
     )
-    add.add_argument('--non-recursive', action='store_true', default=False,
-                     help='Disable recursive scan of files')
-    add.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
+    add.add_argument("--non-recursive", action="store_true", default=False, help="Disable recursive scan of files")
+    add.add_argument("--verbose", action="store_true", default=False, help="Verbose reporting")
     add.add_argument(
         "--max-workers",
         type=int,
@@ -145,21 +155,34 @@ def cli():
     )
     set_description.set_defaults(func=ds_set_description)
 
-    sync = subparsers.add_parser('sync', help='Sync a local folder with the dataset')
-    sync.add_argument('--id', type=str, required=False,
-                      help='Previously created dataset id. Default: previously created/accessed dataset')
-    sync.add_argument('--dataset-folder', type=str, default=None,
-                      help='Dataset base folder to add the files to (default: Dataset root)')
-    sync.add_argument('--folder', type=str, required=True,
-                      help='Local folder to sync (support for wildcard selection). '
-                           'Example: ~/data/*.jpg')
-    sync.add_argument('--parents', type=str, nargs='*',
-                      help='[Optional] Specify dataset parents IDs (i.e. merge all parents). '
-                           'Example: a17b4fID1 f0ee5ID2 a17b4f09eID3')
-    sync.add_argument('--project', type=str, required=False, default=None,
-                      help='[Optional] Dataset project name')
-    sync.add_argument('--name', type=str, required=False, default=None,
-                      help='[Optional] Dataset project name')
+    sync = subparsers.add_parser("sync", help="Sync a local folder with the dataset")
+    sync.add_argument(
+        "--id",
+        type=str,
+        required=False,
+        help="Previously created dataset id. Default: previously created/accessed dataset",
+    )
+    sync.add_argument(
+        "--dataset-folder",
+        type=str,
+        default=None,
+        help="Dataset base folder to add the files to (default: Dataset root)",
+    )
+    sync.add_argument(
+        "--folder",
+        type=str,
+        required=True,
+        help="Local folder to sync (support for wildcard selection). " "Example: ~/data/*.jpg",
+    )
+    sync.add_argument(
+        "--parents",
+        type=str,
+        nargs="*",
+        help="[Optional] Specify dataset parents IDs (i.e. merge all parents). "
+        "Example: a17b4fID1 f0ee5ID2 a17b4f09eID3",
+    )
+    sync.add_argument("--project", type=str, required=False, default=None, help="[Optional] Dataset project name")
+    sync.add_argument("--name", type=str, required=False, default=None, help="[Optional] Dataset project name")
     sync.add_argument("--version", type=str, required=False, default=None, help="[Optional] Dataset version")
     sync.add_argument(
         "--output-uri",
@@ -168,43 +191,71 @@ def cli():
         default=None,
         help="[Optional] Output URI for artifacts/debug samples. Useable when creating the dataset (deprecated, use '--storage' instead)",
     )
-    sync.add_argument('--tags', type=str, nargs='*',
-                      help='[Optional] Dataset user Tags')
-    sync.add_argument('--storage', type=str, default=None,
-                      help='Remote storage to use for the dataset files (default: files_server). '
-                           'Examples: \'s3://bucket/data\', \'gs://bucket/data\', \'azure://bucket/data\', '
-                           '\'/mnt/shared/folder/data\'')
-    sync.add_argument('--skip-close', action='store_true', default=False,
-                      help='Do not auto close dataset after syncing folders')
-    sync.add_argument('--chunk-size', default=512, type=int,
-                      help='Set dataset artifact chunk size in MB. Default 512mb, (pass -1 for a single chunk). '
-                           'Example: 512, dataset will be split and uploaded in 512mb chunks.')
-    sync.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
+    sync.add_argument("--tags", type=str, nargs="*", help="[Optional] Dataset user Tags")
+    sync.add_argument(
+        "--storage",
+        type=str,
+        default=None,
+        help="Remote storage to use for the dataset files (default: files_server). "
+        "Examples: 's3://bucket/data', 'gs://bucket/data', 'azure://bucket/data', "
+        "'/mnt/shared/folder/data'",
+    )
+    sync.add_argument(
+        "--skip-close", action="store_true", default=False, help="Do not auto close dataset after syncing folders"
+    )
+    sync.add_argument(
+        "--chunk-size",
+        default=512,
+        type=int,
+        help="Set dataset artifact chunk size in MB. Default 512mb, (pass -1 for a single chunk). "
+        "Example: 512, dataset will be split and uploaded in 512mb chunks.",
+    )
+    sync.add_argument("--verbose", action="store_true", default=False, help="Verbose reporting")
     sync.set_defaults(func=ds_sync)
 
-    remove = subparsers.add_parser('remove', help='Remove files/links from the dataset')
-    remove.add_argument('--id', type=str, required=False,
-                        help='Previously created dataset id. Default: previously created/accessed dataset')
-    remove.add_argument('--files', type=str, required=False, nargs='*',
-                        help='Files / folders to remove (support for wildcard selection). '
-                             'Notice: File path is the dataset path not the local path. '
-                             'Example: data/*.jpg data/jsons/')
-    remove.add_argument('--non-recursive', action='store_true', default=False,
-                        help='Disable recursive scan of files')
-    remove.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
+    remove = subparsers.add_parser("remove", help="Remove files/links from the dataset")
+    remove.add_argument(
+        "--id",
+        type=str,
+        required=False,
+        help="Previously created dataset id. Default: previously created/accessed dataset",
+    )
+    remove.add_argument(
+        "--files",
+        type=str,
+        required=False,
+        nargs="*",
+        help="Files / folders to remove (support for wildcard selection). "
+        "Notice: File path is the dataset path not the local path. "
+        "Example: data/*.jpg data/jsons/",
+    )
+    remove.add_argument("--non-recursive", action="store_true", default=False, help="Disable recursive scan of files")
+    remove.add_argument("--verbose", action="store_true", default=False, help="Verbose reporting")
     remove.set_defaults(func=ds_remove)
 
-    upload = subparsers.add_parser('upload', help='Upload the local dataset changes to the server')
-    upload.add_argument('--id', type=str, required=False,
-                        help='Previously created dataset id. Default: previously created/accessed dataset')
-    upload.add_argument('--storage', type=str, default=None,
-                        help='Remote storage to use for the dataset files (default: files_server). '
-                             'Examples: \'s3://bucket/data\', \'gs://bucket/data\', \'azure://bucket/data\', '
-                             '\'/mnt/shared/folder/data\'')
-    upload.add_argument('--chunk-size', default=512, type=int,
-                        help='Set dataset artifact chunk size in MB. Default 512, (pass -1 for a single chunk). '
-                             'Example: 512, dataset will be split and uploaded in 512mb chunks.')
-    upload.add_argument('--verbose', default=False, action='store_true', help='Verbose reporting')
+    upload = subparsers.add_parser("upload", help="Upload the local dataset changes to the server")
+    upload.add_argument(
+        "--id",
+        type=str,
+        required=False,
+        help="Previously created dataset id. Default: previously created/accessed dataset",
+    )
+    upload.add_argument(
+        "--storage",
+        type=str,
+        default=None,
+        help="Remote storage to use for the dataset files (default: files_server). "
+        "Examples: 's3://bucket/data', 'gs://bucket/data', 'azure://bucket/data', "
+        "'/mnt/shared/folder/data'",
+    )
+    upload.add_argument(
+        "--chunk-size",
+        default=512,
+        type=int,
+        help="Set dataset artifact chunk size in MB. Default 512, (pass -1 for a single chunk). "
+        "Example: 512, dataset will be split and uploaded in 512mb chunks.",
+    )
+    upload.add_argument("--verbose", default=False, action="store_true", help="Verbose reporting")
     upload.add_argument(
         "--max-workers",
         type=int,
@@ -213,19 +264,32 @@ def cli():
     )
     upload.set_defaults(func=ds_upload)
 
-    finalize = subparsers.add_parser('close', help='Finalize and close the dataset (implies auto upload)')
-    finalize.add_argument('--id', type=str, required=False,
-                          help='Previously created dataset id. Default: previously created/accessed dataset')
-    finalize.add_argument('--storage', type=str, default=None,
-                          help='Remote storage to use for the dataset files (default: files_server). '
-                               'Examples: \'s3://bucket/data\', \'gs://bucket/data\', \'azure://bucket/data\', '
-                               '\'/mnt/shared/folder/data\'')
-    finalize.add_argument('--disable-upload', action='store_true', default=False,
-                          help='Disable automatic upload when closing the dataset')
-    finalize.add_argument('--chunk-size', default=512, type=int,
-                          help='Set dataset artifact chunk size in MB. Default 512, (pass -1 for a single chunk). '
-                               'Example: 512, dataset will be split and uploaded in 512mb chunks.')
-    finalize.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
+    finalize = subparsers.add_parser("close", help="Finalize and close the dataset (implies auto upload)")
+    finalize.add_argument(
+        "--id",
+        type=str,
+        required=False,
+        help="Previously created dataset id. Default: previously created/accessed dataset",
+    )
+    finalize.add_argument(
+        "--storage",
+        type=str,
+        default=None,
+        help="Remote storage to use for the dataset files (default: files_server). "
+        "Examples: 's3://bucket/data', 'gs://bucket/data', 'azure://bucket/data', "
+        "'/mnt/shared/folder/data'",
+    )
+    finalize.add_argument(
+        "--disable-upload", action="store_true", default=False, help="Disable automatic upload when closing the dataset"
+    )
+    finalize.add_argument(
+        "--chunk-size",
+        default=512,
+        type=int,
+        help="Set dataset artifact chunk size in MB. Default 512, (pass -1 for a single chunk). "
+        "Example: 512, dataset will be split and uploaded in 512mb chunks.",
+    )
+    finalize.add_argument("--verbose", action="store_true", default=False, help="Verbose reporting")
     finalize.add_argument(
         "--max-workers",
         type=int,
@@ -234,8 +298,8 @@ def cli():
     )
     finalize.set_defaults(func=ds_close)
 
-    publish = subparsers.add_parser('publish', help='Publish dataset task')
-    publish.add_argument('--id', type=str, required=True, help='The dataset task id to be published.')
+    publish = subparsers.add_parser("publish", help="Publish dataset task")
+    publish.add_argument("--id", type=str, required=True, help="The dataset task id to be published.")
     publish.set_defaults(func=ds_publish)
 
     delete = subparsers.add_parser("delete", help="Delete a dataset")
@@ -269,27 +333,27 @@ def cli():
 
     move = subparsers.add_parser("move", help="Move a dataset to another project")
     move.add_argument("--new-project", type=str, required=True, help="The new project of the dataset(s)")
-    move.add_argument(
-        "--project", type=str, required=True, help="The project the dataset(s) to be moved belong(s) to"
-    )
+    move.add_argument("--project", type=str, required=True, help="The project the dataset(s) to be moved belong(s) to")
     move.add_argument("--name", type=str, required=True, help="The name of the dataset(s) to be moved")
     move.set_defaults(func=ds_move)
 
-    compare = subparsers.add_parser('compare', help='Compare two datasets (target vs source)')
-    compare.add_argument('--source', type=str, required=True, help='Source dataset id (used as baseline)')
-    compare.add_argument('--target', type=str, required=True,
-                         help='Target dataset id (compare against the source baseline dataset)')
-    compare.add_argument('--verbose', default=False, action='store_true',
-                         help='Verbose report all file changes (instead of summary)')
+    compare = subparsers.add_parser("compare", help="Compare two datasets (target vs source)")
+    compare.add_argument("--source", type=str, required=True, help="Source dataset id (used as baseline)")
+    compare.add_argument(
+        "--target", type=str, required=True, help="Target dataset id (compare against the source baseline dataset)"
+    )
+    compare.add_argument(
+        "--verbose", default=False, action="store_true", help="Verbose report all file changes (instead of summary)"
+    )
     compare.set_defaults(func=ds_compare)
 
-    squash = subparsers.add_parser('squash',
-                                   help='Squash multiple datasets into a single dataset version (merge down)')
-    squash.add_argument('--name', type=str, required=True, help='Create squashed dataset name')
-    squash.add_argument('--ids', type=str, required=True, nargs='*', help='Source dataset IDs to squash (merge down)')
-    squash.add_argument('--storage', type=str, default=None, help='See `upload storage`')
-    squash.add_argument('--verbose', default=False, action='store_true',
-                        help='Verbose report all file changes (instead of summary)')
+    squash = subparsers.add_parser("squash", help="Squash multiple datasets into a single dataset version (merge down)")
+    squash.add_argument("--name", type=str, required=True, help="Create squashed dataset name")
+    squash.add_argument("--ids", type=str, required=True, nargs="*", help="Source dataset IDs to squash (merge down)")
+    squash.add_argument("--storage", type=str, default=None, help="See `upload storage`")
+    squash.add_argument(
+        "--verbose", default=False, action="store_true", help="Verbose report all file changes (instead of summary)"
+    )
     squash.set_defaults(func=ds_squash)
 
     search = subparsers.add_parser("search", help="Search datasets in the system (sorted by creation time)")
@@ -308,47 +372,82 @@ def cli():
     )
     search.set_defaults(func=ds_search)
 
-    verify = subparsers.add_parser('verify', help='Verify local dataset content')
-    verify.add_argument('--id', type=str, required=False,
-                        help='Specify dataset id. Default: previously created/accessed dataset')
-    verify.add_argument('--folder', type=str,
-                        help='Specify dataset local copy (if not provided the local cache folder will be verified)')
-    verify.add_argument('--filesize', action='store_true', default=False,
-                        help='If True, only verify file size and skip hash checks (default: false)')
-    verify.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
+    verify = subparsers.add_parser("verify", help="Verify local dataset content")
+    verify.add_argument(
+        "--id", type=str, required=False, help="Specify dataset id. Default: previously created/accessed dataset"
+    )
+    verify.add_argument(
+        "--folder",
+        type=str,
+        help="Specify dataset local copy (if not provided the local cache folder will be verified)",
+    )
+    verify.add_argument(
+        "--filesize",
+        action="store_true",
+        default=False,
+        help="If True, only verify file size and skip hash checks (default: false)",
+    )
+    verify.add_argument("--verbose", action="store_true", default=False, help="Verbose reporting")
     verify.set_defaults(func=ds_verify)
 
-    ls = subparsers.add_parser('list', help='List dataset content')
-    ls.add_argument('--id', type=str, required=False,
-                    help='Specify dataset id (or use project/name instead). Default: previously accessed dataset.')
-    ls.add_argument('--project', type=str, help='Specify dataset project name')
-    ls.add_argument('--name', type=str, help='Specify dataset name')
+    ls = subparsers.add_parser("list", help="List dataset content")
+    ls.add_argument(
+        "--id",
+        type=str,
+        required=False,
+        help="Specify dataset id (or use project/name instead). Default: previously accessed dataset.",
+    )
+    ls.add_argument("--project", type=str, help="Specify dataset project name")
+    ls.add_argument("--name", type=str, help="Specify dataset name")
     ls.add_argument("--version", type=str, help="Specify dataset version", default=None)
-    ls.add_argument('--filter', type=str, nargs='*',
-                    help='Filter files based on folder / wildcard, multiple filters are supported. '
-                         'Example: folder/date_*.json folder/sub-folder')
-    ls.add_argument('--modified', action='store_true', default=False,
-                    help='Only list file changes (add/remove/modify) introduced in this version')
+    ls.add_argument(
+        "--filter",
+        type=str,
+        nargs="*",
+        help="Filter files based on folder / wildcard, multiple filters are supported. "
+        "Example: folder/date_*.json folder/sub-folder",
+    )
+    ls.add_argument(
+        "--modified",
+        action="store_true",
+        default=False,
+        help="Only list file changes (add/remove/modify) introduced in this version",
+    )
     ls.set_defaults(func=ds_list)
 
-    get = subparsers.add_parser('get', help='Get a local copy of a dataset (default: read only cached folder)')
-    get.add_argument('--id', type=str, required=False,
-                     help='Previously created dataset id. Default: previously created/accessed dataset')
-    get.add_argument('--copy', type=str, default=None,
-                     help='Get a writable copy of the dataset to a specific output folder')
-    get.add_argument('--link', type=str, default=None,
-                     help='Create a soft link (not supported on Windows) to a '
-                          'read-only cached folder containing the dataset')
-    get.add_argument('--part', type=int, default=None,
-                     help='Retrieve a partial copy of the dataset. '
-                          'Part number (0 to `num-parts`-1) of total parts --num-parts.')
-    get.add_argument('--num-parts', type=int, default=None,
-                     help='Total number of parts to divide the dataset to. '
-                          'Notice minimum retrieved part is a single chunk in a dataset (or its parents).'
-                          'Example: Dataset gen4, with 3 parents, each with a single chunk, '
-                          'can be divided into 4 parts')
-    get.add_argument('--overwrite', action='store_true', default=False, help='If True, overwrite the target folder')
-    get.add_argument('--verbose', action='store_true', default=False, help='Verbose reporting')
+    get = subparsers.add_parser("get", help="Get a local copy of a dataset (default: read only cached folder)")
+    get.add_argument(
+        "--id",
+        type=str,
+        required=False,
+        help="Previously created dataset id. Default: previously created/accessed dataset",
+    )
+    get.add_argument(
+        "--copy", type=str, default=None, help="Get a writable copy of the dataset to a specific output folder"
+    )
+    get.add_argument(
+        "--link",
+        type=str,
+        default=None,
+        help="Create a soft link (not supported on Windows) to a " "read-only cached folder containing the dataset",
+    )
+    get.add_argument(
+        "--part",
+        type=int,
+        default=None,
+        help="Retrieve a partial copy of the dataset. " "Part number (0 to `num-parts`-1) of total parts --num-parts.",
+    )
+    get.add_argument(
+        "--num-parts",
+        type=int,
+        default=None,
+        help="Total number of parts to divide the dataset to. "
+        "Notice minimum retrieved part is a single chunk in a dataset (or its parents)."
+        "Example: Dataset gen4, with 3 parents, each with a single chunk, "
+        "can be divided into 4 parts",
+    )
+    get.add_argument("--overwrite", action="store_true", default=False, help="If True, overwrite the target folder")
+    get.add_argument("--verbose", action="store_true", default=False, help="Verbose reporting")
     get.add_argument(
         "--max-workers",
         type=int,
@@ -387,11 +486,7 @@ def ds_delete(args):
 
 
 def ds_rename(args):
-    print(
-        "Renaming dataset with project={}, name={} to {}".format(
-            args.project, args.name, args.new_name
-        )
-    )
+    print("Renaming dataset with project={}, name={} to {}".format(args.project, args.name, args.new_name))
     print_args(args)
     Dataset.rename(
         args.new_name,
@@ -404,11 +499,7 @@ def ds_rename(args):
 
 
 def ds_move(args):
-    print(
-        "Moving dataset with project={}, name={} to {}".format(
-            args.project, args.name, args.new_project
-        )
-    )
+    print("Moving dataset with project={}, name={} to {}".format(args.project, args.name, args.new_project))
     print_args(args)
     Dataset.move_to_project(
         args.new_project,
@@ -421,16 +512,17 @@ def ds_move(args):
 
 
 def ds_verify(args):
-    print('Verify dataset id {}'.format(args.id))
+    print("Verify dataset id {}".format(args.id))
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
     files_error = ds.verify_dataset_hash(
-        local_copy_path=args.folder or None, skip_hash=args.filesize, verbose=args.verbose)
+        local_copy_path=args.folder or None, skip_hash=args.filesize, verbose=args.verbose
+    )
     if files_error:
-        print('Dataset verification completed, {} errors found!'.format(len(files_error)))
+        print("Dataset verification completed, {} errors found!".format(len(files_error)))
     else:
-        print('Dataset verification completed successfully, no errors found.')
+        print("Dataset verification completed successfully, no errors found.")
 
 
 def ds_get(args):
@@ -477,7 +569,7 @@ def ds_get(args):
 
 
 def ds_list(args):
-    print('List dataset content: {}'.format(args.id or (args.project, args.name)))
+    print("List dataset content: {}".format(args.id or (args.project, args.name)))
     print_args(args)
     ds = Dataset.get(
         dataset_id=args.id or None,
@@ -500,7 +592,7 @@ def ds_list(args):
             file_name_max_len = max(file_name_max_len, len(e.relative_path))
             size_max_len = max(size_max_len, len(str(e.size)))
             hash_max_len = max(hash_max_len, len(str(e.hash)))
-    print('Listing dataset content')
+    print("Listing dataset content")
     formatting = "{:" + str(file_name_max_len) + "} | {:" + str(size_max_len) + ",} | {:" + str(hash_max_len) + "}"
     print(formatting.replace(",", "").format("file name", "size", "hash"))
     print("-" * len(formatting.replace(",", "").format("-", "-", "-")))
@@ -514,20 +606,20 @@ def ds_list(args):
                 e = file_entries[f]
             print(formatting.format(e.relative_path, e.size, str(e.hash)))
             total_size += e.size
-    print('Total {} files, {} bytes'.format(num_files, total_size))
+    print("Total {} files, {} bytes".format(num_files, total_size))
     return 0
 
 
 def ds_squash(args):
-    print('Squashing datasets ids={} into target dataset named \'{}\''.format(args.ids, args.name))
+    print("Squashing datasets ids={} into target dataset named '{}'".format(args.ids, args.name))
     print_args(args)
     ds = Dataset.squash(dataset_name=args.name, dataset_ids=args.ids, output_url=args.storage or None)
-    print('Squashing completed, new dataset created id={}'.format(ds.id))
+    print("Squashing completed, new dataset created id={}".format(ds.id))
     return 0
 
 
 def ds_search(args):
-    print('Search datasets')
+    print("Search datasets")
     print_args(args)
     datasets = Dataset.list_datasets(
         dataset_project=args.project or None,
@@ -562,34 +654,42 @@ def ds_search(args):
     for d in datasets:
         print(
             formatting.format(
-                d["project"], d["name"], d["version"], str(d["tags"] or [])[1:-1], str(d["created"]).split(".")[0], d["id"]
+                d["project"],
+                d["name"],
+                d["version"],
+                str(d["tags"] or [])[1:-1],
+                str(d["created"]).split(".")[0],
+                d["id"],
             )
         )
     return 0
 
 
 def ds_compare(args):
-    print('Comparing target dataset id {} with source dataset id {}'.format(args.target, args.source))
+    print("Comparing target dataset id {} with source dataset id {}".format(args.target, args.source))
     print_args(args)
     ds = Dataset.get(dataset_id=args.target)
     removed_files = ds.list_removed_files(dataset_id=args.source)
     modified_files = ds.list_modified_files(dataset_id=args.source)
     added_files = ds.list_added_files(dataset_id=args.source)
     if args.verbose:
-        print('Removed files:')
-        print('\n'.join(removed_files))
-        print('\nModified files:')
-        print('\n'.join(modified_files))
-        print('\nAdded files:')
-        print('\n'.join(added_files))
-        print('')
-    print('Comparison summary: {} files removed, {} files modified, {} files added'.format(
-        len(removed_files), len(modified_files), len(added_files)))
+        print("Removed files:")
+        print("\n".join(removed_files))
+        print("\nModified files:")
+        print("\n".join(modified_files))
+        print("\nAdded files:")
+        print("\n".join(added_files))
+        print("")
+    print(
+        "Comparison summary: {} files removed, {} files modified, {} files added".format(
+            len(removed_files), len(modified_files), len(added_files)
+        )
+    )
     return 0
 
 
 def ds_close(args):
-    print('Finalizing dataset id {}'.format(args.id))
+    print("Finalizing dataset id {}".format(args.id))
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
@@ -607,13 +707,13 @@ def ds_close(args):
         )
 
     ds.finalize()
-    print('Dataset closed and finalized')
+    print("Dataset closed and finalized")
     clear_state()
     return 0
 
 
 def ds_publish(args):
-    print('Publishing dataset id {}'.format(args.id))
+    print("Publishing dataset id {}".format(args.id))
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
@@ -621,13 +721,13 @@ def ds_publish(args):
         raise ValueError("Cannot publish dataset. Please finalize it first, run `clearml-data close`")
 
     ds.publish()
-    print('Dataset published')
+    print("Dataset published")
     clear_state()  # just to verify the state is clear
     return 0
 
 
 def ds_upload(args):
-    print('uploading local files to dataset id {}'.format(args.id))
+    print("uploading local files to dataset id {}".format(args.id))
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
@@ -637,7 +737,7 @@ def ds_upload(args):
         chunk_size=args.chunk_size or -1,
         max_workers=args.max_workers,
     )
-    print('Dataset upload completed')
+    print("Dataset upload completed")
     return 0
 
 
@@ -647,7 +747,7 @@ def ds_remove(args):
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
     num_files = 0
-    for file in (args.files or []):
+    for file in args.files or []:
         num_files += ds.remove_files(dataset_path=file, recursive=not args.non_recursive, verbose=args.verbose)
     message = "{} file{} removed".format(num_files, "s" if num_files != 1 else "")
     print(message)
@@ -660,7 +760,7 @@ def ds_sync(args):
         args.id = ds_create(args)
         dataset_created = True
 
-    print('Syncing dataset id {} to local folder {}'.format(args.id, args.folder))
+    print("Syncing dataset id {} to local folder {}".format(args.id, args.folder))
     check_null_id(args)
     print_args(args)
     ds = Dataset.get(dataset_id=args.id)
@@ -672,7 +772,7 @@ def ds_sync(args):
 
     if not args.skip_close:
         if dataset_created and not removed and not added and not modified:
-            print('Zero modifications on local copy, reverting dataset creation.')
+            print("Zero modifications on local copy, reverting dataset creation.")
             Dataset.delete(ds.id, force=True)
             return 0
 
@@ -680,13 +780,15 @@ def ds_sync(args):
         if ds.is_dirty():
             # upload the files
             print("Pending uploads, starting dataset upload to {}".format(args.storage or ds.get_default_storage()))
-            ds.upload(show_progress=True,
-                      verbose=args.verbose,
-                      output_url=args.storage or None,
-                      chunk_size=args.chunk_size or -1, )
+            ds.upload(
+                show_progress=True,
+                verbose=args.verbose,
+                output_url=args.storage or None,
+                chunk_size=args.chunk_size or -1,
+            )
 
         ds.finalize()
-        print('Dataset closed and finalized')
+        print("Dataset closed and finalized")
         clear_state()
 
     return 0
@@ -705,7 +807,7 @@ def ds_add(args):
             verbose=args.verbose,
             dataset_path=args.dataset_folder or None,
             wildcard=args.wildcard,
-            max_workers=args.max_workers
+            max_workers=args.max_workers,
         )
     for link in args.links or []:
         num_files += ds.add_external_files(
@@ -714,7 +816,7 @@ def ds_add(args):
             recursive=not args.non_recursive,
             verbose=args.verbose,
             wildcard=args.wildcard,
-            max_workers=args.max_workers
+            max_workers=args.max_workers,
         )
     message = "{} file{} added".format(num_files, "s" if num_files != 1 else "")
     print(message)
@@ -754,11 +856,11 @@ def main():
     try:
         exit(cli())
     except KeyboardInterrupt:
-        print('\nUser aborted')
+        print("\nUser aborted")
     except Exception as ex:
-        print('\nError: {}'.format(ex))
+        print("\nError: {}".format(ex))
         exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

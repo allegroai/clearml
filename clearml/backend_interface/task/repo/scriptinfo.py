@@ -563,8 +563,15 @@ class _JupyterObserver(object):
                         reqs = ReqsModules()
                         for name in fmodules:
                             if name in installed_pkgs:
-                                pkg_name, version = installed_pkgs[name]
-                                reqs.add(pkg_name, version, fmodules[name])
+                                # handle namespace packages, which are returned as flat dicts of format
+                                # {mapping_pkg_name: (pkg_name, version), ...}
+                                if isinstance(installed_pkgs[name], dict):
+                                    for subpackage_name, subpackage in installed_pkgs[name].items():
+                                        pkg_name, version = subpackage
+                                        reqs.add(pkg_name, version, fmodules.get(subpackage_name, fmodules[name]))
+                                else:
+                                    pkg_name, version = installed_pkgs[name]
+                                    reqs.add(pkg_name, version, fmodules[name])
                         requirements_txt, conda_requirements = ScriptRequirements.create_requirements_txt(reqs)
 
                     # remove ipython direct access from the script code
@@ -1052,7 +1059,7 @@ class ScriptInfo(object):
 
                 raise ScriptInfoError("Script file {} could not be found".format(filepaths))
 
-        scripts_dir = [f.parent for f in scripts_path]
+        scripts_dir = [f if f.is_dir() else f.parent for f in scripts_path]
 
         def _log(msg, *args, **kwargs):
             if not log:

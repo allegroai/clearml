@@ -36,6 +36,7 @@ class CreateAndPopulate(object):
             commit=None,  # type: Optional[str]
             script=None,  # type: Optional[str]
             working_directory=None,  # type: Optional[str]
+            module=None,  # type: Optional[str]
             packages=None,  # type: Optional[Union[bool, Sequence[str]]]
             requirements_file=None,  # type: Optional[Union[str, Path]]
             docker=None,  # type: Optional[str]
@@ -67,6 +68,9 @@ class CreateAndPopulate(object):
             remote git repository the script should be a relative path inside the repository,
             for example: './source/train.py' . When used with local repository path it supports a
             direct path to a file inside the local repository itself, for example: '~/project/source/train.py'
+        :param module: If specified instead of executing `script`, a module named `module` is executed.
+            Implies script is empty. Module can contain multiple argument for execution,
+            for example: module="my.module arg1 arg2"
         :param working_directory: Working directory to launch the script from. Default: repository root folder.
             Relative to repo root or local folder.
         :param packages: Manually specify a list of required packages. Example: ["tqdm>=2.1", "scikit-learn"]
@@ -92,10 +96,14 @@ class CreateAndPopulate(object):
             repo = None
         else:
             folder = None
+
+        if script and module:
+            raise ValueError("Entry point script or module need to be specified not both")
+
         if raise_on_missing_entries and not base_task_id:
-            if not script:
+            if not script and not module:
                 raise ValueError("Entry point script not provided")
-            if not repo and not folder and not Path(script).is_file():
+            if not repo and not folder and (script and not Path(script).is_file()):
                 raise ValueError("Script file \'{}\' could not be found".format(script))
         if raise_on_missing_entries and commit and branch:
             raise ValueError(
@@ -111,6 +119,7 @@ class CreateAndPopulate(object):
         self.branch = branch
         self.repo = repo
         self.script = script
+        self.module = module
         self.cwd = working_directory
         assert not packages or isinstance(packages, (tuple, list, bool))
         self.packages = list(packages) if packages is not None and not isinstance(packages, bool) \
@@ -138,21 +147,47 @@ class CreateAndPopulate(object):
         """
         local_entry_file = None
         repo_info = None
+        stand_alone_script_outside_repo = False
+        # populate from local repository / script
         if self.folder or (self.script and Path(self.script).is_file() and not self.repo):
             self.folder = os.path.expandvars(os.path.expanduser(self.folder)) if self.folder else None
             self.script = os.path.expandvars(os.path.expanduser(self.script)) if self.script else None
             self.cwd = os.path.expandvars(os.path.expanduser(self.cwd)) if self.cwd else None
-            if Path(self.script).is_file():
-                entry_point = self.script
-            else:
-                entry_point = (Path(self.folder) / self.script).as_posix()
-            entry_point = os.path.abspath(entry_point)
-            if not os.path.isfile(entry_point):
-                raise ValueError("Script entrypoint file \'{}\' could not be found".format(entry_point))
 
-            local_entry_file = entry_point
+            if self.module:
+                entry_point = "-m {}".format(self.module)
+                # we must have a folder if we are here
+                local_entry_file = self.folder.rstrip("/") + "/."
+            else:
+                if Path(self.script).is_file():
+                    entry_point = self.script
+                else:
+                    entry_point = (Path(self.folder) / self.script).as_posix()
+
+                entry_point = os.path.abspath(entry_point)
+
+                try:
+                    if entry_point and Path(entry_point).is_file() and self.folder and Path(self.folder).is_dir():
+                        # make sure we raise exception if this is outside the local repo folder
+                        entry_point = (Path(entry_point) / (Path(entry_point).relative_to(self.folder))).as_posix()
+                except ValueError:
+                    entry_point = self.folder
+                    stand_alone_script_outside_repo = True
+
+                if not os.path.isfile(entry_point) and not stand_alone_script_outside_repo:
+                    if (not Path(self.script).is_absolute() and not Path(self.cwd).is_absolute() and
+                            (Path(self.folder) / self.cwd / self.script).is_file()):
+                        entry_point = (Path(self.folder) / self.cwd / self.script).as_posix()
+                    elif (Path(self.cwd).is_absolute() and not Path(self.script).is_absolute() and
+                            (Path(self.cwd) / self.script).is_file()):
+                        entry_point = (Path(self.cwd) / self.script).as_posix()
+                    else:
+                        raise ValueError("Script entrypoint file \'{}\' could not be found".format(entry_point))
+
+                local_entry_file = entry_point
+
             repo_info, requirements = ScriptInfo.get(
-                filepaths=[entry_point],
+                filepaths=[local_entry_file],
                 log=getLogger(),
                 create_requirements=self.packages is True,
                 uncommitted_from_remote=True,
@@ -161,6 +196,28 @@ class CreateAndPopulate(object):
                 detailed_req_report=False,
                 force_single_script=self.force_single_script_file,
             )
+
+            if stand_alone_script_outside_repo:
+                # if we have a standalone script and a local repo we skip[ the local diff and store it
+                local_entry_file = Path(self.script).as_posix()
+                a_create_requirements = self.packages is True
+                a_repo_info, a_requirements = ScriptInfo.get(
+                    filepaths=[Path(self.script).as_posix()],
+                    log=getLogger(),
+                    create_requirements=a_create_requirements,
+                    uncommitted_from_remote=True,
+                    detect_jupyter_notebook=False,
+                    add_missing_installed_packages=True,
+                    detailed_req_report=False,
+                    force_single_script=True,
+                )
+                if repo_info.script['diff']:
+                    print("Warning: local git repo diff is ignored, "
+                          "storing only the standalone script form {}".format(self.script))
+                    repo_info.script['diff'] = a_repo_info.script['diff'] or ''
+                repo_info.script['entry_point'] = a_repo_info.script['entry_point']
+                if a_create_requirements:
+                    repo_info['requirements'] = a_repo_info.script.get('requirements') or {}
 
         # check if we have no repository and no requirements raise error
         if self.raise_on_missing_entries and (not self.requirements_file and not self.packages) \
@@ -195,7 +252,7 @@ class CreateAndPopulate(object):
 
                 # if there is nothing to populate, return
                 if not any([
-                               self.folder, self.commit, self.branch, self.repo, self.script, self.cwd,
+                               self.folder, self.commit, self.branch, self.repo, self.script, self.module, self.cwd,
                                self.packages, self.requirements_file, self.base_task_id] + (list(self.docker.values()))
                            ):
                     return task
@@ -209,31 +266,63 @@ class CreateAndPopulate(object):
             task_state['script']['diff'] = repo_info.script['diff'] or ''
             task_state['script']['working_dir'] = repo_info.script['working_dir']
             task_state['script']['entry_point'] = repo_info.script['entry_point']
-            task_state['script']['binary'] = repo_info.script['binary']
+            task_state['script']['binary'] = '/bin/bash' if (
+                    (repo_info.script['entry_point'] or '').lower().strip().endswith('.sh') and
+                    not (repo_info.script['entry_point'] or '').lower().strip().startswith('-m ')) \
+                else repo_info.script['binary']
             task_state['script']['requirements'] = repo_info.script.get('requirements') or {}
             if self.cwd:
-                self.cwd = self.cwd
-                # cwd should be relative to the repo_root, but we need the full path
-                # (repo_root + cwd) in order to resolve the entry point
-                cwd = (Path(repo_info.script['repo_root']) / self.cwd).as_posix()
+                cwd = self.cwd
+                if not Path(cwd).is_absolute():
+                    # cwd should be relative to the repo_root, but we need the full path
+                    # (repo_root + cwd) in order to resolve the entry point
+                    cwd = os.path.normpath((Path(repo_info.script['repo_root']) / self.cwd).as_posix())
+                    if not Path(cwd).is_dir():
+                        # we need to leave it as is, we have no idea, and this is a repo
+                        cwd = self.cwd
 
-                if not Path(cwd).is_dir():
+                elif not Path(cwd).is_dir():
+                    # we were passed an absolute dir and it does not exist
                     raise ValueError("Working directory \'{}\' could not be found".format(cwd))
-                entry_point = \
-                    Path(repo_info.script['repo_root']) / repo_info.script['working_dir'] / repo_info.script[
-                        'entry_point']
-                # resolve entry_point relative to the current working directory
-                entry_point = entry_point.relative_to(cwd).as_posix()
+
+                if self.module:
+                    entry_point = "-m {}".format(self.module)
+                elif stand_alone_script_outside_repo:
+                    # this should be relative and the temp file we generated
+                    entry_point = repo_info.script['entry_point']
+                else:
+                    entry_point = os.path.normpath(
+                        Path(repo_info.script['repo_root']) /
+                        repo_info.script['working_dir'] / repo_info.script['entry_point']
+                    )
+                    # resolve entry_point relative to the current working directory
+                    if Path(cwd).is_absolute():
+                        entry_point = Path(entry_point).relative_to(cwd).as_posix()
+                    else:
+                        entry_point = repo_info.script['entry_point']
+
                 # restore cwd - make it relative to the repo_root again
-                cwd = Path(cwd).relative_to(repo_info.script['repo_root']).as_posix()
+                if Path(cwd).is_absolute():
+                    # now cwd is relative again
+                    cwd = Path(cwd).relative_to(repo_info.script['repo_root']).as_posix()
+
+                # make sure we always have / (never \\)
+                if platform == "win32":
+                    entry_point = entry_point.replace('\\', '/') if entry_point else ""
+                    cwd = cwd.replace('\\', '/') if cwd else ""
+
                 task_state['script']['entry_point'] = entry_point or ""
                 task_state['script']['working_dir'] = cwd or "."
         elif self.repo:
-            # normalize backslashes and remove first one
-            entry_point = '/'.join([p for p in self.script.split('/') if p and p != '.'])
             cwd = '/'.join([p for p in (self.cwd or '.').split('/') if p and p != '.'])
-            if cwd and entry_point.startswith(cwd + '/'):
-                entry_point = entry_point[len(cwd) + 1:]
+            # normalize backslashes and remove first one
+            if self.module:
+                entry_point = "-m {}".format(self.module)
+            else:
+                entry_point = '/'.join([p for p in self.script.split('/') if p and p != '.'])
+                if cwd and entry_point.startswith(cwd + '/'):
+                    entry_point = entry_point[len(cwd) + 1:]
+
             task_state['script']['repository'] = self.repo
             task_state['script']['version_num'] = self.commit or None
             task_state['script']['branch'] = self.branch or None
@@ -241,7 +330,9 @@ class CreateAndPopulate(object):
             task_state['script']['working_dir'] = cwd or '.'
             task_state['script']['entry_point'] = entry_point or ""
 
-            if self.force_single_script_file and Path(self.script).is_file():
+            if self.script and Path(self.script).is_file() and (
+                    self.force_single_script_file or Path(self.script).is_absolute()):
+                self.force_single_script_file = True
                 create_requirements = self.packages is True
                 repo_info, requirements = ScriptInfo.get(
                     filepaths=[Path(self.script).as_posix()],
@@ -251,15 +342,20 @@ class CreateAndPopulate(object):
                     detect_jupyter_notebook=False,
                     add_missing_installed_packages=True,
                     detailed_req_report=False,
-                    force_single_script=self.force_single_script_file,
+                    force_single_script=True,
                 )
+                task_state['script']['binary'] = '/bin/bash' if (
+                        (repo_info.script['entry_point'] or '').lower().strip().endswith('.sh') and
+                        not (repo_info.script['entry_point'] or '').lower().strip().startswith('-m ')) \
+                    else repo_info.script['binary']
                 task_state['script']['diff'] = repo_info.script['diff'] or ''
                 task_state['script']['entry_point'] = repo_info.script['entry_point']
                 if create_requirements:
                     task_state['script']['requirements'] = repo_info.script.get('requirements') or {}
         else:
             # standalone task
-            task_state['script']['entry_point'] = self.script or ""
+            task_state['script']['entry_point'] = self.script if self.script else \
+                ("-m {}".format(self.module) if self.module else "")
             task_state['script']['working_dir'] = '.'
         # update requirements
         reqs = []
@@ -300,7 +396,8 @@ class CreateAndPopulate(object):
             idx_a = 0
             lines = None
             # find the right entry for the patch if we have a local file (basically after __future__
-            if local_entry_file:
+            if (local_entry_file and not stand_alone_script_outside_repo and not self.module and
+                    str(local_entry_file).lower().endswith(".py")):
                 with open(local_entry_file, 'rt') as f:
                     lines = f.readlines()
                 future_found = self._locate_future_import(lines)
@@ -308,7 +405,8 @@ class CreateAndPopulate(object):
                     idx_a = future_found + 1
 
             task_init_patch = ''
-            if self.repo or task_state.get('script', {}).get('repository'):
+            if ((self.repo or task_state.get('script', {}).get('repository')) and
+                    not self.force_single_script_file and not stand_alone_script_outside_repo):
                 # if we do not have requirements, add clearml to the requirements.txt
                 if not reqs:
                     task_init_patch += \
@@ -319,26 +417,33 @@ class CreateAndPopulate(object):
                         "+clearml\n"
 
                 # Add Task.init call
-                task_init_patch += \
-                    "diff --git a{script_entry} b{script_entry}\n" \
-                    "--- a{script_entry}\n" \
-                    "+++ b{script_entry}\n" \
-                    "@@ -{idx_a},0 +{idx_b},3 @@\n" \
-                    "+from clearml import Task\n" \
-                    "+(__name__ != \"__main__\") or Task.init()\n" \
-                    "+\n".format(
-                        script_entry=script_entry, idx_a=idx_a, idx_b=idx_a + 1)
+                if not self.module and script_entry and str(script_entry).lower().endswith(".py"):
+                    task_init_patch += \
+                        "diff --git a{script_entry} b{script_entry}\n" \
+                        "--- a{script_entry}\n" \
+                        "+++ b{script_entry}\n" \
+                        "@@ -{idx_a},0 +{idx_b},3 @@\n" \
+                        "+from clearml import Task\n" \
+                        "+(__name__ != \"__main__\") or Task.init()\n" \
+                        "+\n".format(
+                            script_entry=script_entry, idx_a=idx_a, idx_b=idx_a + 1)
+            elif self.module:
+                # if we are here, do nothing
+                pass
             elif local_entry_file and lines:
                 # if we are here it means we do not have a git diff, but a single script file
                 init_lines = ["from clearml import Task\n", "(__name__ != \"__main__\") or Task.init()\n\n"]
                 task_state['script']['diff'] = ''.join(lines[:idx_a] + init_lines + lines[idx_a:])
                 # no need to add anything, we patched it.
                 task_init_patch = ""
-            else:
+            elif str(script_entry or "").lower().endswith(".py"):
                 # Add Task.init call
+                # if we are here it means we do not have a git diff, but a single script file
                 task_init_patch += \
                     "from clearml import Task\n" \
                     "(__name__ != \"__main__\") or Task.init()\n\n"
+                task_state['script']['diff'] = task_init_patch + task_state['script'].get('diff', '')
+                task_init_patch = ""
 
             # make sure we add the diff at the end of the current diff
             task_state['script']['diff'] = task_state['script'].get('diff', '')

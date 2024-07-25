@@ -3,6 +3,7 @@ import os
 import platform
 import sys
 import warnings
+from math import ceil, log10
 from time import time
 
 import psutil
@@ -12,7 +13,7 @@ from typing import Text
 from .process.mp import BackgroundMonitor
 from ..backend_api import Session
 from ..binding.frameworks.tensorflow_bind import IsTensorboardInit
-from ..config import config
+from ..config import config, ENV_MULTI_NODE_SINGLE_TASK
 
 try:
     from .gpu import gpustat
@@ -27,6 +28,7 @@ class ResourceMonitor(BackgroundMonitor):
     _wait_for_first_iteration_to_start_sec_default = 180.0
     _max_wait_for_first_iteration_to_start_sec_default = 1800.0
     _resource_monitor_instances = []
+    _multi_node_single_task = None
 
     def __init__(self, task, sample_frequency_per_sec=2., report_frequency_sec=30.,
                  first_report_sec=None, wait_for_first_iteration_to_start_sec=None,
@@ -34,6 +36,7 @@ class ResourceMonitor(BackgroundMonitor):
         super(ResourceMonitor, self).__init__(task=task, wait_period=sample_frequency_per_sec)
         # noinspection PyProtectedMember
         ResourceMonitor._resource_monitor_instances.append(self)
+        ResourceMonitor._multi_node_single_task = ENV_MULTI_NODE_SINGLE_TASK.get()
         self._task = task
         self._sample_frequency = sample_frequency_per_sec
         self._report_frequency = report_frequency_sec
@@ -102,6 +105,35 @@ class ResourceMonitor(BackgroundMonitor):
     def daemon(self):
         if self._is_thread_mode_and_not_main_process():
             return
+
+        multi_node_single_task_reporting = False
+        report_node_as_series = False
+        rank = 0
+        world_size_digits = 0
+        # check if we are in multi-node reporting to the same Task
+        # noinspection PyBroadException
+        try:
+            if self._multi_node_single_task:
+                # if resource monitoring is disabled, do nothing
+                if self._multi_node_single_task < 0:
+                    return
+                # we are reporting machines stats on a different machine over the same Task
+                multi_node_single_task_reporting = True
+                if self._multi_node_single_task == 1:
+                    # report per machine graph (unique title)
+                    report_node_as_series = False
+                elif self._multi_node_single_task == 2:
+                    # report per machine series (i.e. merge title+series resource and have "node X" as different series)
+                    report_node_as_series = True
+
+                # noinspection PyBroadException
+                try:
+                    rank = int(os.environ.get("RANK", os.environ.get('SLURM_PROCID')) or 0)
+                    world_size_digits = ceil(log10(int(os.environ.get("WORLD_SIZE") or 0)))
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
         seconds_since_started = 0
         reported = 0
@@ -195,10 +227,33 @@ class ResourceMonitor(BackgroundMonitor):
                 for k, v in average_readouts.items():
                     # noinspection PyBroadException
                     try:
-                        title = self._title_gpu if k.startswith('gpu_') else self._title_machine
-                        # 3 points after the dot
+                        # 3 digits after the dot
                         value = round(v * 1000) / 1000.
-                        self._task.get_logger().report_scalar(title=title, series=k, iteration=iteration, value=value)
+                        title = self._title_gpu if k.startswith('gpu_') else self._title_machine
+                        series = k
+                        if multi_node_single_task_reporting:
+                            if report_node_as_series:
+                                # for rank 0 we keep the same original report so that external services
+                                # can always check the default cpu/gpu utilization
+                                if rank == 0:
+                                    self._task.get_logger().report_scalar(
+                                        title=title, series=series,
+                                        iteration=iteration, value=value)
+
+                                # now let's create an additional report
+                                title = "{}:{}".format(":".join(title.split(":")[:-1]), series)
+                                series = "rank {:0{world_size_digits}d}".format(
+                                    rank, world_size_digits=world_size_digits)
+                            elif rank > 0:
+                                title = "{}:rank{:0{world_size_digits}d}".format(
+                                    title, rank, world_size_digits=world_size_digits)
+                            else:
+                                # for rank 0 we keep the same original report so that external services
+                                # can always check the default cpu/gpu utilization
+                                pass
+
+                        self._task.get_logger().report_scalar(title=title, series=series, iteration=iteration, value=value)
+
                     except Exception:
                         pass
                 # clear readouts if this is update is not averaged
@@ -306,14 +361,35 @@ class ResourceMonitor(BackgroundMonitor):
     def get_logger_reported_titles(cls, task):
         # noinspection PyProtectedMember
         titles = list(task.get_logger()._get_used_title_series().keys())
+
+        # noinspection PyBroadException
         try:
-            titles.remove(cls._title_machine)
-        except ValueError:
-            pass
-        try:
-            titles.remove(cls._title_gpu)
-        except ValueError:
-            pass
+            multi_node = cls._multi_node_single_task is not None
+        except Exception:
+            multi_node = False
+
+        if multi_node:
+            title_machine = ":".join(cls._title_machine.split(":")[:-1])
+            title_gpu = ":".join(cls._title_gpu.split(":")[:-1])
+            if not title_machine:
+                title_machine = cls._title_machine
+            if not title_gpu:
+                title_gpu = cls._title_gpu
+
+            try:
+                titles = [t for t in titles if not t.startswith(title_machine) and not t.startswith(title_gpu)]
+            except ValueError:
+                pass
+        else:
+            try:
+                titles.remove(cls._title_machine)
+            except ValueError:
+                pass
+            try:
+                titles.remove(cls._title_gpu)
+            except ValueError:
+                pass
+
         return titles
 
     def _get_process_used_memory(self):

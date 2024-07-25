@@ -527,6 +527,13 @@ class BackgroundMonitor(object):
         if isinstance(self._thread, Thread):
             if self._thread_pid == os.getpid():
                 return
+
+        # make sure we start the metrics thread pools before starting the daemon thread
+        # workaround for: https://github.com/python/cpython/issues/113964
+        from ...backend_interface.metrics.interface import Metrics
+        # noinspection PyProtectedMember
+        Metrics._initialize_upload_pools()
+
         self._thread_pid = os.getpid()
         self._thread = Thread(target=self._daemon)
         self._thread.daemon = True

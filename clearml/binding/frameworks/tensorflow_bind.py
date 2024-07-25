@@ -738,13 +738,14 @@ class EventTrainsWriter(object):
                     LoggerRoot.get_base_logger(TensorflowBinding).debug(
                         'No tag for \'value\' existing keys %s' % ', '.join(vdict.keys()))
                     continue
+                # noinspection PyBroadException
                 try:
                     from tensorboard.plugins.hparams.metadata import SESSION_START_INFO_TAG
 
                     if tag == SESSION_START_INFO_TAG:
                         self._add_hparams(vdict)
                         continue
-                except ImportError:
+                except Exception:
                     pass
                 metric, values = get_data(vdict, supported_metrics)
                 if metric == 'simpleValue':

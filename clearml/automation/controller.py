@@ -4805,11 +4805,11 @@ class PipelineDecorator(PipelineController):
                         if n not in _node.parents:
                             _node.parents.append(n)
                         break
-        if kwargs:
-            leaves = cls._singleton._find_executed_node_leaves()
-            _node.parents = (_node.parents or []) + [
-                x for x in cls._evaluated_return_values.get(tid, []) if x in leaves
-            ]
+
+        leaves = cls._singleton._find_executed_node_leaves()
+        _node.parents = (_node.parents or []) + [
+            x for x in cls._evaluated_return_values.get(tid, []) if x in leaves
+        ]
 
         if not cls._singleton._abort_running_steps_on_failure:
             for parent in _node.parents:

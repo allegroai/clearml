@@ -2354,7 +2354,7 @@ class Dataset(object):
                 return os.path.join(target_folder, os.path.basename(relative_path))
 
         def _submit_download_link(relative_path, link, target_folder, pool=None):
-            if link.parent_dataset_id != self.id:
+            if link.parent_dataset_id != self.id and not link.parent_dataset_id.startswith("offline-"):
                 return
             target_path = _get_target_path(relative_path, target_folder)
             if pool is None:
@@ -2757,6 +2757,13 @@ class Dataset(object):
             (id if k.startswith("offline-") else k): [(id if sub_v.startswith("offline-") else sub_v) for sub_v in v]
             for k, v in dataset._dependency_graph.items()  # noqa
         }
+        # noinspection PyProtectedMember
+        for entry in dataset._dataset_file_entries.values():
+            if entry.parent_dataset_id.startswith("offline-"):
+                entry.parent_dataset_id = id
+        for entry in dataset._dataset_link_entries.values():
+            if entry.parent_dataset_id.startswith("offline-"):
+                entry.parent_dataset_id = id
         # noinspection PyProtectedMember
         dataset._update_dependency_graph()
         # noinspection PyProtectedMember

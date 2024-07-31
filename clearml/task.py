@@ -4148,7 +4148,10 @@ class Task(_Task):
             )
         )
         self.flush(wait_for_uploads=True)
-        self.stopped(status_reason='USER ABORTED')
+
+        # if running remotely, we want the daemon to kill us
+        if self.running_locally():
+            self.stopped(status_reason='USER ABORTED')
 
         if self._dev_worker:
             self._dev_worker.unregister()

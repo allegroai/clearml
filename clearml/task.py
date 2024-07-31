@@ -180,8 +180,8 @@ class Task(_Task):
     __detect_repo_async = deferred_config('development.vcs_repo_detect_async', False)
     __default_output_uri = DEV_DEFAULT_OUTPUT_URI.get() or deferred_config('development.default_output_uri', None)
 
-    __hidden_tag = "hidden" 
-    
+    __hidden_tag = "hidden"
+
     _launch_multi_node_section = "launch_multi_node"
     _launch_multi_node_instance_tag = "multi_node_instance"
 

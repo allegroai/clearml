@@ -211,8 +211,8 @@ class StorageManager(object):
         return Session.get_files_server_host()
 
     @classmethod
-    def upload_folder(cls, local_folder, remote_url, match_wildcard=None):
-        # type: (str, str, Optional[str]) -> Optional[str]
+    def upload_folder(cls, local_folder, remote_url, match_wildcard=None, retries=None):
+        # type: (str, str, Optional[str], Optional[int]) -> Optional[str]
         """
         Upload local folder recursively to a remote storage, maintaining the sub folder structure
         in the remote storage.
@@ -231,6 +231,7 @@ class StorageManager(object):
             Example: `*.json`
             Notice: target file size/date are not checked. Default True, always upload.
             Notice if uploading to http, we will always overwrite the target.
+        :param int retries: Number of retries before failing to upload a file in the folder.
         :return: Newly uploaded remote URL or None on error.
         """
 
@@ -250,6 +251,7 @@ class StorageManager(object):
                     pool.apply_async(
                         helper.upload,
                         args=(str(path), str(path).replace(local_folder, remote_url)),
+                        kwds={"retries": retries if retries else cls._file_upload_retries}
                     )
                 )
 

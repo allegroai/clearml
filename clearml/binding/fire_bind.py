@@ -6,7 +6,7 @@ except ImportError:
     fire = None
 
 import inspect
-from .frameworks import _patched_call  # noqa
+from .frameworks import _patched_call_no_recursion_guard  # noqa
 from ..config import get_remote_task_id, running_remotely
 from ..utilities.dicts import cast_str_to_bool
 
@@ -57,9 +57,9 @@ class PatchFire:
         if not cls.__patched:
             cls.__patched = True
             if running_remotely():
-                fire.core._Fire = _patched_call(fire.core._Fire, PatchFire.__Fire)
+                fire.core._Fire = _patched_call_no_recursion_guard(fire.core._Fire, PatchFire.__Fire)
             else:
-                fire.core._CallAndUpdateTrace = _patched_call(
+                fire.core._CallAndUpdateTrace = _patched_call_no_recursion_guard(
                     fire.core._CallAndUpdateTrace, PatchFire.__CallAndUpdateTrace
                 )
 

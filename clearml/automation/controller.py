@@ -212,7 +212,7 @@ class PipelineController(object):
             docker=None,  # type: Optional[str]
             docker_args=None,  # type: Optional[str]
             docker_bash_setup_script=None,  # type: Optional[str]
-            packages=None,  # type: Optional[Union[str, Sequence[str]]]
+            packages=None,  # type: Optional[Union[bool, str, Sequence[str]]]
             repo=None,  # type: Optional[str]
             repo_branch=None,  # type: Optional[str]
             repo_commit=None,  # type: Optional[str]
@@ -273,6 +273,7 @@ class PipelineController(object):
         :param packages: Manually specify a list of required packages or a local requirements.txt file.
             Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
             If not provided, packages are automatically added.
+            Use `False` to install requirements from "requirements.txt" inside your git repository
         :param repo: Optional, specify a repository to attach to the pipeline controller, when remotely executing.
             Allow users to execute the controller inside the specified repository, enabling them to load modules/script
             from the repository. Notice the execution work directory will be the repository root folder.
@@ -711,7 +712,7 @@ class PipelineController(object):
             task_type=None,  # type: Optional[str]
             auto_connect_frameworks=None,  # type: Optional[dict]
             auto_connect_arg_parser=None,  # type: Optional[dict]
-            packages=None,  # type: Optional[Union[str, Sequence[str]]]
+            packages=None,  # type: Optional[Union[bool, str, Sequence[str]]]
             repo=None,  # type: Optional[str]
             repo_branch=None,  # type: Optional[str]
             repo_commit=None,  # type: Optional[str]
@@ -786,6 +787,7 @@ class PipelineController(object):
         :param packages: Manually specify a list of required packages or a local requirements.txt file.
             Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
             If not provided, packages are automatically added based on the imports used in the function.
+            Use `False` to install requirements from "requirements.txt" inside your git repository
         :param repo: Optional, specify a repository to attach to the function, when remotely executing.
             Allow users to execute the function inside the specified repository, enabling to load modules/script
             from a repository Notice the execution work directory will be the repository root folder.
@@ -2064,7 +2066,7 @@ class PipelineController(object):
             task_type=None,  # type: Optional[str]
             auto_connect_frameworks=None,  # type: Optional[dict]
             auto_connect_arg_parser=None,  # type: Optional[dict]
-            packages=None,  # type: Optional[Union[str, Sequence[str]]]
+            packages=None,  # type: Optional[Union[bool, str, Sequence[str]]]
             repo=None,  # type: Optional[str]
             repo_branch=None,  # type: Optional[str]
             repo_commit=None,  # type: Optional[str]
@@ -2139,6 +2141,7 @@ class PipelineController(object):
         :param packages: Manually specify a list of required packages or a local requirements.txt file.
             Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
             If not provided, packages are automatically added based on the imports used in the function.
+            Use `False` to install requirements from "requirements.txt" inside your git repository
         :param repo: Optional, specify a repository to attach to the function, when remotely executing.
             Allow users to execute the function inside the specified repository, enabling to load modules/script
             from a repository Notice the execution work directory will be the repository root folder.
@@ -3485,7 +3488,7 @@ class PipelineDecorator(PipelineController):
             docker=None,  # type: Optional[str]
             docker_args=None,  # type: Optional[str]
             docker_bash_setup_script=None,  # type: Optional[str]
-            packages=None,  # type: Optional[Union[str, Sequence[str]]]
+            packages=None,  # type: Optional[Union[bool, str, Sequence[str]]]
             repo=None,  # type: Optional[str]
             repo_branch=None,  # type: Optional[str]
             repo_commit=None,  # type: Optional[str]
@@ -3541,6 +3544,7 @@ class PipelineDecorator(PipelineController):
         :param packages: Manually specify a list of required packages or a local requirements.txt file.
             Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
             If not provided, packages are automatically added.
+            Use `False` to install requirements from "requirements.txt" inside your git repository
         :param repo: Optional, specify a repository to attach to the pipeline controller, when remotely executing.
             Allow users to execute the controller inside the specified repository, enabling them to load modules/script
             from the repository. Notice the execution work directory will be the repository root folder.
@@ -3950,7 +3954,7 @@ class PipelineDecorator(PipelineController):
             return_values=('return_object', ),  # type: Union[str, Sequence[str]]
             name=None,  # type: Optional[str]
             cache=False,  # type: bool
-            packages=None,  # type: Optional[Union[str, Sequence[str]]]
+            packages=None,  # type: Optional[Union[bool, str, Sequence[str]]]
             parents=None,  # type:  Optional[List[str]]
             execution_queue=None,  # type: Optional[str]
             continue_on_fail=False,  # type: bool
@@ -3992,6 +3996,7 @@ class PipelineDecorator(PipelineController):
         :param packages: Manually specify a list of required packages or a local requirements.txt file.
             Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
             If not provided, packages are automatically added based on the imports used inside the wrapped function.
+            Use `False` to install requirements from "requirements.txt" inside your git repository
         :param parents: Optional list of parent nodes in the DAG.
             The current step in the pipeline will be sent for execution only after all the parent nodes
             have been executed successfully.
@@ -4415,7 +4420,7 @@ class PipelineDecorator(PipelineController):
             docker=None,  # type: Optional[str]
             docker_args=None,  # type: Optional[str]
             docker_bash_setup_script=None,  # type: Optional[str]
-            packages=None,  # type: Optional[Union[str, Sequence[str]]]
+            packages=None,  # type: Optional[Union[bool, str, Sequence[str]]]
             repo=None,  # type: Optional[str]
             repo_branch=None,  # type: Optional[str]
             repo_commit=None,  # type: Optional[str]
@@ -4502,6 +4507,7 @@ class PipelineDecorator(PipelineController):
         :param packages: Manually specify a list of required packages or a local requirements.txt file.
             Example: ["tqdm>=2.1", "scikit-learn"] or "./requirements.txt"
             If not provided, packages are automatically added based on the imports used in the function.
+            Use `False` to install requirements from "requirements.txt" inside your git repository
         :param repo: Optional, specify a repository to attach to the function, when remotely executing.
             Allow users to execute the function inside the specified repository, enabling them to load modules/script
             from the repository. Notice the execution work directory will be the repository root folder.

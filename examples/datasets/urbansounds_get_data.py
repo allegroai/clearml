@@ -28,9 +28,7 @@ def get_urbansound8k():
         "https://allegro-datasets.s3.amazonaws.com/clearml/UrbanSound8K.zip",
         extract_archive=True,
     )
-    path_to_urbansound8k_csv = (
-        Path(path_to_urbansound8k) / "UrbanSound8K" / "metadata" / "UrbanSound8K.csv"
-    )
+    path_to_urbansound8k_csv = Path(path_to_urbansound8k) / "UrbanSound8K" / "metadata" / "UrbanSound8K.csv"
     path_to_urbansound8k_audio = Path(path_to_urbansound8k) / "UrbanSound8K" / "audio"
 
     return path_to_urbansound8k_csv, path_to_urbansound8k_audio
@@ -38,9 +36,7 @@ def get_urbansound8k():
 
 def log_dataset_statistics(dataset, metadata):
     histogram_data = metadata["class"].value_counts()
-    dataset.get_logger().report_table(
-        title="Raw Dataset Metadata", series="Raw Dataset Metadata", table_plot=metadata
-    )
+    dataset.get_logger().report_table(title="Raw Dataset Metadata", series="Raw Dataset Metadata", table_plot=metadata)
     dataset.get_logger().report_histogram(
         title="Class distribution",
         series="Class distribution",

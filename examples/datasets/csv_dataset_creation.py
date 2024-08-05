@@ -6,7 +6,8 @@ def main():
 
     print("STEP1 : Downloading CSV dataset")
     csv_file_path = manager.get_local_copy(
-        remote_url="https://allegro-datasets.s3.amazonaws.com/datasets/Iris_Species.csv")
+        remote_url="https://allegro-datasets.s3.amazonaws.com/datasets/Iris_Species.csv"
+    )
 
     print("STEP2 : Creating a dataset")
     # By default, clearml data uploads to the clearml fileserver. Adding output_uri argument to the create() method
@@ -23,5 +24,5 @@ def main():
     print("We are done, have a great day :)")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

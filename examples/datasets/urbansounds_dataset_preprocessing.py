@@ -43,9 +43,7 @@ class PreProcessor:
         # Make sure all spectrograms are the same size
         fixed_length = 3 * (self.configuration["resample_freq"] // 200)
         if melspectogram_db.shape[2] < fixed_length:
-            melspectogram_db = torch.nn.functional.pad(
-                melspectogram_db, (0, fixed_length - melspectogram_db.shape[2])
-            )
+            melspectogram_db = torch.nn.functional.pad(melspectogram_db, (0, fixed_length - melspectogram_db.shape[2]))
         else:
             melspectogram_db = melspectogram_db[:, :, :fixed_length]
 
@@ -64,16 +62,10 @@ class DataSetBuilder:
             alias="Raw Dataset",
         )
         # This will return the pandas dataframe we added in the previous task
-        self.metadata = (
-            Task.get_task(task_id=self.original_dataset._task.id)
-            .artifacts["metadata"]
-            .get()
-        )
+        self.metadata = Task.get_task(task_id=self.original_dataset._task.id).artifacts["metadata"].get()
         # This will download the data and return a local path to the data
         self.original_dataset_path = Path(
-            self.original_dataset.get_mutable_local_copy(
-                self.configuration["dataset_path"], overwrite=True
-            )
+            self.original_dataset.get_mutable_local_copy(self.configuration["dataset_path"], overwrite=True)
         )
 
         # Prepare a preprocessor that will handle each sample one by one
@@ -114,33 +106,23 @@ class DataSetBuilder:
         # audio side by side in the debug sample UI)
         for i, (_, data) in tqdm(enumerate(self.metadata.iterrows())):
             _, audio_file_path, label = data.tolist()
-            sample, sample_freq = torchaudio.load(
-                self.original_dataset_path / audio_file_path, normalize=True
-            )
+            sample, sample_freq = torchaudio.load(self.original_dataset_path / audio_file_path, normalize=True)
             spectrogram = self.preprocessor.preprocess_sample(sample, sample_freq)
             # Get only the filename and replace the extension, we're saving an image here
             new_file_name = os.path.basename(audio_file_path).replace(".wav", ".npy")
             # Get the correct folder, basically the original dataset folder + the new filename
-            spectrogram_path = (
-                self.original_dataset_path
-                / os.path.dirname(audio_file_path)
-                / new_file_name
-            )
+            spectrogram_path = self.original_dataset_path / os.path.dirname(audio_file_path) / new_file_name
             # Save the numpy array to disk
             np.save(spectrogram_path, spectrogram)
 
             # Log every 10th sample as a debug sample to the UI, so we can manually check it
             if i % 10 == 0:
                 # Convert the numpy array to a viewable JPEG
-                rgb_image = mpl.colormaps["viridis"](
-                    spectrogram[0, :, :].detach().numpy() * 255
-                )[:, :, :3]
+                rgb_image = mpl.colormaps["viridis"](spectrogram[0, :, :].detach().numpy() * 255)[:, :, :3]
                 title = os.path.splitext(os.path.basename(audio_file_path))[0]
 
                 # Report the image and the original sound, so they can be viewed side by side
-                self.preprocessed_dataset.get_logger().report_image(
-                    title=title, series="spectrogram", image=rgb_image
-                )
+                self.preprocessed_dataset.get_logger().report_image(title=title, series="spectrogram", image=rgb_image)
                 self.preprocessed_dataset.get_logger().report_media(
                     title=title,
                     series="original_audio",
@@ -152,9 +134,7 @@ class DataSetBuilder:
         # Again add some visualizations to the task
         self.log_dataset_statistics()
         # We still want the metadata
-        self.preprocessed_dataset._task.upload_artifact(
-            name="metadata", artifact_object=self.metadata
-        )
+        self.preprocessed_dataset._task.upload_artifact(name="metadata", artifact_object=self.metadata)
         self.preprocessed_dataset.finalize(auto_upload=True)
 
 

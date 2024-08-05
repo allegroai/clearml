@@ -8,8 +8,9 @@ from clearml import Dataset, StorageManager
 
 def download_mnist_dataset():
     manager = StorageManager()
-    mnist_dataset = Path(manager.get_local_copy(
-        remote_url="https://allegro-datasets.s3.amazonaws.com/datasets/MNIST.zip", name="MNIST"))
+    mnist_dataset = Path(
+        manager.get_local_copy(remote_url="https://allegro-datasets.s3.amazonaws.com/datasets/MNIST.zip", name="MNIST")
+    )
     mnist_dataset_train = mnist_dataset / "TRAIN"
     mnist_dataset_test = mnist_dataset / "TEST"
 
@@ -28,7 +29,8 @@ def main():
 
     print("STEP3 : Creating the dataset")
     mnist_dataset = Dataset.create(
-        dataset_project="dataset_examples", dataset_name="MNIST Complete Dataset (Syncing Example)")
+        dataset_project="dataset_examples", dataset_name="MNIST Complete Dataset (Syncing Example)"
+    )
 
     print("STEP4 : Syncing train dataset")
     shutil.copytree(mnist_dataset_train, mnist_train_path)  # Populating dataset folder with TRAIN images
@@ -46,5 +48,5 @@ def main():
     print("We are done, have a great day :)")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

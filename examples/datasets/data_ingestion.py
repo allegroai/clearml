@@ -42,19 +42,13 @@ dataset_path = Dataset.get(
 # Dataset and Dataloader initializations
 transform = transforms.Compose([transforms.ToTensor()])
 
-trainset = datasets.CIFAR10(
-    root=dataset_path, train=True, download=False, transform=transform
-)
+trainset = datasets.CIFAR10(root=dataset_path, train=True, download=False, transform=transform)
 trainloader = torch.utils.data.DataLoader(
     trainset, batch_size=params.get("batch_size", 4), shuffle=True, num_workers=10
 )
 
-testset = datasets.CIFAR10(
-    root=dataset_path, train=False, download=False, transform=transform
-)
-testloader = torch.utils.data.DataLoader(
-    testset, batch_size=params.get("batch_size", 4), shuffle=False, num_workers=10
-)
+testset = datasets.CIFAR10(root=dataset_path, train=False, download=False, transform=transform)
+testloader = torch.utils.data.DataLoader(testset, batch_size=params.get("batch_size", 4), shuffle=False, num_workers=10)
 
 classes = (
     "plane",
@@ -87,14 +81,10 @@ def predictions_gt_images_handler(engine, logger, *args, **kwargs):
         ax = fig.add_subplot(num_x, num_y, idx + 1, xticks=[], yticks=[])
         ax.imshow(trans(x[idx]))
         ax.set_title(
-            "{0} {1:.1f}% (label: {2})".format(
-                classes[preds], probs * 100, classes[y[idx]]
-            ),
+            "{0} {1:.1f}% (label: {2})".format(classes[preds], probs * 100, classes[y[idx]]),
             color=("green" if preds == y[idx] else "red"),
         )
-    logger.writer.add_figure(
-        "predictions vs actuals", figure=fig, global_step=engine.state.epoch
-    )
+    logger.writer.add_figure("predictions vs actuals", figure=fig, global_step=engine.state.epoch)
 
 
 class Net(nn.Module):

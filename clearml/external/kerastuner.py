@@ -1,10 +1,8 @@
 from typing import Optional
 from logging import getLogger
+from ..task import Task
 
 _logger = getLogger("clearml.external.kerastuner")
-
-
-from ..task import Task
 
 
 try:

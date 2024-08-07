@@ -22,13 +22,13 @@ Using the **ClearML** [Logger](https://github.com/allegroai/clearml/blob/master/
 Additionally, the **ClearML** Logger module provides methods that allow you to do the following:
     
   * Get the [current logger]()
-  * Overrride the ClearML configuration file with a [default upload destination]() for images and files
+  * Override the ClearML configuration file with a [default upload destination]() for images and files
   
 ## Graphs and Images
 
 ### Scalar Metrics
 
-Use to report scalar metrics by iteration as a line plot.
+Report scalar metrics by iteration as a line plot.
 
 First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/scalar_reporting.py)) with the following method.
 
@@ -99,7 +99,7 @@ def report_scalar(self, title, series, value, iteration)
 
 ### Histograms
 
-Use to report any data by iteration as a histogram.
+Report any data by iteration as a histogram.
 
 First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
 
@@ -197,7 +197,7 @@ def report_histogram(self, title, series, values, iteration, labels=None, xlabel
 
 ### Line Plots
 
-Use to report any data by iteration as a single or multiple line plot.
+Report any data by iteration as a single or multiple line plot.
 
 First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
 
@@ -323,7 +323,7 @@ def report_line_plot(self, title, series, iteration, xaxis, yaxis, mode='lines',
 
 ### 2D Scatter Diagrams
 
-Use to report any vector data as a 2D scatter diagram.
+Report any vector data as a 2D scatter diagram.
 
 First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
 
@@ -459,7 +459,7 @@ def report_scatter2d(self, title, series, scatter, iteration, xaxis=None, yaxis=
 
 ### 3D Scatter Diagrams
 
-Use to report any array data as a 3D scatter diagram.
+Report any array data as a 3D scatter diagram.
 
 First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/3d_plots_reporting.py)) with the following method.
 
@@ -584,7 +584,7 @@ def report_scatter3d(self, title, series, scatter, iteration, labels=None, mode=
                     <li><code>lines+markers</code>
                     </li>
                 </ul>
-            The default values is <code>lines</code>.
+            The default value is <code>lines</code>.
             </td>
             <td>No
             </td>
@@ -595,7 +595,7 @@ def report_scatter3d(self, title, series, scatter, iteration, labels=None, mode=
 
 ### Confusion Matrices
 
-Use to report a heat-map matrix as a confusion matrix. You can also plot a heat-map as a [surface diagram](#surface-diagrams).
+Report a heat-map matrix as a confusion matrix. You can also plot a heat-map as a [surface diagram](#surface-diagrams).
 
 First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/scatter_hist_confusion_mat_reporting.py)) with the following method.
 
@@ -687,7 +687,7 @@ def report_confusion_matrix(self, title, series, matrix, iteration, xlabels=None
 
 ### Surface Diagrams
 
-Use to plot a heat-map matrix as a surface diagram. You can also plot a heat-map as a [confusion matrix](#confusion-matrices).
+Plot a heat-map matrix as a surface diagram. You can also plot a heat-map as a [confusion matrix](#confusion-matrices).
 
 First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/reporting/3d_plots_reporting.py)) with the following method.
 
@@ -818,7 +818,7 @@ def report_surface(self, title, series, matrix, iteration, xlabels=None, ylabels
 
 ### Images
 
-Use to report an image and upload its contents to the bucket specified in the **ClearML** configuration file,
+Report an image and upload its contents to the bucket specified in the **ClearML** configuration file,
 or a [default upload destination](#set-default-upload-destination), if you set a default. 
 
 First [get the current logger](#get-the-current-logger) and then use it (see an [example script](https://github.com/allegroai/clearml/blob/master/examples/manual_reporting.py)) with the following method.
@@ -896,7 +896,7 @@ def report_image(self, title, series, iteration, local_path=None, matrix=None, m
             </td>
             <td>ndarray
             </td>
-            <td>A 3D numpy.ndarray object containing image data (RGB). If <code>path</code> is not specified, then <code>matrix</code> is required. The default values is <code>None</code>.
+            <td>A 3D numpy.ndarray object containing image data (RGB). If <code>path</code> is not specified, then <code>matrix</code> is required. The default value is <code>None</code>.
             </td>
             <td>No
             </td>
@@ -917,7 +917,7 @@ def report_image(self, title, series, iteration, local_path=None, matrix=None, m
             </td>
             <td>string
             </td>
-            <td>The path of the image file. If <code>matrix</code> is not specified, then <code>path</code> is required. The default values is <code>None</code>. 
+            <td>The path of the image file. If <code>matrix</code> is not specified, then <code>path</code> is required. The default value is <code>None</code>. 
             </td>
             <td>No
             </td>
@@ -948,13 +948,13 @@ By setting the `CLEARML_LOG_ENVIRONMENT` environment variable, make **ClearML** 
 
 * All environment variables
 
-        export CLEARML_LOG_ENVIRONMENT="*"
+        export CLEARML_LOG_ENVIRONMENT=*
 
 * Specific environment variables
 
     For example, log `PWD` and `PYTHONPATH`
 
-        export CLEARML_LOG_ENVIRONMENT="PWD,PYTHONPATH"
+        export CLEARML_LOG_ENVIRONMENT=PWD,PYTHONPATH
 
 * No environment variables
 
@@ -1368,7 +1368,7 @@ None.
 
 ### Set Default Upload Destination
 
-Use to specify the default destination storage location used for uploading images.
+Specify the default destination storage location used for uploading images.
 Images are uploaded and a link to the image is reported.
 
 Credentials for the storage location are in the global configuration file (for example, on Linux, <code>~/clearml.conf</code>). 

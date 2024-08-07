@@ -94,7 +94,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return str(self) == str(other)
 
         def __repr__(self):
-            return f"TaskTypes.{self.value}"
+            return "TaskTypes.{}".format(self.value)
 
         training = 'training'
         testing = 'testing'
@@ -116,7 +116,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             return str(self) == str(other)
 
         def __repr__(self):
-            return f"TaskTypes.{self.value}"
+            return "TaskTypes.{}".format(self.value)
 
         created = "created"
         queued = "queued"

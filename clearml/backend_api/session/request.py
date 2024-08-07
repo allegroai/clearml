@@ -7,7 +7,7 @@ try:
     # Since `referencing`` only supports Python >= 3.8, this try-except blocks maintain support
     # for earlier python versions.
     from referencing.exceptions import Unresolvable
-except ImportError:
+except (ImportError, TypeError):
     from jsonschema.exceptions import RefResolutionError as Unresolvable
 
 from .apimodel import ApiModel

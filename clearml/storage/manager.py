@@ -219,9 +219,9 @@ class StorageManager(object):
 
         .. note::
 
-            If we have a local file `~/folder/sub/file.ext` then
-            `StorageManager.upload_folder('~/folder/', 's3://bucket/')`
-            will create `s3://bucket/sub/file.ext`
+            If we have a local file ``\~/folder/sub/file.ext`` then
+            ``StorageManager.upload_folder('\~/folder/', 's3://bucket/')``
+            will create ``s3://bucket/sub/file.ext``
 
         :param str local_folder: Local folder to recursively upload
         :param str remote_url: Target remote storage location, tree structure of `local_folder` will

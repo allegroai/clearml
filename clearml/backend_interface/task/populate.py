@@ -48,6 +48,7 @@ class CreateAndPopulate(object):
             force_single_script_file=False,  # type: bool
             raise_on_missing_entries=False,  # type: bool
             verbose=False,  # type: bool
+            binary=None  # type: Optional[str]
     ):
         # type: (...) -> None
         """
@@ -90,6 +91,7 @@ class CreateAndPopulate(object):
         :param force_single_script_file: If True, do not auto-detect local repository
         :param raise_on_missing_entries: If True, raise ValueError on missing entries when populating
         :param verbose: If True, print verbose logging
+        :param binary: Binary used to launch the entry point
         """
         if repo and len(urlparse(repo).scheme) <= 1 and not re.compile(self._VCS_SSH_REGEX).match(repo):
             folder = repo
@@ -136,6 +138,7 @@ class CreateAndPopulate(object):
         self.force_single_script_file = bool(force_single_script_file)
         self.raise_on_missing_entries = raise_on_missing_entries
         self.verbose = verbose
+        self.binary = binary
 
     def create_task(self, dry_run=False):
         # type: (bool) -> Union[Task, Dict]
@@ -148,6 +151,7 @@ class CreateAndPopulate(object):
         local_entry_file = None
         repo_info = None
         stand_alone_script_outside_repo = False
+        entry_point = ""
         # populate from local repository / script
         if self.folder or (self.script and Path(self.script).is_file() and not self.repo):
             self.folder = os.path.expandvars(os.path.expanduser(self.folder)) if self.folder else None
@@ -222,7 +226,8 @@ class CreateAndPopulate(object):
         # check if we have no repository and no requirements raise error
         if self.raise_on_missing_entries and (not self.requirements_file and not self.packages) \
                 and not self.repo and (
-                not repo_info or not repo_info.script or not repo_info.script.get('repository')):
+                not repo_info or not repo_info.script or not repo_info.script.get('repository')) \
+                and (not entry_point or not entry_point.endswith(".sh")):
             raise ValueError("Standalone script detected \'{}\', but no requirements provided".format(self.script))
         if dry_run:
             task = None
@@ -266,10 +271,10 @@ class CreateAndPopulate(object):
             task_state['script']['diff'] = repo_info.script['diff'] or ''
             task_state['script']['working_dir'] = repo_info.script['working_dir']
             task_state['script']['entry_point'] = repo_info.script['entry_point']
-            task_state['script']['binary'] = '/bin/bash' if (
+            task_state['script']['binary'] = self.binary or ('/bin/bash' if (
                     (repo_info.script['entry_point'] or '').lower().strip().endswith('.sh') and
                     not (repo_info.script['entry_point'] or '').lower().strip().startswith('-m ')) \
-                else repo_info.script['binary']
+                else repo_info.script['binary'])
             task_state['script']['requirements'] = repo_info.script.get('requirements') or {}
             if self.cwd:
                 cwd = self.cwd
@@ -344,14 +349,20 @@ class CreateAndPopulate(object):
                     detailed_req_report=False,
                     force_single_script=True,
                 )
-                task_state['script']['binary'] = '/bin/bash' if (
+                task_state['script']['binary'] = self.binary or ('/bin/bash' if (
                         (repo_info.script['entry_point'] or '').lower().strip().endswith('.sh') and
                         not (repo_info.script['entry_point'] or '').lower().strip().startswith('-m ')) \
-                    else repo_info.script['binary']
+                    else repo_info.script['binary'])
                 task_state['script']['diff'] = repo_info.script['diff'] or ''
                 task_state['script']['entry_point'] = repo_info.script['entry_point']
                 if create_requirements:
                     task_state['script']['requirements'] = repo_info.script.get('requirements') or {}
+            else:
+                if self.binary:
+                    task_state["script"]["binary"] = self.binary
+                elif entry_point and entry_point.lower().strip().endswith(".sh") and not \
+                        entry_point.lower().strip().startswith("-m"):
+                    task_state["script"]["binary"] = "/bin/bash"
         else:
             # standalone task
             task_state['script']['entry_point'] = self.script if self.script else \

@@ -878,11 +878,12 @@ class Task(_Task):
         :param task_name: Set the name of the remote task. Required if base_task_id is None.
         :param task_type: Optional, The task type to be created. Supported values: 'training', 'testing', 'inference',
             'data_processing', 'application', 'monitor', 'controller', 'optimizer', 'service', 'qc', 'custom'
-        :param repo: Remote URL for the repository to use, or path to local copy of the git repository
-            Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'
+        :param repo: Remote URL for the repository to use, or path to local copy of the git repository.
+            Example: 'https://github.com/allegroai/clearml.git' or '~/project/repo'. If ``repo`` is specified, then
+            the ``script`` parameter must also be specified
         :param branch: Select specific repository branch/tag (implies the latest commit from the branch)
         :param commit: Select specific commit ID to use (default: latest commit,
-            or when used with local repository matching the local commit id)
+            or when used with local repository matching the local commit ID)
         :param script: Specify the entry point script for the remote execution. When used in tandem with
             remote git repository the script should be a relative path inside the repository,
             for example: './source/train.py' . When used with local repository path it supports a

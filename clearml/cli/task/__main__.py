@@ -59,11 +59,20 @@ def setup_parser(parser):
         type=str,
         default=None,
         help="Specify the entry point script for the remote execution. "
-        "Currently support .py .ipynb and .sh scripts (python, jupyter notebook, bash) "
+        "Currently supports .py .ipynb and .sh scripts (python, jupyter notebook, bash) "
         "When used in tandem with --repo the script should be a relative path inside "
-        "the repository, for example: --script source/train.py "
+        "the repository, for example: --script source/train.py."
         "When used with --folder it supports a direct path to a file inside the local "
-        "repository itself, for example: --script ~/project/source/train.py",
+        "repository itself, for example: --script ~/project/source/train.py. "
+        "To run a bash script, simply specify the path of that script; the script should "
+        "have the .sh extension, for example: --script init.sh"
+    )
+    parser.add_argument(
+        "--binary",
+        type=str,
+        default=None,
+        help="Binary used to launch the entry point. For example: '--binary python3', '--binary /bin/bash'."
+        "By default, the binary will be auto-detected."
     )
     parser.add_argument(
         "--module",
@@ -186,6 +195,8 @@ def cli():
         print("Importing offline session: {}".format(args.import_offline_session))
         Task.import_offline_session(args.import_offline_session)
     else:
+        if args.script and args.script.endswith(".sh") and not args.binary:
+            print("Detected shell script. Binary will be set to '/bin/bash'")
         create_populate = CreateAndPopulate(
             project_name=args.project,
             task_name=args.name,
@@ -206,6 +217,7 @@ def cli():
             add_task_init_call=not args.skip_task_init,
             raise_on_missing_entries=True,
             verbose=True,
+            binary=args.binary
         )
         # verify args before creating the Task
         create_populate.update_task_args(args.args)

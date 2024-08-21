@@ -378,10 +378,13 @@ class Model(IdObjectBase, AsyncManagerMixin, _StorageUriMixin):
                 if uploaded_uri is None:
                     return
 
-                # If not successful, mark model as failed_uploading
+                # If not successful, mark model as failed_uploading,
+                # but dont override valid urls
                 if uploaded_uri is False:
-                    uploaded_uri = "{}/failed_uploading".format(
-                        self._upload_storage_uri
+                    uploaded_uri = (
+                        self.data.uri
+                        if self.data.uri != "{}/uploading_file".format(self._upload_storage_uri or "file://")
+                        else "{}/failed_uploading".format(self._upload_storage_uri or "file://")
                     )
 
                 Model._local_model_to_id_uri[str(model_file)] = (

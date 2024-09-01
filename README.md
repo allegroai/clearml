@@ -211,7 +211,7 @@ If ClearML is part of your development process / project / publication, please c
 ```
 @misc{clearml,
 title = {ClearML - Your entire MLOps stack in one open-source tool},
-year = {2023},
+year = {2024},
 note = {Software available from http://github.com/allegroai/clearml},
 url={https://clear.ml/},
 author = {ClearML},

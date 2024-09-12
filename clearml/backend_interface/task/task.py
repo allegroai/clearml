@@ -923,11 +923,11 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
 
         return task_deleted
 
-    def _delete_uri(self, uri):
-        # type: (str) -> bool
+    def _delete_uri(self, uri, silent=False):
+        # type: (str, bool) -> bool
         # noinspection PyBroadException
         try:
-            deleted = StorageHelper.get(uri).delete(uri)
+            deleted = StorageHelper.get(uri).delete(uri, silent=silent)
             if deleted:
                 self.log.debug("Deleted file: {}".format(uri))
                 return True
@@ -1539,8 +1539,8 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
                 self._edit(execution=execution)
         return self.data.execution.artifacts or []
 
-    def delete_artifacts(self, artifact_names, raise_on_errors=True, delete_from_storage=True):
-        # type: (Sequence[str], bool, bool) -> bool
+    def delete_artifacts(self, artifact_names, raise_on_errors=True, delete_from_storage=True, silent_on_errors=False):
+        # type: (Sequence[str], bool, bool, bool) -> bool
         """
         Delete a list of artifacts, by artifact name, from the Task.
 
@@ -1548,20 +1548,29 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param bool raise_on_errors: if True, do not suppress connectivity related exceptions
         :param bool delete_from_storage: If True, try to delete the actual
             file from the external storage (e.g. S3, GS, Azure, File Server etc.)
+        :param silent_on_errors: If True, do not log connectivity related errors
 
         :return: True if successful
         """
-        return self._delete_artifacts(artifact_names, raise_on_errors, delete_from_storage)
+        return self._delete_artifacts(
+            artifact_names=artifact_names,
+            raise_on_errors=raise_on_errors,
+            delete_from_storage=delete_from_storage,
+            silent_on_errors=silent_on_errors
+        )
 
-    def _delete_artifacts(self, artifact_names, raise_on_errors=False, delete_from_storage=True):
-        # type: (Sequence[str], bool, bool) -> bool
+    def _delete_artifacts(
+        self, artifact_names, raise_on_errors=False, delete_from_storage=True, silent_on_errors=False
+    ):
+        # type: (Sequence[str], bool, bool, bool) -> bool
         """
         Delete a list of artifacts, by artifact name, from the Task.
 
         :param list artifact_names: list of artifact names
         :param bool raise_on_errors: if True, do not suppress connectivity related exceptions
         :param bool delete_from_storage: If True, try to delete the actual
-        file from the external storage (e.g. S3, GS, Azure, File Server etc.)
+            file from the external storage (e.g. S3, GS, Azure, File Server etc.)
+        :param silent_on_errors: If True, do not log connectivity related errors
 
         :return: True if successful
         """
@@ -1605,7 +1614,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         if uris:
             for i, (artifact, uri) in enumerate(zip(artifact_names, uris)):
                 # delete the actual file from storage, and raise if error and needed
-                if uri and not self._delete_uri(uri) and raise_on_errors:
+                if uri and not self._delete_uri(uri, silent=silent_on_errors) and raise_on_errors:
                     remaining_uris = {name: uri for name, uri in zip(artifact_names[i + 1:], uris[i + 1:])}
                     raise ArtifactUriDeleteError(artifact=artifact, uri=uri, remaining_uris=remaining_uris)
 

@@ -254,8 +254,10 @@ class _HttpDriver(_Driver):
         container = self._containers[obj.container_name]
         res = container.session.delete(obj.url, headers=container.get_headers(obj.url))
         if res.status_code != requests.codes.ok:
-            self.get_logger().warning('Failed deleting object %s (%d): %s' % (
-                obj.object_name, res.status_code, res.text))
+            if not kwargs.get("silent", False):
+                self.get_logger().warning(
+                    'Failed deleting object %s (%d): %s' % (obj.object_name, res.status_code, res.text)
+                )
             return False
         return True
 
@@ -908,7 +910,8 @@ class _GoogleCloudStorageDriver(_Driver):
             except ImportError:
                 pass
             name = getattr(object, "name", "")
-            self.get_logger().warning("Failed deleting object {}: {}".format(name, ex))
+            if not kwargs.get("silent", False):
+                self.get_logger().warning("Failed deleting object {}: {}".format(name, ex))
             return False
 
         return not object.exists()
@@ -2797,9 +2800,9 @@ class StorageHelper(object):
         except Exception as e:
             self._log.error("Could not download file : %s, err:%s " % (remote_path, str(e)))
 
-    def delete(self, path):
+    def delete(self, path, silent=False):
         path = self._canonize_url(path)
-        return self._driver.delete_object(self.get_object(path))
+        return self._driver.delete_object(self.get_object(path), silent=silent)
 
     def check_write_permissions(self, dest_path=None):
         # create a temporary file, then delete it

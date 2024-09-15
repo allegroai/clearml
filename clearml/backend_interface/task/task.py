@@ -990,7 +990,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         If no `output_uri` was specified, the default files-server will be used to store the model file/s.
 
         :param model_path: A local weights file or folder to be uploaded.
-            If remote URI is provided (e.g. http:// or s3: // etc) then the URI is stored as is, without any upload
+            If remote URI is provided (e.g. ``http://`` or ``s3://`` etc) then the URI is stored as is, without any upload
         :param name: The updated model name.
             If not provided, the name is the model weights file filename without the extension.
         :param comment: The updated model description. (Optional)
@@ -1923,7 +1923,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         Return the Task results & outputs web page address.
         For example: https://demoapp.demo.clear.ml/projects/216431/experiments/60763e04/output/log
 
-        :return: http/s URL link.
+        :return: ``http/s`` URL link.
         """
         return self.get_task_output_log_web_page(
             task_id=self.id,
@@ -2800,7 +2800,7 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
         :param str project_id: Project ID for this task.
         :param str app_server_host: ClearML Application server host name.
             If not provided, the current session will be used to resolve the host name.
-        :return: http/s URL link.
+        :return: ``http/s`` URL link.
         """
         if not app_server_host:
             if not hasattr(cls, "__cached_app_server_host"):

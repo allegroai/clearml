@@ -3067,6 +3067,14 @@ class StorageHelper(object):
         return self._driver.exists_file(
             container_name=self._container.name if self._container else "", object_name=object_name
         )
+    
+    @classmethod
+    def sanitize_url(cls, remote_url):
+        base_url = cls._resolve_base_url(remote_url)
+        if base_url != 'file://':
+            return remote_url
+        absoulte_path = os.path.abspath(remote_url)
+        return base_url + absoulte_path
 
 
 def normalize_local_path(local_path):

@@ -27,9 +27,7 @@ class StorageManager(object):
     _file_upload_retries = deferred_config("network.file_upload_retries", 3)
 
     @classmethod
-    def get_local_copy(
-        cls, remote_url, cache_context=None, extract_archive=True, name=None, force_download=False
-    ):
+    def get_local_copy(cls, remote_url, cache_context=None, extract_archive=True, name=None, force_download=False):
         # type: (str, Optional[str], bool, Optional[str], bool) -> [str, None]
         """
         Get a local copy of the remote file. If the remote URL is a direct file access,
@@ -53,7 +51,8 @@ class StorageManager(object):
             # this will get us the actual cache (even with direct access)
             cache_path_encoding = Path(cache.get_cache_folder()) / cache.get_hashed_url_file(remote_url)
             return cls._extract_to_cache(
-                cached_file, name, cache_context, cache_path_encoding=cache_path_encoding.as_posix())
+                cached_file, name, cache_context, cache_path_encoding=cache_path_encoding.as_posix()
+            )
         return cached_file
 
     @classmethod
@@ -85,9 +84,7 @@ class StorageManager(object):
         )
 
     @classmethod
-    def set_cache_file_limit(
-        cls, cache_file_limit, cache_context=None
-    ):  # type: (int, Optional[str]) -> int
+    def set_cache_file_limit(cls, cache_file_limit, cache_context=None):  # type: (int, Optional[str]) -> int
         """
         Set the cache context file limit. File limit is the maximum number of files the specific cache context holds.
         Notice, there is no limit on the size of these files, only the total number of cached files.
@@ -102,13 +99,13 @@ class StorageManager(object):
 
     @classmethod
     def _extract_to_cache(
-            cls,
-            cached_file,  # type: str
-            name,  # type: str
-            cache_context=None,  # type: Optional[str]
-            target_folder=None,  # type: Optional[str]
-            cache_path_encoding=None,  # type: Optional[str]
-            force=False,  # type: bool
+        cls,
+        cached_file,  # type: str
+        name,  # type: str
+        cache_context=None,  # type: Optional[str]
+        target_folder=None,  # type: Optional[str]
+        cache_path_encoding=None,  # type: Optional[str]
+        force=False,  # type: bool
     ):
         # type: (...) -> str
         """
@@ -131,20 +128,21 @@ class StorageManager(object):
 
         # we support zip and tar.gz files auto-extraction
         suffix = cached_file.suffix.lower()
-        if suffix == '.gz':
-            suffix = ''.join(a.lower() for a in cached_file.suffixes[-2:])
+        if suffix == ".gz":
+            suffix = "".join(a.lower() for a in cached_file.suffixes[-2:])
 
         if suffix not in (".zip", ".tgz", ".tar.gz"):
             return str(cached_file)
 
         cache_folder = Path(cache_path_encoding or cached_file).parent
-        archive_suffix = (cache_path_encoding or cached_file).name[:-len(suffix)]
+        archive_suffix = (cache_path_encoding or cached_file).name[: -len(suffix)]
         name = encode_string_to_filename(name) if name else name
         if target_folder:
             target_folder = Path(target_folder)
         else:
-            target_folder = cache_folder / CacheManager.get_context_folder_lookup(
-                cache_context).format(archive_suffix, name)
+            target_folder = cache_folder / CacheManager.get_context_folder_lookup(cache_context).format(
+                archive_suffix, name
+            )
 
         if target_folder.is_dir() and not force:
             # noinspection PyBroadException
@@ -161,7 +159,8 @@ class StorageManager(object):
                 temp_target_folder = target_folder
             else:
                 temp_target_folder = cache_folder / "{0}_{1}_{2}".format(
-                    target_folder.name, time() * 1000, str(random()).replace('.', ''))
+                    target_folder.name, time() * 1000, str(random()).replace(".", "")
+                )
                 temp_target_folder.mkdir(parents=True, exist_ok=True)
 
             if suffix == ".zip":
@@ -172,7 +171,7 @@ class StorageManager(object):
                 with tarfile.open(cached_file.as_posix()) as file:
                     safe_extract(file, temp_target_folder.as_posix())
             elif suffix == ".tgz":
-                with tarfile.open(cached_file.as_posix(), mode='r:gz') as file:
+                with tarfile.open(cached_file.as_posix(), mode="r:gz") as file:
                     safe_extract(file, temp_target_folder.as_posix())
 
             if temp_target_folder != target_folder:
@@ -187,16 +186,17 @@ class StorageManager(object):
                         target_folder.touch(exist_ok=True)
                     else:
                         base_logger.warning(
-                            "Failed renaming {0} to {1}".format(temp_target_folder.as_posix(), target_folder.as_posix()))
+                            "Failed renaming {0} to {1}".format(temp_target_folder.as_posix(), target_folder.as_posix())
+                        )
                     try:
                         shutil.rmtree(temp_target_folder.as_posix())
                     except Exception as ex:
                         base_logger.warning(
-                            "Exception {}\nFailed deleting folder {}".format(ex, temp_target_folder.as_posix()))
+                            "Exception {}\nFailed deleting folder {}".format(ex, temp_target_folder.as_posix())
+                        )
         except Exception as ex:
             # failed extracting the file:
-            base_logger.warning(
-                "Exception {}\nFailed extracting zip file {}".format(ex, cached_file.as_posix()))
+            base_logger.warning("Exception {}\nFailed extracting zip file {}".format(ex, cached_file.as_posix()))
             # noinspection PyBroadException
             try:
                 target_folder.rmdir()
@@ -208,6 +208,7 @@ class StorageManager(object):
     @classmethod
     def get_files_server(cls):
         from ..backend_api import Session
+
         return Session.get_files_server_host()
 
     @classmethod
@@ -251,7 +252,7 @@ class StorageManager(object):
                     pool.apply_async(
                         helper.upload,
                         args=(str(path), str(path).replace(local_folder, remote_url)),
-                        kwds={"retries": retries if retries else cls._file_upload_retries}
+                        kwds={"retries": retries if retries else cls._file_upload_retries},
                     )
                 )
 
@@ -299,11 +300,11 @@ class StorageManager(object):
         def remove_prefix_from_str(target_str, prefix_to_be_removed):
             # type: (str, str) -> str
             if target_str.startswith(prefix_to_be_removed):
-                return target_str[len(prefix_to_be_removed):]
+                return target_str[len(prefix_to_be_removed) :]
             return target_str
 
         longest_configured_url = StorageHelper._resolve_base_url(remote_url)  # noqa
-        bucket_path = remove_prefix_from_str(remote_url[len(longest_configured_url):], "/")
+        bucket_path = remove_prefix_from_str(remote_url[len(longest_configured_url) :], "/")
 
         if not local_folder:
             local_folder = CacheManager.get_cache_manager().get_cache_folder()
@@ -365,7 +366,7 @@ class StorageManager(object):
         overwrite=False,
         skip_zero_size_check=False,
         silence_errors=False,
-        max_workers=None
+        max_workers=None,
     ):
         # type: (str, Optional[str], Optional[str], bool, bool, bool, Optional[int]) -> Optional[str]
         """

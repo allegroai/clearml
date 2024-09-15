@@ -28,6 +28,7 @@ from ..storage.helper import remote_driver_schemes
 from ..storage.util import sha256sum, format_size, get_common_path
 from ..utilities.process.mp import SafeEvent, ForkSafeRLock
 from ..utilities.proxy_object import LazyEvalWrapper
+from ..config import deferred_config
 
 try:
     import pandas as pd
@@ -262,6 +263,9 @@ class Artifacts(object):
     # hashing constants
     _hash_block_size = 65536
     _pd_artifact_type = 'data-audit-table'
+    _default_pandas_dataframe_extension_name = deferred_config(
+        "development.artifacts.default_pandas_dataframe_extension_name", None
+    )
 
     class _ProxyDictWrite(dict):
         """ Dictionary wrapper that updates an arguments instance on any item set in the dictionary """
@@ -464,19 +468,23 @@ class Artifacts(object):
                 artifact_type_data.content_type = "text/csv"
                 np.savetxt(local_filename, artifact_object, delimiter=",")
             delete_after_upload = True
-        elif pd and isinstance(artifact_object, pd.DataFrame) \
-                and (isinstance(artifact_object.index, pd.MultiIndex) or
-                     isinstance(artifact_object.columns, pd.MultiIndex)):
-            store_as_pickle = True
         elif pd and isinstance(artifact_object, pd.DataFrame):
             artifact_type = "pandas"
             artifact_type_data.preview = preview or str(artifact_object.__repr__())
+            # we are making sure self._default_pandas_dataframe_extension_name is not deferred
+            extension_name = extension_name or str(self._default_pandas_dataframe_extension_name or "")
             override_filename_ext_in_uri = get_extension(
                 extension_name, [".csv.gz", ".parquet", ".feather", ".pickle"], ".csv.gz", artifact_type
             )
             override_filename_in_uri = name
-            local_filename = self._push_temp_file(prefix=quote(name, safe="") + '.', suffix=override_filename_ext_in_uri)
-            if override_filename_ext_in_uri == ".csv.gz":
+            local_filename = self._push_temp_file(
+                prefix=quote(name, safe="") + ".", suffix=override_filename_ext_in_uri
+            )
+            if (
+                isinstance(artifact_object.index, pd.MultiIndex) or isinstance(artifact_object.columns, pd.MultiIndex)
+            ) and not extension_name:
+                store_as_pickle = True
+            elif override_filename_ext_in_uri == ".csv.gz":
                 artifact_type_data.content_type = "text/csv"
                 self._store_compressed_pd_csv(artifact_object, local_filename)
             elif override_filename_ext_in_uri == ".parquet":

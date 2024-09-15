@@ -55,6 +55,7 @@ class DownloadError(Exception):
 
 @six.add_metaclass(ABCMeta)
 class _Driver(object):
+    _certs_cache_context = "certs"
     _file_server_hosts = None
 
     @classmethod
@@ -115,6 +116,28 @@ class _Driver(object):
                     hosts.append(substituted)
             cls._file_server_hosts = hosts
         return cls._file_server_hosts
+
+    @classmethod
+    def download_cert(cls, cert_url):
+        # import here to avoid circular imports
+        from .manager import StorageManager
+
+        cls.get_logger().info("Attempting to download remote certificate '{}'".format(cert_url))
+        potential_exception = None
+        downloaded_verify = None
+        try:
+            downloaded_verify = StorageManager.get_local_copy(cert_url, cache_context=cls._certs_cache_context)
+        except Exception as e:
+            potential_exception = e
+        if not downloaded_verify:
+            cls.get_logger().error(
+                "Failed downloading remote certificate '{}'{}".format(
+                    cert_url, "Error is: {}".format(potential_exception) if potential_exception else ""
+                )
+            )
+        else:
+            cls.get_logger().info("Successfully downloaded remote certificate '{}'".format(cert_url))
+        return downloaded_verify
 
 
 class _HttpDriver(_Driver):
@@ -231,8 +254,10 @@ class _HttpDriver(_Driver):
         container = self._containers[obj.container_name]
         res = container.session.delete(obj.url, headers=container.get_headers(obj.url))
         if res.status_code != requests.codes.ok:
-            self.get_logger().warning('Failed deleting object %s (%d): %s' % (
-                obj.object_name, res.status_code, res.text))
+            if not kwargs.get("silent", False):
+                self.get_logger().warning(
+                    'Failed deleting object %s (%d): %s' % (obj.object_name, res.status_code, res.text)
+                )
             return False
         return True
 
@@ -447,6 +472,8 @@ class _Boto3Driver(_Driver):
                 # True is a non-documented value for boto3, use None instead (which means verify)
                 print("Using boto3 verify=None instead of true")
                 verify = None
+            elif isinstance(verify, str) and not os.path.exists(verify) and verify.split("://")[0] in driver_schemes:
+                verify = _Boto3Driver.download_cert(verify)
 
             # boto3 client creation isn't thread-safe (client itself is)
             with self._creation_lock:
@@ -883,7 +910,8 @@ class _GoogleCloudStorageDriver(_Driver):
             except ImportError:
                 pass
             name = getattr(object, "name", "")
-            self.get_logger().warning("Failed deleting object {}: {}".format(name, ex))
+            if not kwargs.get("silent", False):
+                self.get_logger().warning("Failed deleting object {}: {}".format(name, ex))
             return False
 
         return not object.exists()
@@ -2772,9 +2800,9 @@ class StorageHelper(object):
         except Exception as e:
             self._log.error("Could not download file : %s, err:%s " % (remote_path, str(e)))
 
-    def delete(self, path):
+    def delete(self, path, silent=False):
         path = self._canonize_url(path)
-        return self._driver.delete_object(self.get_object(path))
+        return self._driver.delete_object(self.get_object(path), silent=silent)
 
     def check_write_permissions(self, dest_path=None):
         # create a temporary file, then delete it

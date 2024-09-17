@@ -656,7 +656,7 @@ def ds_search(args):
             formatting.format(
                 d["project"],
                 d["name"],
-                d["version"],
+                d["version"] or "",
                 str(d["tags"] or [])[1:-1],
                 str(d["created"]).split(".")[0],
                 d["id"],

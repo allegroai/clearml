@@ -3071,7 +3071,7 @@ class StorageHelper(object):
     @classmethod
     def sanitize_url(cls, remote_url):
         base_url = cls._resolve_base_url(remote_url)
-        if base_url != 'file://':
+        if base_url != 'file://' or remote_url.startswith("file://"):
             return remote_url
         absoulte_path = os.path.abspath(remote_url)
         return base_url + absoulte_path

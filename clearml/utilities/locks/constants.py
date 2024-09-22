@@ -18,7 +18,7 @@ import os
 
 # The actual tests will execute the code anyhow so the following code can
 # safely be ignored from the coverage tests
-if os.name == 'nt':  # pragma: no cover
+if os.name == "nt":  # pragma: no cover
     import msvcrt
 
     LOCK_EX = 0x1  #: exclusive lock
@@ -29,7 +29,7 @@ if os.name == 'nt':  # pragma: no cover
     LOCKFILE_FAIL_IMMEDIATELY = 1
     LOCKFILE_EXCLUSIVE_LOCK = 2
 
-elif os.name == 'posix':  # pragma: no cover
+elif os.name == "posix":  # pragma: no cover
     import fcntl
 
     LOCK_EX = fcntl.LOCK_EX  #: exclusive lock
@@ -38,4 +38,4 @@ elif os.name == 'posix':  # pragma: no cover
     LOCK_UN = fcntl.LOCK_UN  #: unlock
 
 else:  # pragma: no cover
-    raise RuntimeError('PortaLocker only defined for nt and posix platforms')
+    raise RuntimeError("PortaLocker only defined for nt and posix platforms")

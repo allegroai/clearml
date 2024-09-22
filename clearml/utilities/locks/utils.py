@@ -10,20 +10,20 @@ from . import portalocker
 
 current_time = getattr(time, "monotonic", time.time)
 
-DEFAULT_TIMEOUT = 10 ** 8
+DEFAULT_TIMEOUT = 10**8
 DEFAULT_CHECK_INTERVAL = 0.25
 LOCK_METHOD = constants.LOCK_EX | constants.LOCK_NB
 
 __all__ = [
-    'Lock',
-    'RLock',
-    'open_atomic',
+    "Lock",
+    "RLock",
+    "open_atomic",
 ]
 
 
 @contextlib.contextmanager
 def open_atomic(filename, binary=True):
-    '''Open a file for atomic writing. Instead of locking this method allows
+    """Open a file for atomic writing. Instead of locking this method allows
     you to write the entire file and move it to the actual location. Note that
     this makes the assumption that a rename is atomic on your platform which
     is generally the case but not a guarantee.
@@ -39,8 +39,8 @@ def open_atomic(filename, binary=True):
     >>> assert os.path.exists(filename)
     >>> os.remove(filename)
 
-    '''
-    assert not os.path.exists(filename), '%r exists' % filename
+    """
+    assert not os.path.exists(filename), "%r exists" % filename
     path, name = os.path.split(filename)
 
     # Create the parent directory if it doesn't exist
@@ -48,7 +48,7 @@ def open_atomic(filename, binary=True):
         os.makedirs(path)
 
     temp_fh = tempfile.NamedTemporaryFile(
-        mode=binary and 'wb' or 'w',
+        mode=binary and "wb" or "w",
         dir=path,
         delete=False,
     )
@@ -66,12 +66,17 @@ def open_atomic(filename, binary=True):
 
 
 class Lock(object):
-
     def __init__(
-            self, filename, mode='a', timeout=DEFAULT_TIMEOUT,
-            check_interval=DEFAULT_CHECK_INTERVAL, fail_when_locked=False,
-            flags=LOCK_METHOD, **file_open_kwargs):
-        '''Lock manager with build-in timeout
+        self,
+        filename,
+        mode="a",
+        timeout=DEFAULT_TIMEOUT,
+        check_interval=DEFAULT_CHECK_INTERVAL,
+        fail_when_locked=False,
+        flags=LOCK_METHOD,
+        **file_open_kwargs
+    ):
+        """Lock manager with build-in timeout
 
         filename -- filename
         mode -- the open mode, 'a' or 'ab' should be used for writing
@@ -89,11 +94,11 @@ class Lock(object):
 
         Note that the file is opened first and locked later. So using 'w' as
         mode will result in truncate _BEFORE_ the lock is checked.
-        '''
+        """
 
-        if 'w' in mode:
+        if "w" in mode:
             truncate = True
-            mode = mode.replace('w', 'a')
+            mode = mode.replace("w", "a")
         else:
             truncate = False
 
@@ -107,9 +112,8 @@ class Lock(object):
         self.flags = flags
         self.file_open_kwargs = file_open_kwargs
 
-    def acquire(
-            self, timeout=None, check_interval=None, fail_when_locked=None):
-        '''Acquire the locked filehandle'''
+    def acquire(self, timeout=None, check_interval=None, fail_when_locked=None):
+        """Acquire the locked filehandle"""
         if timeout is None:
             timeout = self.timeout
         if timeout is None:
@@ -165,7 +169,7 @@ class Lock(object):
         return fh
 
     def release(self):
-        '''Releases the currently locked file handle'''
+        """Releases the currently locked file handle"""
         if self.fh:
             # noinspection PyBroadException
             try:
@@ -196,7 +200,7 @@ class Lock(object):
         return True
 
     def _get_fh(self):
-        '''Get a new filehandle'''
+        """Get a new filehandle"""
         # Create the parent directory if it doesn't exist
         path, name = os.path.split(self.filename)
         if path and not os.path.isdir(path):  # pragma: no cover
@@ -205,20 +209,20 @@ class Lock(object):
         return open(self.filename, self.mode, **self.file_open_kwargs)
 
     def _get_lock(self, fh):
-        '''
+        """
         Try to lock the given filehandle
 
-        returns LockException if it fails'''
+        returns LockException if it fails"""
         portalocker.lock(fh, self.flags)
         return fh
 
     def _prepare_fh(self, fh):
-        '''
+        """
         Prepare the filehandle for usage
 
         If truncate is a number, the file will be truncated to that amount of
         bytes
-        '''
+        """
         if self.truncate:
             fh.seek(0)
             fh.truncate(0)
@@ -243,11 +247,15 @@ class RLock(Lock):
     """
 
     def __init__(
-            self, filename, mode='a', timeout=DEFAULT_TIMEOUT,
-            check_interval=DEFAULT_CHECK_INTERVAL, fail_when_locked=False,
-            flags=LOCK_METHOD):
-        super(RLock, self).__init__(filename, mode, timeout, check_interval,
-                                    fail_when_locked, flags)
+        self,
+        filename,
+        mode="a",
+        timeout=DEFAULT_TIMEOUT,
+        check_interval=DEFAULT_CHECK_INTERVAL,
+        fail_when_locked=False,
+        flags=LOCK_METHOD
+    ):
+        super(RLock, self).__init__(filename, mode, timeout, check_interval, fail_when_locked, flags)
         self._acquire_count = 0
         self._lock = ProcessRLock()
         self._pid = os.getpid()
@@ -286,16 +294,14 @@ class RLock(Lock):
         if self._acquire_count >= 1:
             fh = self.fh
         else:
-            fh = super(RLock, self).acquire(timeout, check_interval,
-                                            fail_when_locked)
+            fh = super(RLock, self).acquire(timeout, check_interval, fail_when_locked)
 
         self._acquire_count += 1
         return fh
 
     def release(self):
         if self._acquire_count == 0:
-            raise exceptions.LockException(
-                "Cannot release more times than acquired")
+            raise exceptions.LockException("Cannot release more times than acquired")
 
         if self._acquire_count == 1:
             super(RLock, self).release()
@@ -327,14 +333,24 @@ class RLock(Lock):
 
 
 class TemporaryFileLock(Lock):
+    def __init__(
+        self,
+        filename=".lock",
+        timeout=DEFAULT_TIMEOUT,
+        check_interval=DEFAULT_CHECK_INTERVAL,
+        fail_when_locked=True,
+        flags=LOCK_METHOD
+    ):
 
-    def __init__(self, filename='.lock', timeout=DEFAULT_TIMEOUT,
-                 check_interval=DEFAULT_CHECK_INTERVAL, fail_when_locked=True,
-                 flags=LOCK_METHOD):
-
-        Lock.__init__(self, filename=filename, mode='w', timeout=timeout,
-                      check_interval=check_interval,
-                      fail_when_locked=fail_when_locked, flags=flags)
+        Lock.__init__(
+            self,
+            filename=filename,
+            mode="w",
+            timeout=timeout,
+            check_interval=check_interval,
+            fail_when_locked=fail_when_locked,
+            flags=flags,
+        )
         atexit.register(self.release)
 
     def release(self):

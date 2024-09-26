@@ -15,8 +15,9 @@ from ..backend_interface.util import datetime_to_isoformat, datetime_from_isofor
 
 @attrs
 class BaseTrigger(BaseScheduleJob):
-    _only_fields = {"id", "name", "last_update", }
+    _only_fields = {"id", "name", "last_update", "last_change"}
     _update_field = None
+    _change_field = None
 
     project = attrib(default=None, type=str)
     match_name = attrib(default=None, type=str)
@@ -31,13 +32,30 @@ class BaseTrigger(BaseScheduleJob):
     # allowing us to ignore repeating object updates triggering multiple times
     _triggered_instances = attrib(type=dict, default=None)  # type: Dict[str, datetime]
 
-    def build_query(self, ref_time):
-        return {
-            'name': self.match_name or None,
-            'project': [self.project] if self.project else None,
-            'tags': ((self.tags or []) + (self.required_tags or [])) or None,
-            self._update_field: ">{}".format(ref_time.isoformat() if ref_time else self.last_update.isoformat())
+    def build_query(self, ref_time, client=None):
+        # type: (datetime, APIClient) -> dict
+        server_supports_datetime_or_query = (
+            client and (
+              (client.session.feature_set == "basic" and client.session.check_min_server_version("1.16.3"))
+              or (client.session.feature_set != "basic" and client.session.check_min_server_version("3.22.6"))
+            )
+        )
+
+        query = {
+            "name": self.match_name or None,
+            "project": [self.project] if self.project else None,
+            "tags": ((self.tags or []) + (self.required_tags or [])) or None,
         }
+
+        if not server_supports_datetime_or_query:
+            query[self._update_field] = ">{}".format(ref_time.isoformat() if ref_time else self.last_update.isoformat())
+        else:
+            query["_or_"] = {
+                "fields": [self._update_field, self._change_field],
+                "datetime": [">{}".format(ref_time.isoformat() if ref_time else self.last_update.isoformat())]
+            }
+
+        return query
 
     def verify(self):
         # type: () -> None
@@ -56,19 +74,25 @@ class BaseTrigger(BaseScheduleJob):
     def get_key(self):
         return getattr(self, '_key', None)
 
+    def get_ref_time(self, obj):
+        return max(
+            getattr(obj, self._update_field, 0),
+            getattr(obj, self._change_field, 0)
+        )
+
 
 @attrs
 class ModelTrigger(BaseTrigger):
     _task_param = '${model.id}'
     _key = "models"
-    _only_fields = {"id", "name", "last_update", "ready", "tags"}
     _update_field = "last_update"
+    _change_field = "last_change"
 
     on_publish = attrib(type=bool, default=None)
     on_archive = attrib(type=bool, default=None)
 
-    def build_query(self, ref_time):
-        query = super(ModelTrigger, self).build_query(ref_time)
+    def build_query(self, ref_time, client=None):
+        query = super(ModelTrigger, self).build_query(ref_time, client)
         if self.on_publish:
             query.update({'ready': True})
         if self.on_archive:
@@ -76,19 +100,23 @@ class ModelTrigger(BaseTrigger):
             query.update({'system_tags': system_tags})
         return query
 
+    @property
+    def _only_fields(self):
+        return {"id", "name", "ready", "tags", self._update_field, self._change_field}
+
 
 @attrs
 class DatasetTrigger(BaseTrigger):
     _task_param = '${dataset.id}'
     _key = "tasks"
-    _only_fields = {"id", "name", "last_update", "status", "completed", "tags"}
     _update_field = "last_update"
+    _change_field = "last_change"
 
     on_publish = attrib(type=bool, default=None)
     on_archive = attrib(type=bool, default=None)
 
-    def build_query(self, ref_time):
-        query = super(DatasetTrigger, self).build_query(ref_time)
+    def build_query(self, ref_time, client=None):
+        query = super(DatasetTrigger, self).build_query(ref_time, client)
         query.update({
             'system_tags': list(set(query.get('system_tags', []) + ['dataset'])),
             'task_types': list(set(query.get('task_types', []) + [str(Task.TaskTypes.data_processing)])),
@@ -101,13 +129,17 @@ class DatasetTrigger(BaseTrigger):
 
         return query
 
+    @property
+    def _only_fields(self):
+        return {"id", "name", "status", "completed", "tags", self._update_field, self._change_field}
+
 
 @attrs
 class TaskTrigger(BaseTrigger):
     _task_param = '${task.id}'
     _key = "tasks"
-    _only_fields = {"id", "name", "last_update", "status", "completed", "tags"}
     _update_field = "last_update"
+    _change_field = "last_change"
 
     metrics = attrib(default=None, type=str)
     variant = attrib(default=None, type=str)
@@ -116,8 +148,8 @@ class TaskTrigger(BaseTrigger):
     exclude_dev = attrib(default=None, type=bool)
     on_status = attrib(type=list, default=None)
 
-    def build_query(self, ref_time):
-        query = super(TaskTrigger, self).build_query(ref_time)
+    def build_query(self, ref_time, client=None):
+        query = super(TaskTrigger, self).build_query(ref_time, client)
         if self.exclude_dev:
             system_tags = list(set(query.get('system_tags', []) + ['-development']))
             query.update({'system_tags': system_tags})
@@ -143,6 +175,10 @@ class TaskTrigger(BaseTrigger):
         valid_signs = ['min', 'minimum', 'max', 'maximum']
         if self.value_sign and self.value_sign not in valid_signs:
             raise ValueError("Invalid value_sign `{}`, valid options are: {}".format(self.value_sign, valid_signs))
+
+    @property
+    def _only_fields(self):
+        return {"id", "name", "status", "completed", "tags", self._update_field, self._change_field}
 
 
 @attrs
@@ -505,9 +541,9 @@ class TriggerScheduler(BaseScheduler):
                 objects = getattr(self._client, trigger.get_key()).get_all(
                     _allow_extra_fields_=True,
                     only_fields=list(trigger._only_fields or []),
-                    **trigger.build_query(ref_time)
+                    **trigger.build_query(ref_time, self._client)
                 )
-                trigger.last_update = max([o.last_update for o in objects] or [ref_time])
+                trigger.last_update = max([trigger.get_ref_time(o) for o in objects] or [ref_time])
                 if not objects:
                     continue
             except Exception as ex:

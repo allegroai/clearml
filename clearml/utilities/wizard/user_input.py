@@ -43,11 +43,7 @@ def input_int(
             )
             return value
         except ValueError:
-            print(
-                "Invalid input: {} should be a number. Please enter an integer".format(
-                    key
-                )
-            )
+            print("Invalid input: {} should be a number. Please enter an integer".format(key))
 
 
 def input_bool(question, default=False):
@@ -86,13 +82,13 @@ def input_list(
     res_list = [res]
     while input_bool("\nDefine another {}? [y/N]".format(key)):
         response = get_input(
-                    key=key,
-                    description=description,
-                    question=question,
-                    required=False,
-                    default=default,
-                    new_line=new_line,
-                )
+            key=key,
+            description=description,
+            question=question,
+            required=False,
+            default=default,
+            new_line=new_line,
+        )
         if response:
             res_list.append(response)
     return res_list

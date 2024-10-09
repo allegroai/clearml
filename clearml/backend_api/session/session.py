@@ -815,6 +815,13 @@ class Session(TokenManager):
     def get_clients(cls):
         return cls._client
 
+    @classmethod
+    def verify_feature_set(cls, feature_set):
+        if isinstance(feature_set, str):
+            feature_set = [feature_set]
+        if cls.feature_set not in feature_set:
+            raise ValueError("ClearML-server does not support requested feature set '{}'".format(feature_set))
+
     @staticmethod
     def _version_tuple(v):
         v = tuple(map(int, (v.split("."))))

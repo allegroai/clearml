@@ -28,7 +28,7 @@ from ..storage.helper import remote_driver_schemes
 from ..storage.util import sha256sum, format_size, get_common_path
 from ..utilities.process.mp import SafeEvent, ForkSafeRLock
 from ..utilities.proxy_object import LazyEvalWrapper
-from ..config import deferred_config
+from ..config import deferred_config, config
 
 try:
     import pandas as pd
@@ -365,7 +365,7 @@ class Artifacts(object):
         metadata=None,  # type: Optional[dict]
         preview=None,  # type: Optional[str]
         delete_after_upload=False,  # type: bool
-        auto_pickle=True,  # type: bool
+        auto_pickle=None,  # type: Optional[bool]
         wait_on_upload=False,  # type: bool
         extension_name=None,  # type: Optional[str]
         serialization_function=None,  # type: Optional[Callable[[Any], Union[bytes, bytearray]]]
@@ -380,6 +380,9 @@ class Artifacts(object):
 
         if name in self._artifacts_container:
             raise ValueError("Artifact by the name of {} is already registered, use register_artifact".format(name))
+
+        if auto_pickle is None:
+            auto_pickle = bool(config.get("development.artifacts.auto_pickle", False))
 
         # cast preview to string
         if preview is not None and not (isinstance(preview, bool) and preview is False):

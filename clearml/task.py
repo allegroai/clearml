@@ -2468,7 +2468,7 @@ class Task(_Task):
             artifact_object,  # type: Union[str, Mapping, pandas.DataFrame, numpy.ndarray, Image.Image, Any]
             metadata=None,  # type: Optional[Mapping]
             delete_after_upload=False,  # type: bool
-            auto_pickle=True,  # type: bool
+            auto_pickle=None,  # type: Optional[bool]
             preview=None,  # type: Any
             wait_on_upload=False,  # type: bool
             extension_name=None,  # type: Optional[str]
@@ -2503,9 +2503,10 @@ class Task(_Task):
             - ``True`` - Delete the local copy of the artifact.
             - ``False`` - Do not delete. (default)
 
-        :param bool auto_pickle: If True (default) and the artifact_object is not one of the following types:
+        :param bool auto_pickle: If True and the artifact_object is not one of the following types:
             pathlib2.Path, dict, pandas.DataFrame, numpy.ndarray, PIL.Image, url (string), local_file (string),
-            the artifact_object will be pickled and uploaded as pickle file artifact (with file extension .pkl)
+            the artifact_object will be pickled and uploaded as pickle file artifact (with file extension .pkl).
+            If set to None (default) the sdk.development.artifacts.auto_pickle configuration value will be used.
 
         :param Any preview: The artifact preview
 

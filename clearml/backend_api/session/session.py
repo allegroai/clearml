@@ -198,9 +198,12 @@ class Session(TokenManager):
             raise ValueError("missing max request size")
 
         token_expiration_threshold_sec = self.config.get(
-            "auth.token_expiration_threshold_sec", 60
+            "api.auth.token_expiration_threshold_sec", 60
         )
-        req_token_expiration_sec = self.config.get("api.auth.req_token_expiration_sec", None)
+        req_token_expiration_sec = self.config.get(
+            "api.auth.request_token_expiration_sec",
+            self.config.get("api.auth.req_token_expiration_sec", None)
+        )
         self.__auth_token = None
         self._update_default_api_method()
         if ENV_AUTH_TOKEN.get():

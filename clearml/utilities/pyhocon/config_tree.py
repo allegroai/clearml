@@ -186,7 +186,7 @@ class ConfigTree(OrderedDict):
 
         special_characters = '$}[]:=+#`^?!@*&.'
         tokens = re.findall(
-            r'"[^"]+"|[^{special_characters}]+'.format(special_characters=re.escape(special_characters)),
+            r'"[^"]+"|[^{special_characters}]+|^$'.format(special_characters=re.escape(special_characters)),
             string)
 
         def contains_special_character(token):

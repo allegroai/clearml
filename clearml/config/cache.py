@@ -21,7 +21,7 @@ class SessionCache(object):
     def _load_cache(cls):
         # noinspection PyBroadException
         try:
-            flag = 'rb' if six.PY2 else 'rt'
+            flag = "rb" if six.PY2 else "rt"
             with (Path(expanduser(cls.SESSION_CACHE_FOLDER)) / SESSION_CACHE_FILE).open(flag) as fp:
                 return json.load(fp)
         except Exception:
@@ -32,7 +32,7 @@ class SessionCache(object):
         # noinspection PyBroadException
         try:
             Path(expanduser(cls.SESSION_CACHE_FOLDER)).mkdir(parents=True, exist_ok=True)
-            flag = 'wb' if six.PY2 else 'wt'
+            flag = "wb" if six.PY2 else "wt"
             with (Path(expanduser(cls.SESSION_CACHE_FOLDER)) / SESSION_CACHE_FILE).open(flag) as fp:
                 json.dump(cache, fp)
         except Exception:

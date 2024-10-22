@@ -380,58 +380,75 @@ class Dataset(object):
         :param tags: A list of tags which describe the Task to add.
         """
         self._task.add_tags(tags)
+import re
 
-    def add_files(
-            self,
-            path,  # type: Union[str, Path, _Path]
-            wildcard=None,  # type: Optional[Union[str, Sequence[str]]]
-            local_base_folder=None,  # type: Optional[str]
-            dataset_path=None,  # type: Optional[str]
-            recursive=True,  # type: bool
-            verbose=False,  # type: bool
-            max_workers=None,  # type: Optional[int]
-    ):
-        # type: (...) -> ()
-        """
-        Add a folder into the current dataset. calculate file hash,
-        and compare against parent, mark files to be uploaded
+def is_url(path):
+    """
+    Helper function to check if the provided path is an external URL (e.g., s3://, http://).
+    """
+    url_regex = re.compile(
+        r'^(?:http|ftp|s3|gs|azure)://'  # schemes: http, ftp, s3, gs, azure
+    )
+    return url_regex.match(path) is not None
 
-        :param path: Add a folder/file to the dataset
-        :param wildcard: add only specific set of files.
-            Wildcard matching, can be a single string or a list of wildcards.
-        :param local_base_folder: files will be located based on their relative path from local_base_folder
-        :param dataset_path: where in the dataset the folder/files should be located
-        :param recursive: If True, match all wildcard files recursively
-        :param verbose: If True, print to console files added/modified
-        :param max_workers: The number of threads to add the files with. Defaults to the number of logical cores
-        :return: number of files added
-        """
-        max_workers = max_workers or psutil.cpu_count()
-        self._dirty = True
-        self._task.get_logger().report_text(
-            'Adding files to dataset: {}'.format(
-                dict(path=path, wildcard=wildcard, local_base_folder=local_base_folder,
-                     dataset_path=dataset_path, recursive=recursive, verbose=verbose)),
-            print_console=False)
+def add_files(
+        self,
+        path,  # type: Union[str, Path, _Path]
+        wildcard=None,  # type: Optional[Union[str, Sequence[str]]]
+        local_base_folder=None,  # type: Optional[str]
+        dataset_path=None,  # type: Optional[str]
+        recursive=True,  # type: bool
+        verbose=False,  # type: bool
+        max_workers=None,  # type: Optional[int]
+):
+    # type: (...) -> ()
+    """
+    Add a folder into the current dataset. calculate file hash,
+    and compare against parent, mark files to be uploaded
 
-        num_added, num_modified = self._add_files(
-            path=path,
-            wildcard=wildcard,
-            local_base_folder=local_base_folder,
-            dataset_path=dataset_path,
-            recursive=recursive,
-            verbose=verbose,
-            max_workers=max_workers,
+    :param path: Add a folder/file to the dataset
+    :param wildcard: add only specific set of files.
+        Wildcard matching, can be a single string or a list of wildcards.
+    :param local_base_folder: files will be located based on their relative path from local_base_folder
+    :param dataset_path: where in the dataset the folder/files should be located
+    :param recursive: If True, match all wildcard files recursively
+    :param verbose: If True, print to console files added/modified
+    :param max_workers: The number of threads to add the files with. Defaults to the number of logical cores
+    :return: number of files added
+    """
+    # Check if the path provided is a URL, if so, raise an error and suggest using add_external_files
+    if is_url(path):
+        raise ValueError(
+            "The path provided seems to be an external URL (e.g., s3://, http://). "
+            "Please use `add_external_files()` to add external files to the dataset."
         )
 
-        # update the task script
-        self._add_script_call(
-            'add_files', path=path, wildcard=wildcard, local_base_folder=local_base_folder,
-            dataset_path=dataset_path, recursive=recursive)
+    max_workers = max_workers or psutil.cpu_count()
+    self._dirty = True
+    self._task.get_logger().report_text(
+        'Adding files to dataset: {}'.format(
+            dict(path=path, wildcard=wildcard, local_base_folder=local_base_folder,
+                 dataset_path=dataset_path, recursive=recursive, verbose=verbose)),
+        print_console=False)
 
-        self._serialize()
+    num_added, num_modified = self._add_files(
+        path=path,
+        wildcard=wildcard,
+        local_base_folder=local_base_folder,
+        dataset_path=dataset_path,
+        recursive=recursive,
+        verbose=verbose,
+        max_workers=max_workers,
+    )
 
-        return num_added
+    # update the task script
+    self._add_script_call(
+        'add_files', path=path, wildcard=wildcard, local_base_folder=local_base_folder,
+        dataset_path=dataset_path, recursive=recursive)
+
+    self._serialize()
+
+    return num_added
 
     def add_external_files(
         self,

@@ -317,7 +317,7 @@ class PlotlyRenderer(Renderer):
         )  # TODO ditto
         if name:
             bar["name"] = name
-        if len(bar["x"]) > 1:
+        if len(bar["x"]) >= 1:
             self.msg += "    Heck yeah, I drew that bar chart\n"
             self.plotly_fig['data'].append(bar)
             if bar_gap is not None:
@@ -325,7 +325,7 @@ class PlotlyRenderer(Renderer):
         else:
             self.msg += "    Bar chart not drawn\n"
             warnings.warn(
-                "found box chart data with length <= 1, "
+                "found box chart data with length < 1, "
                 "assuming data redundancy, not plotting."
             )
 

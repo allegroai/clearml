@@ -20,9 +20,7 @@ from ..utilities.files import get_filename_max_length
 
 class CacheManager(object):
     __cache_managers = {}
-    _default_cache_file_limit = deferred_config(
-        "storage.cache.default_cache_manager_size", 100
-    )
+    _default_cache_file_limit = deferred_config("storage.cache.default_cache_manager_size", 100)
     _storage_manager_folder = "storage_manager"
     _default_context = "global"
     _local_to_remote_url_lookup = OrderedDict()
@@ -48,9 +46,7 @@ class CacheManager(object):
             self._file_limit = max(self._file_limit, int(cache_file_limit))
             return self._file_limit
 
-        def get_local_copy(
-            self, remote_url, force_download, skip_zero_size_check=False
-        ):
+        def get_local_copy(self, remote_url, force_download, skip_zero_size_check=False):
             # type: (str, bool, bool) -> Optional[str]
             helper = StorageHelper.get(remote_url)
 
@@ -64,9 +60,7 @@ class CacheManager(object):
                 # noinspection PyProtectedMember
                 direct_access = helper.get_driver_direct_access(remote_url)
             except (OSError, ValueError):
-                LoggerRoot.get_base_logger().debug(
-                    "Failed accessing local file: {}".format(remote_url)
-                )
+                LoggerRoot.get_base_logger().debug("Failed accessing local file: {}".format(remote_url))
                 return None
 
             if direct_access:
@@ -131,12 +125,12 @@ class CacheManager(object):
             file_ext = "".join(Path(file_name).suffixes[-2:])
             file_ext = file_ext.rstrip(" ")
 
-            file_basename = file_name[:-len(file_ext)]
+            file_basename = file_name[: -len(file_ext)]
             file_basename = file_basename.strip()
 
             # Omit characters from extensionss
             if len(file_ext) > allowed_length:
-                file_ext = file_ext[-(allowed_length - 1):]
+                file_ext = file_ext[-(allowed_length - 1) :]
                 file_ext = "." + file_ext.lstrip(".")
 
             # Updating maximum character length
@@ -159,9 +153,7 @@ class CacheManager(object):
             """
             :return: full path to current contexts cache folder
             """
-            folder = Path(
-                get_cache_dir() / CacheManager._storage_manager_folder / self._context
-            )
+            folder = Path(get_cache_dir() / CacheManager._storage_manager_folder / self._context)
             return folder.as_posix()
 
         def get_cache_file(self, remote_url=None, local_filename=None):
@@ -185,18 +177,12 @@ class CacheManager(object):
                 try:
                     if x.is_dir():
                         dir_files = list(x.iterdir())
-                        atime = (
-                            max(atime, max(safe_time(s) for s in dir_files))
-                            if dir_files
-                            else atime
-                        )
+                        atime = max(atime, max(safe_time(s) for s in dir_files)) if dir_files else atime
                 except Exception:
                     pass
                 return atime
 
-            folder = Path(
-                get_cache_dir() / CacheManager._storage_manager_folder / self._context
-            )
+            folder = Path(get_cache_dir() / CacheManager._storage_manager_folder / self._context)
             folder.mkdir(parents=True, exist_ok=True)
             local_filename = local_filename or self.get_hashed_url_file(remote_url)
             local_filename = self._conform_filename(local_filename)
@@ -223,15 +209,9 @@ class CacheManager(object):
             lock_files = dict()
             files = []
             for f in sorted(folder_files, reverse=True, key=sort_max_access_time):
-                if f.name.startswith(CacheManager._lockfile_prefix) and f.name.endswith(
-                    CacheManager._lockfile_suffix
-                ):
+                if f.name.startswith(CacheManager._lockfile_prefix) and f.name.endswith(CacheManager._lockfile_suffix):
                     # parse the lock filename
-                    name = f.name[
-                        len(CacheManager._lockfile_prefix):-len(
-                            CacheManager._lockfile_suffix
-                        )
-                    ]
+                    name = f.name[len(CacheManager._lockfile_prefix) : -len(CacheManager._lockfile_suffix)]
                     num, _, name = name.partition(".")
                     lock_files[name] = lock_files.get(name, []) + [f.as_posix()]
                 else:
@@ -242,7 +222,7 @@ class CacheManager(object):
                 lock_files.pop(f.name, None)
 
             # delete old files
-            files = files[self._file_limit:]
+            files = files[self._file_limit :]
             for f in files:
                 # check if the file is in the lock folder list:
                 folder_lock = self._folder_locks.get(f.absolute().as_posix())
@@ -279,9 +259,7 @@ class CacheManager(object):
                         shutil.rmtree(f.as_posix(), ignore_errors=False)
                     except Exception as e:
                         # failed deleting folder
-                        LoggerRoot.get_base_logger().debug(
-                            "Exception {}\nFailed deleting folder {}".format(e, f)
-                        )
+                        LoggerRoot.get_base_logger().debug("Exception {}\nFailed deleting folder {}".format(e, f))
 
             # cleanup old lock files
             for lock_files in lock_files.values():
@@ -382,9 +360,7 @@ class CacheManager(object):
         except Exception:
             return local_copy_path
 
-        return CacheManager._local_to_remote_url_lookup.get(
-            hash(conform_local_copy_path), local_copy_path
-        )
+        return CacheManager._local_to_remote_url_lookup.get(hash(conform_local_copy_path), local_copy_path)
 
     @staticmethod
     def _add_remote_url(remote_url, local_copy_path):
@@ -411,10 +387,7 @@ class CacheManager(object):
             pass
         CacheManager._local_to_remote_url_lookup[hash(local_copy_path)] = remote_url
         # protect against overuse, so we do not blowup the memory
-        if (
-            len(CacheManager._local_to_remote_url_lookup)
-            > CacheManager.__local_to_remote_url_lookup_max_size
-        ):
+        if len(CacheManager._local_to_remote_url_lookup) > CacheManager.__local_to_remote_url_lookup_max_size:
             # pop the first item (FIFO)
             CacheManager._local_to_remote_url_lookup.popitem(last=False)
 
@@ -429,6 +402,4 @@ class CacheManager(object):
         # type: (Optional[str]) -> str
         if not context:
             return cls._default_context_folder_template
-        return cls._context_to_folder_lookup.get(
-            str(context), cls._default_context_folder_template
-        )
+        return cls._context_to_folder_lookup.get(str(context), cls._default_context_folder_template)

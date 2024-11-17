@@ -11,7 +11,7 @@ Pillow>=4.1.1
 psutil>=3.4.2
 pyparsing>=2.0.3
 python-dateutil>=2.6.1
-pyjwt>=2.4.0,<2.9.0 ; python_version > '3.5'
+pyjwt>=2.4.0,<2.10.0 ; python_version > '3.5'
 pyjwt>=1.6.4,<2.0.0 ; python_version <= '3.5'
 PyYAML>=3.12
 referencing<0.40 ; python_version >= '3.8'

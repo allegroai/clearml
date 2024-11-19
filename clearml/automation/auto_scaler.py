@@ -15,7 +15,7 @@ from ..backend_api.session import defs
 from ..backend_api.session.client import APIClient
 from ..debugging import get_logger
 
-# Worker's id in clearml would be composed from prefix, name, instance_type and cloud_id separated by ":"
+# Worker's id in clearml would be composed of prefix, name, instance_type and cloud_id separated by ":"
 # Example: 'test:m1:g4dn.4xlarge:i-07cf7d6750455cb62'
 # cloud_id might be missing
 

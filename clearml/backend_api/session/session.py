@@ -204,6 +204,7 @@ class Session(TokenManager):
             "api.auth.request_token_expiration_sec",
             self.config.get("api.auth.req_token_expiration_sec", None)
         )
+
         self.__auth_token = None
         self._update_default_api_method()
         if ENV_AUTH_TOKEN.get():
@@ -379,6 +380,11 @@ class Session(TokenManager):
               case (only once). This is done since permissions are embedded in the token, and addresses a case where
               server-side permissions have changed but are not reflected in the current token. Refreshing the token will
               generate a token with the updated permissions.
+
+            NOTE: This method does not handle authorization. Credentials or token should be provided using the auth or
+            headers arguments, otherwise a successful authorization depends on the session containing a valid cookie
+            set during the last login call (which may not be there if the server's cookie domain does not match the URL
+            we use to access the server)
         """
         if self._offline_mode:
             return None
@@ -842,13 +848,27 @@ class Session(TokenManager):
                 )
             )
 
+        auth = None
         headers = None
-        # use token only once (the second time the token is already built into the http session)
-        if self.__auth_token:
-            headers = dict(Authorization="Bearer {}".format(self.__auth_token))
-            self.__auth_token = None
 
-        auth = HTTPBasicAuth(self.access_key, self.secret_key) if self.access_key and self.secret_key else None
+        token = None
+        if self.__auth_token:  # try using initially provided token
+            token = self.__auth_token
+        elif self.access_key and self.secret_key:  # otherwise, try using basic auth (if key/secret exists)
+            auth = HTTPBasicAuth(self.access_key, self.secret_key)
+        else:  # otherwise, use the latest raw token
+            token = self.raw_token
+
+        if token:
+            headers = dict(Authorization="Bearer {}".format(token))
+
+        if not auth and not headers:
+            # No authorization info, something went wrong
+            self._logger.warning(
+                "refreshing token with no authorization info (no token or credentials, this might fail "
+                "if session does not have a valid cookie)"
+            )
+
         res = None
         try:
             res = self._send_request(
@@ -877,6 +897,10 @@ class Session(TokenManager):
             # make sure we keep the token updated on the OS environment, so that child processes will have access.
             if ENV_AUTH_TOKEN.get():
                 ENV_AUTH_TOKEN.set(resp["data"]["token"])
+
+            # in any case, the initial token should only be used once (but only do it in case we actually managed
+            # to generate a new token in case this failed due to transient reasons)
+            self.__auth_token = None
 
             return resp["data"]["token"]
         except LoginError:

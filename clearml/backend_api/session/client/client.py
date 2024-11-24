@@ -98,9 +98,7 @@ class StrictSession(Session):
         """
 
         def init():
-            super(StrictSession, self).__init__(
-                initialize_logging=initialize_logging, *args, **kwargs
-            )
+            super(StrictSession, self).__init__(initialize_logging=initialize_logging, *args, **kwargs)
 
         if not config_file:
             init()
@@ -142,17 +140,17 @@ class Response(object):
         self.response = None
         self._result = result
         response = getattr(result, "response", result)
-        if getattr(response, "_service") == "events" and \
-                getattr(response, "_action") in ("scalar_metrics_iter_histogram",
-                                                 "multi_task_scalar_metrics_iter_histogram",
-                                                 "vector_metrics_iter_histogram",
-                                                 ):
+        if getattr(response, "_service") == "events" and getattr(response, "_action") in (
+            "scalar_metrics_iter_histogram",
+            "multi_task_scalar_metrics_iter_histogram",
+            "vector_metrics_iter_histogram",
+        ):
             # put all the response data under metrics:
             response.metrics = result.response_data
             # noinspection PyProtectedMember
-            if 'metrics' not in response.__class__._get_data_props():
+            if "metrics" not in response.__class__._get_data_props():
                 # noinspection PyProtectedMember
-                response.__class__._data_props_list['metrics'] = 'metrics'
+                response.__class__._data_props_list["metrics"] = "metrics"
         if dest:
             response = getattr(response, dest)
         self.response = response
@@ -170,11 +168,7 @@ class Response(object):
         return repr(self.response)
 
     def __dir__(self):
-        fields = [
-            name
-            for name in dir(self.response)
-            if isinstance(getattr(type(self.response), name, None), property)
-        ]
+        fields = [name for name in dir(self.response) if isinstance(getattr(type(self.response), name, None), property)]
         return list(set(chain(super(Response, self).__dir__(), fields)) - {"response"})
 
 
@@ -224,7 +218,7 @@ class TableResponse(Response):
             return "" if result is None else result
 
         fields = fields or self.fields
-        return '\n'.join(str(dict((attr, getter(item, attr)) for attr in fields)) for item in self)
+        return "\n".join(str(dict((attr, getter(item, attr)) for attr in fields)) for item in self)
 
     def display(self, fields=None):
         print(self._format_table(fields=fields))
@@ -251,10 +245,7 @@ class TableResponse(Response):
                 item
                 for item in self
                 if (not predicate or predicate(item))
-                and all(
-                    compare_enum(getattr(item, key), value)
-                    for key, value in kwargs.items()
-                )
+                and all(compare_enum(getattr(item, key), value) for key, value in kwargs.items())
             ],
         )
 
@@ -393,9 +384,7 @@ def make_action(service, request_cls):
 
         @wrap
         def get(self, *args, **kwargs):
-            return entity(
-                self, self.session.send(request_cls(*args, **kwargs)).response
-            )
+            return entity(self, self.session.send(request_cls(*args, **kwargs)).response)
 
     elif action == "create":
 
@@ -403,9 +392,7 @@ def make_action(service, request_cls):
         def get(self, *args, **kwargs):
             return entity(
                 self,
-                Namespace(
-                    id=self.session.send(request_cls(*args, **kwargs)).response.id
-                ),
+                Namespace(id=self.session.send(request_cls(*args, **kwargs)).response.id),
             )
 
     elif action in ["get_all", "get_all_ex"]:
@@ -458,7 +445,8 @@ def get_requests(service):
     return OrderedDict(
         (key, value)
         for key, value in sorted(
-            vars(service.__wrapped__ if hasattr(service, '__wrapped__') else service).items(), key=itemgetter(0))
+            vars(service.__wrapped__ if hasattr(service, "__wrapped__") else service).items(), key=itemgetter(0)
+        )
         if isinstance(value, type) and issubclass(value, APIRequest) and value._action
     )
 
@@ -476,10 +464,7 @@ def make_service_class(module):
         ]
     )
     properties.update(
-        (f.__name__, f)
-        for f in (
-            make_action(module, value) for key, value in get_requests(module).items()
-        )
+        (f.__name__, f) for f in (make_action(module, value) for key, value in get_requests(module).items())
     )
     # noinspection PyTypeChecker
     return type(str(module_name(module)), (Service,), properties)
@@ -504,14 +489,12 @@ class Version(Entity):
         except AttributeError:
             published = False
 
-        self.data = self._service.get_versions(
-            dataset=self.dataset, only_published=published, versions=[self.id]
-        )[0].data
+        self.data = self._service.get_versions(dataset=self.dataset, only_published=published, versions=[self.id])[
+            0
+        ].data
 
     def _get_default_kwargs(self):
-        return dict(
-            super(Version, self)._get_default_kwargs(), **{"dataset": self.data.dataset}
-        )
+        return dict(super(Version, self)._get_default_kwargs(), **{"dataset": self.data.dataset})
 
 
 class APIClient(object):
@@ -549,18 +532,13 @@ class APIClient(object):
                 if mod
             )
         else:
-            services = OrderedDict(
-                (name, getattr(_api_services, name)) for name in _api_services.__all__
-            )
+            services = OrderedDict((name, getattr(_api_services, name)) for name in _api_services.__all__)
         self._update_services(services)
 
     def _update_services(self, services):
         # type: (Dict[str, types.ModuleType]) -> ()
         self.__dict__.update(
             dict(
-                {
-                    name: make_service_class(module)(self.session)
-                    for name, module in services.items()
-                },
+                {name: make_service_class(module)(self.session) for name, module in services.items()},
             )
         )

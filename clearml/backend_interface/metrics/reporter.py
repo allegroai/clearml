@@ -654,7 +654,7 @@ class Reporter(InterfaceBase, AbstractContextManager, SetupUploadMixin, AsyncMan
         :param series: Series (AKA variant)
         :type series: str
         :param table: The table data
-        :type table: pandas.DataFrame
+        :type table: pandas.DataFrame or polars.DataFrame
         :param iteration: Iteration number
         :type iteration: int
         :param layout_config: optional dictionary for layout configuration, passed directly to plotly

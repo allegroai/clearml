@@ -257,6 +257,7 @@ class Artifacts(object):
     max_preview_size_bytes = 65536
 
     _flush_frequency_sec = 300.
+    _max_tmp_file_replace_attemps = 3
     # notice these two should match
     _save_format = '.csv.gz'
     _compression = 'gzip'
@@ -1138,7 +1139,21 @@ class Artifacts(object):
             temp_folder, prefix, suffix = self._temp_files_lookup.pop(local_filename)
             fd, temp_filename = mkstemp(prefix=prefix, suffix=suffix)
             os.close(fd)
-            os.replace(local_filename, temp_filename)
+            
+            for i in range(self._max_tmp_file_replace_attemps):
+                try:
+                    os.replace(local_filename, temp_filename)
+                    break
+                except PermissionError:
+                    LoggerRoot.get_base_logger().warning(
+                        "Failed to replace {} with {}. Attemps left: {}".format(
+                            local_filename, temp_filename, self._max_tmp_file_replace_attemps - i
+                        )
+                    )
+            else:
+                # final attempt, and if it fails, throw an exception
+                # exception could be thrown on some Windows systems
+                os.replace(local_filename, temp_filename)
             local_filename = temp_filename
             os.rmdir(temp_folder)
         except Exception as ex:

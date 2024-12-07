@@ -552,7 +552,7 @@ class Dataset(object):
             k: v
             for k, v in self._dataset_link_entries.items()
             if not matches_any_wildcard(k, dataset_path, recursive=recursive)
-            and not matches_any_wildcard(v.link, dataset_path, recursive=recursive)
+            and not (matches_any_wildcard(v.link, dataset_path, recursive=recursive) or v.link == dataset_path)
         }
 
         removed = 0
@@ -2263,14 +2263,14 @@ class Dataset(object):
 
     def _get_dataset_files(
         self,
-        force=False,
-        selected_chunks=None,
-        lock_target_folder=False,
-        cleanup_target_folder=True,
-        target_folder=None,
-        max_workers=None
+        force=False,  # type: bool
+        selected_chunks=None,  # type: Optional[List[int]]
+        lock_target_folder=False,  # type: bool
+        cleanup_target_folder=True,  # type: bool
+        target_folder=None,  # type: Optional[Path]
+        max_workers=None,  # type: Optional[int]
+        link_entries_of_interest=None  # type: Optional[Dict[str, LinkEntry]]
     ):
-        # type: (bool, Optional[List[int]], bool, bool, Optional[Path], Optional[int]) -> str
         """
         First, extracts the archive present on the ClearML server containing this dataset's files.
         Then, download the remote files. Note that if a remote file was added to the ClearML server, then
@@ -2287,6 +2287,8 @@ class Dataset(object):
         :param target_folder: If provided use the specified target folder, default, auto generate from Dataset ID.
         :param max_workers: Number of threads to be spawned when getting dataset files. Defaults
             to the number of virtual cores.
+        :param link_entries_of_interest: Download only the external files in this dictionary.
+        Useful when one doesn't want to download all the files in a parent dataset, as some files might be removed
 
         :return: Path to the local storage where the data was downloaded
         """
@@ -2300,14 +2302,21 @@ class Dataset(object):
             max_workers=max_workers
         )
         self._download_external_files(
-            target_folder=target_folder, lock_target_folder=lock_target_folder, max_workers=max_workers
+            target_folder=target_folder,
+            lock_target_folder=lock_target_folder,
+            max_workers=max_workers,
+            link_entries_of_interest=link_entries_of_interest,
         )
         return local_folder
 
     def _download_external_files(
-        self, target_folder=None, lock_target_folder=False, max_workers=None
+        self,
+        target_folder=None,
+        lock_target_folder=False,
+        max_workers=None,
+        link_entries_of_interest=None
     ):
-        # (Union(Path, str), bool) -> None
+        # (Union(Path, str), bool, Optional[int], Optional[Dict[str, LinkEntry]]) -> None
         """
         Downloads external files in the dataset. These files will be downloaded
         at relative_path (the path relative to the target_folder). Note that
@@ -2318,6 +2327,8 @@ class Dataset(object):
         :param lock_target_folder: If True, local the target folder so the next cleanup will not delete
             Notice you should unlock it manually, or wait for the process to finish for auto unlocking.
         :param max_workers: Number of threads to be spawned when getting dataset files. Defaults to no multi-threading.
+        :param link_entries_of_interest: Download only the external files in this dictionary.
+        Useful when one doesn't want to download all the files in a parent dataset, as some files might be removed
         """
         def _download_link(link, target_path):
             if os.path.exists(target_path):
@@ -2370,12 +2381,13 @@ class Dataset(object):
             )[0]
         ).as_posix()
 
+        link_entries_of_interest = link_entries_of_interest or self._dataset_link_entries
         if not max_workers:
-            for relative_path, link in self._dataset_link_entries.items():
+            for relative_path, link in link_entries_of_interest.items():
                 _submit_download_link(relative_path, link, target_folder)
         else:
             with ThreadPoolExecutor(max_workers=max_workers) as pool:
-                for relative_path, link in self._dataset_link_entries.items():
+                for relative_path, link in link_entries_of_interest.items():
                     _submit_download_link(relative_path, link, target_folder, pool=pool)
 
     def _extract_dataset_archive(
@@ -3224,7 +3236,8 @@ class Dataset(object):
                 force=force,
                 lock_target_folder=True,
                 cleanup_target_folder=False,
-                max_workers=max_workers
+                max_workers=max_workers,
+                link_entries_of_interest=self._dataset_link_entries
             ))
             ds_base_folder.touch()
 

@@ -113,6 +113,7 @@ if TYPE_CHECKING:
     import pandas
     import numpy
     from PIL import Image
+    from .router.router import HttpRouter
 
 # Forward declaration to help linters
 TaskInstance = TypeVar("TaskInstance", bound="Task")
@@ -224,6 +225,7 @@ class Task(_Task):
         self._calling_filename = None
         self._remote_functions_generated = {}
         self._external_endpoint_ports = {}
+        self._http_router = None
         # register atexit, so that we mark the task as stopped
         self._at_exit_called = False
 
@@ -848,6 +850,49 @@ class Task(_Task):
         task._set_startup_info()
         return task
 
+    def get_http_router(self):
+        # type: () -> HttpRouter
+        """
+        Retrieve an instance of `HttpRouter` to manage an external HTTP endpoint and intercept traffic.
+        The `HttpRouter` serves as a traffic manager, enabling the creation and configuration of local and external
+        routesto redirect, monitor, or manipulate HTTP requests and responses. It is designed to handle routing
+        needs such via a proxy setup which handles request/response interception and telemetry reporting for
+        applications that require HTTP endpoint management.
+
+        Example usage:
+
+        .. code-block:: py
+            def request_callback(request, persistent_state):
+                persistent_state["last_request_time"] = time.time()
+
+            def response_callback(response, request, persistent_state):
+                print("Latency:", time.time() - persistent_state["last_request_time"])
+                if urllib.parse.urlparse(str(request.url).rstrip("/")).path == "/modify":
+                    new_content = response.body.replace(b"modify", b"modified")
+                    headers = copy.deepcopy(response.headers)
+                    headers["Content-Length"] = str(len(new_content))
+                    return Response(status_code=response.status_code, headers=headers, content=new_content)
+
+            router = Task.current_task().get_http_router()
+            router.set_local_proxy_parameters(incoming_port=9000)
+            router.create_local_route(
+                source="/",
+                target="http://localhost:8000",
+                request_callback=request_callback,
+                response_callback=response_callback,
+                endpoint_telemetry={"model": "MyModel"}
+            )
+            router.deploy(wait=True)
+        """
+        try:
+            from .router.router import HttpRouter  # noqa
+        except ImportError:
+            raise UsageError("Could not import `HttpRouter`. Please run `pip install clearml[router]`")
+
+        if self._http_router is None:
+            self._http_router = HttpRouter(self)
+        return self._http_router
+
     def request_external_endpoint(
         self, port, protocol="http", wait=False, wait_interval_seconds=3.0, wait_timeout_seconds=90.0
     ):
@@ -996,10 +1041,13 @@ class Task(_Task):
                 return None
             time.sleep(wait_interval_seconds)
 
-    def list_external_endpoints(self):
-        # type: () -> List[Dict]
+    def list_external_endpoints(self, protocol=None):
+        # type: (Optional[str]) -> List[Dict]
         """
         List all external endpoints assigned
+
+        :param protocol: If None, list all external endpoints. Otherwise, only list endpoints
+            that use this protocol
 
         :return: A list of dictionaries. Each dictionary contains the following values:
             - endpoint - raw endpoint. One might need to authenticate in order to use this endpoint
@@ -1010,7 +1058,8 @@ class Task(_Task):
         Session.verify_feature_set("advanced")
         runtime_props = self._get_runtime_properties()
         results = []
-        for protocol in ["http", "tcp"]:
+        protocols = [protocol] if protocol is not None else ["http", "tcp"]
+        for protocol in protocols:
             internal_port = runtime_props.get(self._external_endpoint_internal_port_map[protocol])
             if internal_port:
                 self._external_endpoint_ports[protocol] = internal_port

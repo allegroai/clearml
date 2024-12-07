@@ -87,6 +87,11 @@ setup(
         'gs': [
             'google-cloud-storage>=1.13.2',
         ],
+        'router': [
+            'fastapi>=0.115.2',
+            'uvicorn>=0.31.1',
+            'httpx>=0.27.2'
+        ]
     },
     package_data={
         'clearml': ['config/default/*.conf', 'backend_api/config/default/*.conf']

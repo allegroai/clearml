@@ -522,6 +522,7 @@ class ClearmlJob(BaseJob):
             allow_caching=False,  # type: bool
             target_project=None,  # type: Optional[str]
             output_uri=None,  # type: Optional[Union[str, bool]]
+            enable_local_imports=True,  # type: bool
             **kwargs  # type: Any
     ):
         # type: (...) -> ()
@@ -548,9 +549,14 @@ class ClearmlJob(BaseJob):
         :param Union[str, bool] output_uri: The storage / output url for this job. This is the default location for
             output models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
         :param str target_project: Optional, Set the target project name to create the cloned Task in.
+        :param enable_local_imports: If True, allow jobs to import from local files
+            by appending PYTHONPATH sys.path[0].
+            If False, the current path directory won't be appended to PYTHONPATH. Default is True.
+            Ignored while running remotely.
         """
         super(ClearmlJob, self).__init__()
         base_temp_task = Task.get_task(task_id=base_task_id)
+        self._enable_local_imports = enable_local_imports
         if disable_clone_task:
             self.task = base_temp_task
             task_status = self.task.status
@@ -717,6 +723,14 @@ class LocalClearmlJob(ClearmlJob):
         env['CLEARML_TASK_ID'] = env['TRAINS_TASK_ID'] = str(self.task.id)
         env['CLEARML_LOG_TASK_TO_BACKEND'] = '1'
         env['CLEARML_SIMULATE_REMOTE_TASK'] = '1'
+        try:
+            if self._enable_local_imports:
+                current_python_path = env.get("PYTHONPATH")
+                env["PYTHONPATH"] = (
+                    "{}:{}".format(current_python_path, sys.path[0]) if current_python_path else sys.path[0]
+                )
+        except Exception as e:
+            logger.warning("Could not append local path to PYTHONPATH: {}".format(e))
         self.task.mark_started()
         self._job_process = subprocess.Popen(args=[python, local_filename], cwd=cwd, env=env)
         return True

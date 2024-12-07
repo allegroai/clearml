@@ -71,6 +71,8 @@ class CacheManager(object):
             if cached_size is not None and not force_download:
                 CacheManager._add_remote_url(remote_url, cached_file)
                 return cached_file
+
+            self.clean_cache()
             # we need to download the file:
             downloaded_file = helper.download_to_file(
                 remote_url,
@@ -163,25 +165,6 @@ class CacheManager(object):
             :param local_filename: if local_file is given, search for the local file/directory in the cache folder
             :return: full path to file name, current file size or None
             """
-
-            def safe_time(x):
-                # noinspection PyBroadException
-                try:
-                    return x.stat().st_mtime
-                except Exception:
-                    return 0
-
-            def sort_max_access_time(x):
-                atime = safe_time(x)
-                # noinspection PyBroadException
-                try:
-                    if x.is_dir():
-                        dir_files = list(x.iterdir())
-                        atime = max(atime, max(safe_time(s) for s in dir_files)) if dir_files else atime
-                except Exception:
-                    pass
-                return atime
-
             folder = Path(get_cache_dir() / CacheManager._storage_manager_folder / self._context)
             folder.mkdir(parents=True, exist_ok=True)
             local_filename = local_filename or self.get_hashed_url_file(remote_url)
@@ -201,9 +184,37 @@ class CacheManager(object):
             except Exception:
                 new_file_size = None
 
+            return new_file.as_posix(), new_file_size
+
+        def clean_cache(self):
+            # type: () -> bool
+            """
+            If cache is full, clean it by deleting old/lock files
+
+            :return: True if the cache has been cleaned and False otherwise
+            """
+            def safe_time(x):
+                # noinspection PyBroadException
+                try:
+                    return x.stat().st_mtime
+                except Exception:
+                    return 0
+
+            def sort_max_access_time(x):
+                atime = safe_time(x)
+                # noinspection PyBroadException
+                try:
+                    if x.is_dir():
+                        dir_files = list(x.iterdir())
+                        atime = max(atime, max(safe_time(s) for s in dir_files)) if dir_files else atime
+                except Exception:
+                    pass
+                return atime
+
+            folder = Path(get_cache_dir() / CacheManager._storage_manager_folder / self._context)
             folder_files = list(folder.iterdir())
             if len(folder_files) <= self._file_limit:
-                return new_file.as_posix(), new_file_size
+                return False
 
             # first exclude lock files
             lock_files = dict()
@@ -269,8 +280,7 @@ class CacheManager(object):
                         os.unlink(f)
                     except BaseException:
                         pass
-
-            return new_file.as_posix(), new_file_size
+            return True
 
         def lock_cache_folder(self, local_path):
             # type: (Union[str, Path]) -> ()

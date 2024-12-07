@@ -281,12 +281,16 @@ class SafeQueue(object):
         # Fix the python Queue and Use SimpleQueue write so it uses a single OS write,
         # making it atomic message passing
         self._q = SimpleQueue(*args, **kwargs)
-        # noinspection PyBroadException
-        try:
-            # noinspection PyUnresolvedReferences,PyProtectedMember
-            self._q._writer._send_bytes = partial(SafeQueue._pipe_override_send_bytes, self._q._writer)
-        except Exception:
-            pass
+
+        # on Windows, queue communication is done via pipes, no need to override the _send_bytes method
+        if sys.platform != 'win32':
+            # noinspection PyBroadException
+            try:
+                # noinspection PyUnresolvedReferences,PyProtectedMember
+                self._q._writer._send_bytes = partial(SafeQueue._pipe_override_send_bytes, self._q._writer)
+            except Exception:
+                pass
+
         self._internal_q = None
         # Note we should Never! assign a new object to `self._q_size`, just work with the initial object
         self._q_size = []  # list of PIDs we pushed, so this is atomic.

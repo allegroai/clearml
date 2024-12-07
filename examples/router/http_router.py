@@ -8,7 +8,7 @@ Then, when running this example, it creates a router which binds to 0.0.0.0:9000
 A local route is then created, which will proxy all traffic from
 `http://<PRIVATE_IP>:9000/example_source` to `http://localhost:8000/serve`.
 
-Trafic can be intercepted both on request and response via callbacks. See
+Traffic can be intercepted both on request and response via callbacks. See
 `request_callback` and `response_callback`.
 
 By default, the route traffic is monitored and telemetry is sent to the ClearML

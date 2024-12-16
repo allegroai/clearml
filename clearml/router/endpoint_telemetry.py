@@ -1,9 +1,10 @@
+import copy
+import time
+import uuid
+from threading import Thread
+
 from ..task import Task
 from ..utilities.resource_monitor import ResourceMonitor
-import uuid
-import time
-import copy
-from threading import Thread
 
 
 class EndpointTelemetry:
@@ -41,7 +42,7 @@ class EndpointTelemetry:
         report_statistics=True,
         endpoint_url=None,
         preprocess_artifact=None,
-        force_register=False
+        force_register=False,
     ):
         self.report_window = 30
         self._previous_readouts = {}
@@ -58,7 +59,7 @@ class EndpointTelemetry:
             "input_size": str(input_size),
             "tags": tags,
             "system_tags": system_tags,
-            "endpoint_url": endpoint_url
+            "endpoint_url": endpoint_url,
         }
         references = []
         if app_id:

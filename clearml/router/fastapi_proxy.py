@@ -14,13 +14,15 @@ from ..utilities.process.mp import SafeQueue
 class FastAPIProxy:
     ALL_REST_METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
 
-    def __init__(self, port, workers=None, default_target=None):
+    def __init__(self, port, workers=None, default_target=None, log_level=None, access_log=None):
         self.app = None
         self.routes = {}
         self.port = port
         self.message_queue = SafeQueue()
         self.uvicorn_subprocess = None
         self.workers = workers
+        self.access_log = access_log
+        self.log_level = None
         self._default_target = default_target
         self._default_session = None
         self._in_subprocess = False
@@ -58,6 +60,7 @@ class FastAPIProxy:
                     headers=dict(proxied_response.headers),
                     status_code=proxied_response.status_code,
                 )
+
         self.app.add_middleware(DefaultRouteMiddleware)
 
     async def proxy(
@@ -70,20 +73,24 @@ class FastAPIProxy:
         if not route_data:
             return Response(status_code=404)
 
-        request = route_data.on_request(request)
-        proxied_response = await route_data.session.request(
-            method=request.method,
-            url=f"{route_data.target_url}/{path}" if path else route_data.target_url,
-            headers=dict(request.headers),
-            content=await request.body(),
-            params=request.query_params,
-        )
-        proxied_response = Response(
-            content=proxied_response.content,
-            headers=dict(proxied_response.headers),
-            status_code=proxied_response.status_code,
-        )
-        return route_data.on_response(proxied_response, request)
+        request = await route_data.on_request(request)
+        try:
+            proxied_response = await route_data.session.request(
+                method=request.method,
+                url=f"{route_data.target_url}/{path}" if path else route_data.target_url,
+                headers=dict(request.headers),
+                content=await request.body(),
+                params=request.query_params,
+            )
+            proxied_response = Response(
+                content=proxied_response.content,
+                headers=dict(proxied_response.headers),
+                status_code=proxied_response.status_code,
+            )
+        except Exception as e:
+            await route_data.on_error(request, e)
+            raise
+        return await route_data.on_response(proxied_response, request)
 
     def add_route(
         self,
@@ -91,7 +98,8 @@ class FastAPIProxy:
         target,
         request_callback=None,
         response_callback=None,
-        endpoint_telemetry=True
+        error_callback=None,
+        endpoint_telemetry=True,
     ):
         if not self._in_subprocess:
             self.message_queue.put(
@@ -102,7 +110,8 @@ class FastAPIProxy:
                         "target": target,
                         "request_callback": request_callback,
                         "response_callback": response_callback,
-                        "endpoint_telemetry": endpoint_telemetry
+                        "error_callback": error_callback,
+                        "endpoint_telemetry": endpoint_telemetry,
                     },
                 }
             )
@@ -116,6 +125,7 @@ class FastAPIProxy:
             target,
             request_callback=request_callback,
             response_callback=response_callback,
+            error_callback=error_callback,
             session=httpx.AsyncClient(timeout=None),
         )
         if endpoint_telemetry is True:
@@ -164,7 +174,14 @@ class FastAPIProxy:
         for route in self.routes.values():
             route.start_endpoint_telemetry()
         threading.Thread(target=self._rpc_manager, daemon=True).start()
-        uvicorn.run(self.app, port=self.port, host="0.0.0.0", workers=self.workers)
+        uvicorn.run(
+            self.app,
+            port=self.port,
+            host="0.0.0.0",
+            workers=self.workers,
+            log_level=self.log_level,
+            access_log=self.access_log,
+        )
 
     def _rpc_manager(self):
         while True:

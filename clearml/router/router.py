@@ -43,19 +43,24 @@ class HttpRouter:
         self._task = task
         self._external_endpoint_port = None
         self._proxy = None
-        self._proxy_params = {"port": HttpProxy.DEFAULT_PORT}
+        self._proxy_params = {"port": HttpProxy.DEFAULT_PORT, "access_log": True}
 
-    def set_local_proxy_parameters(self, incoming_port=None, default_target=None):
-        # type: (Optional[int], Optional[str]) -> ()
+    def set_local_proxy_parameters(self, incoming_port=None, default_target=None, log_level=None, access_log=True):
+        # type: (Optional[int], Optional[str], Optional[str], bool) -> ()
         """
         Set the parameters with which the local proxy is initialized
 
         :param incoming_port: The incoming port of the proxy
         :param default_target: If None, no default target is set. Otherwise, route all traffic
             that doesn't match a local route created via `create_local_route` to this target
+        :param log_level: Python log level for the proxy, one of:
+            'critical', 'error', 'warning', 'info', 'debug', 'trace'
+        :param access_log: Enable/Disable access log
         """
         self._proxy_params["port"] = incoming_port or HttpProxy.DEFAULT_PORT
         self._proxy_params["default_target"] = default_target
+        self._proxy_params["log_level"] = log_level
+        self._proxy_params["access_log"] = access_log
 
     def start_local_proxy(self):
         """
@@ -69,7 +74,8 @@ class HttpRouter:
         target,  # type: str
         request_callback=None,  # type: Callable[Request, Dict]
         response_callback=None,  # type: Callable[Response, Request, Dict]
-        endpoint_telemetry=True  # type: Union[bool, Dict]
+        endpoint_telemetry=True,  # type: Union[bool, Dict]
+        error_callback=None  # type: Callable[Request, Exception, Dict]
     ):
         """
         Create a local route from a source to a target through a proxy. If no proxy instance
@@ -88,14 +94,14 @@ class HttpRouter:
             The callback must have the following parameters:
             - request - The intercepted FastAPI request
             - persistent_state - A dictionary meant to be used as a caching utility object.
-            Shared with `response_callback`
+            Shared with `response_callback` and `error_callback`
             The callback can return a FastAPI Request, in which case this request will be forwarded to the target
         :param response_callback: A function used to process each response before it is returned by the proxy.
             The callback must have the following parameters:
             - response - The FastAPI response
             - request - The FastAPI request (after being preprocessed by the proxy)
             - persistent_state - A dictionary meant to be used as a caching utility object.
-            Shared with `request_callback`
+            Shared with `request_callback` and `error_callback`
             The callback can return a FastAPI Response, in which case this response will be forwarded
         :param endpoint_telemetry: If True, enable endpoint telemetry. If False, disable it.
             If a dictionary is passed, enable endpoint telemetry with custom parameters.
@@ -115,6 +121,12 @@ class HttpRouter:
             - input_size - input size of the model
             - input_type - input type expected by the model/endpoint
             - report_statistics - whether or not to report statistics
+        :param error_callback: Callback to be called on request error.
+            The callback must have the following parameters:
+            - request - the FastAPI request which caused the error
+            - error - an exception which indicates which error occurred
+            - persistent_state - A dictionary meant to be used as a caching utility object.
+            Shared with `request_callback` and `response_callback`
         """
         self.start_local_proxy()
         self._proxy.add_route(
@@ -123,6 +135,7 @@ class HttpRouter:
             request_callback=request_callback,
             response_callback=response_callback,
             endpoint_telemetry=endpoint_telemetry,
+            error_callback=error_callback
         )
 
     def remove_local_route(self, source):

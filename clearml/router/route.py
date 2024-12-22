@@ -1,11 +1,13 @@
+import inspect
 from .endpoint_telemetry import EndpointTelemetry
 
 
 class Route:
-    def __init__(self, target_url, request_callback=None, response_callback=None, session=None):
+    def __init__(self, target_url, request_callback=None, response_callback=None, session=None, error_callback=None):
         self.target_url = target_url
         self.request_callback = request_callback
         self.response_callback = response_callback
+        self.error_callback = error_callback
         self.session = session
         self.persistent_state = {}
         self._endpoint_telemetry = None
@@ -62,18 +64,30 @@ class Route:
         self._endpoint_telemetry.stop()
         self._endpoint_telemetry = None
 
-    def on_request(self, request):
+    async def on_request(self, request):
         new_request = request
         if self.request_callback:
             new_request = self.request_callback(request, persistent_state=self.persistent_state) or request
+            if inspect.isawaitable(new_request):
+                new_request = (await new_request) or request
         if self._endpoint_telemetry:
             self._endpoint_telemetry.on_request()
         return new_request
 
-    def on_response(self, response, request):
+    async def on_response(self, response, request):
         new_response = response
         if self.response_callback:
             new_response = self.response_callback(response, request, persistent_state=self.persistent_state) or response
+            if inspect.isawaitable(new_response):
+                new_response = (await new_response) or response
         if self._endpoint_telemetry:
             self._endpoint_telemetry.on_response()
         return new_response
+
+    async def on_error(self, request, error):
+        on_error_result = None
+        if self.error_callback:
+            on_error_result = self.error_callback(request, error, persistent_state=self.persistent_state)
+            if inspect.isawaitable(on_error_result):
+                await on_error_result
+        return on_error_result

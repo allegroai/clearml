@@ -3363,6 +3363,8 @@ class Dataset(object):
         # noinspection PyBroadException
         try:
             if StorageManager.exists_file(source_url):
+                # handle local path provided without scheme
+                source_url = StorageHelper.sanitize_url(source_url)
                 remote_objects = [StorageManager.get_metadata(source_url, return_full_path=True)]
             elif not source_url.startswith(("http://", "https://")):
                 if source_url[-1] != "/":
@@ -3381,7 +3383,7 @@ class Dataset(object):
             link = remote_object.get("name")
             relative_path = link[len(source_url):]
             if not relative_path:
-                relative_path = source_url.split("/")[-1]
+                relative_path = os.path.basename(source_url)
             if not matches_any_wildcard(relative_path, wildcard, recursive=recursive):
                 continue
             try:

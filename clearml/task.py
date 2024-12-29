@@ -908,7 +908,7 @@ class Task(_Task):
             the method will no longer wait and None will be returned
 
         :return: If wait is False, this method will return None.
-            If no endpoint could be found while waiting, this mehtod returns None.
+            If no endpoint could be found while waiting, this method returns None.
             Otherwise, it returns a dictionary containing the following values:
             - endpoint - raw endpoint. One might need to authenticate in order to use this endpoint
             - browser_endpoint - endpoint to be used in browser. Authentication will be handled via the browser
@@ -919,19 +919,25 @@ class Task(_Task):
         if protocol not in self._external_endpoint_port_map.keys():
             raise ValueError("Invalid protocol: {}".format(protocol))
 
+        # sync with router - get data from Task
         if not self._external_endpoint_ports.get(protocol):
             self.reload()
             internal_port = self._get_runtime_properties().get(self._external_endpoint_internal_port_map[protocol])
             if internal_port:
                 self._external_endpoint_ports[protocol] = internal_port
+
+        # check if we are trying to change the port - currently not allowed
         if self._external_endpoint_ports.get(protocol):
-            if self._external_endpoint_ports.get(protocol) != port:  # noqa
-                raise ValueError(
-                    "Only one endpoint per protocol can be requested at the moment. Port already exposed is: {}".format(
-                        self._external_endpoint_ports.get(protocol)
-                    )
+            if self._external_endpoint_ports.get(protocol) == port:
+                # we already set this endpoint, so do nothing
+                return
+
+            raise ValueError(
+                "Only one endpoint per protocol can be requested at the moment. Port already exposed is: {}".format(
+                    self._external_endpoint_ports.get(protocol)
                 )
-            return
+            )
+
         # noinspection PyProtectedMember
         self._set_runtime_properties(
             {
@@ -943,7 +949,11 @@ class Task(_Task):
         self.set_system_tags((self.get_system_tags() or []) + ["external_service"])
         self._external_endpoint_ports[protocol] = port
         if wait:
-            return self.wait_for_external_endpoint(wait_interval_seconds=wait_interval_seconds, protocol=protocol)
+            return self.wait_for_external_endpoint(
+                wait_interval_seconds=wait_interval_seconds,
+                wait_timeout_seconds=wait_timeout_seconds,
+                protocol=protocol
+            )
         return None
 
     def wait_for_external_endpoint(self, wait_interval_seconds=3.0, wait_timeout_seconds=90.0, protocol="http"):
@@ -957,7 +967,7 @@ class Task(_Task):
         :param protocol: `http` or `tcp`. Wait for an endpoint to be assigned based on the protocol.
             If None, wait for all supported protocols
 
-        :return: If no endpoint could be found while waiting, this mehtod returns None.
+        :return: If no endpoint could be found while waiting, this method returns None.
             If a protocol has been specified, it returns a dictionary containing the following values:
             - endpoint - raw endpoint. One might need to authenticate in order to use this endpoint
             - browser_endpoint - endpoint to be used in browser. Authentication will be handled via the browser

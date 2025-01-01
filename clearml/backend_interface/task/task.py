@@ -695,6 +695,28 @@ class Task(IdObjectBase, AccessMixin, SetupUploadMixin):
             ignore_errors=ignore_errors
         )
 
+    def stop_request(self, ignore_errors=True, force=False, status_message=None):
+        # type: (bool, bool, Optional[str]) -> ()
+        """
+        Request a task to stop. this will not change the task status
+        but mark a request for an agent or SDK to actually stop the Task.
+        This will trigger the Task's abort callback, and at the end will
+        change the task status to stopped and kill the Task's processes
+
+        Notice: calling this on your own Task, will cause
+        the watchdog to call the on_abort callback and kill the process
+
+        :param bool force: If not True, call fails if the task status is not 'in_progress'
+        :param bool ignore_errors: if False raise exception on error
+        :param str status_message: Optional, add status change message to the stop request.
+            This message will be stored as status_message on the Task's info panel
+        """
+        # request task stop
+        return self.send(
+            tasks.StopRequest(self.id, force=force, status_reason="abort request", status_message=status_message),
+            ignore_errors=ignore_errors
+        )
+
     def completed(self, ignore_errors=True):
         # type: (bool) -> ()
         """

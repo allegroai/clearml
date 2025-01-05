@@ -938,6 +938,7 @@ class Task(_Task):
                 )
             )
 
+        # mark for the router our request
         # noinspection PyProtectedMember
         self._set_runtime_properties(
             {
@@ -946,6 +947,7 @@ class Task(_Task):
                 self._external_endpoint_port_map[protocol]: port,
             }
         )
+        # required system_tag for the router to catch the routing request
         self.set_system_tags((self.get_system_tags() or []) + ["external_service"])
         self._external_endpoint_ports[protocol] = port
         if wait:

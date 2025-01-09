@@ -5,6 +5,10 @@ from ..errors import UsageError
 from ..utilities.dicts import merge_dicts
 
 try:
+    import polars as pl
+except ImportError:
+    pl = None
+try:
     import pandas as pd
 except ImportError:
     pd = None
@@ -486,7 +490,7 @@ def create_plotly_table(table_plot, title, series, layout_config=None, data_conf
     """
     Create a basic Plotly table json style to be sent
 
-    :param table_plot: the output table in pandas.DataFrame structure or list of rows (list) in a table
+    :param table_plot: the output table in pandas.DataFrame structure or polars.Dataframe structure or list of rows (list) in a table
     :param title: Title (AKA metric)
     :type title: str
     :param series: Series (AKA variant)
@@ -503,11 +507,19 @@ def create_plotly_table(table_plot, title, series, layout_config=None, data_conf
     elif is_list and table_plot[0] and isinstance(table_plot[0], (list, tuple)):
         headers_values = table_plot[0]
         cells_values = [list(i) for i in zip(*table_plot[1:])]
+    elif pl and isinstance(table_plot, pl.DataFrame):
+        headers_values = list([col] for col in table_plot.columns)
+        # Convert datetimes to ISO strings
+        datetime_columns = table_plot.select(pl.selectors.datetime()).columns
+        exprs = [pl.col(col).dt.to_string("iso:strict") for col in datetime_columns]
+        # Get cell values and preserve value types
+        cells_values_transpose = table_plot.with_columns(*exprs).rows()
+        cells_values = list(map(list, zip(*cells_values_transpose)))
     else:
         if not pd:
             raise UsageError(
-                "pandas is required in order to support reporting tables using CSV or a URL, "
-                "please install the pandas python package"
+                "pandas or polars is required in order to support reporting tables using CSV or a URL, "
+                "please install the pandas or polars python package"
             )
         index_added = not isinstance(table_plot.index, pd.RangeIndex)
         headers_values = list([col] for col in table_plot.columns)

@@ -11,6 +11,11 @@ from pathlib2 import Path
 from .debugging.log import LoggerRoot
 
 try:
+    import polars as pl
+except ImportError:
+    pl = None
+
+try:
     import pandas as pd
 except ImportError:
     pd = None
@@ -326,7 +331,7 @@ class Logger(object):
         title,  # type: str
         series,  # type: str
         iteration=None,  # type: Optional[int]
-        table_plot=None,  # type: Optional[pd.DataFrame, Sequence[Sequence]]
+        table_plot=None,  # type: Optional[pd.DataFrame, pl.DataFrame, Sequence[Sequence]]
         csv=None,  # type: Optional[str]
         url=None,  # type: Optional[str]
         extra_layout=None,  # type: Optional[dict]
@@ -392,15 +397,15 @@ class Logger(object):
         mutually_exclusive(UsageError, _check_none=True, table_plot=table_plot, csv=csv, url=url)
         table = table_plot
         if url or csv:
-            if not pd:
+            if not pd and not pl:
                 raise UsageError(
-                    "pandas is required in order to support reporting tables using CSV or a URL, "
-                    "please install the pandas python package"
+                    "pandas or polars is required in order to support reporting tables using CSV "
+                    "or a URL, please install the pandas or polars python package"
                 )
             if url:
-                table = pd.read_csv(url, index_col=[0])
+                table = pd.read_csv(url, index_col=[0]) if pd else pl.read_csv(url)
             elif csv:
-                table = pd.read_csv(csv, index_col=[0])
+                table = pd.read_csv(csv, index_col=[0]) if pd else pl.read_csv(csv)
 
         def replace(dst, *srcs):
             for src in srcs:
@@ -409,7 +414,8 @@ class Logger(object):
         if isinstance(table, (list, tuple)):
             reporter_table = table
         else:
-            reporter_table = table.fillna(str(np.nan))
+            nan = str(np.nan)
+            reporter_table = table.fillna(nan) if pd else table.fill_nan(nan)
             replace("NaN", np.nan, math.nan if six.PY3 else float("nan"))
             replace("Inf", np.inf, math.inf if six.PY3 else float("inf"))
             minus_inf = [-np.inf, -math.inf if six.PY3 else -float("inf")]

@@ -14,6 +14,10 @@ try:
     import pandas as pd
 except ImportError:
     pd = None
+try:
+    import polars as pl
+except ImportError:
+    pl = None
 
 from .backend_api import Session
 from .backend_api.services import models, projects
@@ -638,15 +642,21 @@ class BaseModel(object):
         )
         table = table_plot
         if url or csv:
-            if not pd:
+            if not pd and not pl:
                 raise UsageError(
-                    "pandas is required in order to support reporting tables using CSV or a URL, "
-                    "please install the pandas python package"
+                    "pandas or polars is required in order to support reporting tables using CSV or a URL, "
+                    "please install the pandas or polars python package"
                 )
             if url:
-                table = pd.read_csv(url, index_col=[0])
+                if pd:
+                    table = pd.read_csv(url, index_col=[0])
+                else:
+                    table = pd.read_csv(url)
             elif csv:
-                table = pd.read_csv(csv, index_col=[0])
+                if pd:
+                    table = pd.read_csv(csv, index_col=[0])
+                else:
+                    table = pd.read_csv(url)
 
         def replace(dst, *srcs):
             for src in srcs:

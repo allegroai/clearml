@@ -2684,7 +2684,7 @@ class Task(_Task):
           - PIL.Image - whatever extensions PIL supports (default ``.png``)
           - In case the ``serialization_function`` argument is set - any extension is supported
 
-        :param Callable[Any, Union[bytes, bytearray]] serialization_function: A serialization function that takes one
+        :param serialization_function: A serialization function that takes one
             parameter of any type which is the object to be serialized. The function should return
             a `bytes` or `bytearray` object, which represents the serialized object. Note that the object will be
             immediately serialized using this function, thus other serialization methods will not be used

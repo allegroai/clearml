@@ -1223,7 +1223,7 @@ class PipelineController(object):
         :param bool wait_on_upload: Whether the upload should be synchronous, forcing the upload to complete
             before continuing.
 
-        :param Callable[Any, Union[bytes, bytearray]] serialization_function: A serialization function that takes one
+        :param serialization_function: A serialization function that takes one
             parameter of any type which is the object to be serialized. The function should return
             a `bytes` or `bytearray` object, which represents the serialized object. Note that the object will be
             immediately serialized using this function, thus other serialization methods will not be used

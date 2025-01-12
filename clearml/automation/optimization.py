@@ -1290,7 +1290,7 @@ class HyperParameterOptimizer(object):
 
         :param str base_task_id: The Task ID to be used as template experiment to optimize.
         :param list hyper_parameters: The list of Parameter objects to optimize over.
-        :param Union[str, Sequence[str]] objective_metric_title: The Objective metric title(s) to maximize / minimize
+        :param objective_metric_title: The Objective metric title(s) to maximize / minimize
             (for example, ``validation``, ``["validation", "loss"]``). If ``objective_metric_title`` is a sequence
             (used to optimize multiple objectives at the same time), then ``objective_metric_series`` and
              ``objective_metric_sign`` have to be sequences of the same length. Each title will be matched

@@ -230,7 +230,7 @@ class Logger(object):
         :param xaxis: The x-axis title. (Optional)
         :param yaxis: The y-axis title. (Optional)
         :param mode: Multiple histograms mode, stack / group / relative. Default is 'group'.
-        :param extra_layout: optional dictionary for layout configuration, passed directly to plotly
+        :param extra_layout: Optional dictionary for layout configuration, passed directly to plotly.
             See full details on the supported configuration: https://plotly.com/javascript/reference/layout/
             example: ``extra_layout={'showlegend': False, 'plot_bgcolor': 'yellow'}``
         """
@@ -266,6 +266,7 @@ class Logger(object):
         data_args=None,  # type: Optional[dict]
         extra_layout=None,  # type: Optional[dict]
     ):
+        # type: (...) -> ()
         """
         For explicit reporting, plot a (default grouped) histogram.
         Notice this function will not calculate the histogram,
@@ -590,12 +591,13 @@ class Logger(object):
         comment=None,  # type: Optional[str]
         extra_layout=None,  # type: Optional[dict]
     ):
+        # type: (...) -> ()
         """
         For explicit reporting, plot a 3d scatter graph (with markers).
 
         :param str title: The title (metric) of the plot.
         :param str series: The series name (variant) of the reported scatter plot.
-        :param Union[numpy.ndarray, list] scatter: The scatter data.
+        :param scatter: The scatter data.
             list of (pairs of x,y,z), list of series [[(x1,y1,z1)...]], or numpy.ndarray
         :param int iteration: The reported iteration / step.
         :param str xaxis: The x-axis title. (Optional)

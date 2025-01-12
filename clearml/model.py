@@ -818,12 +818,13 @@ class BaseModel(object):
             comment=None,  # type: Optional[str]
             extra_layout=None  # type: Optional[dict]
     ):
+        # type: (...) -> ()
         """
         For explicit reporting, plot a 3d scatter graph (with markers).
 
         :param str title: The title (metric) of the plot.
         :param str series: The series name (variant) of the reported scatter plot.
-        :param Union[numpy.ndarray, list] scatter: The scatter data.
+        :param scatter: The scatter data.
             list of (pairs of x,y,z), list of series [[(x1,y1,z1)...]], or numpy.ndarray
         :param int iteration: The reported iteration / step.
         :param str xaxis: The x-axis title. (Optional)

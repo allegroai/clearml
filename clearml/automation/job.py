@@ -546,7 +546,7 @@ class ClearmlJob(BaseJob):
             If True, use the base_task_id directly (base-task must be in draft-mode / created),
         :param bool allow_caching: If True, check if we have a previously executed Task with the same specification.
             If we do, use it and set internal is_cached flag. Default False (always create new Task).
-        :param Union[str, bool] output_uri: The storage / output url for this job. This is the default location for
+        :param output_uri: The storage / output url for this job. This is the default location for
             output models and other artifacts. Check Task.init reference docs for more info (output_uri is a parameter).
         :param str target_project: Optional, Set the target project name to create the cloned Task in.
         :param enable_local_imports: If True, allow jobs to import from local files

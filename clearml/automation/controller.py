@@ -59,7 +59,7 @@ class PipelineController(object):
     _update_execution_plot_interval = 5.*60
     _update_progress_interval = 10.
     _monitor_node_interval = 5.*60
-    _pipeline_as_sub_project = bool(Session.check_min_api_server_version("2.17"))
+    _pipeline_as_sub_project_cached = None
     _report_plot_execution_flow = dict(title='Pipeline', series='Execution Flow')
     _report_plot_execution_details = dict(title='Pipeline Details', series='Execution Details')
     _evaluated_return_values = {}  # TID: pipeline_name
@@ -400,7 +400,7 @@ class PipelineController(object):
         self._task.set_script(repository=repo, branch=repo_branch, commit=repo_commit, working_dir=working_dir)
         self._auto_connect_task = bool(self._task)
         # make sure we add to the main Task the pipeline tag
-        if self._task and not self._pipeline_as_sub_project:
+        if self._task and not self._pipeline_as_sub_project():
             self._task.add_tags([self._tag])
 
         self._monitored_nodes = {}  # type: Dict[str, dict]
@@ -410,7 +410,7 @@ class PipelineController(object):
             else self._default_retry_on_failure_callback
 
         # add direct link to the pipeline page
-        if self._pipeline_as_sub_project and self._task:
+        if self._pipeline_as_sub_project() and self._task:
             if add_run_number and self._task.running_locally():
                 self._add_pipeline_name_run_number(self._task)
             # noinspection PyProtectedMember
@@ -421,6 +421,12 @@ class PipelineController(object):
                     self._task.id,
                 ))
             )
+
+    @classmethod
+    def _pipeline_as_sub_project(cls):
+        if cls._pipeline_as_sub_project_cached is None:
+            cls._pipeline_as_sub_project_cached = bool(Session.check_min_api_server_version("2.17"))
+        return cls._pipeline_as_sub_project_cached
 
     def set_default_execution_queue(self, default_execution_queue):
         # type: (Optional[str]) -> None
@@ -1442,7 +1448,7 @@ class PipelineController(object):
     @classmethod
     def _create_pipeline_project_args(cls, name, project):
         task_name = name or project or '{}'.format(datetime.now())
-        if cls._pipeline_as_sub_project:
+        if cls._pipeline_as_sub_project():
             parent_project = (project + "/" if project else "") + cls._project_section
             project_name = "{}/{}".format(parent_project, task_name)
         else:
@@ -1453,7 +1459,7 @@ class PipelineController(object):
     @classmethod
     def _create_pipeline_projects(cls, task, parent_project, project_name):
         # make sure project is hidden
-        if not cls._pipeline_as_sub_project:
+        if not cls._pipeline_as_sub_project():
             return
         get_or_create_project(Task._get_default_session(), project_name=parent_project, system_tags=["hidden"])
         return get_or_create_project(
@@ -2645,7 +2651,7 @@ class PipelineController(object):
         extra_args = dict()
         extra_args["project"] = self._get_target_project(return_project_id=True) or None
         # set Task name to match job name
-        if self._pipeline_as_sub_project:
+        if self._pipeline_as_sub_project():
             extra_args["name"] = node.name
         if node.explicit_docker_image:
             extra_args["explicit_docker_image"] = node.explicit_docker_image

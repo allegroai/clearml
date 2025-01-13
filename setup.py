@@ -1,6 +1,6 @@
 """
-ClearML - Artificial Intelligence Version Control
-https://github.com/allegroai/clearml
+ClearML Inc
+https://github.com/clearml/clearml
 """
 
 import os.path
@@ -21,7 +21,7 @@ long_description = read_text(os.path.join(here, 'README.md'))
 # fix github, dark logo hack.
 long_description = long_description.replace(
     """<img align="center" src="docs/clearml-logo.svg#gh-light-mode-only" alt="Clear|ML"><img align="center" src="docs/clearml-logo-dark.svg#gh-dark-mode-only" alt="Clear|ML">""",  # noqa
-    """<a href="https://app.clear.ml"><img src="https://github.com/allegroai/clearml/blob/master/docs/clearml-logo.svg?raw=true" width="250px"></a>""",  # noqa
+    """<a href="https://app.clear.ml"><img src="https://github.com/clearml/clearml/blob/master/docs/clearml-logo.svg?raw=true" width="250px"></a>""",  # noqa
     1
 )
 
@@ -46,7 +46,7 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     # The project's main homepage.
-    url='https://github.com/allegroai/clearml',
+    url='https://github.com/clearml/clearml',
     author='ClearML',
     author_email='support@clear.ml',
     license='Apache License 2.0',
